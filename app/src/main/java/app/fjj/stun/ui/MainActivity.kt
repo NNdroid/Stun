@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import app.fjj.stun.databinding.ActivityMainBinding
 import app.fjj.stun.repo.GostRepository
 import app.fjj.stun.service.MyVpnService
@@ -43,19 +44,13 @@ class MainActivity : AppCompatActivity() {
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+            v.setPadding(systemBars.left, 0, systemBars.right, systemBars.bottom)
+            binding.toolbar.updatePadding(top = systemBars.top)
             insets
-        }
-
-        try {
-            //binding.sampleText.text = stringFromJNI()
-        } catch (e: UnsatisfiedLinkError) {
-            binding.sampleText.text = "Native 库加载失败"
         }
 
         // 让 TextView 支持滚动
         binding.sampleText.movementMethod = ScrollingMovementMethod()
-        //binding.sampleText.text = "等待日志输出...\n"
 
         // --- 核心：观察日志变化 ---
         GostRepository.logData.observe(this) { newLine ->
@@ -130,7 +125,6 @@ class MainActivity : AppCompatActivity() {
         startService(intent)
 
         isVpnRunning = false
-        binding.sampleText.text = "点击启动 VPN"
     }
 
     // 修改启动逻辑，成功后更新状态
@@ -140,15 +134,5 @@ class MainActivity : AppCompatActivity() {
         startService(intent)
 
         isVpnRunning = true
-        binding.sampleText.text = "运行中 - 点击停止"
-    }
-
-    // 保留你的原生方法声明
-    //external fun stringFromJNI(): String
-
-    companion object {
-        init {
-            //System.loadLibrary("stun")
-        }
     }
 }

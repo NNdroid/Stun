@@ -13,6 +13,7 @@ object ConfigManager {
     private const val KEY_TUNNEL_TYPE = "tunnel_type"
     private const val KEY_PROXY_ADDR = "proxy_addr"
     private const val KEY_CUSTOM_HOST = "custom_host"
+    private const val KEY_LOG_LEVEL = "log_level"
 
     // ============== Default Values ==============
     const val DEFAULT_SSH_ADDR = "198.98.61.214:666"
@@ -21,6 +22,7 @@ object ConfigManager {
     const val DEFAULT_TUNNEL_TYPE = "tls"
     const val DEFAULT_PROXY_ADDR = "198.98.61.214:443"
     const val DEFAULT_CUSTOM_HOST = "microsoft.com"
+    const val DEFAULT_LOG_LEVEL = "V"
 
     private fun getPrefs(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -33,7 +35,8 @@ object ConfigManager {
         pass: String,
         tunnelType: String,
         proxyAddr: String,
-        customHost: String
+        customHost: String,
+        logLevel: String
     ) {
         getPrefs(context).edit().apply {
             putString(KEY_SSH_ADDR, sshAddr)
@@ -42,6 +45,7 @@ object ConfigManager {
             putString(KEY_TUNNEL_TYPE, tunnelType)
             putString(KEY_PROXY_ADDR, proxyAddr)
             putString(KEY_CUSTOM_HOST, customHost)
+            putString(KEY_LOG_LEVEL, logLevel)
             apply()
         }
     }
@@ -57,4 +61,6 @@ object ConfigManager {
     fun getProxyAddr(context: Context) = getPrefs(context).getString(KEY_PROXY_ADDR, DEFAULT_PROXY_ADDR) ?: DEFAULT_PROXY_ADDR
 
     fun getCustomHost(context: Context) = getPrefs(context).getString(KEY_CUSTOM_HOST, DEFAULT_CUSTOM_HOST) ?: DEFAULT_CUSTOM_HOST
+
+    fun getLogLevel(context: Context) = getPrefs(context).getString(KEY_LOG_LEVEL, DEFAULT_LOG_LEVEL) ?: DEFAULT_LOG_LEVEL
 }

@@ -9,8 +9,8 @@ object GostRepository {
     // 使用 StringBuilder 提高拼接效率
     private val logBuilder = StringBuilder()
 
-    val vpnStatus = MutableLiveData<Boolean>(false)
-    val logData = MutableLiveData<String>("")
+    val vpnStatus = MutableLiveData(false)
+    val logData = MutableLiveData("")
 
     /**
      * 向日志中追加一行内容
