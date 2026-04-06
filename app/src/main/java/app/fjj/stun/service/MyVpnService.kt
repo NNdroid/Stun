@@ -182,14 +182,15 @@ class MyVpnService : VpnService() {
     }
 
     private fun startSshGoLib() {
+        var selectedProfile = ConfigManager.getSelectedProfile(this@MyVpnService)
         val config = JSONObject().apply {
             put("local_addr", "127.0.0.1:$SOCKS_PORT")
-            put("ssh_addr", ConfigManager.getSshAddr(this@MyVpnService))
-            put("user", ConfigManager.getUser(this@MyVpnService))
-            put("pass", ConfigManager.getPass(this@MyVpnService))
-            put("tunnel_type", ConfigManager.getTunnelType(this@MyVpnService))
-            put("proxy_addr", ConfigManager.getProxyAddr(this@MyVpnService))
-            put("custom_host", ConfigManager.getCustomHost(this@MyVpnService))
+            put("ssh_addr", selectedProfile.sshAddr)
+            put("user", selectedProfile.user)
+            put("pass", selectedProfile.pass)
+            put("tunnel_type", selectedProfile.tunnelType)
+            put("proxy_addr", selectedProfile.proxyAddr)
+            put("custom_host", selectedProfile.customHost)
         }
 
         thread(start = true, name = "SshGoNativeThread") {

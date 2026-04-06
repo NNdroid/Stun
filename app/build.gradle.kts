@@ -1,5 +1,10 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.legacy.kapt)
+}
+
+kotlin {
+    jvmToolchain(17)
 }
 
 android {
@@ -10,8 +15,8 @@ android {
         applicationId = "app.fjj.stun"
         minSdk = 28
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
@@ -38,8 +43,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     externalNativeBuild {
@@ -56,7 +61,7 @@ android {
     // Although externalNativeBuild handles this automatically for built artifacts.
     sourceSets {
         getByName("main") {
-            jniLibs.srcDirs("src/main/jniLibs")
+            jniLibs.directories.add("src/main/jniLibs")
         }
     }
 }
@@ -67,6 +72,17 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)
+    implementation(libs.gson)
+    implementation(libs.core.ktx)
+    implementation(libs.zxing.android.embedded)
+
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    kapt("androidx.room:room-compiler:${libs.versions.roomVersion.get()}")
+    // Use annotationProcessor for Java or kapt/ksp for Kotlin
+    // Since I don't know if kapt is enabled, I'll check plugins or assume kapt for now.
+    // Actually, I should check plugins first.
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

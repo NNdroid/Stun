@@ -11,6 +11,13 @@
         <item name="colorOnSecondary">@color/black</item>
         <!-- Status bar color. -->
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
-        <!-- Customize your theme here. -->
+
+        <!-- Fix for white-on-white menu text -->
+        <item name="actionOverflowMenuStyle">@style/Widget.Stun.OverflowMenu</item>
+    </style>
+
+    <style name="Widget.Stun.OverflowMenu" parent="Widget.AppCompat.Light.PopupMenu.Overflow">
+        <item name="android:itemBackground">@color/white</item>
+        <item name="android:textColor">@color/black</item>
     </style>
 </resources>

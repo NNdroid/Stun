@@ -3,34 +3,68 @@ package app.fjj.stun.ui
 import android.content.Intent
 import android.net.VpnService
 import android.os.Bundle
-import android.text.method.ScrollingMovementMethod
+import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
+import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
+import androidx.recyclerview.widget.LinearLayoutManager
 import app.fjj.stun.databinding.ActivityMainBinding
+import app.fjj.stun.repo.ConfigManager
 import app.fjj.stun.repo.GostRepository
+import app.fjj.stun.repo.Profile
 import app.fjj.stun.service.MyVpnService
+import app.fjj.stun.util.QRUtils
+import com.google.gson.Gson
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
+import java.net.HttpURLConnection
+import java.net.InetSocketAddress
+import java.net.Proxy
+import java.net.URL
+import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private lateinit var adapter: ProfileAdapter
     private var isVpnRunning = false
 
-    // 1. 定义 Result Launcher (替代 onActivityResult)
     private val vpnLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == RESULT_OK) {
-            // 用户点击了“确定”，启动服务
             startVpnService()
         } else {
-            Toast.makeText(this, "VPN 授权失败", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "VPN Permission Denied", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private val barcodeLauncher = registerForActivityResult(
+        ScanContract()
+    ) { result ->
+        if (result.contents != null) {
+            try {
+                val profile = Gson().fromJson(result.contents, Profile::class.java)
+                // Ensure it gets a new ID if it's a clone/import
+                val newProfile = profile.copy(id = java.util.UUID.randomUUID().toString())
+                thread {
+                    ConfigManager.addProfile(this, newProfile)
+                    runOnUiThread {
+                        Toast.makeText(this, "Profile added: ${newProfile.name}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this, "Invalid QR Code format", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -42,44 +76,100 @@ class MainActivity : AppCompatActivity() {
 
         setSupportActionBar(binding.toolbar)
 
+        val statusBarPaddingBottom = binding.statusBar.paddingBottom
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, 0, systemBars.right, systemBars.bottom)
+            val navBars = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            v.setPadding(systemBars.left, 0, systemBars.right, 0)
             binding.toolbar.updatePadding(top = systemBars.top)
+            binding.statusBar.updatePadding(bottom = statusBarPaddingBottom + navBars.bottom)
             insets
         }
 
-        // 让 TextView 支持滚动
-        binding.sampleText.movementMethod = ScrollingMovementMethod()
+        setupRecyclerView()
 
-        // --- 核心：观察日志变化 ---
-        GostRepository.logData.observe(this) { newLine ->
-            // 1. 先追加文字
-            binding.sampleText.text = "$newLine"
-
-            // 2. 安全地执行滚动：只有 layout 不为空时才计算滚动
-            val layout = binding.sampleText.layout
-            if (layout != null) {
-                val scrollAmount = layout.getLineTop(binding.sampleText.lineCount) - binding.sampleText.height
-                if (scrollAmount > 0) {
-                    binding.sampleText.scrollTo(0, scrollAmount)
-                }
-            }
+        ConfigManager.getProfilesLiveData(this).observe(this) { profiles ->
+            val selectedId = ConfigManager.getSelectedProfileId(this)
+            adapter.updateProfiles(profiles, selectedId)
         }
 
         binding.fabStartStop.setOnClickListener {
             prepareVpn()
         }
 
-        // 观察 VPN 状态以更新 FAB 图标
+        binding.statusBar.setOnClickListener {
+            testSelectedProfileLatency()
+        }
+
         GostRepository.vpnStatus.observe(this) { running ->
             isVpnRunning = running
             if (running) {
                 binding.fabStartStop.setImageResource(android.R.drawable.ic_media_pause)
+                binding.tvStatus.text = "Connected, tap to check connection"
             } else {
                 binding.fabStartStop.setImageResource(android.R.drawable.ic_media_play)
+                binding.tvStatus.text = "Disconnected, tap to start"
             }
         }
+    }
+
+    private fun setupRecyclerView() {
+        val selectedId = ConfigManager.getSelectedProfileId(this)
+
+        adapter = ProfileAdapter(
+            profiles = emptyList(),
+            selectedProfileId = selectedId,
+            onProfileClick = { profile ->
+                ConfigManager.setSelectedProfileId(this, profile.id)
+                adapter.updateProfiles(adapter.getProfiles(), profile.id)
+                Toast.makeText(this, "Selected: ${profile.name}", Toast.LENGTH_SHORT).show()
+            },
+            onEditClick = { profile ->
+                val intent = Intent(this, ConfigActivity::class.java)
+                intent.putExtra("EXTRA_PROFILE_ID", profile.id)
+                startActivity(intent)
+            },
+            onDeleteClick = { profile ->
+                thread {
+                    ConfigManager.deleteProfile(this, profile)
+                }
+            },
+            onShareClick = { profile ->
+                showShareDialog(profile)
+            }
+        )
+
+        binding.rvProfiles.layoutManager = LinearLayoutManager(this)
+        binding.rvProfiles.adapter = adapter
+    }
+
+    private fun showShareDialog(profile: Profile) {
+        val json = Gson().toJson(profile)
+        val bitmap = QRUtils.generateQRCode(json, 500, 500)
+
+        if (bitmap != null) {
+            val dialogView = LayoutInflater.from(this).inflate(app.fjj.stun.R.layout.dialog_qr_code, null)
+            val ivQrCode = dialogView.findViewById<ImageView>(app.fjj.stun.R.id.iv_qr_code)
+            val tvName = dialogView.findViewById<TextView>(app.fjj.stun.R.id.tv_profile_name)
+
+            ivQrCode.setImageBitmap(bitmap)
+            tvName.text = profile.name
+
+            AlertDialog.Builder(this)
+                .setTitle("Share Profile")
+                .setView(dialogView)
+                .setPositiveButton("Close", null)
+                .show()
+        } else {
+            Toast.makeText(this, "Failed to generate QR code", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+    }
+
+    private fun refreshProfiles() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -89,8 +179,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
+            app.fjj.stun.R.id.action_add -> {
+                showAddOptions()
+                return true
+            }
             app.fjj.stun.R.id.action_settings -> {
-                startActivity(Intent(this, ConfigActivity::class.java))
+                startActivity(Intent(this, SettingsActivity::class.java))
                 return true
             }
             app.fjj.stun.R.id.action_logs -> {
@@ -101,38 +195,106 @@ class MainActivity : AppCompatActivity() {
         return super.onOptionsItemSelected(item)
     }
 
-    private fun prepareVpn() {
-        // 2. 检查 VPN 权限
-        val intent = VpnService.prepare(this)
-        if (intent != null) {
-            // 弹出系统授权对话框
-            vpnLauncher.launch(intent)
-        } else {
-            isVpnRunning = GostRepository.vpnStatus.value ?: false
-            // 已经授权过了，直接启动
-            if (isVpnRunning) {
-                stopVpnService()
-                return
+    private fun showAddOptions() {
+        val options = arrayOf("Add Manually", "Scan QR Code")
+        AlertDialog.Builder(this)
+            .setTitle("Add Profile")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> startActivity(Intent(this, ConfigActivity::class.java))
+                    1 -> scanQRCode()
+                }
             }
-            startVpnService()
+            .show()
+    }
+
+    private fun scanQRCode() {
+        val options = ScanOptions()
+        options.setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+        options.setPrompt("Scan a profile QR code")
+        options.setCameraId(0)
+        options.setBeepEnabled(false)
+        options.setBarcodeImageEnabled(true)
+        barcodeLauncher.launch(options)
+    }
+
+    private fun testSelectedProfileLatency() {
+        val selectedProfile = ConfigManager.getSelectedProfile(this)
+        binding.tvStatus.text = "Testing latency..."
+
+        var result = "Timeout"
+        thread {
+
+            try {
+                val start = System.nanoTime()
+
+                val url = URL("https://www.google.com/generate_204")
+
+                val connection = if (isVpnRunning) {
+                    val proxyAddr = InetSocketAddress.createUnresolved(
+                        "127.0.0.1",
+                        MyVpnService.SOCKS_PORT
+                    )
+                    val proxy = Proxy(Proxy.Type.SOCKS, proxyAddr)
+                    url.openConnection(proxy) as HttpURLConnection
+                } else {
+                    url.openConnection() as HttpURLConnection
+                }
+
+                connection.connectTimeout = 3000
+                connection.readTimeout = 3000
+                connection.instanceFollowRedirects = false
+                connection.useCaches = false
+                connection.requestMethod = "GET"
+
+                connection.connect()
+
+                val code = connection.responseCode
+
+                val latency = (System.nanoTime() - start) / 1_000_000
+
+                result = if (code in 200..399) {
+                    "$latency ms"
+                } else {
+                    "HTTP $code"
+                }
+
+                connection.disconnect()
+
+            } catch (e: Exception) {
+                result = e.message ?: "Unknown Error"
+            }
+
+            runOnUiThread {
+                adapter.updateDelay(selectedProfile.id, result)
+                binding.tvStatus.text = if (isVpnRunning) "Connected ($result)" else "Disconnected ($result)"
+            }
         }
     }
 
-    // 停止 VPN 的函数
-    private fun stopVpnService() {
-        val intent = Intent(this, MyVpnService::class.java)
-        intent.action = MyVpnService.ACTION_STOP // 发送自定义 Action
-        startService(intent)
-
-        isVpnRunning = false
+    private fun prepareVpn() {
+        val intent = VpnService.prepare(this)
+        if (intent != null) {
+            vpnLauncher.launch(intent)
+        } else {
+            isVpnRunning = GostRepository.vpnStatus.value ?: false
+            if (isVpnRunning) {
+                stopVpnService()
+            } else {
+                startVpnService()
+            }
+        }
     }
 
-    // 修改启动逻辑，成功后更新状态
+    private fun stopVpnService() {
+        val intent = Intent(this, MyVpnService::class.java)
+        intent.action = MyVpnService.ACTION_STOP
+        startService(intent)
+    }
+
     private fun startVpnService() {
         val intent = Intent(this, MyVpnService::class.java)
         intent.action = MyVpnService.ACTION_START
         startService(intent)
-
-        isVpnRunning = true
     }
 }

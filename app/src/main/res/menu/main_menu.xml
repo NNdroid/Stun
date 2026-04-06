@@ -2,6 +2,16 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
+        android:id="@+id/action_add"
+        android:title="Add"
+        android:icon="@android:drawable/ic_menu_add"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/action_filter"
+        android:title="Filter"
+        android:icon="@android:drawable/ic_menu_sort_alphabetically"
+        app:showAsAction="always" />
+    <item
         android:id="@+id/action_logs"
         android:title="Logs"
         android:icon="@android:drawable/ic_menu_info_details"

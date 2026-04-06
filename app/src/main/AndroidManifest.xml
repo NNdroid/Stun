@@ -35,6 +35,11 @@
             android:exported="false" />
 
         <activity
+            android:name=".ui.SettingsActivity"
+            android:label="Settings"
+            android:exported="false" />
+
+        <activity
             android:name=".ui.LogsActivity"
             android:label="Application Logs"
             android:exported="false" />
