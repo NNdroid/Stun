@@ -1,6 +1,8 @@
 package app.fjj.stun.ui
 
 import android.os.Bundle
+import android.view.View
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -38,6 +40,21 @@ class ConfigActivity : AppCompatActivity() {
             insets
         }
 
+        // Setup Tunnel Type Dropdown
+        val tunnelTypes = Profile.getAllTunnelTypes()
+        val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, tunnelTypes)
+        binding.spinnerTunnelType.setAdapter(adapter)
+
+        binding.spinnerTunnelType.setOnItemClickListener { _, _, _, _ ->
+            val selected = binding.spinnerTunnelType.text.toString()
+            val isHttp = selected == Profile.TUNNEL_TYPE_HTTP
+            val isBase = selected == Profile.TUNNEL_TYPE_BASE
+            
+            binding.layoutHttpPayload.visibility = if (isHttp) View.VISIBLE else View.GONE
+            binding.layoutProxyAddr.visibility = if (isBase) View.GONE else View.VISIBLE
+            binding.layoutCustomHost.visibility = if (isBase) View.GONE else View.VISIBLE
+        }
+
         // Load values
         thread {
             currentProfile = if (isEdit) {
@@ -51,7 +68,17 @@ class ConfigActivity : AppCompatActivity() {
                 binding.etSshAddr.setText(currentProfile.sshAddr)
                 binding.etUser.setText(currentProfile.user)
                 binding.etPass.setText(currentProfile.pass)
-                binding.etTunnelType.setText(currentProfile.tunnelType)
+                binding.spinnerTunnelType.setText(currentProfile.tunnelType, false)
+                
+                val selected = currentProfile.tunnelType
+                val isHttp = selected == Profile.TUNNEL_TYPE_HTTP
+                val isBase = selected == Profile.TUNNEL_TYPE_BASE
+                
+                binding.layoutHttpPayload.visibility = if (isHttp) View.VISIBLE else View.GONE
+                binding.layoutProxyAddr.visibility = if (isBase) View.GONE else View.VISIBLE
+                binding.layoutCustomHost.visibility = if (isBase) View.GONE else View.VISIBLE
+
+                binding.etHttpPayload.setText(currentProfile.httpPayload)
                 binding.etProxyAddr.setText(currentProfile.proxyAddr)
                 binding.etCustomHost.setText(currentProfile.customHost)
             }
@@ -63,7 +90,8 @@ class ConfigActivity : AppCompatActivity() {
                 sshAddr = binding.etSshAddr.text.toString(),
                 user = binding.etUser.text.toString(),
                 pass = binding.etPass.text.toString(),
-                tunnelType = binding.etTunnelType.text.toString(),
+                tunnelType = binding.spinnerTunnelType.text.toString(),
+                httpPayload = binding.etHttpPayload.text.toString(),
                 proxyAddr = binding.etProxyAddr.text.toString(),
                 customHost = binding.etCustomHost.text.toString()
             )

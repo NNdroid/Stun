@@ -191,6 +191,7 @@ class MyVpnService : VpnService() {
             put("tunnel_type", selectedProfile.tunnelType)
             put("proxy_addr", selectedProfile.proxyAddr)
             put("custom_host", selectedProfile.customHost)
+            put("http_payload", selectedProfile.httpPayload)
         }
 
         thread(start = true, name = "SshGoNativeThread") {
@@ -249,7 +250,7 @@ class MyVpnService : VpnService() {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("SSH 代理运行中")
             .setContentText("全设备流量 (IPv4/IPv6) 加密保护中")
-            .setSmallIcon(android.R.drawable.ic_lock_lock)
+            .setSmallIcon(app.fjj.stun.R.drawable.ic_fox_logo)
             .setOngoing(true)
             .build()
 

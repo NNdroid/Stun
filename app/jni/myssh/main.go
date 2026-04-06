@@ -31,6 +31,8 @@ type ProxyConfig struct {
 	TunnelType string `json:"tunnel_type"`
 	ProxyAddr  string `json:"proxy_addr"`
 	CustomHost string `json:"custom_host"`
+	// --- 新增：自定义 HTTP Payload ---
+	HttpPayload string `json:"http_payload"`
 }
 
 var (
@@ -126,7 +128,27 @@ func dialTunnel(cfg ProxyConfig) (net.Conn, error) {
 		return &wsConnAdapter{Conn: ws}, nil
 	case "http":
 		log.Printf("%s [Tunnel] 2. 准备发送 HTTP CONNECT 代理请求, 目标 SSH: %s", TAG, cfg.SshAddr)
-		fmt.Fprintf(baseConn, "CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n", cfg.SshAddr, cfg.CustomHost)
+		
+		// 1. 获取 payload，如果没传，则给一个标准的默认值
+		payload := cfg.HttpPayload
+		if payload == "" {
+			payload = "CONNECT [host_and_port] HTTP/1.1[crlf]Host: [host][crlf][crlf]"
+		}
+
+		// 2. 按照规则进行字符串替换
+		payload = strings.ReplaceAll(payload, "[host_and_port]", cfg.SshAddr)
+		payload = strings.ReplaceAll(payload, "[host]", cfg.CustomHost)
+		payload = strings.ReplaceAll(payload, "[crlf]", "\r\n")
+
+		// 3. 将最终的 payload 发送给代理服务器
+		log.Printf("%s [Tunnel] 发送的 HTTP Payload:\n%s", TAG, payload)
+		_, err := baseConn.Write([]byte(payload))
+		if err != nil {
+			baseConn.Close()
+			return nil, err
+		}
+
+		// 4. 读取代理服务器的响应
 		br := bufio.NewReader(baseConn)
 		line, _ := br.ReadString('\n')
 		if !strings.Contains(line, "200") {
@@ -134,6 +156,8 @@ func dialTunnel(cfg ProxyConfig) (net.Conn, error) {
 			log.Printf("%s [Tunnel] ❌ HTTP 代理拒绝连接: %s", TAG, line)
 			return nil, fmt.Errorf("HTTP Proxy Refused: %s", line)
 		}
+		
+		// 消耗掉剩下的 HTTP 头信息
 		for {
 			l, _ := br.ReadString('\n')
 			if l == "\r\n" || l == "" {

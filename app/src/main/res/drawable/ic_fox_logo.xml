@@ -1,0 +1,45 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Darker Background for contrast -->
+    <path
+        android:fillColor="#BF360C"
+        android:pathData="M50,5 L95,50 L50,95 L5,50 Z" />
+
+    <!-- Main Sharp Head -->
+    <path
+        android:fillColor="#FF9800"
+        android:pathData="M50,15 L85,40 L75,85 L50,98 L25,85 L15,40 Z" />
+
+    <!-- Sharp Left Ear -->
+    <path
+        android:fillColor="#E65100"
+        android:pathData="M25,25 L5,2 L40,20 Z" />
+
+    <!-- Sharp Right Ear -->
+    <path
+        android:fillColor="#E65100"
+        android:pathData="M75,25 L95,2 L60,20 Z" />
+
+    <!-- Sharp White Muzzle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M50,98 L25,85 L35,65 L50,75 L65,65 L75,85 Z" />
+
+    <!-- Imposing Narrow Eyes -->
+    <path
+        android:fillColor="#212121"
+        android:pathData="M32,48 L45,55 L30,55 Z" />
+    <path
+        android:fillColor="#212121"
+        android:pathData="M68,48 L55,55 L70,55 Z" />
+
+    <!-- Sharp Nose -->
+    <path
+        android:fillColor="#212121"
+        android:pathData="M50,78 L47,74 L53,74 Z" />
+
+</vector>
