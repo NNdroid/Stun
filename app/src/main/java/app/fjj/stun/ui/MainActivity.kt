@@ -3,6 +3,7 @@ package app.fjj.stun.ui
 import android.content.Intent
 import android.net.VpnService
 import android.os.Bundle
+import android.util.Base64
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
@@ -54,9 +55,17 @@ class MainActivity : AppCompatActivity() {
     ) { result ->
         if (result.contents != null) {
             try {
-                val profile = Gson().fromJson(result.contents, Profile::class.java)
-                // Ensure it gets a new ID if it's a clone/import
+                // 1. 先将扫到的 Base64 字符串解码还原为普通字符串 (JSON)
+                // 使用 Base64.DEFAULT 进行解码即可兼容我们之前生成的 NO_WRAP 格式
+                val decodedBytes = Base64.decode(result.contents, Base64.DEFAULT)
+                val jsonString = String(decodedBytes, Charsets.UTF_8)
+
+                // 2. 将还原后的 JSON 字符串交给 Gson 解析
+                val profile = Gson().fromJson(jsonString, Profile::class.java)
+
+                // 确保生成一个新的 ID
                 val newProfile = profile.copy(id = java.util.UUID.randomUUID().toString())
+
                 thread {
                     ProfileManager.addProfile(this, newProfile)
                     runOnUiThread {
@@ -64,6 +73,8 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             } catch (e: Exception) {
+                // 这里不仅能捕获 Gson 解析失败，也能捕获 Base64 解码异常
+                e.printStackTrace() // 建议加上打印，方便自己排查问题
                 Toast.makeText(this, "Invalid QR Code format", Toast.LENGTH_SHORT).show()
             }
         }
@@ -150,7 +161,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun showShareDialog(profile: Profile) {
         val json = Gson().toJson(profile)
-        val bitmap = QRUtils.generateQRCode(json, 500, 500)
+        // 1. 将 json 字符串转为 UTF-8 字节数组，然后进行 Base64 编码
+        // 使用 Base64.NO_WRAP 避免生成多余的换行符 (\n)
+        val base64String = Base64.encodeToString(json.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+        // 2. 使用编码后的 base64 字符串生成二维码
+        val bitmap = QRUtils.generateQRCode(base64String, 500, 500)
 
         if (bitmap != null) {
             val dialogView = LayoutInflater.from(this).inflate(app.fjj.stun.R.layout.dialog_qr_code, null)
@@ -172,9 +187,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-    }
-
-    private fun refreshProfiles() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
