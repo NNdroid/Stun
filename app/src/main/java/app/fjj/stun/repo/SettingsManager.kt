@@ -97,7 +97,7 @@ object SettingsManager {
                 saveLastUpdateTime(context, currentTime)
                 onComplete?.invoke()
             } catch (e: Exception) {
-                e.printStackTrace()
+                StunLogger.e("SettingsManager", "Update GeoData failed", e)
             }
         }
     }
@@ -112,7 +112,7 @@ object SettingsManager {
                 }
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            StunLogger.e("SettingsManager", "Download file failed: $urlStr", e)
         }
     }
 }

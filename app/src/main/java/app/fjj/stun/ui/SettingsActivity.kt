@@ -17,7 +17,7 @@ import java.util.Locale
 class SettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySettingsBinding
-    private val logLevels = arrayOf("V", "D", "I", "W", "E")
+    private val logLevels = arrayOf("DEBUG", "INFO", "WARN", "ERROR")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()

@@ -58,13 +58,27 @@ var (
 	zlog *zap.SugaredLogger = zap.NewNop().Sugar()
 )
 
-// ==========================================
-// 🌟 新增：初始化日志系统
-// ==========================================
-
 // InitLogger 初始化日志并将其重定向到指定文件
+// logPath: 日志文件绝对路径
+// logLevelStr: 日志级别 ("DEBUG", "INFO", "WARN", "ERROR")
 // 返回值: 0 成功, -1 失败
-func InitLogger(logPath string) int {
+func InitLogger(logPath string, logLevelStr string) int {
+	var level zapcore.Level
+	
+	// 将安卓端传过来的字符串转为大写并匹配 (增加容错性)
+	switch strings.ToUpper(logLevelStr) {
+	case "DEBUG":
+		level = zapcore.DebugLevel
+	case "INFO":
+		level = zapcore.InfoLevel
+	case "WARN":
+		level = zapcore.WarnLevel
+	case "ERROR":
+		level = zapcore.ErrorLevel
+	default:
+		level = zapcore.InfoLevel // 遇到未知字符串，默认给 Info 级别
+	}
+
 	// 打开或创建文件，如果文件已存在则将其清空 (os.O_TRUNC)
 	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
 	if err != nil {
@@ -72,20 +86,20 @@ func InitLogger(logPath string) int {
 	}
 
 	encoderConfig := zap.NewProductionEncoderConfig()
-	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder // 使用直观的时间格式
+	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder   // 使用直观的时间格式
 	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder // 级别大写 (INFO, ERROR)
 
-	// 配置 Zap Core：仅写入文件，彻底切断与 os.Stdout / os.Stderr (Logcat) 的关联
+	// 配置 Zap Core：使用解析出的 level
 	core := zapcore.NewCore(
-		zapcore.NewConsoleEncoder(encoderConfig), 
+		zapcore.NewConsoleEncoder(encoderConfig),
 		zapcore.AddSync(file),
-		zapcore.DebugLevel, // 记录 Debug 及以上所有级别的日志
+		level, 
 	)
 
 	logger := zap.New(core)
 	zlog = logger.Sugar()
-	
-	zlog.Infof("%s [Logger] 日志系统初始化完成，写入路径: %s", TAG, logPath)
+
+	zlog.Infof("%s [Logger] 日志系统初始化完成，写入路径: %s，当前级别: %s", TAG, logPath, level.String())
 	return 0
 }
 

@@ -8,13 +8,11 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import app.fjj.stun.databinding.ActivityLogsBinding
-import app.fjj.stun.repo.SettingsManager
-import app.fjj.stun.repo.GostRepository
+import app.fjj.stun.repo.StunRepository
 
 class LogsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLogsBinding
-    private var currentLogLevel = "V"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -25,8 +23,6 @@ class LogsActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        currentLogLevel = SettingsManager.getLogLevel(this)
-
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, 0, systemBars.right, systemBars.bottom)
@@ -34,19 +30,16 @@ class LogsActivity : AppCompatActivity() {
             insets
         }
 
-        GostRepository.logData.observe(this) { logs ->
-            binding.tvLogs.text = filterLogs(logs, currentLogLevel)
+        StunRepository.logData.observe(this) { logs ->
+            binding.tvLogs.text = logs
             // Auto scroll to bottom
 //            binding.scrollView.post {
 //                binding.scrollView.fullScroll(android.view.View.FOCUS_DOWN)
 //            }
         }
 
-        // Start logcat capture when activity opens
-        GostRepository.startLogFileCapture(this@LogsActivity)
-
         binding.btnClear.setOnClickListener {
-            GostRepository.clearLogs()
+            StunRepository.clearLogs()
         }
 
         binding.btnCopy.setOnClickListener {
@@ -55,26 +48,6 @@ class LogsActivity : AppCompatActivity() {
             clipboard.setPrimaryClip(clip)
             Toast.makeText(this, "Logs copied to clipboard", Toast.LENGTH_SHORT).show()
         }
-    }
-
-    private fun filterLogs(logs: String, level: String): String {
-        if (level == "V") return logs
-        
-        val levels = listOf("V", "D", "I", "W", "E")
-        val minLevelIndex = levels.indexOf(level)
-        
-        return logs.lines().filter { line ->
-            // Logcat formats usually include " V/", " D/", etc. or just the letter at a specific position
-            // This is a simple heuristic check for standard logcat -v time format
-            val lineLevel = when {
-                line.contains(" E/") || line.startsWith("E") -> "E"
-                line.contains(" W/") || line.startsWith("W") -> "W"
-                line.contains(" I/") || line.startsWith("I") -> "I"
-                line.contains(" D/") || line.startsWith("D") -> "D"
-                else -> "V"
-            }
-            levels.indexOf(lineLevel) >= minLevelIndex
-        }.joinToString("\n")
     }
 
     override fun onSupportNavigateUp(): Boolean {

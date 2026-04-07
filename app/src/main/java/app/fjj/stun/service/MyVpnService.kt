@@ -7,11 +7,11 @@ import android.content.Intent
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
-import android.util.Log
 import androidx.core.app.NotificationCompat
-import app.fjj.stun.repo.GostRepository
+import app.fjj.stun.repo.StunRepository
 import app.fjj.stun.repo.ProfileManager
 import app.fjj.stun.repo.SettingsManager
+import app.fjj.stun.repo.StunLogger
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -43,12 +43,12 @@ class MyVpnService : VpnService() {
         when (intent?.action) {
             ACTION_STOP -> {
                 userRequestedStop = true
-                GostRepository.appendLog("用户主动停止服务...")
+                StunRepository.appendLog("用户主动停止服务...")
                 stopVpnService()
             }
             else -> {
                 userRequestedStop = false
-                GostRepository.appendLog("启动 VPN 主循环...")
+                StunRepository.appendLog("启动 VPN 主循环...")
                 thread(start = true, name = "VpnMainLoop") {
                     startVpnServiceLoop()
                 }
@@ -70,10 +70,11 @@ class MyVpnService : VpnService() {
     }
 
     private fun loadMySshLogger() {
-        val logPath = GostRepository.getLogFilePath(this@MyVpnService)
-        val logStatus: Long = myssh.Myssh.initLogger(logPath)
+        val logPath = StunRepository.getLogFilePath(this@MyVpnService)
+        var logLevel = SettingsManager.getLogLevel(this@MyVpnService)
+        val logStatus: Long = myssh.Myssh.initLogger(logPath, logLevel)
         if (logStatus == 0L) {
-            Log.i("AndroidApp", "日志已成功挂载到文件: $logPath")
+            StunLogger.i("AndroidApp", "日志已成功挂载到文件: $logPath")
         }
         myssh.Myssh.startWebLogger(10880, logPath)
     }
@@ -84,14 +85,14 @@ class MyVpnService : VpnService() {
     private fun startVpnServiceLoop() {
         while (!userRequestedStop) {
             try {
-                GostRepository.appendLog("--- 正在初始化隧道环境 ---")
+                StunRepository.appendLog("--- 正在初始化隧道环境 ---")
 
                 // 1. 预清理旧资源
                 cleanupNative()
 
                 // 2. 启动前台通知 (Android 系统要求)
                 updateNotification()
-                GostRepository.vpnStatus.postValue(true)
+                StunRepository.vpnStatus.postValue(true)
 
                 loadMySshLogger()
 
@@ -118,7 +119,7 @@ class MyVpnService : VpnService() {
 
                 if (vpnInterface != null) {
                     val fd = vpnInterface!!.fd
-                    GostRepository.appendLog("TUN 网卡就绪 (FD: $fd)")
+                    StunRepository.appendLog("TUN 网卡就绪 (FD: $fd)")
 
                     // 6. 启动 HEV 引擎
                     startHevTunnel(fd)
@@ -126,35 +127,35 @@ class MyVpnService : VpnService() {
                     // 7. 进入监控阻塞状态
                     monitorThreads()
                 } else {
-                    GostRepository.appendLog("无法建立虚拟网卡，准备重试...")
+                    StunRepository.appendLog("无法建立虚拟网卡，准备重试...")
                 }
 
             } catch (e: Exception) {
-                GostRepository.appendLog("主循环发生错误: ${e.message}")
-                Log.e(TAG, "Main Loop Error", e)
+                StunRepository.appendLog("主循环发生错误: ${e.message}")
+                StunLogger.e(TAG, "Main Loop Error", e)
             }
 
             // 异常退出或建立失败后的处理
             if (!userRequestedStop) {
-                GostRepository.appendLog("检测到异常退出，${RECONNECT_DELAY / 1000}秒后尝试重连...")
+                StunRepository.appendLog("检测到异常退出，${RECONNECT_DELAY / 1000}秒后尝试重连...")
                 cleanupNative()
                 Thread.sleep(RECONNECT_DELAY)
             }
         }
-        GostRepository.appendLog("VPN 主循环已安全退出。")
+        StunRepository.appendLog("VPN 主循环已安全退出。")
     }
 
     /**
      * 监控子线程存活状态
      */
     private fun monitorThreads() {
-        GostRepository.appendLog("启动健康检查监控...")
+        StunRepository.appendLog("启动健康检查监控...")
         Thread.sleep(6000) // 给启动留出缓冲
 
         while (!userRequestedStop) {
             if (!isSshRunning || !isHevRunning) {
                 val reason = if (!isSshRunning) "Go SSH 库掉线" else "HEV 引擎掉线"
-                GostRepository.appendLog("【状态报警】: $reason")
+                StunRepository.appendLog("【状态报警】: $reason")
                 return // 退出监控，触发上一层循环重连
             }
             Thread.sleep(1500) // 每1.5秒检查一次
@@ -183,10 +184,10 @@ class MyVpnService : VpnService() {
             """.trimIndent()
 
             FileOutputStream(confFile).use { it.write(tproxyConf.toByteArray()) }
-            GostRepository.appendLog("HEV 配置文件已更新。")
+            StunRepository.appendLog("HEV 配置文件已更新。")
             return confFile.absolutePath
         } catch (e: IOException) {
-            GostRepository.appendLog("配置文件写入失败: ${e.message}")
+            StunRepository.appendLog("配置文件写入失败: ${e.message}")
             return ""
         }
     }
@@ -198,11 +199,11 @@ class MyVpnService : VpnService() {
         thread(start = true, name = "HevEngineThread") {
             try {
                 isHevRunning = true
-                GostRepository.appendLog("HEV 引擎启动中...")
+                StunRepository.appendLog("HEV 引擎启动中...")
                 hev.htproxy.TProxyService.TProxyStartService(configPath, fd)
             } catch (e: Exception) {
-                Log.e(TAG, "HEV Crash", e)
-                GostRepository.appendLog("HEV 线程崩溃: ${e.message}")
+                StunLogger.e(TAG, "HEV Crash", e)
+                StunRepository.appendLog("HEV 线程崩溃: ${e.message}")
                 isHevRunning = false
             } finally {
             }
@@ -225,14 +226,14 @@ class MyVpnService : VpnService() {
         thread(start = true, name = "SshGoNativeThread") {
             try {
                 isSshRunning = true
-                GostRepository.appendLog("Go 库: 正在拨号 SSH...")
+                StunRepository.appendLog("Go 库: 正在拨号 SSH...")
                 val res = myssh.Myssh.startSshTProxy(config.toString())
                 if (res != 0L) {
-                    GostRepository.appendLog("Go 库非正常退出，代码: $res")
+                    StunRepository.appendLog("Go 库非正常退出，代码: $res")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Go Lib Crash", e)
-                GostRepository.appendLog("Go 线程崩溃: ${e.message}")
+                StunLogger.e(TAG, "Go Lib Crash", e)
+                StunRepository.appendLog("Go 线程崩溃: ${e.message}")
                 isSshRunning = false
             } finally {
 
@@ -262,7 +263,7 @@ class MyVpnService : VpnService() {
 
     private fun stopVpnService() {
         cleanupNative()
-        GostRepository.vpnStatus.postValue(false)
+        StunRepository.vpnStatus.postValue(false)
         stopForeground(true)
         stopSelf()
     }

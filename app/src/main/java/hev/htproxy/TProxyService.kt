@@ -1,6 +1,6 @@
 package hev.htproxy
 
-import android.util.Log
+import app.fjj.stun.repo.StunLogger
 
 /**
  * 这个类必须放在 hev.sockstun 包下，
@@ -21,7 +21,7 @@ object TProxyService {
         try {
             System.loadLibrary("hev-socks5-tunnel")
         } catch (e: UnsatisfiedLinkError) {
-            Log.e("HEV-JNI", "无法加载库: " + e.message)
+            StunLogger.e("HEV-JNI", "无法加载库: " + e.message, e)
         }
     }
 }

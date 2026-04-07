@@ -6,6 +6,8 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 import com.google.zxing.common.BitMatrix
 
+import app.fjj.stun.repo.StunLogger
+
 object QRUtils {
     fun generateQRCode(text: String, width: Int, height: Int): Bitmap? {
         return try {
@@ -18,7 +20,7 @@ object QRUtils {
             }
             bitmap
         } catch (e: Exception) {
-            e.printStackTrace()
+            StunLogger.e("QRUtils", "Failed to generate QR code", e)
             null
         }
     }

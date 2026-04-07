@@ -19,10 +19,11 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.recyclerview.widget.LinearLayoutManager
 import app.fjj.stun.databinding.ActivityMainBinding
-import app.fjj.stun.repo.GostRepository
 import app.fjj.stun.repo.Profile
 import app.fjj.stun.repo.ProfileManager
 import app.fjj.stun.repo.SettingsManager
+import app.fjj.stun.repo.StunLogger
+import app.fjj.stun.repo.StunRepository
 import app.fjj.stun.service.MyVpnService
 import app.fjj.stun.util.QRUtils
 import com.google.gson.Gson
@@ -74,7 +75,7 @@ class MainActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 // 这里不仅能捕获 Gson 解析失败，也能捕获 Base64 解码异常
-                e.printStackTrace() // 建议加上打印，方便自己排查问题
+                StunLogger.e("MainActivity", "Scan QR Code failed", e)
                 Toast.makeText(this, "Invalid QR Code format", Toast.LENGTH_SHORT).show()
             }
         }
@@ -85,7 +86,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         // Trigger GeoData update check on startup
-        //app.fjj.stun.repo.SettingsManager.checkAndUpdateGeoData(this)
+        SettingsManager.checkAndUpdateGeoData(this)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -117,7 +118,7 @@ class MainActivity : AppCompatActivity() {
             testSelectedProfileLatency()
         }
 
-        GostRepository.vpnStatus.observe(this) { running ->
+        StunRepository.vpnStatus.observe(this) { running ->
             isVpnRunning = running
             if (running) {
                 binding.fabStartStop.setImageResource(android.R.drawable.ic_media_pause)
@@ -279,6 +280,7 @@ class MainActivity : AppCompatActivity() {
                 connection.disconnect()
 
             } catch (e: Exception) {
+                StunLogger.e("MainActivity", "Latency test failed", e)
                 result = e.message ?: "Unknown Error"
             }
 
@@ -294,7 +296,7 @@ class MainActivity : AppCompatActivity() {
         if (intent != null) {
             vpnLauncher.launch(intent)
         } else {
-            isVpnRunning = GostRepository.vpnStatus.value ?: false
+            isVpnRunning = StunRepository.vpnStatus.value ?: false
             if (isVpnRunning) {
                 stopVpnService()
             } else {
