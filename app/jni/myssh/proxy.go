@@ -38,7 +38,8 @@ type ProxyConfig struct {
 
 type GlobalConfig struct {
 	// --- 远程DNS查询服务器 8.8.8.8:53 ---
-	DnsServer       string   `json:"dns_server"`
+	LocalDnsServer       string   `json:"local_dns_server"`
+	RemoteDnsServer       string   `json:"remote_dns_server"`
 	GeoSiteFilePath string   `json:"geosite_filepath"`
 	GeoIPFilePath   string   `json:"geoip_filepath"`
 	
@@ -81,8 +82,11 @@ func loadGlobalConfig(cfg GlobalConfig) int {
 	defer mu.Unlock()
 
 	// 1. 设置默认兜底值
-	if cfg.DnsServer == "" {
-		cfg.DnsServer = "8.8.8.8:53"
+	if cfg.LocalDnsServer == "" {
+		cfg.LocalDnsServer = "223.5.5.5:53"
+	}
+	if cfg.RemoteDnsServer == "" {
+		cfg.RemoteDnsServer = "8.8.8.8:53"
 	}
 	if cfg.GeoSiteFilePath == "" {
 		cfg.GeoSiteFilePath = "geosite.dat"
@@ -99,11 +103,10 @@ func loadGlobalConfig(cfg GlobalConfig) int {
 	}
 
 	// 2. 保存到全局变量
-	log.Printf("%s [Config] ✅ 已应用全局配置: DNS=[%s], GeoSite=[%s], GeoIP=[%s]", TAG, cfg.DnsServer, cfg.GeoSiteFilePath, cfg.GeoIPFilePath)
+	log.Printf("%s [Config] ✅ 已应用全局配置: LocalDNS=[%s], RemoteDNS=[%s], GeoSite=[%s], GeoIP=[%s]", TAG, cfg.LocalDnsServer, cfg.RemoteDnsServer, cfg.GeoSiteFilePath, cfg.GeoIPFilePath)
 
 	// 3. 实例化空的路由器，准备加载数据
-	router := newGeoRouter()
-	hasRules := false
+	globalRouter = newGeoRouter()
 
 	// ==========================================
 	// 4. 检查并按需加载 GeoSite (域名规则)
@@ -111,10 +114,9 @@ func loadGlobalConfig(cfg GlobalConfig) int {
 	if _, err := os.Stat(cfg.GeoSiteFilePath); err == nil {
 		log.Printf("%s [Config] 正在加载 GeoSite 规则... Tags: %v", TAG, cfg.DirectSiteTags)
 		// 🌟 传入 []string 数组
-		if err := router.LoadGeoSite(cfg.GeoSiteFilePath, cfg.DirectSiteTags); err != nil {
+		if err := globalRouter.LoadGeoSite(cfg.GeoSiteFilePath, cfg.DirectSiteTags); err != nil {
 			log.Printf("%s [Config] ❌ 加载 GeoSite 失败 (可能是文件损坏或找不到标签): %v", TAG, err)
 		} else {
-			hasRules = true
 			log.Printf("%s [Config] ✅ GeoSite 加载成功", TAG)
 		}
 	} else if os.IsNotExist(err) {
@@ -127,27 +129,13 @@ func loadGlobalConfig(cfg GlobalConfig) int {
 	if _, err := os.Stat(cfg.GeoIPFilePath); err == nil {
 		log.Printf("%s [Config] 正在加载 GeoIP 规则... Tags: %v", TAG, cfg.DirectIPTags)
 		// 🌟 传入 []string 数组
-		if err := router.LoadGeoIP(cfg.GeoIPFilePath, cfg.DirectIPTags); err != nil {
+		if err := globalRouter.LoadGeoIP(cfg.GeoIPFilePath, cfg.DirectIPTags); err != nil {
 			log.Printf("%s [Config] ❌ 加载 GeoIP 失败 (可能是文件损坏或找不到标签): %v", TAG, err)
 		} else {
-			hasRules = true
 			log.Printf("%s [Config] ✅ GeoIP 加载成功", TAG)
 		}
 	} else if os.IsNotExist(err) {
 		log.Printf("%s [Config] ⚠️ 未找到 GeoIP 文件 (%s)，将跳过加载【IP直连分流】规则", TAG, cfg.GeoIPFilePath)
-	}
-
-	// ==========================================
-	// 6. 应用路由决断
-	// ==========================================
-	if hasRules {
-		globalRouter = router
-	} else {
-		// 如果两个文件都不存在，或者都加载失败，则 globalRouter 置空
-		// proxy.go 中的防御性代码会让一切流量默认走远端代理
-		globalRouter = nil 
-		log.Printf("%s [Config] ⚠️ 未能成功加载任何分流规则数据库，所有流量将默认走 SSH 代理", TAG)
-		return -1 
 	}
 
 	return 0
@@ -551,7 +539,7 @@ func StartSshTProxy(configJson string) int {
 	sshClient = ssh.NewClient(scc, chans, reqs)
 	mu.Unlock()
 
-	srv, err := socks5.NewClassicServer(cfg.LocalAddr, "", "", "", 60, 60, 60, 60)
+	srv, err := socks5.NewClassicServer(cfg.LocalAddr, "", "", "", 0, 60)
 	if err != nil {
 		log.Printf("%s [SOCKS5] ❌ 创建 SOCKS5 服务器实例失败: %v", TAG, err)
 		return -4

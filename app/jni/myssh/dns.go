@@ -6,6 +6,7 @@ import (
 	"sync"
 	"net"
 	"time"
+	"strings"
 
 	"github.com/miekg/dns"
 	"golang.org/x/crypto/ssh"
@@ -53,10 +54,10 @@ func getDnsConn(client *ssh.Client) (*dns.Conn, error) {
 		return conn, nil // 成功复用
 	default:
 		// 池中没有空闲连接，新建一个
-		if globalConfig.DnsServer == "" {
-			globalConfig.DnsServer = "8.8.8.8:53"
+		if globalConfig.RemoteDnsServer == "" {
+			globalConfig.RemoteDnsServer = "8.8.8.8:53"
 		}
-		netConn, err := client.Dial("tcp", globalConfig.DnsServer)
+		netConn, err := client.Dial("tcp", globalConfig.RemoteDnsServer)
 		if err != nil {
 			return nil, err
 		}
@@ -75,17 +76,20 @@ func putDnsConn(conn *dns.Conn) {
 	}
 }
 
-// handleSshTcpDns 通过 SSH 隧道进行 DNS-over-TCP 查询
+// handleSshTcpDns 处理 DNS 查询，并根据域名直连规则进行分流
 func handleSshTcpDns(requestMsg *dns.Msg) (*dns.Msg, error) {
 	domainName := "unknown"
 	qtypeStr := "unknown"
 	var cacheKey string
+	var cleanDomain string
 
 	if len(requestMsg.Question) > 0 {
 		q := requestMsg.Question[0]
 		domainName = q.Name
+		// 提取干净的域名用于路由匹配 (去掉结尾的 '.')
+		cleanDomain = strings.TrimSuffix(domainName, ".")
 		qtypeStr = dns.TypeToString[q.Qtype]
-		cacheKey = fmt.Sprintf("%s-%d", domainName, q.Qtype) 
+		cacheKey = fmt.Sprintf("%s-%d", domainName, q.Qtype)
 	}
 
 	// --- 1. 检查缓存 ---
@@ -96,7 +100,7 @@ func handleSshTcpDns(requestMsg *dns.Msg) (*dns.Msg, error) {
 
 		if found {
 			if time.Now().Before(entry.expiresAt) {
-				log.Printf("%s [DNS-over-TCP] ⚡ 命中缓存: 域名=[%s] 类型=[%s] MsgID=[%d]", TAG, domainName, qtypeStr, requestMsg.MsgHdr.Id)
+				log.Printf("%s [DNS] ⚡ 命中缓存: 域名=[%s] 类型=[%s] MsgID=[%d]", TAG, domainName, qtypeStr, requestMsg.MsgHdr.Id)
 				cachedReply := entry.msg.Copy()
 				cachedReply.Id = requestMsg.Id
 				return cachedReply, nil
@@ -108,45 +112,82 @@ func handleSshTcpDns(requestMsg *dns.Msg) (*dns.Msg, error) {
 		}
 	}
 
-	// --- 2. 缓存未命中，发起真实网络请求 ---
-	log.Printf("%s [DNS-over-TCP] ➡️ 发起请求: 域名=[%s] 类型=[%s] MsgID=[%d]", TAG, domainName, qtypeStr, requestMsg.MsgHdr.Id)
-
-	mu.Lock()
-	client := sshClient
-	mu.Unlock()
-
-	if client == nil {
-		return nil, fmt.Errorf("ssh client not ready")
+	// --- 2. 路由分流判定 ---
+	isDirect := false
+	if globalRouter != nil {
+		isDirect = globalRouter.MatchDomain(cleanDomain)
 	}
 
-	tcpConn, err := getDnsConn(client)
-	if err != nil {
-		log.Printf("%s [DNS-over-TCP] ❌ 获取复用连接失败: %v", TAG, err)
-		return nil, err
+	var reply *dns.Msg
+	var err error
+
+	// --- 3. 发起真实网络请求 ---
+	if isDirect {
+		// ==========================================
+		// 🌍 路由：直连域名 -> 走本地 DNS 解析 (UDP)
+		// ==========================================
+		log.Printf("%s [DNS-Local] 🟢 命中直连，本地 UDP 解析: 域名=[%s] 类型=[%s] MsgID=[%d]", TAG, domainName, qtypeStr, requestMsg.MsgHdr.Id)
+
+		// 默认使用阿里公共 DNS
+		if globalConfig.LocalDnsServer == "" {
+			globalConfig.LocalDnsServer = "223.5.5.5:53" 
+		}
+		
+		dnsClient := &dns.Client{
+			Net:     "udp", // 本地解析推荐使用 UDP，速度最快
+			Timeout: 5 * time.Second,
+		}
+		
+		// Exchange 会自动处理发包和收包，非常方便
+		reply, _, err = dnsClient.Exchange(requestMsg, globalConfig.LocalDnsServer)
+		if err != nil {
+			log.Printf("%s [DNS-Local] ❌ 本地请求失败 (%s): %v", TAG, domainName, err)
+			return nil, err
+		}
+
+	} else {
+		// ==========================================
+		// 🛡️ 路由：代理域名 -> 走远端 SSH 隧道解析 (TCP)
+		// ==========================================
+		log.Printf("%s [DNS-Remote] ➡️ 未命中直连，远端 SSH TCP 解析: 域名=[%s] 类型=[%s] MsgID=[%d]", TAG, domainName, qtypeStr, requestMsg.MsgHdr.Id)
+
+		mu.Lock()
+		client := sshClient
+		mu.Unlock()
+
+		if client == nil {
+			return nil, fmt.Errorf("ssh client not ready")
+		}
+
+		tcpConn, getErr := getDnsConn(client)
+		if getErr != nil {
+			log.Printf("%s [DNS-Remote] ❌ 获取复用连接失败: %v", TAG, getErr)
+			return nil, getErr
+		}
+		tcpConn.SetDeadline(time.Now().Add(5 * time.Second))
+
+		if writeErr := tcpConn.WriteMsg(requestMsg); writeErr != nil {
+			log.Printf("%s [DNS-Remote] ❌ 发送请求失败 (%s): %v", TAG, domainName, writeErr)
+			tcpConn.Close()
+			return nil, writeErr
+		}
+
+		reply, err = tcpConn.ReadMsg()
+		if err != nil {
+			log.Printf("%s [DNS-Remote] ❌ 读取响应失败 (%s): %v", TAG, domainName, err)
+			tcpConn.Close()
+			return nil, err
+		}
+
+		tcpConn.SetDeadline(time.Time{})
+		putDnsConn(tcpConn)
 	}
-	tcpConn.SetDeadline(time.Now().Add(5 * time.Second))
 
-	if err := tcpConn.WriteMsg(requestMsg); err != nil {
-		log.Printf("%s [DNS-over-TCP] ❌ 发送请求失败 (%s): %v", TAG, domainName, err)
-		tcpConn.Close()
-		return nil, err
-	}
-
-	reply, err := tcpConn.ReadMsg()
-	if err != nil {
-		log.Printf("%s [DNS-over-TCP] ❌ 读取响应失败 (%s): %v", TAG, domainName, err)
-		tcpConn.Close()
-		return nil, err
-	}
-
-	tcpConn.SetDeadline(time.Time{})
-	putDnsConn(tcpConn)
-
-	// --- 3. 写入缓存 (10000 条容量控制) ---
+	// --- 4. 写入缓存 (10000 条容量控制) ---
 	if reply != nil && cacheKey != "" {
 		if reply.Rcode == dns.RcodeSuccess || reply.Rcode == dns.RcodeNameError {
 			dnsCacheMu.Lock()
-			
+
 			// 容量达到 10000
 			if len(dnsCache) >= 10000 {
 				// 利用 Go map 遍历的伪随机性，随机淘汰一个键值对
@@ -164,21 +205,21 @@ func handleSshTcpDns(requestMsg *dns.Msg) (*dns.Msg, error) {
 		}
 	}
 
-	// --- 4. 打印响应详情 ---
+	// --- 5. 打印响应详情 ---
 	if reply != nil {
 		rcodeStr := dns.RcodeToString[reply.MsgHdr.Rcode]
-		log.Printf("%s [DNS-over-TCP] ✅ 收到响应: 域名=[%s] 状态=[%s] 记录数=[%d]", TAG, domainName, rcodeStr, len(reply.Answer))
+		log.Printf("%s [DNS] ✅ 收到响应: 域名=[%s] 状态=[%s] 记录数=[%d]", TAG, domainName, rcodeStr, len(reply.Answer))
 
 		for _, ans := range reply.Answer {
 			switch record := ans.(type) {
 			case *dns.A:
-				log.Printf("%s [DNS-over-TCP] └─ [A记录] IP: %s", TAG, record.A.String())
+				log.Printf("%s [DNS] └─ [A记录] IP: %s", TAG, record.A.String())
 			case *dns.AAAA:
-				log.Printf("%s [DNS-over-TCP] └─ [AAAA记录] IPv6: %s", TAG, record.AAAA.String())
+				log.Printf("%s [DNS] └─ [AAAA记录] IPv6: %s", TAG, record.AAAA.String())
 			case *dns.CNAME:
-				log.Printf("%s [DNS-over-TCP] └─ [CNAME记录] 别名: %s", TAG, record.Target)
+				log.Printf("%s [DNS] └─ [CNAME记录] 别名: %s", TAG, record.Target)
 			default:
-				log.Printf("%s [DNS-over-TCP] └─ [%s记录] %s", TAG, dns.TypeToString[ans.Header().Rrtype], ans.String())
+				log.Printf("%s [DNS] └─ [%s记录] %s", TAG, dns.TypeToString[ans.Header().Rrtype], ans.String())
 			}
 		}
 	}

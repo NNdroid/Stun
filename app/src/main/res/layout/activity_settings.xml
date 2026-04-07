@@ -48,9 +48,21 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:hint="DNS Server (IP:Port)">
+                android:hint="Remote DNS Server (IP:Port)">
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/et_dns_server"
+                    android:id="@+id/et_remote_dns_server"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:hint="Local DNS Server (IP:Port)">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_local_dns_server"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="text" />

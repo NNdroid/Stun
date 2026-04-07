@@ -74,7 +74,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         // Trigger GeoData update check on startup
-        app.fjj.stun.repo.SettingsManager.checkAndUpdateGeoData(this)
+        //app.fjj.stun.repo.SettingsManager.checkAndUpdateGeoData(this)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)

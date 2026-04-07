@@ -12,6 +12,7 @@ import androidx.core.app.NotificationCompat
 import app.fjj.stun.repo.ProfileManager
 import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.GostRepository
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
@@ -22,7 +23,7 @@ import kotlin.concurrent.thread
 class MyVpnService : VpnService() {
 
     private var vpnInterface: ParcelFileDescriptor? = null
-    private val CHANNEL_ID = "SshVpnChannel"
+    private val CHANNEL_ID = "StunVpnChannel"
 
     // 状态位：使用 Volatile 确保多线程可见性
     @Volatile private var isSshRunning = false
@@ -58,11 +59,12 @@ class MyVpnService : VpnService() {
 
     private fun loadGlobalConfigFromJson() {
         val config = JSONObject().apply {
-            put("dns_server", SettingsManager.getDnsServer(this@MyVpnService))
+            put("remote_dns_server", SettingsManager.getRemoteDnsServer(this@MyVpnService))
+            put("local_dns_server", SettingsManager.getLocalDnsServer(this@MyVpnService))
             put("geosite_filepath", SettingsManager.getGeositeCachePath(this@MyVpnService))
             put("geoip_filepath", SettingsManager.getGeoipCachePath(this@MyVpnService))
-            put("direct_site_tags", SettingsManager.getGeositeDirectTags(this@MyVpnService))
-            put("direct_ip_tags", SettingsManager.getGeoipDirectTags(this@MyVpnService))
+            put("direct_site_tags", JSONArray(SettingsManager.getGeositeDirectTags(this@MyVpnService)))
+            put("direct_ip_tags", JSONArray(SettingsManager.getGeoipDirectTags(this@MyVpnService)))
         }
         myssh.Myssh.loadGlobalConfigFromJson(config.toString())
     }
@@ -71,7 +73,6 @@ class MyVpnService : VpnService() {
      * 主服务循环：实现自动重连逻辑
      */
     private fun startVpnServiceLoop() {
-        loadGlobalConfigFromJson()
         while (!userRequestedStop) {
             try {
                 GostRepository.appendLog("--- 正在初始化隧道环境 ---")

@@ -44,8 +44,9 @@ class SettingsActivity : AppCompatActivity() {
         binding.spinnerLogLevel.setAdapter(adapter)
         binding.spinnerLogLevel.setText(SettingsManager.getLogLevel(this), false)
 
-        // Setup DNS Server
-        binding.etDnsServer.setText(SettingsManager.getDnsServer(this))
+        // Setup DNS Servers
+        binding.etRemoteDnsServer.setText(SettingsManager.getRemoteDnsServer(this))
+        binding.etLocalDnsServer.setText(SettingsManager.getLocalDnsServer(this))
 
         // Setup Geo Data
         binding.etGeositeUrl.setText(SettingsManager.getGeositeUrl(this))
@@ -72,7 +73,8 @@ class SettingsActivity : AppCompatActivity() {
 
         binding.btnSave.setOnClickListener {
             SettingsManager.saveLogLevel(this, binding.spinnerLogLevel.text.toString())
-            SettingsManager.saveDnsServer(this, binding.etDnsServer.text.toString())
+            SettingsManager.saveRemoteDnsServer(this, binding.etRemoteDnsServer.text.toString())
+            SettingsManager.saveLocalDnsServer(this, binding.etLocalDnsServer.text.toString())
             
             SettingsManager.saveGeositeUrl(this, binding.etGeositeUrl.text.toString())
             SettingsManager.saveGeoipUrl(this, binding.etGeoipUrl.text.toString())

@@ -10,7 +10,8 @@ import kotlin.concurrent.thread
 object SettingsManager {
     private const val PREF_NAME = "stun_settings"
     private const val KEY_LOG_LEVEL = "log_level"
-    private const val KEY_DNS_SERVER = "dns_server"
+    private const val KEY_REMOTE_DNS_SERVER = "remote_dns_server"
+    private const val KEY_LOCAL_DNS_SERVER = "local_dns_server"
     private const val KEY_SELECTED_PROFILE_ID = "selected_profile_id"
     
     private const val KEY_GEOSITE_URL = "geosite_url"
@@ -21,9 +22,10 @@ object SettingsManager {
     private const val KEY_LAST_UPDATE_TIME = "last_update_time"
 
     const val DEFAULT_LOG_LEVEL = "V"
-    const val DEFAULT_DNS_SERVER = "8.8.8.8:53"
-    const val DEFAULT_GEOSITE_URL = "https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat"
-    const val DEFAULT_GEOIP_URL = "https://github.com/v2fly/geoip/releases/latest/download/geoip.dat"
+    const val DEFAULT_REMOTE_DNS_SERVER = "8.8.8.8:53"
+    const val DEFAULT_LOCAL_DNS_SERVER = "223.5.5.5:53"
+    const val DEFAULT_GEOSITE_URL = "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geosite.dat"
+    const val DEFAULT_GEOIP_URL = "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geoip.dat"
     const val DEFAULT_UPDATE_INTERVAL = 86400L // 24 hours
     const val DEFAULT_GEOSITE_DIRECT_FLAGS = "cn,apple"
     const val DEFAULT_GEOIP_DIRECT_FLAGS = "cn,private"
@@ -35,8 +37,11 @@ object SettingsManager {
     fun getLogLevel(context: Context): String = getPrefs(context).getString(KEY_LOG_LEVEL, DEFAULT_LOG_LEVEL) ?: DEFAULT_LOG_LEVEL
     fun saveLogLevel(context: Context, level: String) = getPrefs(context).edit { putString(KEY_LOG_LEVEL, level) }
 
-    fun getDnsServer(context: Context): String = getPrefs(context).getString(KEY_DNS_SERVER, DEFAULT_DNS_SERVER) ?: DEFAULT_DNS_SERVER
-    fun saveDnsServer(context: Context, dns: String) = getPrefs(context).edit { putString(KEY_DNS_SERVER, dns) }
+    fun getRemoteDnsServer(context: Context): String = getPrefs(context).getString(KEY_REMOTE_DNS_SERVER, DEFAULT_REMOTE_DNS_SERVER) ?: DEFAULT_REMOTE_DNS_SERVER
+    fun saveRemoteDnsServer(context: Context, dns: String) = getPrefs(context).edit { putString(KEY_REMOTE_DNS_SERVER, dns) }
+
+    fun getLocalDnsServer(context: Context): String = getPrefs(context).getString(KEY_LOCAL_DNS_SERVER, DEFAULT_LOCAL_DNS_SERVER) ?: DEFAULT_LOCAL_DNS_SERVER
+    fun saveLocalDnsServer(context: Context, dns: String) = getPrefs(context).edit { putString(KEY_LOCAL_DNS_SERVER, dns) }
 
     fun getSelectedProfileId(context: Context): String? = getPrefs(context).getString(KEY_SELECTED_PROFILE_ID, null)
     fun setSelectedProfileId(context: Context, id: String) = getPrefs(context).edit { putString(KEY_SELECTED_PROFILE_ID, id) }
