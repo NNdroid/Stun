@@ -8,7 +8,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import app.fjj.stun.databinding.ActivityLogsBinding
-import app.fjj.stun.repo.ConfigManager
+import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.GostRepository
 
 class LogsActivity : AppCompatActivity() {
@@ -25,7 +25,7 @@ class LogsActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        currentLogLevel = ConfigManager.getLogLevel(this)
+        currentLogLevel = SettingsManager.getLogLevel(this)
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -37,9 +37,9 @@ class LogsActivity : AppCompatActivity() {
         GostRepository.logData.observe(this) { logs ->
             binding.tvLogs.text = filterLogs(logs, currentLogLevel)
             // Auto scroll to bottom
-            binding.scrollView.post {
-                binding.scrollView.fullScroll(android.view.View.FOCUS_DOWN)
-            }
+//            binding.scrollView.post {
+//                binding.scrollView.fullScroll(android.view.View.FOCUS_DOWN)
+//            }
         }
 
         // Start logcat capture when activity opens

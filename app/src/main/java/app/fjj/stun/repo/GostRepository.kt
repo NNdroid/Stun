@@ -52,7 +52,7 @@ object GostRepository {
         kotlin.concurrent.thread(start = true, name = "LogcatReader") {
             try {
                 // 读取当前进程日志 (VERBOSE 级别)
-                val process = Runtime.getRuntime().exec("logcat -v time")
+                val process = Runtime.getRuntime().exec("logcat -v time -s GoLog")
                 val reader = process.inputStream.bufferedReader()
                 
                 reader.useLines { lines ->

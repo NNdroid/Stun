@@ -9,7 +9,8 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import app.fjj.stun.repo.ConfigManager
+import app.fjj.stun.repo.ProfileManager
+import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.GostRepository
 import org.json.JSONObject
 import java.io.File
@@ -55,10 +56,22 @@ class MyVpnService : VpnService() {
         return START_STICKY
     }
 
+    private fun loadGlobalConfigFromJson() {
+        val config = JSONObject().apply {
+            put("dns_server", SettingsManager.getDnsServer(this@MyVpnService))
+            put("geosite_filepath", SettingsManager.getGeositeCachePath(this@MyVpnService))
+            put("geoip_filepath", SettingsManager.getGeoipCachePath(this@MyVpnService))
+            put("direct_site_tags", SettingsManager.getGeositeDirectTags(this@MyVpnService))
+            put("direct_ip_tags", SettingsManager.getGeoipDirectTags(this@MyVpnService))
+        }
+        myssh.Myssh.loadGlobalConfigFromJson(config.toString())
+    }
+
     /**
      * 主服务循环：实现自动重连逻辑
      */
     private fun startVpnServiceLoop() {
+        loadGlobalConfigFromJson()
         while (!userRequestedStop) {
             try {
                 GostRepository.appendLog("--- 正在初始化隧道环境 ---")
@@ -69,6 +82,9 @@ class MyVpnService : VpnService() {
                 // 2. 启动前台通知 (Android 系统要求)
                 updateNotification()
                 GostRepository.vpnStatus.postValue(true)
+
+                // 2.5 加载全局配置
+                loadGlobalConfigFromJson()
 
                 // 3. 启动 Go 语言 SSH 库
                 startSshGoLib()
@@ -182,7 +198,7 @@ class MyVpnService : VpnService() {
     }
 
     private fun startSshGoLib() {
-        var selectedProfile = ConfigManager.getSelectedProfile(this@MyVpnService)
+        var selectedProfile = ProfileManager.getSelectedProfile(this@MyVpnService)
         val config = JSONObject().apply {
             put("local_addr", "127.0.0.1:$SOCKS_PORT")
             put("ssh_addr", selectedProfile.sshAddr)

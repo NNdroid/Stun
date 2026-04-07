@@ -10,7 +10,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import app.fjj.stun.databinding.ActivityConfigBinding
-import app.fjj.stun.repo.ConfigManager
+import app.fjj.stun.repo.ProfileManager
 import app.fjj.stun.repo.Profile
 import kotlin.concurrent.thread
 
@@ -35,7 +35,8 @@ class ConfigActivity : AppCompatActivity() {
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, 0, systemBars.right, systemBars.bottom)
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            v.setPadding(systemBars.left, 0, systemBars.right, systemBars.bottom + ime.bottom)
             binding.toolbar.updatePadding(top = systemBars.top)
             insets
         }
@@ -58,7 +59,7 @@ class ConfigActivity : AppCompatActivity() {
         // Load values
         thread {
             currentProfile = if (isEdit) {
-                ConfigManager.getProfiles(this).find { it.id == profileId } ?: Profile()
+                ProfileManager.getProfiles(this).find { it.id == profileId } ?: Profile()
             } else {
                 Profile()
             }
@@ -96,18 +97,17 @@ class ConfigActivity : AppCompatActivity() {
                 customHost = binding.etCustomHost.text.toString()
             )
 
-            if (isEdit) {
-                thread {
-                    ConfigManager.updateProfile(this, updatedProfile)
+            thread {
+                if (isEdit) {
+                    ProfileManager.updateProfile(this, updatedProfile)
+                } else {
+                    ProfileManager.addProfile(this, updatedProfile)
                 }
-            } else {
-                thread {
-                    ConfigManager.addProfile(this, updatedProfile)
+                runOnUiThread {
+                    Toast.makeText(this, "Profile saved", Toast.LENGTH_SHORT).show()
+                    finish()
                 }
             }
-            
-            Toast.makeText(this, "Profile saved", Toast.LENGTH_SHORT).show()
-            finish()
         }
     }
 

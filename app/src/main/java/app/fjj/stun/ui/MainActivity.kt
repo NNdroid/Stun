@@ -18,9 +18,10 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.recyclerview.widget.LinearLayoutManager
 import app.fjj.stun.databinding.ActivityMainBinding
-import app.fjj.stun.repo.ConfigManager
 import app.fjj.stun.repo.GostRepository
 import app.fjj.stun.repo.Profile
+import app.fjj.stun.repo.ProfileManager
+import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.service.MyVpnService
 import app.fjj.stun.util.QRUtils
 import com.google.gson.Gson
@@ -57,7 +58,7 @@ class MainActivity : AppCompatActivity() {
                 // Ensure it gets a new ID if it's a clone/import
                 val newProfile = profile.copy(id = java.util.UUID.randomUUID().toString())
                 thread {
-                    ConfigManager.addProfile(this, newProfile)
+                    ProfileManager.addProfile(this, newProfile)
                     runOnUiThread {
                         Toast.makeText(this, "Profile added: ${newProfile.name}", Toast.LENGTH_SHORT).show()
                     }
@@ -71,6 +72,10 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+
+        // Trigger GeoData update check on startup
+        app.fjj.stun.repo.SettingsManager.checkAndUpdateGeoData(this)
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -88,8 +93,8 @@ class MainActivity : AppCompatActivity() {
 
         setupRecyclerView()
 
-        ConfigManager.getProfilesLiveData(this).observe(this) { profiles ->
-            val selectedId = ConfigManager.getSelectedProfileId(this)
+        ProfileManager.getProfilesLiveData(this).observe(this) { profiles ->
+            val selectedId = SettingsManager.getSelectedProfileId(this)
             adapter.updateProfiles(profiles, selectedId)
         }
 
@@ -114,13 +119,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerView() {
-        val selectedId = ConfigManager.getSelectedProfileId(this)
+        val selectedId = SettingsManager.getSelectedProfileId(this)
 
         adapter = ProfileAdapter(
             profiles = emptyList(),
             selectedProfileId = selectedId,
             onProfileClick = { profile ->
-                ConfigManager.setSelectedProfileId(this, profile.id)
+                SettingsManager.setSelectedProfileId(this, profile.id)
                 adapter.updateProfiles(adapter.getProfiles(), profile.id)
                 Toast.makeText(this, "Selected: ${profile.name}", Toast.LENGTH_SHORT).show()
             },
@@ -131,7 +136,7 @@ class MainActivity : AppCompatActivity() {
             },
             onDeleteClick = { profile ->
                 thread {
-                    ConfigManager.deleteProfile(this, profile)
+                    ProfileManager.deleteProfile(this, profile)
                 }
             },
             onShareClick = { profile ->
@@ -219,7 +224,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun testSelectedProfileLatency() {
-        val selectedProfile = ConfigManager.getSelectedProfile(this)
+        val selectedProfile = ProfileManager.getSelectedProfile(this)
         binding.tvStatus.text = "Testing latency..."
 
         var result = "Timeout"

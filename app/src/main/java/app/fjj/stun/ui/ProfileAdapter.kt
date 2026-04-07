@@ -5,7 +5,6 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.fjj.stun.databinding.ItemProfileBinding
-import app.fjj.stun.repo.ConfigManager
 import app.fjj.stun.repo.Profile
 
 class ProfileAdapter(
