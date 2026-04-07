@@ -12,7 +12,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-
 // ---------------------------------------------------------
 // GeoRouter 核心结构
 // ---------------------------------------------------------
@@ -70,27 +69,26 @@ func (r *GeoRouter) LoadGeoSite(filepath string, targetTags []string) error {
 				val := strings.ToLower(domain.Value)
 				switch domain.Type {
 				case routercommon.Domain_Plain:
-					// V2Ray 的 Plain 其实是 Keyword (包含该字符串即匹配)
 					r.keywordList = append(r.keywordList, val)
 				case routercommon.Domain_Regex:
 					if re, err := regexp.Compile(val); err == nil {
 						r.regexList = append(r.regexList, re)
 					}
 				case routercommon.Domain_RootDomain:
-					// 根域名匹配，例如 "baidu.com" 匹配 "www.baidu.com"
 					r.subDomains[val] = struct{}{}
 				case routercommon.Domain_Full:
-					// 精确域名匹配
 					r.fullDomains[val] = struct{}{}
 				}
 			}
-			// ⚠️ 核心修改：去掉了这里的 break，允许继续寻找其他的 tag
 		}
 	}
 
 	if foundCount == 0 && len(targetTags) > 0 {
 		return fmt.Errorf("未在 geosite 中找到任何指定的标签: %v", targetTags)
 	}
+	
+	// 🌟 增加一条底层的 Debug 日志，记录实际加载了多少条规则簇
+	zlog.Debugf("%s [Router] GeoSite 解析完毕，匹配到 %d 个规则簇", TAG, foundCount)
 	return nil
 }
 
@@ -106,13 +104,13 @@ func (r *GeoRouter) LoadGeoIP(filepath string, targetTags []string) error {
 		return fmt.Errorf("解析 protobuf 失败: %w", err)
 	}
 
-	// geoip.dat 中的 tag 通常是大写，例如 "CN"
 	tagMap := make(map[string]bool)
 	for _, t := range targetTags {
 		tagMap[strings.ToUpper(t)] = true
 	}
 
 	foundCount := 0
+	ipInsertCount := 0
 
 	for _, ipGroup := range geoIPList.Entry {
 		if tagMap[strings.ToUpper(ipGroup.CountryCode)] {
@@ -127,18 +125,21 @@ func (r *GeoRouter) LoadGeoIP(filepath string, targetTags []string) error {
 				} else if len(ip) == 16 { // IPv6
 					ipNet = &net.IPNet{IP: ip, Mask: net.CIDRMask(int(prefix), 128)}
 				} else {
-					continue // 未知格式
+					continue 
 				}
 
 				_ = r.ipRanger.Insert(cidranger.NewBasicRangerEntry(*ipNet))
+				ipInsertCount++
 			}
-			// ⚠️ 核心修改：去掉了这里的 break
 		}
 	}
 
 	if foundCount == 0 && len(targetTags) > 0 {
 		return fmt.Errorf("未在 geoip 中找到任何指定的标签: %v", targetTags)
 	}
+	
+	// 🌟 增加底层的 Debug 日志
+	zlog.Debugf("%s [Router] GeoIP 解析完毕，共将 %d 条 CIDR 网段载入 Radix 树", TAG, ipInsertCount)
 	return nil
 }
 
@@ -146,7 +147,6 @@ func (r *GeoRouter) LoadGeoIP(filepath string, targetTags []string) error {
 // 高效分流匹配逻辑
 // ---------------------------------------------------------
 
-// --- 专门用于路由结果的结构体 ---
 type RouteResult struct {
 	IsDirect bool   `json:"is_direct"`
 	DialHost string `json:"dial_host"`
@@ -161,7 +161,12 @@ func (r *GeoRouter) ShouldDirect(host string) RouteResult {
 	ip := net.ParseIP(host)
 	if ip != nil {
 		// 原生就是 IP，直接匹配并返回它自己
-		return RouteResult{IsDirect: r.MatchIP(ip), DialHost: host}
+		if r.MatchIP(ip) {
+			zlog.Debugf("%s [Router] 直接 IP 访问 [%s] -> 命中 GeoIP，走直连", TAG, host)
+			return RouteResult{IsDirect: true, DialHost: host}
+		}
+		zlog.Debugf("%s [Router] 直接 IP 访问 [%s] -> 未命中 GeoIP，走代理", TAG, host)
+		return RouteResult{IsDirect: false, DialHost: host}
 	}
 
 	// ==========================
@@ -170,8 +175,10 @@ func (r *GeoRouter) ShouldDirect(host string) RouteResult {
 	if r.MatchDomain(host) {
 		ips := GetCachedIPs(host)
 		if len(ips) > 0 {
+			zlog.Debugf("%s [Router] 域名 [%s] 命中 GeoSite -> 使用缓存 IP (%s) 走直连", TAG, host, ips[0].String())
 			return RouteResult{IsDirect: true, DialHost: ips[0].String()}
 		}
+		zlog.Debugf("%s [Router] 域名 [%s] 命中 GeoSite -> 无缓存 IP，保留域名走直连", TAG, host)
 		return RouteResult{IsDirect: true, DialHost: host}
 	}
 
@@ -188,6 +195,7 @@ func (r *GeoRouter) ShouldDirect(host string) RouteResult {
 
 	for _, resolvedIP := range ips {
 		if r.MatchIP(resolvedIP) {
+			zlog.Debugf("%s [Router] 域名 [%s] 解析的 IP (%s) 命中 GeoIP -> 走直连", TAG, host, resolvedIP.String())
 			return RouteResult{IsDirect: true, DialHost: resolvedIP.String()}
 		}
 	}
@@ -195,6 +203,7 @@ func (r *GeoRouter) ShouldDirect(host string) RouteResult {
 	// ==========================
 	// 3. 走代理 (未命中直连规则)
 	// ==========================
+	zlog.Debugf("%s [Router] 域名 [%s] 未命中任何直连规则 -> 走代理", TAG, host)
 	return RouteResult{IsDirect: false, DialHost: host}
 }
 
@@ -202,12 +211,12 @@ func (r *GeoRouter) ShouldDirect(host string) RouteResult {
 func (r *GeoRouter) MatchDomain(domain string) bool {
 	domain = strings.ToLower(domain)
 
-	// 1. Full 检查: 精确匹配
+	// 1. Full 检查
 	if _, ok := r.fullDomains[domain]; ok {
 		return true
 	}
 
-	// 2. Domain 检查: 逐级剥离域名层级进行后缀检查
+	// 2. Domain 检查
 	parts := strings.Split(domain, ".")
 	for i := 0; i < len(parts); i++ {
 		sub := strings.Join(parts[i:], ".")
@@ -216,14 +225,14 @@ func (r *GeoRouter) MatchDomain(domain string) bool {
 		}
 	}
 
-	// 3. Keyword 检查: 字符串包含匹配
+	// 3. Keyword 检查
 	for _, kw := range r.keywordList {
 		if strings.Contains(domain, kw) {
 			return true
 		}
 	}
 
-	// 4. Regex 检查: 正则匹配 (性能最差，通常放到最后)
+	// 4. Regex 检查
 	for _, re := range r.regexList {
 		if re.MatchString(domain) {
 			return true
@@ -235,7 +244,6 @@ func (r *GeoRouter) MatchDomain(domain string) bool {
 
 // MatchIP 使用 Radix Tree (基数树) 以 O(1) 时间复杂度检查 IP 是否在 CIDR 网段内
 func (r *GeoRouter) MatchIP(ip net.IP) bool {
-	// Contains 返回是否有一个或多个网段包含该 IP
 	contains, err := r.ipRanger.Contains(ip)
 	if err != nil {
 		return false

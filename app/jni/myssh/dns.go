@@ -2,7 +2,6 @@ package myssh
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"strings"
 	"sync"
@@ -46,7 +45,7 @@ func init() {
 			}
 			dnsCacheMu.Unlock()
 			if deleted > 0 {
-				log.Printf("[Cache-GC] ♻️ 主动清理了 %d 条过期的 DNS 缓存", deleted)
+				zlog.Infof("%s [Cache-GC] ♻️ 主动清理了 %d 条过期的 DNS 缓存", TAG, deleted)
 			}
 		}
 	}()
@@ -86,19 +85,19 @@ func printDnsResponse(source, server, domainName, qtypeStr string, reply *dns.Ms
 	rcodeStr := dns.RcodeToString[reply.MsgHdr.Rcode]
 	
 	// 🌟 详细打印出：来源、查询节点、域名、类型、状态等
-	log.Printf("%s [DNS] ✅ 解析成功 | 来源=[%s] | 节点=[%s] | 域名=[%s] | 类型=[%s] | 状态=[%s] | 记录数=[%d]",
+	zlog.Infof("%s [DNS] ✅ 解析成功 | 来源=[%s] | 节点=[%s] | 域名=[%s] | 类型=[%s] | 状态=[%s] | 记录数=[%d]",
 		TAG, source, server, domainName, qtypeStr, rcodeStr, len(reply.Answer))
 
 	for _, ans := range reply.Answer {
 		switch record := ans.(type) {
 		case *dns.A:
-			log.Printf("%s [DNS] └─ [A记录] IP: %s (TTL: %d)", TAG, record.A.String(), record.Hdr.Ttl)
+			zlog.Infof("%s [DNS] └─ [A记录] IP: %s (TTL: %d)", TAG, record.A.String(), record.Hdr.Ttl)
 		case *dns.AAAA:
-			log.Printf("%s [DNS] └─ [AAAA记录] IPv6: %s (TTL: %d)", TAG, record.AAAA.String(), record.Hdr.Ttl)
+			zlog.Infof("%s [DNS] └─ [AAAA记录] IPv6: %s (TTL: %d)", TAG, record.AAAA.String(), record.Hdr.Ttl)
 		case *dns.CNAME:
-			log.Printf("%s [DNS] └─ [CNAME记录] 别名: %s (TTL: %d)", TAG, record.Target, record.Hdr.Ttl)
+			zlog.Infof("%s [DNS] └─ [CNAME记录] 别名: %s (TTL: %d)", TAG, record.Target, record.Hdr.Ttl)
 		default:
-			log.Printf("%s [DNS] └─ [%s记录] %s (TTL: %d)", TAG, dns.TypeToString[ans.Header().Rrtype], ans.String(), ans.Header().Ttl)
+			zlog.Infof("%s [DNS] └─ [%s记录] %s (TTL: %d)", TAG, dns.TypeToString[ans.Header().Rrtype], ans.String(), ans.Header().Ttl)
 		}
 	}
 }
@@ -166,7 +165,7 @@ func handleSshTcpDns(requestMsg *dns.Msg) (*dns.Msg, error) {
 		// 🌟 自动重试 3 次逻辑
 		for attempt := 1; attempt <= maxRetries; attempt++ {
 			if attempt > 1 {
-				log.Printf("%s [DNS] ⚠️ 第 %d 次重试解析: %s", TAG, attempt, domainName)
+				zlog.Warnf("%s [DNS] ⚠️ 第 %d 次重试解析: %s", TAG, attempt, domainName)
 			}
 
 			if isDirect {
@@ -220,7 +219,7 @@ func handleSshTcpDns(requestMsg *dns.Msg) (*dns.Msg, error) {
 
 		// 经过 3 次重试依然失败
 		if finalErr != nil || reply == nil {
-			log.Printf("%s [DNS] ❌ 历经 %d 次尝试后彻底失败 (%s): %v", TAG, maxRetries, domainName, finalErr)
+			zlog.Errorf("%s [DNS] ❌ 历经 %d 次尝试后彻底失败 (%s): %v", TAG, maxRetries, domainName, finalErr)
 			return nil, finalErr
 		}
 

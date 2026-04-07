@@ -43,7 +43,7 @@ class LogsActivity : AppCompatActivity() {
         }
 
         // Start logcat capture when activity opens
-        GostRepository.startLogcatCapture()
+        GostRepository.startLogFileCapture(this@LogsActivity)
 
         binding.btnClear.setOnClickListener {
             GostRepository.clearLogs()

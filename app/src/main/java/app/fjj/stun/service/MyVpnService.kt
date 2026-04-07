@@ -9,9 +9,9 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import app.fjj.stun.repo.GostRepository
 import app.fjj.stun.repo.ProfileManager
 import app.fjj.stun.repo.SettingsManager
-import app.fjj.stun.repo.GostRepository
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -69,6 +69,15 @@ class MyVpnService : VpnService() {
         myssh.Myssh.loadGlobalConfigFromJson(config.toString())
     }
 
+    private fun loadMySshLogger() {
+        val logPath = GostRepository.getLogFilePath(this@MyVpnService)
+        val logStatus: Long = myssh.Myssh.initLogger(logPath)
+        if (logStatus == 0L) {
+            Log.i("AndroidApp", "日志已成功挂载到文件: $logPath")
+        }
+        myssh.Myssh.startWebLogger(10880, logPath)
+    }
+
     /**
      * 主服务循环：实现自动重连逻辑
      */
@@ -83,6 +92,8 @@ class MyVpnService : VpnService() {
                 // 2. 启动前台通知 (Android 系统要求)
                 updateNotification()
                 GostRepository.vpnStatus.postValue(true)
+
+                loadMySshLogger()
 
                 // 2.5 加载全局配置
                 loadGlobalConfigFromJson()
