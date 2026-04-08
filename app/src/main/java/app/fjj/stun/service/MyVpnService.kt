@@ -256,6 +256,10 @@ class MyVpnService : VpnService() {
         } catch (e: Exception) {}
 
         try {
+            myssh.Myssh.stopWebLogger()
+        } catch (e: Exception) {}
+
+        try {
             vpnInterface?.close()
             vpnInterface = null
         } catch (e: Exception) {}
