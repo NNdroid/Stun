@@ -1,0 +1,3 @@
+[submodule "app/jni/myssh"]
+	path = app/jni/myssh
+	url = https://github.com/NNdroid/myssh
