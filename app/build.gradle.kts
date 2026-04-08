@@ -76,6 +76,7 @@ dependencies {
     implementation(libs.core.ktx)
     implementation(libs.zxing.android.embedded)
 
+    implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     kapt("androidx.room:room-compiler:${libs.versions.roomVersion.get()}")

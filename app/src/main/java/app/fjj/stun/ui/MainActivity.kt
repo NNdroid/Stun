@@ -88,17 +88,13 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
-        // Trigger GeoData update check on startup
-        SettingsManager.checkAndUpdateGeoData(this)
-
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         setSupportActionBar(binding.toolbar)
 
         val initialRvPadding = binding.rvProfiles.paddingBottom
-        val initialFabMargin = (binding.fabStartStop.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
-        val initialStatusMargin = (binding.statusCard.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
+        val initialBottomPadding = binding.bottomContainer.paddingBottom
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -106,12 +102,7 @@ class MainActivity : AppCompatActivity() {
             binding.appBar.updatePadding(top = systemBars.top)
             
             binding.rvProfiles.updatePadding(bottom = initialRvPadding + systemBars.bottom)
-            binding.fabStartStop.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                bottomMargin = initialFabMargin + systemBars.bottom
-            }
-            binding.statusCard.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                bottomMargin = initialStatusMargin + systemBars.bottom
-            }
+            binding.bottomContainer.updatePadding(bottom = initialBottomPadding + systemBars.bottom)
             insets
         }
 
@@ -133,17 +124,11 @@ class MainActivity : AppCompatActivity() {
         StunRepository.vpnStatus.observe(this) { running ->
             isVpnRunning = running
             if (running) {
-                binding.fabStartStop.extend()
-                binding.fabStartStop.text = getString(app.fjj.stun.R.string.main_disconnect)
-                binding.fabStartStop.setIconResource(app.fjj.stun.R.drawable.ic_pause)
+                binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_pause)
                 binding.tvStatus.text = getString(app.fjj.stun.R.string.main_connected)
-                binding.ivStatusIcon.setColorFilter(getColor(app.fjj.stun.R.color.primary))
             } else {
-                binding.fabStartStop.extend()
-                binding.fabStartStop.text = getString(app.fjj.stun.R.string.main_connect)
-                binding.fabStartStop.setIconResource(app.fjj.stun.R.drawable.ic_play)
+                binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_play)
                 binding.tvStatus.text = getString(app.fjj.stun.R.string.main_disconnected)
-                binding.ivStatusIcon.clearColorFilter()
             }
         }
     }

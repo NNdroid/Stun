@@ -52,6 +52,6 @@ object StunRepository {
     }
 
     fun getLogFilePath(ctx: Context): String {
-        return File(ctx.cacheDir, "global.log").absolutePath
+        return File(ctx.cacheDir, "go.log").absolutePath
     }
 }

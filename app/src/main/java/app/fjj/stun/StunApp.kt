@@ -1,6 +1,7 @@
 package app.fjj.stun
 
 import android.app.Application
+import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.StunLogger
 import java.io.File
 
@@ -16,6 +17,9 @@ class StunApp : Application() {
         app.fjj.stun.repo.StunRepository.setupLogBridge()
         
         StunLogger.i("StunApp", "Application initialized and StunLogger started.")
+
+        // Trigger GeoData update check on startup
+        SettingsManager.checkAndUpdateGeoData(this)
     }
 
     override fun onTerminate() {

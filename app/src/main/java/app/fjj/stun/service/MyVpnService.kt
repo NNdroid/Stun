@@ -71,7 +71,7 @@ class MyVpnService : VpnService() {
 
     private fun loadMySshLogger() {
         val logPath = StunRepository.getLogFilePath(this@MyVpnService)
-        var logLevel = SettingsManager.getLogLevel(this@MyVpnService)
+        val logLevel = SettingsManager.getLogLevel(this@MyVpnService)
         val logStatus: Long = myssh.Myssh.initLogger(logPath, logLevel)
         if (logStatus == 0L) {
             StunLogger.i("AndroidApp", "Log mounted to file: $logPath")

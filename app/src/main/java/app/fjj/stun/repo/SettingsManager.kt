@@ -77,27 +77,38 @@ object SettingsManager {
     }
 
     fun checkAndUpdateGeoData(context: Context) {
-        val interval = getUpdateInterval(context)
-        if (interval <= 0) return
+        val geositeFile = File(getGeositeCachePath(context))
+        val geoipFile = File(getGeoipCachePath(context))
 
-        val currentTime = System.currentTimeMillis() / 1000
-        val lastUpdate = getLastUpdateTime(context)
+        // If files don't exist, run update immediately once
+        if (!geositeFile.exists() || !geoipFile.exists()) {
+            app.fjj.stun.worker.GeoDataWorker.runOnceNow(context)
+        }
 
-        if (currentTime - lastUpdate >= interval) {
-            updateGeoData(context)
+        // Schedule periodic updates
+        app.fjj.stun.worker.GeoDataWorker.schedule(context)
+    }
+
+    fun updateGeoDataSync(context: Context) {
+        try {
+            downloadFile(getGeositeUrl(context), getGeositeCachePath(context))
+            downloadFile(getGeoipUrl(context), getGeoipCachePath(context))
+            val currentTime = System.currentTimeMillis() / 1000
+            saveLastUpdateTime(context, currentTime)
+            StunLogger.i("SettingsManager", "GeoData update completed successfully.")
+        } catch (e: Exception) {
+            StunLogger.e("SettingsManager", "Update GeoData failed", e)
+            throw e
         }
     }
 
     fun updateGeoData(context: Context, onComplete: (() -> Unit)? = null) {
         thread {
             try {
-                downloadFile(getGeositeUrl(context), getGeositeCachePath(context))
-                downloadFile(getGeoipUrl(context), getGeoipCachePath(context))
-                val currentTime = System.currentTimeMillis() / 1000
-                saveLastUpdateTime(context, currentTime)
+                updateGeoDataSync(context)
                 onComplete?.invoke()
             } catch (e: Exception) {
-                StunLogger.e("SettingsManager", "Update GeoData failed", e)
+                // Already logged in updateGeoDataSync
             }
         }
     }
