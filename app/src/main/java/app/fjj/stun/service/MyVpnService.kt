@@ -25,9 +25,7 @@ class MyVpnService : VpnService() {
     private var vpnInterface: ParcelFileDescriptor? = null
     private val CHANNEL_ID = "StunVpnChannel"
 
-    // 状态位：使用 Volatile 确保多线程可见性
-    @Volatile private var isSshRunning = false
-    @Volatile private var isHevRunning = false
+    // 使用 Volatile 确保多线程间状态立即可见
     @Volatile private var userRequestedStop = false
 
     companion object {
@@ -36,25 +34,103 @@ class MyVpnService : VpnService() {
         const val ACTION_STOP = "app.fjj.stun.STOP"
         const val SOCKS_PORT = 10808
         const val DNS_PORT = 10853
-        const val RECONNECT_DELAY = 3000L // 重连间隔 3 秒
+        const val RECONNECT_DELAY = 3000L // 异常断开重连间隔
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
+                StunRepository.appendLog("User requested to stop service...")
                 userRequestedStop = true
-                StunRepository.appendLog("User stopped service...")
                 stopVpnService()
             }
             else -> {
-                userRequestedStop = false
-                StunRepository.appendLog("Starting VPN...")
-                thread(start = true, name = "VpnMainLoop") {
-                    startVpnServiceLoop()
+                if (!StunRepository.vpnStatus.value!!) {
+                    userRequestedStop = false
+                    StunRepository.appendLog("Starting VPN Service...")
+                    // 开启一个后台主线程来控制生命周期
+                    thread(start = true, name = "VpnMainLoop") {
+                        startVpnServiceLoop()
+                    }
                 }
             }
         }
         return START_STICKY
+    }
+
+    /**
+     * 主服务循环：利用 wgWait 阻塞，实现优雅的生命周期与自动重连
+     */
+    private fun startVpnServiceLoop() {
+        while (!userRequestedStop) {
+            try {
+                StunRepository.appendLog("--- Initializing tunnel environment ---")
+
+                // 1. 预清理可能残留的旧资源
+                cleanupNative()
+
+                // 2. 启动前台通知，更新 UI 状态
+                updateNotification()
+                StunRepository.vpnStatus.postValue(true)
+
+                // 3. 加载日志与全局配置
+                loadMySshLogger()
+                loadGlobalConfigFromJson()
+
+                // 4. 同步启动 Go SSH 代理核心
+                val sshStatus = startSshGoLib()
+                if (sshStatus != 0L) {
+                    StunRepository.appendLog("❌ Go SSH Core failed to start (Code: $sshStatus). Retrying...")
+                    throw RuntimeException("SSH Core start failed")
+                }
+
+                // 5. 配置并建立 VPN TUN 网卡
+                val builder = Builder()
+                    .setSession("StunSshTunnel")
+                    .setMtu(1500)
+                    .addAddress("10.0.0.2", 24)
+                    .addRoute("0.0.0.0", 0)
+                    .addAddress("fd00:1::2", 64)
+                    .addRoute("::", 0)
+                    .addDnsServer("8.8.8.8")
+                    .addDisallowedApplication(packageName)
+
+                vpnInterface = builder.establish()
+
+                if (vpnInterface != null) {
+                    val fd = vpnInterface!!.fd
+                    StunRepository.appendLog("✅ TUN interface ready (FD: $fd)")
+
+                    // 6. 启动 HEV 流量劫持引擎
+                    startHevTunnel(fd)
+
+                    StunRepository.appendLog("🚀 All services started. Tunnel is active.")
+
+                    myssh.Myssh.wgWait()
+
+                    StunRepository.appendLog("⚠️ WG Wait released.")
+                } else {
+                    StunRepository.appendLog("❌ Failed to establish TUN interface.")
+                    throw RuntimeException("TUN establish failed")
+                }
+
+            } catch (e: Exception) {
+                StunLogger.e(TAG, "Main Loop Interrupted", e)
+            }
+
+            // 🌟 8. 退出阻塞后的判断逻辑
+            if (!userRequestedStop) {
+                // 如果不是用户主动停止，说明是网络断开/核心崩溃触发的释放
+                StunRepository.appendLog("🔄 Abnormal exit detected. Reconnecting in ${RECONNECT_DELAY / 1000}s...")
+                cleanupNative() // 彻底清理这轮失败的资源
+                Thread.sleep(RECONNECT_DELAY) // 延时后进入下一个 While 循环重新建立
+            }
+        }
+
+        // 只有 userRequestedStop == true 才会跳出 while 循环来到这里
+        cleanupNative()
+        StunRepository.vpnStatus.postValue(false)
+        StunRepository.appendLog("🛑 VPN main loop exited safely.")
     }
 
     private fun loadGlobalConfigFromJson() {
@@ -72,94 +148,30 @@ class MyVpnService : VpnService() {
     private fun loadMySshLogger() {
         val logPath = StunRepository.getLogFilePath(this@MyVpnService)
         val logLevel = SettingsManager.getLogLevel(this@MyVpnService)
-        val logStatus: Long = myssh.Myssh.initLogger(logPath, logLevel)
-        if (logStatus == 0L) {
-            StunLogger.i("AndroidApp", "Log mounted to file: $logPath")
-        }
+        myssh.Myssh.initLogger(logPath, logLevel)
         myssh.Myssh.startWebLogger(10880, logPath)
     }
 
     /**
-     * 主服务循环：实现自动重连逻辑
+     * 同步启动 Go 代理核心
+     * 返回 0 代表启动成功，其他代表失败
      */
-    private fun startVpnServiceLoop() {
-        while (!userRequestedStop) {
-            try {
-                StunRepository.appendLog("--- Initializing tunnel environment ---")
-
-                // 1. 预清理旧资源
-                cleanupNative()
-
-                // 2. 启动前台通知 (Android 系统要求)
-                updateNotification()
-                StunRepository.vpnStatus.postValue(true)
-
-                loadMySshLogger()
-
-                // 2.5 加载全局配置
-                loadGlobalConfigFromJson()
-
-                // 3. 启动 Go 语言 SSH 库
-                startSshGoLib()
-
-                // 4. 配置 VpnService Builder
-                val builder = Builder()
-                    .setSession("StunSshTunnel")
-                    .setMtu(1500)
-                    .addAddress("10.0.0.2", 24)
-                    .addRoute("0.0.0.0", 0)
-                    .addAddress("fd00:1::2", 64)
-                    .addRoute("::", 0)
-                    .addDnsServer("8.8.8.8")
-                    .addDisallowedApplication(packageName)
-                    //.addAllowedApplication("mark.via")
-
-                // 5. 建立网卡
-                vpnInterface = builder.establish()
-
-                if (vpnInterface != null) {
-                    val fd = vpnInterface!!.fd
-                    StunRepository.appendLog("TUN interface ready (FD: $fd)")
-
-                    // 6. 启动 HEV 引擎
-                    startHevTunnel(fd)
-
-                    // 7. 进入监控阻塞状态
-                    monitorThreads()
-                } else {
-                    StunRepository.appendLog("Failed to establish TUN, retrying...")
-                }
-
-            } catch (e: Exception) {
-                StunRepository.appendLog("Main loop error: ${e.message}")
-                StunLogger.e(TAG, "Main Loop Error", e)
-            }
-
-            // 异常退出或建立失败后的处理
-            if (!userRequestedStop) {
-                StunRepository.appendLog("Abnormal exit detected, reconnecting in ${RECONNECT_DELAY / 1000} seconds...")
-                cleanupNative()
-                Thread.sleep(RECONNECT_DELAY)
-            }
+    private fun startSshGoLib(): Long {
+        val selectedProfile = ProfileManager.getSelectedProfile(this@MyVpnService)
+        val config = JSONObject().apply {
+            put("local_addr", "127.0.0.1:$SOCKS_PORT")
+            put("ssh_addr", selectedProfile.sshAddr)
+            put("user", selectedProfile.user)
+            put("pass", selectedProfile.pass)
+            put("tunnel_type", selectedProfile.tunnelType)
+            put("proxy_addr", selectedProfile.proxyAddr)
+            put("custom_host", selectedProfile.customHost)
+            put("http_payload", selectedProfile.httpPayload)
         }
-        StunRepository.appendLog("VPN main loop exited safely.")
-    }
 
-    /**
-     * 监控子线程存活状态
-     */
-    private fun monitorThreads() {
-        StunRepository.appendLog("Starting health check monitor...")
-        Thread.sleep(6000) // 给启动留出缓冲
-
-        while (!userRequestedStop) {
-            if (!isSshRunning || !isHevRunning) {
-                val reason = if (!isSshRunning) "Go SSH library offline" else "HEV engine offline"
-                StunRepository.appendLog("【Status Alert】: $reason")
-                return // 退出监控，触发上一层循环重连
-            }
-            Thread.sleep(1500) // 每1.5秒检查一次
-        }
+        StunRepository.appendLog("Go lib: Dialing SSH...")
+        // 因为你在 Go 中修改的 StartSshTProxy 是非阻塞的，所以这里直接调用并获取结果即可
+        return myssh.Myssh.startSshTProxy(config.toString())
     }
 
     private fun prepareHevConfigPath(): String {
@@ -168,7 +180,6 @@ class MyVpnService : VpnService() {
             if (confFile.exists()) confFile.delete()
             confFile.createNewFile()
 
-            // 详细配置：包含 IPv6 和 MapDNS 拦截
             val tproxyConf = """
                 misc:
                   task-stack-size: 8192
@@ -184,10 +195,9 @@ class MyVpnService : VpnService() {
             """.trimIndent()
 
             FileOutputStream(confFile).use { it.write(tproxyConf.toByteArray()) }
-            StunRepository.appendLog("HEV config updated.")
             return confFile.absolutePath
         } catch (e: IOException) {
-            StunRepository.appendLog("Failed to write config: ${e.message}")
+            StunRepository.appendLog("Failed to write HEV config: ${e.message}")
             return ""
         }
     }
@@ -198,76 +208,38 @@ class MyVpnService : VpnService() {
 
         thread(start = true, name = "HevEngineThread") {
             try {
-                isHevRunning = true
                 StunRepository.appendLog("HEV engine starting...")
                 hev.htproxy.TProxyService.TProxyStartService(configPath, fd)
             } catch (e: Exception) {
                 StunLogger.e(TAG, "HEV Crash", e)
-                StunRepository.appendLog("HEV thread crash: ${e.message}")
-                isHevRunning = false
-            } finally {
-            }
-        }
-    }
-
-    private fun startSshGoLib() {
-        var selectedProfile = ProfileManager.getSelectedProfile(this@MyVpnService)
-        val config = JSONObject().apply {
-            put("local_addr", "127.0.0.1:$SOCKS_PORT")
-            put("ssh_addr", selectedProfile.sshAddr)
-            put("user", selectedProfile.user)
-            put("pass", selectedProfile.pass)
-            put("tunnel_type", selectedProfile.tunnelType)
-            put("proxy_addr", selectedProfile.proxyAddr)
-            put("custom_host", selectedProfile.customHost)
-            put("http_payload", selectedProfile.httpPayload)
-        }
-
-        thread(start = true, name = "SshGoNativeThread") {
-            try {
-                isSshRunning = true
-                StunRepository.appendLog("Go lib: Dialing SSH...")
-                val res = myssh.Myssh.startSshTProxy(config.toString())
-                if (res != 0L) {
-                    StunRepository.appendLog("Go lib abnormal exit, code: $res")
-                }
-            } catch (e: Exception) {
-                StunLogger.e(TAG, "Go Lib Crash", e)
-                StunRepository.appendLog("Go thread crash: ${e.message}")
-                isSshRunning = false
-            } finally {
-
             }
         }
     }
 
     /**
-     * 底层资源清理函数
+     * 底层资源清理：需严格遵循关闭顺序
      */
     private fun cleanupNative() {
-        try {
-            if (isHevRunning) hev.htproxy.TProxyService.TProxyStopService()
-            isHevRunning = false
-        } catch (e: Exception) {}
+        // 1. 发送 Go 核心停止指令 (这会触发所有网络断开，并使得 wgWait 自动解除阻塞)
+        try { myssh.Myssh.stopSshTProxy() } catch (_: Exception) {}
 
-        try {
-            if (isSshRunning) myssh.Myssh.stopSshTProxy()
-            isSshRunning = false
-        } catch (e: Exception) {}
+        // 2. 发送底层 HEV 停止指令
+        try { hev.htproxy.TProxyService.TProxyStopService() } catch (_: Exception) {}
 
-        try {
-            myssh.Myssh.stopWebLogger()
-        } catch (e: Exception) {}
-
+        // 3. 关闭网卡 FD (放在 HEV 之后关，防止 HEV 读取失效网卡崩溃)
         try {
             vpnInterface?.close()
             vpnInterface = null
-        } catch (e: Exception) {}
+        } catch (_: Exception) {}
+
+        // 4. 关闭日志模块
+        try { myssh.Myssh.stopWebLogger() } catch (_: Exception) {}
     }
 
     private fun stopVpnService() {
+        // userRequestedStop = true 已经在 onStartCommand 里设置过了
+        // 这里我们只需要调用一次清理，Go 端一停，wgWait() 就会放行，主循环自然退出
         cleanupNative()
-        StunRepository.vpnStatus.postValue(false)
         stopForeground(true)
         stopSelf()
     }
@@ -275,7 +247,7 @@ class MyVpnService : VpnService() {
     private fun updateNotification() {
         val nm = getSystemService(NotificationManager::class.java)
         nm?.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "VPN", NotificationManager.IMPORTANCE_LOW)
+            NotificationChannel(CHANNEL_ID, "VPN Status", NotificationManager.IMPORTANCE_LOW)
         )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)

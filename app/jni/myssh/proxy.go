@@ -52,20 +52,20 @@ var (
 	mu           sync.Mutex
 	globalConfig GlobalConfig
 	globalRouter *GeoRouter
-	udpNatMap    sync.Map 
 	
-	// 🌟 全局 Zap 日志对象 (默认使用 Nop 静默模式，防止空指针)
+	// 🌟 连接池管理
+	udpNatMap    sync.Map // 管理 UDP 转发会话
+	tcpConnMap   sync.Map // 管理 TCP 直连与代理会话
+	
+	// 🌟 生命周期与日志管理
+	wg sync.WaitGroup
 	zlog *zap.SugaredLogger = zap.NewNop().Sugar()
 )
 
 // InitLogger 初始化日志并将其重定向到指定文件
-// logPath: 日志文件绝对路径
-// logLevelStr: 日志级别 ("DEBUG", "INFO", "WARN", "ERROR")
-// 返回值: 0 成功, -1 失败
 func InitLogger(logPath string, logLevelStr string) int {
 	var level zapcore.Level
 	
-	// 将安卓端传过来的字符串转为大写并匹配 (增加容错性)
 	switch strings.ToUpper(logLevelStr) {
 	case "DEBUG":
 		level = zapcore.DebugLevel
@@ -76,20 +76,18 @@ func InitLogger(logPath string, logLevelStr string) int {
 	case "ERROR":
 		level = zapcore.ErrorLevel
 	default:
-		level = zapcore.InfoLevel // 遇到未知字符串，默认给 Info 级别
+		level = zapcore.InfoLevel 
 	}
 
-	// 打开或创建文件，如果文件已存在则将其清空 (os.O_TRUNC)
 	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
 	if err != nil {
 		return -1
 	}
 
 	encoderConfig := zap.NewProductionEncoderConfig()
-	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder   // 使用直观的时间格式
-	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder // 级别大写 (INFO, ERROR)
+	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder   
+	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder 
 
-	// 配置 Zap Core：使用解析出的 level
 	core := zapcore.NewCore(
 		zapcore.NewConsoleEncoder(encoderConfig),
 		zapcore.AddSync(file),
@@ -143,7 +141,7 @@ func loadGlobalConfig(cfg GlobalConfig) int {
 	if _, err := os.Stat(cfg.GeoSiteFilePath); err == nil {
 		zlog.Infof("%s [Config] 正在加载 GeoSite 规则... Tags: %v", TAG, cfg.DirectSiteTags)
 		if err := globalRouter.LoadGeoSite(cfg.GeoSiteFilePath, cfg.DirectSiteTags); err != nil {
-			zlog.Errorf("%s [Config] ❌ 加载 GeoSite 失败 (可能是文件损坏或找不到标签): %v", TAG, err)
+			zlog.Errorf("%s [Config] ❌ 加载 GeoSite 失败: %v", TAG, err)
 		} else {
 			zlog.Infof("%s [Config] ✅ GeoSite 加载成功", TAG)
 		}
@@ -154,7 +152,7 @@ func loadGlobalConfig(cfg GlobalConfig) int {
 	if _, err := os.Stat(cfg.GeoIPFilePath); err == nil {
 		zlog.Infof("%s [Config] 正在加载 GeoIP 规则... Tags: %v", TAG, cfg.DirectIPTags)
 		if err := globalRouter.LoadGeoIP(cfg.GeoIPFilePath, cfg.DirectIPTags); err != nil {
-			zlog.Errorf("%s [Config] ❌ 加载 GeoIP 失败 (可能是文件损坏或找不到标签): %v", TAG, err)
+			zlog.Errorf("%s [Config] ❌ 加载 GeoIP 失败: %v", TAG, err)
 		} else {
 			zlog.Infof("%s [Config] ✅ GeoIP 加载成功", TAG)
 		}
@@ -280,6 +278,15 @@ func (h *SshProxyHandler) TCPHandle(s *socks5.Server, c *net.TCPConn, r *socks5.
 	}
 
 	if r.Cmd == socks5.CmdConnect {
+		// 🌟 1. 追踪 TCP 会话生命周期
+		wg.Add(1)
+		defer wg.Done()
+
+		// 🌟 2. 登记当前客户端连接，以便在停止时能强行打断 io.Copy
+		connKey := c.RemoteAddr().String() + "->" + r.Address()
+		tcpConnMap.Store(connKey, c)
+		defer tcpConnMap.Delete(connKey)
+
 		mu.Lock()
 		client := sshClient
 		mu.Unlock()
@@ -374,7 +381,7 @@ func (h *SshProxyHandler) UDPHandle(s *socks5.Server, addr *net.UDPAddr, d *sock
 			return err
 		}
 
-		replyMsg, err := handleSshTcpDns(reqMsg) // 假设该方法已经在外部或者其他文件中定义存在，不在这段代码截取中
+		replyMsg, err := handleSshTcpDns(reqMsg) // 需要在其他文件中存在该外部实现
 		if err != nil || replyMsg == nil {
 			return err
 		}
@@ -386,9 +393,6 @@ func (h *SshProxyHandler) UDPHandle(s *socks5.Server, addr *net.UDPAddr, d *sock
 
 		res := socks5.NewDatagram(d.Atyp, d.DstAddr, d.DstPort, replyData)
 		_, err = s.UDPConn.WriteToUDP(res.Bytes(), addr)
-		if err == nil {
-			// zlog.Infof("%s [SOCKS5-UDP] ✅ DNS 解析结果已成功封装回 UDP", TAG)
-		}
 		return err
 	}
 
@@ -446,7 +450,10 @@ func (h *SshProxyHandler) UDPHandle(s *socks5.Server, addr *net.UDPAddr, d *sock
 		zlog.Infof("%s [ROUTER] 🟢 建立本地 UDP 直连会话 -> 目标: %s", TAG, targetAddrStr)
 		udpNatMap.Store(sessionKey, uc)
 
+		// 🌟 追踪 UDP 转发 Goroutine 的生命周期
+		wg.Add(1)
 		go func(conn *net.UDPConn, key string, dstAtyp byte, dstAddr []byte, dstPortBytes []byte, clientAddr *net.UDPAddr) {
+			defer wg.Done() 
 			defer conn.Close()
 			defer udpNatMap.Delete(key) 
 			
@@ -471,6 +478,13 @@ func (h *SshProxyHandler) UDPHandle(s *socks5.Server, addr *net.UDPAddr, d *sock
 	}
 	
 	return nil
+}
+
+// 🌟 WgWait 阻塞当前 goroutine，直到所有的代理服务和连接彻底退出
+func WgWait() {
+	zlog.Infof("%s [Core] 正在等待所有后台任务彻底退出...", TAG)
+	wg.Wait()
+	zlog.Infof("%s [Core] ✅ 所有后台任务已安全清理完毕，程序可安全退出", TAG)
 }
 
 func StartSshTProxy(configJson string) int {
@@ -521,11 +535,15 @@ func StartSshTProxy(configJson string) int {
 
 	handler := &SshProxyHandler{}
 
+	// 🌟 追踪 SOCKS5 主服务的生命周期
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		zlog.Infof("%s [SOCKS5] 🚀 SOCKS5 本地代理服务已启动并监听于: %s", TAG, cfg.LocalAddr)
 		if err := srv.ListenAndServe(handler); err != nil && !strings.Contains(err.Error(), "closed network connection") {
 			zlog.Errorf("%s [SOCKS5] ❌ 服务异常退出: %v", TAG, err)
 		}
+		zlog.Infof("%s [SOCKS5] 🛑 SOCKS5 本地代理服务已完全停止", TAG)
 	}()
 
 	return 0
@@ -535,15 +553,45 @@ func StopSshTProxy() {
 	mu.Lock()
 	defer mu.Unlock()
 	zlog.Infof("%s [Core] 正在停止资源...", TAG)
+	
 	if socksServer != nil {
-		socksServer.Shutdown()
+		socksServer.Shutdown() // 触发 SOCKS5 服务退出
 		socksServer = nil
 	}
 	if sshClient != nil {
 		sshClient.Close()
 		sshClient = nil
 	}
-	zlog.Infof("%s [Core] 代理引擎已停止", TAG)
+
+	// 🌟 清理并强制关闭所有活跃的 TCP 客户端连接
+	tcpSessionCount := 0
+	tcpConnMap.Range(func(key, value interface{}) bool {
+		if conn, ok := value.(net.Conn); ok {
+			conn.Close() // 强行关闭客户端 Socket，立刻解除 io.Copy 的阻塞
+			tcpSessionCount++
+		}
+		tcpConnMap.Delete(key)
+		return true
+	})
+	if tcpSessionCount > 0 {
+		zlog.Infof("%s [Core] 已强制断开 %d 个活跃的 TCP 会话", TAG, tcpSessionCount)
+	}
+
+	// 🌟 清理并强制关闭所有活跃的 UDP NAT 会话
+	udpSessionCount := 0
+	udpNatMap.Range(func(key, value interface{}) bool {
+		if conn, ok := value.(*net.UDPConn); ok {
+			conn.Close() // 强行关闭连接，中断 ReadFromUDP
+			udpSessionCount++
+		}
+		udpNatMap.Delete(key)
+		return true
+	})
+	if udpSessionCount > 0 {
+		zlog.Infof("%s [Core] 已强制断开 %d 个活跃的 UDP 会话", TAG, udpSessionCount)
+	}
+
+	zlog.Infof("%s [Core] 代理引擎停止指令发送完成", TAG)
 }
 
 // wsConnAdapter 保持不变
