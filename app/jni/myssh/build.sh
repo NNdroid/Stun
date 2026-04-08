@@ -31,7 +31,7 @@ if [ ! -d "$OUTPUT_DIR" ]; then
     mkdir -p "$OUTPUT_DIR"
 fi
 
-go get golang.org/x/mobile/bind
+go mod tidy
 # 3. 执行 gomobile 编译命令
 echo "📦 正在编译并打包至 $OUTPUT_PATH ..."
 # 在 Git Bash 等环境中，相对路径 "../../libs" 能被原生的 gomobile.exe 完美识别
