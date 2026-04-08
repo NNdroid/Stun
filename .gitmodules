@@ -1,3 +1,6 @@
-[submodule "app/jni/myssh"]
+[submodule "myssh"]
 	path = app/jni/myssh
 	url = https://github.com/NNdroid/myssh
+[submodule "hev-socks5-tunnel"]
+	path = app/jni/hev-socks5-tunnel
+	url = https://github.com/heiher/hev-socks5-tunnel
