@@ -34,7 +34,8 @@ class ProfileAdapter(
             
             val isSelected = profile.id == selectedProfileId
             selectionIndicator.visibility = if (isSelected) View.VISIBLE else View.GONE
-            cardView.strokeWidth = if (isSelected) 4 else 0
+            cardView.strokeWidth = if (isSelected) 2 else 0
+            cardView.strokeColor = holder.binding.root.context.getColor(app.fjj.stun.R.color.primary)
             
             tvDelay.text = delays[profile.id] ?: ""
 

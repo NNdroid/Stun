@@ -1,34 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:background="?android:attr/colorBackground">
 
-    <com.google.android.material.appbar.MaterialToolbar
-        android:id="@+id/toolbar"
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/app_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorPrimary"
-        android:minHeight="?attr/actionBarSize"
-        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
-        app:title="VPN Configuration"
-        app:titleTextColor="@color/white" />
+        android:background="?attr/colorSurface"
+        app:elevation="0dp">
 
-    <ScrollView
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:title="@string/add_profile"
+            app:titleCentered="true" />
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:padding="16dp">
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:padding="24dp">
 
             <com.google.android.material.textfield.TextInputLayout
+                style="?attr/textInputOutlinedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Profile Name">
+                android:hint="@string/profile_name"
+                app:startIconDrawable="@drawable/ic_edit">
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_name"
                     android:layout_width="match_parent"
@@ -36,10 +44,12 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
+                style="?attr/textInputOutlinedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="SSH Address (IP:Port)">
+                android:layout_marginTop="16dp"
+                android:hint="@string/ssh_address"
+                app:startIconDrawable="@drawable/ic_info">
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_ssh_addr"
                     android:layout_width="match_parent"
@@ -47,10 +57,12 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
+                style="?attr/textInputOutlinedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="Username">
+                android:layout_marginTop="16dp"
+                android:hint="@string/username"
+                app:startIconDrawable="@drawable/ic_person">
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_user"
                     android:layout_width="match_parent"
@@ -58,10 +70,13 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
+                style="?attr/textInputOutlinedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="Password">
+                android:layout_marginTop="16dp"
+                android:hint="@string/password"
+                app:passwordToggleEnabled="true"
+                app:startIconDrawable="@drawable/ic_lock">
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_pass"
                     android:layout_width="match_parent"
@@ -70,12 +85,13 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="Tunnel Type">
-                <AutoCompleteTextView
+                android:layout_marginTop="16dp"
+                android:hint="@string/tunnel_type"
+                app:startIconDrawable="@drawable/ic_send">
+                <com.google.android.material.textfield.MaterialAutoCompleteTextView
                     android:id="@+id/spinner_tunnel_type"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -84,26 +100,28 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/layout_http_payload"
+                style="?attr/textInputOutlinedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="HTTP Payload"
+                android:layout_marginTop="16dp"
+                android:hint="@string/http_payload"
                 android:visibility="gone">
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_http_payload"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textMultiLine"
                     android:gravity="top"
-                    android:minLines="1" />
+                    android:inputType="textMultiLine"
+                    android:minLines="3" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/layout_proxy_addr"
+                style="?attr/textInputOutlinedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="Proxy Address">
+                android:layout_marginTop="16dp"
+                android:hint="@string/proxy_address">
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_proxy_addr"
                     android:layout_width="match_parent"
@@ -112,10 +130,11 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/layout_custom_host"
+                style="?attr/textInputOutlinedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="Custom Host">
+                android:layout_marginTop="16dp"
+                android:hint="@string/custom_host">
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_custom_host"
                     android:layout_width="match_parent"
@@ -124,11 +143,18 @@
 
             <Button
                 android:id="@+id/btn_save"
+                style="?attr/materialButtonStyle"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="Save Configuration" />
+                android:layout_height="64dp"
+                android:layout_marginTop="32dp"
+                android:text="@string/save_configuration"
+                app:cornerRadius="16dp" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="120dp" />
 
         </LinearLayout>
-    </ScrollView>
-</LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

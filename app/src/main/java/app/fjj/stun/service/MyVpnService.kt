@@ -43,12 +43,12 @@ class MyVpnService : VpnService() {
         when (intent?.action) {
             ACTION_STOP -> {
                 userRequestedStop = true
-                StunRepository.appendLog("用户主动停止服务...")
+                StunRepository.appendLog("User stopped service...")
                 stopVpnService()
             }
             else -> {
                 userRequestedStop = false
-                StunRepository.appendLog("启动 VPN 主循环...")
+                StunRepository.appendLog("Starting VPN...")
                 thread(start = true, name = "VpnMainLoop") {
                     startVpnServiceLoop()
                 }
@@ -74,7 +74,7 @@ class MyVpnService : VpnService() {
         var logLevel = SettingsManager.getLogLevel(this@MyVpnService)
         val logStatus: Long = myssh.Myssh.initLogger(logPath, logLevel)
         if (logStatus == 0L) {
-            StunLogger.i("AndroidApp", "日志已成功挂载到文件: $logPath")
+            StunLogger.i("AndroidApp", "Log mounted to file: $logPath")
         }
         myssh.Myssh.startWebLogger(10880, logPath)
     }
@@ -85,7 +85,7 @@ class MyVpnService : VpnService() {
     private fun startVpnServiceLoop() {
         while (!userRequestedStop) {
             try {
-                StunRepository.appendLog("--- 正在初始化隧道环境 ---")
+                StunRepository.appendLog("--- Initializing tunnel environment ---")
 
                 // 1. 预清理旧资源
                 cleanupNative()
@@ -119,7 +119,7 @@ class MyVpnService : VpnService() {
 
                 if (vpnInterface != null) {
                     val fd = vpnInterface!!.fd
-                    StunRepository.appendLog("TUN 网卡就绪 (FD: $fd)")
+                    StunRepository.appendLog("TUN interface ready (FD: $fd)")
 
                     // 6. 启动 HEV 引擎
                     startHevTunnel(fd)
@@ -127,35 +127,35 @@ class MyVpnService : VpnService() {
                     // 7. 进入监控阻塞状态
                     monitorThreads()
                 } else {
-                    StunRepository.appendLog("无法建立虚拟网卡，准备重试...")
+                    StunRepository.appendLog("Failed to establish TUN, retrying...")
                 }
 
             } catch (e: Exception) {
-                StunRepository.appendLog("主循环发生错误: ${e.message}")
+                StunRepository.appendLog("Main loop error: ${e.message}")
                 StunLogger.e(TAG, "Main Loop Error", e)
             }
 
             // 异常退出或建立失败后的处理
             if (!userRequestedStop) {
-                StunRepository.appendLog("检测到异常退出，${RECONNECT_DELAY / 1000}秒后尝试重连...")
+                StunRepository.appendLog("Abnormal exit detected, reconnecting in ${RECONNECT_DELAY / 1000} seconds...")
                 cleanupNative()
                 Thread.sleep(RECONNECT_DELAY)
             }
         }
-        StunRepository.appendLog("VPN 主循环已安全退出。")
+        StunRepository.appendLog("VPN main loop exited safely.")
     }
 
     /**
      * 监控子线程存活状态
      */
     private fun monitorThreads() {
-        StunRepository.appendLog("启动健康检查监控...")
+        StunRepository.appendLog("Starting health check monitor...")
         Thread.sleep(6000) // 给启动留出缓冲
 
         while (!userRequestedStop) {
             if (!isSshRunning || !isHevRunning) {
-                val reason = if (!isSshRunning) "Go SSH 库掉线" else "HEV 引擎掉线"
-                StunRepository.appendLog("【状态报警】: $reason")
+                val reason = if (!isSshRunning) "Go SSH library offline" else "HEV engine offline"
+                StunRepository.appendLog("【Status Alert】: $reason")
                 return // 退出监控，触发上一层循环重连
             }
             Thread.sleep(1500) // 每1.5秒检查一次
@@ -184,10 +184,10 @@ class MyVpnService : VpnService() {
             """.trimIndent()
 
             FileOutputStream(confFile).use { it.write(tproxyConf.toByteArray()) }
-            StunRepository.appendLog("HEV 配置文件已更新。")
+            StunRepository.appendLog("HEV config updated.")
             return confFile.absolutePath
         } catch (e: IOException) {
-            StunRepository.appendLog("配置文件写入失败: ${e.message}")
+            StunRepository.appendLog("Failed to write config: ${e.message}")
             return ""
         }
     }
@@ -199,11 +199,11 @@ class MyVpnService : VpnService() {
         thread(start = true, name = "HevEngineThread") {
             try {
                 isHevRunning = true
-                StunRepository.appendLog("HEV 引擎启动中...")
+                StunRepository.appendLog("HEV engine starting...")
                 hev.htproxy.TProxyService.TProxyStartService(configPath, fd)
             } catch (e: Exception) {
                 StunLogger.e(TAG, "HEV Crash", e)
-                StunRepository.appendLog("HEV 线程崩溃: ${e.message}")
+                StunRepository.appendLog("HEV thread crash: ${e.message}")
                 isHevRunning = false
             } finally {
             }
@@ -226,14 +226,14 @@ class MyVpnService : VpnService() {
         thread(start = true, name = "SshGoNativeThread") {
             try {
                 isSshRunning = true
-                StunRepository.appendLog("Go 库: 正在拨号 SSH...")
+                StunRepository.appendLog("Go lib: Dialing SSH...")
                 val res = myssh.Myssh.startSshTProxy(config.toString())
                 if (res != 0L) {
-                    StunRepository.appendLog("Go 库非正常退出，代码: $res")
+                    StunRepository.appendLog("Go lib abnormal exit, code: $res")
                 }
             } catch (e: Exception) {
                 StunLogger.e(TAG, "Go Lib Crash", e)
-                StunRepository.appendLog("Go 线程崩溃: ${e.message}")
+                StunRepository.appendLog("Go thread crash: ${e.message}")
                 isSshRunning = false
             } finally {
 
@@ -270,15 +270,13 @@ class MyVpnService : VpnService() {
 
     private fun updateNotification() {
         val nm = getSystemService(NotificationManager::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            nm?.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "SSH VPN", NotificationManager.IMPORTANCE_LOW)
-            )
-        }
+        nm?.createNotificationChannel(
+            NotificationChannel(CHANNEL_ID, "VPN", NotificationManager.IMPORTANCE_LOW)
+        )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("SSH 代理运行中")
-            .setContentText("全设备流量 (IPv4/IPv6) 加密保护中")
+            .setContentTitle(getString(app.fjj.stun.R.string.notif_title))
+            .setContentText(getString(app.fjj.stun.R.string.notif_text))
             .setSmallIcon(app.fjj.stun.R.drawable.ic_fox_logo)
             .setOngoing(true)
             .build()

@@ -1,0 +1,76 @@
+<resources>
+    <string name="app_name">Stun</string>
+    <string name="action_add">添加</string>
+    <string name="action_filter">過濾</string>
+    <string name="action_logs">日誌</string>
+    <string name="action_settings">設置</string>
+
+    <string name="status_disconnected">未連接，點擊啟動</string>
+    <string name="status_connected">已連接</string>
+    <string name="status_testing">正在測試延遲…</string>
+    <string name="connect">連接</string>
+    <string name="disconnect">斷開</string>
+
+    <string name="add_profile">添加配置</string>
+    <string name="edit_profile">編輯配置</string>
+    <string name="add_manually">手動添加</string>
+    <string name="scan_qr_code">掃碼添加</string>
+    <string name="scan_prompt">請掃描配置二維碼</string>
+
+    <string name="profile_name">配置名稱</string>
+    <string name="ssh_address">SSH 地址 (IP:端口)</string>
+    <string name="username">用戶名</string>
+    <string name="password">密碼</string>
+    <string name="tunnel_type">隧道類型</string>
+    <string name="http_payload">HTTP 載荷</string>
+    <string name="proxy_address">代理地址</string>
+    <string name="custom_host">自定義域名</string>
+    <string name="save_configuration">保存配置</string>
+
+    <string name="unified_config">通用配置</string>
+    <string name="log_level">日誌過濾等級</string>
+    <string name="remote_dns">遠程 DNS 服務器 (IP:端口)</string>
+    <string name="local_dns">本地 DNS 服務器 (IP:端口)</string>
+    <string name="geo_data_config">Geo 數據配置</string>
+    <string name="geosite_url">GeoSite URL</string>
+    <string name="geoip_url">GeoIP URL</string>
+    <string name="update_interval">更新間隔 (秒)</string>
+    <string name="last_updated">上次更新: %1$s</string>
+    <string name="never">從未</string>
+    <string name="update_now">立即更新</string>
+    <string name="updating">正在更新…</string>
+    <string name="direct_routing">直連路由標識</string>
+    <string name="geosite_direct">GeoSite 直連 (例如 cn,apple)</string>
+    <string name="geoip_direct">GeoIP 直連 (例如 cn,private)</string>
+    <string name="save_settings">保存設置</string>
+
+    <string name="clear_logs">清空日誌</string>
+    <string name="copy">複製</string>
+    <string name="close">關閉</string>
+
+    <string name="profile_added">配置已添加: %1$s</string>
+    <string name="invalid_qr">二維碼格式無效</string>
+    <string name="vpn_permission_denied">VPN 權限被拒絕</string>
+    <string name="settings_saved">設置已保存</string>
+    <string name="profile_saved">配置已保存</string>
+    <string name="geodata_success">GeoData 更新成功</string>
+
+    <string name="main_disconnected">未連接</string>
+    <string name="main_connected">已連接</string>
+    <string name="main_connect">連接</string>
+    <string name="main_disconnect">斷開</string>
+    <string name="main_testing_latency">正在測試延遲…</string>
+    <string name="main_add_manually">手動添加</string>
+    <string name="main_scan_qr">掃碼添加</string>
+    <string name="main_add_profile_title">添加配置</string>
+    <string name="main_scan_prompt">請掃描配置二維碼</string>
+    <string name="main_selected">已選擇: %1$s</string>
+    <string name="main_qr_fail">生成二維碼失敗</string>
+
+    <string name="notif_title">Stun 正在運行</string>
+    <string name="notif_text">流量正受到保護</string>
+
+
+    <string name="reason_ssh_down">Go SSH library offline</string>
+    <string name="reason_hev_down">HEV engine offline</string>
+</resources>

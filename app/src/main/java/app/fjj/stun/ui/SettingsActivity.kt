@@ -28,14 +28,19 @@ class SettingsActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
+        val initialPaddingBottom = binding.btnSave.parent.let { (it as android.view.View).paddingBottom }
+
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             
-            // Apply padding for system bars and the keyboard (ime)
-            v.setPadding(systemBars.left, 0, systemBars.right, systemBars.bottom + ime.bottom)
-
-            binding.toolbar.updatePadding(top = systemBars.top)
+            v.updatePadding(left = systemBars.left, right = systemBars.right)
+            binding.appBar.updatePadding(top = systemBars.top)
+            
+            // Apply bottom padding to the scrollable container's child to keep content above nav bar/keyboard
+            binding.btnSave.parent.let { 
+                (it as android.view.View).updatePadding(bottom = initialPaddingBottom + systemBars.bottom + ime.bottom) 
+            }
             insets
         }
 
@@ -60,13 +65,13 @@ class SettingsActivity : AppCompatActivity() {
 
         binding.btnUpdateNow.setOnClickListener {
             binding.btnUpdateNow.isEnabled = false
-            binding.btnUpdateNow.text = "Updating..."
+            binding.btnUpdateNow.text = getString(app.fjj.stun.R.string.updating)
             SettingsManager.updateGeoData(this) {
                 runOnUiThread {
                     updateLastUpdateText()
                     binding.btnUpdateNow.isEnabled = true
-                    binding.btnUpdateNow.text = "Update Now"
-                    Toast.makeText(this, "GeoData updated successfully", Toast.LENGTH_SHORT).show()
+                    binding.btnUpdateNow.text = getString(app.fjj.stun.R.string.update_now)
+                    Toast.makeText(this, getString(app.fjj.stun.R.string.geodata_success), Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -83,7 +88,7 @@ class SettingsActivity : AppCompatActivity() {
             SettingsManager.saveGeositeDirect(this, binding.etGeositeDirect.text.toString())
             SettingsManager.saveGeoipDirect(this, binding.etGeoipDirect.text.toString())
 
-            Toast.makeText(this, "Settings saved", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(app.fjj.stun.R.string.settings_saved), Toast.LENGTH_SHORT).show()
             finish()
         }
     }
@@ -92,9 +97,9 @@ class SettingsActivity : AppCompatActivity() {
         val lastUpdate = SettingsManager.getLastUpdateTime(this)
         if (lastUpdate > 0) {
             val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-            binding.tvLastUpdate.text = "Last updated: ${sdf.format(Date(lastUpdate * 1000))}"
+            binding.tvLastUpdate.text = getString(app.fjj.stun.R.string.last_updated, sdf.format(Date(lastUpdate * 1000)))
         } else {
-            binding.tvLastUpdate.text = "Last updated: Never"
+            binding.tvLastUpdate.text = getString(app.fjj.stun.R.string.last_updated, getString(app.fjj.stun.R.string.never))
         }
     }
 

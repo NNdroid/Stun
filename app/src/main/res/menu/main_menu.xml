@@ -4,21 +4,21 @@
     <item
         android:id="@+id/action_add"
         android:title="Add"
-        android:icon="@android:drawable/ic_menu_add"
+        android:icon="@drawable/ic_add"
         app:showAsAction="always" />
     <item
         android:id="@+id/action_filter"
-        android:title="Filter"
-        android:icon="@android:drawable/ic_menu_sort_alphabetically"
+        android:title="@string/action_filter"
+        android:icon="@drawable/ic_filter"
         app:showAsAction="always" />
     <item
         android:id="@+id/action_logs"
-        android:title="Logs"
-        android:icon="@android:drawable/ic_menu_info_details"
+        android:title="@string/action_logs"
+        android:icon="@drawable/ic_logs"
         app:showAsAction="ifRoom" />
     <item
         android:id="@+id/action_settings"
-        android:title="Settings"
-        android:icon="@android:drawable/ic_menu_preferences"
+        android:title="@string/action_settings"
+        android:icon="@drawable/ic_settings"
         app:showAsAction="ifRoom" />
 </menu>

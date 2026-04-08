@@ -31,13 +31,21 @@ class ConfigActivity : AppCompatActivity() {
 
         profileId = intent.getStringExtra("EXTRA_PROFILE_ID")
         val isEdit = profileId != null
-        supportActionBar?.title = if (isEdit) "Edit Profile" else "Add Profile"
+        supportActionBar?.title = if (isEdit) getString(app.fjj.stun.R.string.edit_profile) else getString(app.fjj.stun.R.string.add_profile)
+
+        val initialPaddingBottom = binding.btnSave.parent.let { (it as android.view.View).paddingBottom }
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
-            v.setPadding(systemBars.left, 0, systemBars.right, systemBars.bottom + ime.bottom)
-            binding.toolbar.updatePadding(top = systemBars.top)
+            
+            v.updatePadding(left = systemBars.left, right = systemBars.right)
+            binding.appBar.updatePadding(top = systemBars.top)
+            
+            // Apply bottom padding to the scrollable container's child to keep content above nav bar/keyboard
+            binding.btnSave.parent.let { 
+                (it as android.view.View).updatePadding(bottom = initialPaddingBottom + systemBars.bottom + ime.bottom) 
+            }
             insets
         }
 
@@ -104,7 +112,7 @@ class ConfigActivity : AppCompatActivity() {
                     ProfileManager.addProfile(this, updatedProfile)
                 }
                 runOnUiThread {
-                    Toast.makeText(this, "Profile saved", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(app.fjj.stun.R.string.profile_saved), Toast.LENGTH_SHORT).show()
                     finish()
                 }
             }

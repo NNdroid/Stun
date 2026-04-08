@@ -1,0 +1,76 @@
+<resources>
+    <string name="app_name">Stun</string>
+    <string name="action_add">Ajouter</string>
+    <string name="action_filter">Filtrer</string>
+    <string name="action_logs">Journaux</string>
+    <string name="action_settings">Paramètres</string>
+
+    <string name="status_disconnected">Déconnecté, appuyez pour démarrer</string>
+    <string name="status_connected">Connecté</string>
+    <string name="status_testing">Test de latence…</string>
+    <string name="connect">Connecter</string>
+    <string name="disconnect">Déconnecter</string>
+
+    <string name="add_profile">Ajouter un profil</string>
+    <string name="edit_profile">Modifier le profil</string>
+    <string name="add_manually">Ajouter manuellement</string>
+    <string name="scan_qr_code">Scanner le code QR</string>
+    <string name="scan_prompt">Scanner un code QR de profil</string>
+
+    <string name="profile_name">Nom du profil</string>
+    <string name="ssh_address">Adresse SSH (IP:Port)</string>
+    <string name="username">Nom d\'utilisateur</string>
+    <string name="password">Mot de passe</string>
+    <string name="tunnel_type">Type de tunnel</string>
+    <string name="http_payload">Charge utile HTTP</string>
+    <string name="proxy_address">Adresse du proxy</string>
+    <string name="custom_host">Hôte personnalisé</string>
+    <string name="save_configuration">Enregistrer la configuration</string>
+
+    <string name="unified_config">Configuration unifiée</string>
+    <string name="log_level">Niveau de filtrage des journaux</string>
+    <string name="remote_dns">Serveur DNS distant (IP:Port)</string>
+    <string name="local_dns">Serveur DNS local (IP:Port)</string>
+    <string name="geo_data_config">Configuration des données géo</string>
+    <string name="geosite_url">URL GeoSite</string>
+    <string name="geoip_url">URL GeoIP</string>
+    <string name="update_interval">Intervalle de mise à jour (secondes)</string>
+    <string name="last_updated">Dernière mise à jour : %1$s</string>
+    <string name="never">Jamais</string>
+    <string name="update_now">Mettre à jour maintenant</string>
+    <string name="updating">Mise à jour en cours…</string>
+    <string name="direct_routing">Drapeaux de routage direct</string>
+    <string name="geosite_direct">GeoSite Direct (ex: cn,apple)</string>
+    <string name="geoip_direct">GeoIP Direct (ex: cn,private)</string>
+    <string name="save_settings">Enregistrer les paramètres</string>
+
+    <string name="clear_logs">Effacer les journaux</string>
+    <string name="copy">Copier</string>
+    <string name="close">Fermer</string>
+
+    <string name="profile_added">Profil ajouté : %1$s</string>
+    <string name="invalid_qr">Format de code QR invalide</string>
+    <string name="vpn_permission_denied">Permission VPN refusée</string>
+    <string name="settings_saved">Paramètres enregistrés</string>
+    <string name="profile_saved">Profil enregistré</string>
+    <string name="geodata_success">GeoData mise à jour avec succès</string>
+
+    <string name="main_disconnected">Déconnecté</string>
+    <string name="main_connected">Connecté</string>
+    <string name="main_connect">Connecter</string>
+    <string name="main_disconnect">Déconnecter</string>
+    <string name="main_testing_latency">Test de latence…</string>
+    <string name="main_add_manually">Ajouter manuellement</string>
+    <string name="main_scan_qr">Scanner le code QR</string>
+    <string name="main_add_profile_title">Ajouter un profil</string>
+    <string name="main_scan_prompt">Scanner un code QR de profil</string>
+    <string name="main_selected">Sélectionné : %1$s</string>
+    <string name="main_qr_fail">Échec de la génération du code QR</string>
+
+    <string name="notif_title">Stun est en cours d\'exécution</string>
+    <string name="notif_text">Le trafic est protégé</string>
+
+
+    <string name="reason_ssh_down">Go SSH library offline</string>
+    <string name="reason_hev_down">HEV engine offline</string>
+</resources>

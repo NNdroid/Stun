@@ -23,19 +23,26 @@ class LogsActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
+        val initialScrollPadding = binding.scrollView.paddingBottom
+
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, 0, systemBars.right, systemBars.bottom)
-            binding.toolbar.updatePadding(top = systemBars.top)
+            v.updatePadding(left = systemBars.left, right = systemBars.right)
+            binding.appBar.updatePadding(top = systemBars.top)
+            
+            // BottomAppBar should have padding to keep buttons above the gesture bar/nav bar
+            binding.bottomBar.updatePadding(bottom = systemBars.bottom)
+            // ScrollView needs to account for the BottomAppBar height AND the system navigation bar
+            binding.scrollView.updatePadding(bottom = initialScrollPadding + systemBars.bottom)
             insets
         }
 
         StunRepository.logData.observe(this) { logs ->
             binding.tvLogs.text = logs
             // Auto scroll to bottom
-//            binding.scrollView.post {
-//                binding.scrollView.fullScroll(android.view.View.FOCUS_DOWN)
-//            }
+            binding.scrollView.post {
+                binding.scrollView.fullScroll(android.view.View.FOCUS_DOWN)
+            }
         }
 
         binding.btnClear.setOnClickListener {

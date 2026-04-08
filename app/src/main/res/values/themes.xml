@@ -1,24 +1,22 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
-    <style name="Theme.Stun" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <style name="Theme.Stun" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Primary brand color. -->
         <item name="colorPrimary">@color/primary</item>
-        <item name="colorPrimaryVariant">@color/primary_dark</item>
         <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/primary_light</item>
+        <item name="colorOnPrimaryContainer">@color/primary_dark</item>
+
         <!-- Secondary brand color. -->
         <item name="colorSecondary">@color/accent</item>
-        <item name="colorSecondaryVariant">@color/primary_dark</item>
         <item name="colorOnSecondary">@color/white</item>
-        <!-- Status bar color. -->
-        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
-        <item name="colorAccent">@color/accent</item>
 
-        <!-- Fix for white-on-white menu text -->
-        <item name="actionOverflowMenuStyle">@style/Widget.Stun.OverflowMenu</item>
-    </style>
-
-    <style name="Widget.Stun.OverflowMenu" parent="Widget.AppCompat.Light.PopupMenu.Overflow">
-        <item name="android:itemBackground">@color/white</item>
-        <item name="android:textColor">@color/black</item>
+        <!-- Surface and backgrounds -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:enforceNavigationBarContrast" tools:targetApi="29">false</item>
+        <item name="android:enforceStatusBarContrast" tools:targetApi="29">false</item>
     </style>
 </resources>
