@@ -25,6 +25,7 @@
     <string name="http_payload">HTTP 載荷</string>
     <string name="proxy_address">代理地址</string>
     <string name="custom_host">自定義域名</string>
+    <string name="custom_path">自定義路徑</string>
     <string name="save_configuration">保存配置</string>
 
     <string name="unified_config">通用配置</string>
@@ -48,6 +49,9 @@
     <string name="copy">複製</string>
     <string name="close">關閉</string>
 
+    <string name="action_export">導出配置</string>
+    <string name="action_import">導入配置</string>
+
     <string name="profile_added">配置已添加: %1$s</string>
     <string name="invalid_qr">二維碼格式無效</string>
     <string name="vpn_permission_denied">VPN 權限被拒絕</string>
@@ -57,6 +61,9 @@
 
     <string name="main_disconnected">未連接</string>
     <string name="main_connected">已連接</string>
+    <string name="main_connecting">正在連接…</string>
+    <string name="main_reconnecting">正在重連…</string>
+    <string name="main_connection_failed">連接失敗</string>
     <string name="main_connect">連接</string>
     <string name="main_disconnect">斷開</string>
     <string name="main_testing_latency">正在測試延遲…</string>
@@ -66,6 +73,11 @@
     <string name="main_scan_prompt">請掃描配置二維碼</string>
     <string name="main_selected">已選擇: %1$s</string>
     <string name="main_qr_fail">生成二維碼失敗</string>
+
+    <string name="export_success">配置導出成功</string>
+    <string name="export_failed">導出失敗: %1$s</string>
+    <string name="import_success">已導入 %1$d 個配置</string>
+    <string name="import_failed">導入失敗: %1$s</string>
 
     <string name="notif_title">Stun 正在運行</string>
     <string name="notif_text">流量正受到保護</string>

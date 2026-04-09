@@ -83,6 +83,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val exportLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        uri?.let { exportProfilesToUri(it) }
+    }
+
+    private val importLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { importProfilesFromUri(it) }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -132,8 +144,7 @@ class MainActivity : AppCompatActivity() {
                 VpnState.CONNECTING -> {
                     isVpnRunning = false
                     binding.fabStartStop.isEnabled = false // 禁用按钮，防止连点
-                    // 可选：你可以在这里换成一个 loading 样式的图标，目前保持原状
-                    binding.tvStatus.text = "Connecting..." // 建议后续提取到 strings.xml
+                    binding.tvStatus.text = getString(app.fjj.stun.R.string.main_connecting)
                 }
                 VpnState.CONNECTED -> {
                     isVpnRunning = true
@@ -145,13 +156,13 @@ class MainActivity : AppCompatActivity() {
                     isVpnRunning = false
                     binding.fabStartStop.isEnabled = true // 允许用户在重连时打断
                     binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_pause)
-                    binding.tvStatus.text = "Reconnecting..." // 建议后续提取到 strings.xml
+                    binding.tvStatus.text = getString(app.fjj.stun.R.string.main_reconnecting)
                 }
                 VpnState.ERROR -> {
                     isVpnRunning = false
                     binding.fabStartStop.isEnabled = true
                     binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_play)
-                    binding.tvStatus.text = "Connection Failed" // 建议后续提取到 strings.xml
+                    binding.tvStatus.text = getString(app.fjj.stun.R.string.main_connection_failed)
                 }
                 null -> {
                     isVpnRunning = false
@@ -237,6 +248,14 @@ class MainActivity : AppCompatActivity() {
             }
             app.fjj.stun.R.id.action_settings -> {
                 startActivity(Intent(this, SettingsActivity::class.java))
+                return true
+            }
+            app.fjj.stun.R.id.action_export -> {
+                exportLauncher.launch("stun_profiles_backup.json")
+                return true
+            }
+            app.fjj.stun.R.id.action_import -> {
+                importLauncher.launch(arrayOf("application/json", "application/octet-stream", "*/*"))
                 return true
             }
             app.fjj.stun.R.id.action_logs -> {
@@ -363,5 +382,52 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(this, MyVpnService::class.java)
         intent.action = MyVpnService.ACTION_START
         startService(intent)
+    }
+
+    private fun exportProfilesToUri(uri: android.net.Uri) {
+        thread {
+            try {
+                val profiles = ProfileManager.getProfiles(this)
+                val json = Gson().toJson(profiles)
+                contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    outputStream.write(json.toByteArray())
+                }
+                runOnUiThread {
+                    Toast.makeText(this, getString(app.fjj.stun.R.string.export_success), Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                StunLogger.e("MainActivity", "Export failed", e)
+                runOnUiThread {
+                    Toast.makeText(this, getString(app.fjj.stun.R.string.export_failed, e.message), Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun importProfilesFromUri(uri: android.net.Uri) {
+        thread {
+            try {
+                contentResolver.openInputStream(uri)?.use { inputStream ->
+                    val json = inputStream.bufferedReader().use { it.readText() }
+                    val type = object : com.google.gson.reflect.TypeToken<List<Profile>>() {}.type
+                    val profiles: List<Profile> = Gson().fromJson(json, type)
+                    
+                    profiles.forEach { profile ->
+                        // Ensure unique ID for imported profiles to avoid conflicts
+                        val newProfile = profile.copy(id = java.util.UUID.randomUUID().toString())
+                        ProfileManager.addProfile(this, newProfile)
+                    }
+                    
+                    runOnUiThread {
+                        Toast.makeText(this, getString(app.fjj.stun.R.string.import_success, profiles.size), Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                StunLogger.e("MainActivity", "Import failed", e)
+                runOnUiThread {
+                    Toast.makeText(this, getString(app.fjj.stun.R.string.import_failed, e.message), Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 }

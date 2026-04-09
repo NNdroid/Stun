@@ -25,6 +25,7 @@
     <string name="http_payload">Charge utile HTTP</string>
     <string name="proxy_address">Adresse du proxy</string>
     <string name="custom_host">Hôte personnalisé</string>
+    <string name="custom_path">Chemin personnalisé</string>
     <string name="save_configuration">Enregistrer la configuration</string>
 
     <string name="unified_config">Configuration unifiée</string>
@@ -48,6 +49,9 @@
     <string name="copy">Copier</string>
     <string name="close">Fermer</string>
 
+    <string name="action_export">Exporter les profils</string>
+    <string name="action_import">Importer les profils</string>
+
     <string name="profile_added">Profil ajouté : %1$s</string>
     <string name="invalid_qr">Format de code QR invalide</string>
     <string name="vpn_permission_denied">Permission VPN refusée</string>
@@ -57,6 +61,9 @@
 
     <string name="main_disconnected">Déconnecté</string>
     <string name="main_connected">Connecté</string>
+    <string name="main_connecting">Connexion en cours…</string>
+    <string name="main_reconnecting">Reconnexion en cours…</string>
+    <string name="main_connection_failed">Échec de la connexion</string>
     <string name="main_connect">Connecter</string>
     <string name="main_disconnect">Déconnecter</string>
     <string name="main_testing_latency">Test de latence…</string>
@@ -66,6 +73,11 @@
     <string name="main_scan_prompt">Scanner un code QR de profil</string>
     <string name="main_selected">Sélectionné : %1$s</string>
     <string name="main_qr_fail">Échec de la génération du code QR</string>
+
+    <string name="export_success">Profils exportés avec succès</string>
+    <string name="export_failed">Échec de l\'exportation : %1$s</string>
+    <string name="import_success">%1$d profils importés</string>
+    <string name="import_failed">Échec de l\'importation : %1$s</string>
 
     <string name="notif_title">Stun est en cours d\'exécution</string>
     <string name="notif_text">Le trafic est protégé</string>

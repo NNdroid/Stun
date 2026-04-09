@@ -25,6 +25,7 @@
     <string name="http_payload">HTTP Payload</string>
     <string name="proxy_address">Proxy Address</string>
     <string name="custom_host">Custom Host</string>
+    <string name="custom_path">Custom Path</string>
     <string name="save_configuration">Save Configuration</string>
 
     <string name="unified_config">Unified Configuration</string>
@@ -48,8 +49,14 @@
     <string name="copy">Copy</string>
     <string name="close">Close</string>
 
+    <string name="action_export">Export Profiles</string>
+    <string name="action_import">Import Profiles</string>
+
     <string name="main_disconnected">Disconnected</string>
     <string name="main_connected">Connected</string>
+    <string name="main_connecting">Connecting...</string>
+    <string name="main_reconnecting">Reconnecting...</string>
+    <string name="main_connection_failed">Connection Failed</string>
     <string name="main_connect">Connect</string>
     <string name="main_disconnect">Disconnect</string>
     <string name="main_testing_latency">Testing latency…</string>
@@ -59,6 +66,11 @@
     <string name="main_scan_prompt">Scan a profile QR code</string>
     <string name="main_selected">Selected: %1$s</string>
     <string name="main_qr_fail">Failed to generate QR code</string>
+
+    <string name="export_success">Profiles exported successfully</string>
+    <string name="export_failed">Export failed: %1$s</string>
+    <string name="import_success">Imported %1$d profiles</string>
+    <string name="import_failed">Import failed: %1$s</string>
 
     <string name="profile_added">Profile added: %1$s</string>
     <string name="invalid_qr">Invalid QR Code format</string>

@@ -225,6 +225,7 @@ class MyVpnService : VpnService() {
             try {
                 StunRepository.appendLog("HEV engine starting...")
                 hev.htproxy.TProxyService.TProxyStartService(configPath, fd)
+                StunRepository.appendLog("HEV engine started.")
             } catch (e: Exception) {
                 StunLogger.e(TAG, "HEV Crash", e)
             }

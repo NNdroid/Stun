@@ -25,6 +25,7 @@
     <string name="http_payload">HTTP 载荷</string>
     <string name="proxy_address">代理地址</string>
     <string name="custom_host">自定义域名</string>
+    <string name="custom_path">自定义路径</string>
     <string name="save_configuration">保存配置</string>
 
     <string name="unified_config">通用配置</string>
@@ -48,6 +49,9 @@
     <string name="copy">复制</string>
     <string name="close">关闭</string>
 
+    <string name="action_export">导出配置</string>
+    <string name="action_import">导入配置</string>
+
     <string name="profile_added">配置已添加: %1$s</string>
     <string name="invalid_qr">二维码格式无效</string>
     <string name="vpn_permission_denied">VPN 权限被拒绝</string>
@@ -57,6 +61,9 @@
 
     <string name="main_disconnected">未连接</string>
     <string name="main_connected">已连接</string>
+    <string name="main_connecting">正在连接…</string>
+    <string name="main_reconnecting">正在重连…</string>
+    <string name="main_connection_failed">连接失败</string>
     <string name="main_connect">连接</string>
     <string name="main_disconnect">断开</string>
     <string name="main_testing_latency">正在测试延迟…</string>
@@ -66,6 +73,11 @@
     <string name="main_scan_prompt">请扫描配置二维码</string>
     <string name="main_selected">已选择: %1$s</string>
     <string name="main_qr_fail">生成二维码失败</string>
+
+    <string name="export_success">配置导出成功</string>
+    <string name="export_failed">导出失败: %1$s</string>
+    <string name="import_success">已导入 %1$d 个配置</string>
+    <string name="import_failed">导入失败: %1$s</string>
 
     <string name="notif_title">Stun 正在运行</string>
     <string name="notif_text">流量正受到保护</string>

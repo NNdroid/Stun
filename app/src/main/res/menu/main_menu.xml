@@ -21,4 +21,12 @@
         android:title="@string/action_settings"
         android:icon="@drawable/ic_settings"
         app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_export"
+        android:title="Export Profiles"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_import"
+        android:title="Import Profiles"
+        app:showAsAction="never" />
 </menu>
