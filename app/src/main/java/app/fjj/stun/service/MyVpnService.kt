@@ -12,6 +12,7 @@ import app.fjj.stun.repo.StunRepository
 import app.fjj.stun.repo.ProfileManager
 import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.StunLogger
+import app.fjj.stun.repo.VpnState
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -33,7 +34,6 @@ class MyVpnService : VpnService() {
         const val ACTION_START = "app.fjj.stun.START"
         const val ACTION_STOP = "app.fjj.stun.STOP"
         const val SOCKS_PORT = 10808
-        const val DNS_PORT = 10853
         const val RECONNECT_DELAY = 3000L // 异常断开重连间隔
     }
 
@@ -45,9 +45,17 @@ class MyVpnService : VpnService() {
                 stopVpnService()
             }
             else -> {
-                if (!StunRepository.vpnStatus.value!!) {
+                // 安全获取当前状态，默认为断开
+                val currentState = StunRepository.vpnState.value ?: VpnState.DISCONNECTED
+
+                // 仅在断开或错误状态下允许发起新连接，防止用户连点导致多开
+                if (currentState == VpnState.DISCONNECTED || currentState == VpnState.ERROR) {
                     userRequestedStop = false
                     StunRepository.appendLog("Starting VPN Service...")
+
+                    // 立即通知 UI 进入“连接中”状态
+                    StunRepository.vpnState.postValue(VpnState.CONNECTING)
+
                     // 开启一个后台主线程来控制生命周期
                     thread(start = true, name = "VpnMainLoop") {
                         startVpnServiceLoop()
@@ -66,25 +74,21 @@ class MyVpnService : VpnService() {
             try {
                 StunRepository.appendLog("--- Initializing tunnel environment ---")
 
-                // 1. 预清理可能残留的旧资源
-                cleanupNative()
-
-                // 2. 启动前台通知，更新 UI 状态
+                // 1. 启动前台通知
                 updateNotification()
-                StunRepository.vpnStatus.postValue(true)
 
-                // 3. 加载日志与全局配置
+                // 2. 加载日志与全局配置
                 loadMySshLogger()
                 loadGlobalConfigFromJson()
 
-                // 4. 同步启动 Go SSH 代理核心
+                // 3. 同步启动 Go SSH 代理核心
                 val sshStatus = startSshGoLib()
                 if (sshStatus != 0L) {
                     StunRepository.appendLog("❌ Go SSH Core failed to start (Code: $sshStatus). Retrying...")
                     throw RuntimeException("SSH Core start failed")
                 }
 
-                // 5. 配置并建立 VPN TUN 网卡
+                // 4. 配置并建立 VPN TUN 网卡
                 val builder = Builder()
                     .setSession("StunSshTunnel")
                     .setMtu(1500)
@@ -101,11 +105,15 @@ class MyVpnService : VpnService() {
                     val fd = vpnInterface!!.fd
                     StunRepository.appendLog("✅ TUN interface ready (FD: $fd)")
 
-                    // 6. 启动 HEV 流量劫持引擎
+                    // 5. 启动 HEV 流量劫持引擎
                     startHevTunnel(fd)
 
                     StunRepository.appendLog("🚀 All services started. Tunnel is active.")
 
+                    // 🌟 核心就绪，正式通知 UI “已连接”
+                    StunRepository.vpnState.postValue(VpnState.CONNECTED)
+
+                    // 阻塞当前线程，等待 Go 核心释放
                     myssh.Myssh.wgWait()
 
                     StunRepository.appendLog("⚠️ WG Wait released.")
@@ -116,20 +124,27 @@ class MyVpnService : VpnService() {
 
             } catch (e: Exception) {
                 StunLogger.e(TAG, "Main Loop Interrupted", e)
+            } finally {
+                // 🌟 核心优化：不论如何退出的，只要离开核心逻辑区，立刻清理资源并更新状态
+                cleanupNative()
+
+                if (userRequestedStop) {
+                    StunRepository.vpnState.postValue(VpnState.DISCONNECTED)
+                } else {
+                    StunRepository.vpnState.postValue(VpnState.RECONNECTING)
+                }
             }
 
-            // 🌟 8. 退出阻塞后的判断逻辑
+            // 🌟 判断退出阻塞后的动作
             if (!userRequestedStop) {
                 // 如果不是用户主动停止，说明是网络断开/核心崩溃触发的释放
                 StunRepository.appendLog("🔄 Abnormal exit detected. Reconnecting in ${RECONNECT_DELAY / 1000}s...")
-                cleanupNative() // 彻底清理这轮失败的资源
                 Thread.sleep(RECONNECT_DELAY) // 延时后进入下一个 While 循环重新建立
             }
         }
 
-        // 只有 userRequestedStop == true 才会跳出 while 循环来到这里
-        cleanupNative()
-        StunRepository.vpnStatus.postValue(false)
+        // 彻底跳出 while 循环（用户主动要求停止）
+        StunRepository.vpnState.postValue(VpnState.DISCONNECTED)
         StunRepository.appendLog("🛑 VPN main loop exited safely.")
     }
 
@@ -170,8 +185,7 @@ class MyVpnService : VpnService() {
         }
 
         StunRepository.appendLog("Go lib: Dialing SSH...")
-        // 因为你在 Go 中修改的 StartSshTProxy 是非阻塞的，所以这里直接调用并获取结果即可
-        return myssh.Myssh.startSshTProxy(config.toString())
+        return myssh.Myssh.startSshTProxy2(config.toString())
     }
 
     private fun prepareHevConfigPath(): String {
@@ -217,7 +231,7 @@ class MyVpnService : VpnService() {
     }
 
     /**
-     * 底层资源清理：需严格遵循关闭顺序
+     * 底层资源清理：需严格遵循关闭顺序，且多次调用绝对安全
      */
     private fun cleanupNative() {
         // 1. 发送 Go 核心停止指令 (这会触发所有网络断开，并使得 wgWait 自动解除阻塞)
@@ -238,7 +252,8 @@ class MyVpnService : VpnService() {
 
     private fun stopVpnService() {
         // userRequestedStop = true 已经在 onStartCommand 里设置过了
-        // 这里我们只需要调用一次清理，Go 端一停，wgWait() 就会放行，主循环自然退出
+        // 调用 cleanupNative 后，Go 端一停，wgWait() 就会放行，主循环自然退出。
+        // 多次调用 cleanupNative 是安全的，try-catch 做了防御。
         cleanupNative()
         stopForeground(true)
         stopSelf()

@@ -33,7 +33,7 @@ class ConfigActivity : AppCompatActivity() {
         val isEdit = profileId != null
         supportActionBar?.title = if (isEdit) getString(app.fjj.stun.R.string.edit_profile) else getString(app.fjj.stun.R.string.add_profile)
 
-        val initialPaddingBottom = binding.btnSave.parent.let { (it as android.view.View).paddingBottom }
+        val initialPaddingBottom = binding.btnSave.parent.let { (it as View).paddingBottom }
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -44,7 +44,7 @@ class ConfigActivity : AppCompatActivity() {
             
             // Apply bottom padding to the scrollable container's child to keep content above nav bar/keyboard
             binding.btnSave.parent.let { 
-                (it as android.view.View).updatePadding(bottom = initialPaddingBottom + systemBars.bottom + ime.bottom) 
+                (it as View).updatePadding(bottom = initialPaddingBottom + systemBars.bottom + ime.bottom)
             }
             insets
         }

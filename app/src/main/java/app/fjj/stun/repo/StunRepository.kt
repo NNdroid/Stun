@@ -11,7 +11,7 @@ object StunRepository {
     // 使用 StringBuilder 提高拼接效率
     private val logBuilder = StringBuilder()
 
-    val vpnStatus = MutableLiveData(false)
+    val vpnState = MutableLiveData<VpnState>(VpnState.DISCONNECTED)
     val logData = MutableLiveData("")
 
     /**

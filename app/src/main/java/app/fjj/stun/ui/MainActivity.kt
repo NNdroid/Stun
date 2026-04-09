@@ -7,9 +7,7 @@ import android.util.Base64
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
-import android.view.ViewGroup
 import android.widget.ImageView
-import androidx.core.view.updateLayoutParams
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -27,6 +25,7 @@ import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.StunLogger
 import app.fjj.stun.repo.StunRepository
 import app.fjj.stun.service.MyVpnService
+import app.fjj.stun.repo.VpnState
 import app.fjj.stun.util.QRUtils
 import com.google.gson.Gson
 import com.journeyapps.barcodescanner.ScanContract
@@ -41,6 +40,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var adapter: ProfileAdapter
+
+    // 仅在完全连接时为 true，用于控制延迟测试是否走代理
     private var isVpnRunning = false
 
     private val vpnLauncher = registerForActivityResult(
@@ -59,7 +60,6 @@ class MainActivity : AppCompatActivity() {
         if (result.contents != null) {
             try {
                 // 1. 先将扫到的 Base64 字符串解码还原为普通字符串 (JSON)
-                // 使用 Base64.DEFAULT 进行解码即可兼容我们之前生成的 NO_WRAP 格式
                 val decodedBytes = Base64.decode(result.contents, Base64.DEFAULT)
                 val jsonString = String(decodedBytes, Charsets.UTF_8)
 
@@ -77,7 +77,6 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             } catch (e: Exception) {
-                // 这里不仅能捕获 Gson 解析失败，也能捕获 Base64 解码异常
                 StunLogger.e("MainActivity", "Scan QR Code failed", e)
                 Toast.makeText(this, getString(app.fjj.stun.R.string.invalid_qr), Toast.LENGTH_SHORT).show()
             }
@@ -100,7 +99,7 @@ class MainActivity : AppCompatActivity() {
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.updatePadding(left = systemBars.left, right = systemBars.right)
             binding.appBar.updatePadding(top = systemBars.top)
-            
+
             binding.rvProfiles.updatePadding(bottom = initialRvPadding + systemBars.bottom)
             binding.bottomContainer.updatePadding(bottom = initialBottomPadding + systemBars.bottom)
             insets
@@ -121,14 +120,42 @@ class MainActivity : AppCompatActivity() {
             testSelectedProfileLatency()
         }
 
-        StunRepository.vpnStatus.observe(this) { running ->
-            isVpnRunning = running
-            if (running) {
-                binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_pause)
-                binding.tvStatus.text = getString(app.fjj.stun.R.string.main_connected)
-            } else {
-                binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_play)
-                binding.tvStatus.text = getString(app.fjj.stun.R.string.main_disconnected)
+        // 🌟 核心修改区：监听枚举状态并精细化控制 UI
+        StunRepository.vpnState.observe(this) { state ->
+            when (state) {
+                VpnState.DISCONNECTED -> {
+                    isVpnRunning = false
+                    binding.fabStartStop.isEnabled = true
+                    binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_play)
+                    binding.tvStatus.text = getString(app.fjj.stun.R.string.main_disconnected)
+                }
+                VpnState.CONNECTING -> {
+                    isVpnRunning = false
+                    binding.fabStartStop.isEnabled = false // 禁用按钮，防止连点
+                    // 可选：你可以在这里换成一个 loading 样式的图标，目前保持原状
+                    binding.tvStatus.text = "Connecting..." // 建议后续提取到 strings.xml
+                }
+                VpnState.CONNECTED -> {
+                    isVpnRunning = true
+                    binding.fabStartStop.isEnabled = true
+                    binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_pause)
+                    binding.tvStatus.text = getString(app.fjj.stun.R.string.main_connected)
+                }
+                VpnState.RECONNECTING -> {
+                    isVpnRunning = false
+                    binding.fabStartStop.isEnabled = true // 允许用户在重连时打断
+                    binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_pause)
+                    binding.tvStatus.text = "Reconnecting..." // 建议后续提取到 strings.xml
+                }
+                VpnState.ERROR -> {
+                    isVpnRunning = false
+                    binding.fabStartStop.isEnabled = true
+                    binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_play)
+                    binding.tvStatus.text = "Connection Failed" // 建议后续提取到 strings.xml
+                }
+                null -> {
+                    isVpnRunning = false
+                }
             }
         }
     }
@@ -165,10 +192,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showShareDialog(profile: Profile) {
         val json = Gson().toJson(profile)
-        // 1. 将 json 字符串转为 UTF-8 字节数组，然后进行 Base64 编码
-        // 使用 Base64.NO_WRAP 避免生成多余的换行符 (\n)
         val base64String = Base64.encodeToString(json.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-        // 2. 使用编码后的 base64 字符串生成二维码
         val bitmap = QRUtils.generateQRCode(base64String, 500, 500)
 
         if (bitmap != null) {
@@ -308,15 +332,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // 🌟 核心修改区：更新点击逻辑，基于当前 Enum 状态进行操作
     private fun prepareVpn() {
         val intent = VpnService.prepare(this)
         if (intent != null) {
             vpnLauncher.launch(intent)
         } else {
-            isVpnRunning = StunRepository.vpnStatus.value ?: false
-            if (isVpnRunning) {
+            val currentState = StunRepository.vpnState.value ?: VpnState.DISCONNECTED
+
+            // 如果正在连接中，忽略操作（理论上按钮已被禁用，加一层防护）
+            if (currentState == VpnState.CONNECTING) return
+
+            // 如果处于连接或重连状态，发送停止指令
+            if (currentState == VpnState.CONNECTED || currentState == VpnState.RECONNECTING) {
                 stopVpnService()
             } else {
+                // 如果处于断开或错误状态，发送启动指令
                 startVpnService()
             }
         }
