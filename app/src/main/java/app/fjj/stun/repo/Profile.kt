@@ -15,6 +15,7 @@ data class Profile(
     var tunnelType: String = TUNNEL_TYPE_TLS,
     var proxyAddr: String = "198.98.61.214:443",
     var customHost: String = "microsoft.com",
+    var customPath: String = "/vpn",
     var httpPayload: String = "CONNECT [host] HTTP/1.1[crlf]Host: [host][crlf][crlf]",
     var type: String = "ssh"
 ) {

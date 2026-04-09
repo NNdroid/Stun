@@ -58,10 +58,12 @@ class ConfigActivity : AppCompatActivity() {
             val selected = binding.spinnerTunnelType.text.toString()
             val isHttp = selected == Profile.TUNNEL_TYPE_HTTP
             val isBase = selected == Profile.TUNNEL_TYPE_BASE
+            val isWsOrWss = selected == Profile.TUNNEL_TYPE_WS || selected == Profile.TUNNEL_TYPE_WSS
             
             binding.layoutHttpPayload.visibility = if (isHttp) View.VISIBLE else View.GONE
             binding.layoutProxyAddr.visibility = if (isBase) View.GONE else View.VISIBLE
             binding.layoutCustomHost.visibility = if (isBase) View.GONE else View.VISIBLE
+            binding.layoutCustomPath.visibility = if (isWsOrWss) View.VISIBLE else View.GONE
         }
 
         // Load values
@@ -82,14 +84,17 @@ class ConfigActivity : AppCompatActivity() {
                 val selected = currentProfile.tunnelType
                 val isHttp = selected == Profile.TUNNEL_TYPE_HTTP
                 val isBase = selected == Profile.TUNNEL_TYPE_BASE
+                val isWsOrWss = selected == Profile.TUNNEL_TYPE_WS || selected == Profile.TUNNEL_TYPE_WSS
                 
                 binding.layoutHttpPayload.visibility = if (isHttp) View.VISIBLE else View.GONE
                 binding.layoutProxyAddr.visibility = if (isBase) View.GONE else View.VISIBLE
                 binding.layoutCustomHost.visibility = if (isBase) View.GONE else View.VISIBLE
+                binding.layoutCustomPath.visibility = if (isWsOrWss) View.VISIBLE else View.GONE
 
                 binding.etHttpPayload.setText(currentProfile.httpPayload)
                 binding.etProxyAddr.setText(currentProfile.proxyAddr)
                 binding.etCustomHost.setText(currentProfile.customHost)
+                binding.etCustomPath.setText(currentProfile.customPath)
             }
         }
 
@@ -102,7 +107,8 @@ class ConfigActivity : AppCompatActivity() {
                 tunnelType = binding.spinnerTunnelType.text.toString(),
                 httpPayload = binding.etHttpPayload.text.toString(),
                 proxyAddr = binding.etProxyAddr.text.toString(),
-                customHost = binding.etCustomHost.text.toString()
+                customHost = binding.etCustomHost.text.toString(),
+                customPath = binding.etCustomPath.text.toString()
             )
 
             thread {

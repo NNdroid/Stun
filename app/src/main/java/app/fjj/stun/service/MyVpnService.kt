@@ -181,6 +181,7 @@ class MyVpnService : VpnService() {
             put("tunnel_type", selectedProfile.tunnelType)
             put("proxy_addr", selectedProfile.proxyAddr)
             put("custom_host", selectedProfile.customHost)
+            put("custom_path", selectedProfile.customPath)
             put("http_payload", selectedProfile.httpPayload)
         }
 
