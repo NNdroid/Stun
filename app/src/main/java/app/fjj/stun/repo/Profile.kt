@@ -25,13 +25,17 @@ data class Profile(
         const val TUNNEL_TYPE_HTTP = "http"
         const val TUNNEL_TYPE_WS = "ws"
         const val TUNNEL_TYPE_WSS = "wss"
+        const val TUNNEL_TYPE_H2 = "h2"
+        const val TUNNEL_TYPE_H2C = "h2c"
 
         fun getAllTunnelTypes() = arrayOf(
             TUNNEL_TYPE_BASE,
             TUNNEL_TYPE_TLS,
             TUNNEL_TYPE_HTTP,
             TUNNEL_TYPE_WS,
-            TUNNEL_TYPE_WSS
+            TUNNEL_TYPE_WSS,
+            TUNNEL_TYPE_H2,
+            TUNNEL_TYPE_H2C
         )
     }
 }

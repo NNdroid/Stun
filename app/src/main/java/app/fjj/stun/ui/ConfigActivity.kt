@@ -58,12 +58,13 @@ class ConfigActivity : AppCompatActivity() {
             val selected = binding.spinnerTunnelType.text.toString()
             val isHttp = selected == Profile.TUNNEL_TYPE_HTTP
             val isBase = selected == Profile.TUNNEL_TYPE_BASE
-            val isWsOrWss = selected == Profile.TUNNEL_TYPE_WS || selected == Profile.TUNNEL_TYPE_WSS
+            val isWsOrWssOrH2 = selected == Profile.TUNNEL_TYPE_WS || selected == Profile.TUNNEL_TYPE_WSS ||
+                    selected == Profile.TUNNEL_TYPE_H2 || selected == Profile.TUNNEL_TYPE_H2C
             
             binding.layoutHttpPayload.visibility = if (isHttp) View.VISIBLE else View.GONE
             binding.layoutProxyAddr.visibility = if (isBase) View.GONE else View.VISIBLE
             binding.layoutCustomHost.visibility = if (isBase) View.GONE else View.VISIBLE
-            binding.layoutCustomPath.visibility = if (isWsOrWss) View.VISIBLE else View.GONE
+            binding.layoutCustomPath.visibility = if (isWsOrWssOrH2) View.VISIBLE else View.GONE
         }
 
         // Load values
@@ -84,12 +85,13 @@ class ConfigActivity : AppCompatActivity() {
                 val selected = currentProfile.tunnelType
                 val isHttp = selected == Profile.TUNNEL_TYPE_HTTP
                 val isBase = selected == Profile.TUNNEL_TYPE_BASE
-                val isWsOrWss = selected == Profile.TUNNEL_TYPE_WS || selected == Profile.TUNNEL_TYPE_WSS
+                val isWsOrWssOrH2 = selected == Profile.TUNNEL_TYPE_WS || selected == Profile.TUNNEL_TYPE_WSS ||
+                        selected == Profile.TUNNEL_TYPE_H2 || selected == Profile.TUNNEL_TYPE_H2C
                 
                 binding.layoutHttpPayload.visibility = if (isHttp) View.VISIBLE else View.GONE
                 binding.layoutProxyAddr.visibility = if (isBase) View.GONE else View.VISIBLE
                 binding.layoutCustomHost.visibility = if (isBase) View.GONE else View.VISIBLE
-                binding.layoutCustomPath.visibility = if (isWsOrWss) View.VISIBLE else View.GONE
+                binding.layoutCustomPath.visibility = if (isWsOrWssOrH2) View.VISIBLE else View.GONE
 
                 binding.etHttpPayload.setText(currentProfile.httpPayload)
                 binding.etProxyAddr.setText(currentProfile.proxyAddr)
