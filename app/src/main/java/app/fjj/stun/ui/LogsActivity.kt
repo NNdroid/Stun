@@ -30,9 +30,9 @@ class LogsActivity : AppCompatActivity() {
             v.updatePadding(left = systemBars.left, right = systemBars.right)
             binding.appBar.updatePadding(top = systemBars.top)
             
-            // BottomAppBar should have padding to keep buttons above the gesture bar/nav bar
+            // Adjust BottomAppBar padding for the system navigation bar
             binding.bottomBar.updatePadding(bottom = systemBars.bottom)
-            // ScrollView needs to account for the BottomAppBar height AND the system navigation bar
+            // Adjust ScrollView bottom padding to account for both BottomAppBar and system bars
             binding.scrollView.updatePadding(bottom = initialScrollPadding + systemBars.bottom)
             insets
         }
