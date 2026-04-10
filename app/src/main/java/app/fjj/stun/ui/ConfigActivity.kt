@@ -111,6 +111,7 @@ class ConfigActivity : AppCompatActivity() {
                 binding.layoutDnsOverride.visibility = if (currentProfile.dnsOverride) View.VISIBLE else View.GONE
                 binding.etRemoteDns.setText(currentProfile.remoteDns)
                 binding.etLocalDns.setText(currentProfile.localDns)
+                binding.etUdpgwAddr.setText(currentProfile.udpgwAddr)
                 binding.etGeositeDirect.setText(currentProfile.geositeDirect)
                 binding.etGeoipDirect.setText(currentProfile.geoipDirect)
             }
@@ -130,6 +131,7 @@ class ConfigActivity : AppCompatActivity() {
                 dnsOverride = binding.switchDnsOverride.isChecked,
                 remoteDns = binding.etRemoteDns.text.toString(),
                 localDns = binding.etLocalDns.text.toString(),
+                udpgwAddr = binding.etUdpgwAddr.text.toString(),
                 geositeDirect = binding.etGeositeDirect.text.toString(),
                 geoipDirect = binding.etGeoipDirect.text.toString()
             )

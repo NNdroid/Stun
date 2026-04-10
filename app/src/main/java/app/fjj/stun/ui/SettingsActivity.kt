@@ -52,6 +52,7 @@ class SettingsActivity : AppCompatActivity() {
         // Setup DNS Servers
         binding.etRemoteDnsServer.setText(SettingsManager.getRemoteDnsServer(this))
         binding.etLocalDnsServer.setText(SettingsManager.getLocalDnsServer(this))
+        binding.etUdpgwAddr.setText(SettingsManager.getUdpgwAddr(this))
 
         // Setup Geo Data
         binding.etGeositeUrl.setText(SettingsManager.getGeositeUrl(this))
@@ -80,6 +81,7 @@ class SettingsActivity : AppCompatActivity() {
             SettingsManager.saveLogLevel(this, binding.spinnerLogLevel.text.toString())
             SettingsManager.saveRemoteDnsServer(this, binding.etRemoteDnsServer.text.toString())
             SettingsManager.saveLocalDnsServer(this, binding.etLocalDnsServer.text.toString())
+            SettingsManager.saveUdpgwAddr(this, binding.etUdpgwAddr.text.toString())
             
             SettingsManager.saveGeositeUrl(this, binding.etGeositeUrl.text.toString())
             SettingsManager.saveGeoipUrl(this, binding.etGeoipUrl.text.toString())

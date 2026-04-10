@@ -32,6 +32,7 @@
     <string name="log_level">Log Filter Level</string>
     <string name="remote_dns">Remote DNS Server (IP:Port)</string>
     <string name="local_dns">Local DNS Server (IP:Port)</string>
+    <string name="udpgw_addr">UDP Gateway Address (IP:Port)</string>
     <string name="geo_data_config">Geo Data Configuration</string>
     <string name="geosite_url">GeoSite URL</string>
     <string name="geoip_url">GeoIP URL</string>

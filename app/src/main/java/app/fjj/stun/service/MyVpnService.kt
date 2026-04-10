@@ -180,6 +180,9 @@ class MyVpnService : VpnService() {
      */
     private fun startSshGoLib(): Long {
         val selectedProfile = ProfileManager.getSelectedProfile(this@MyVpnService)
+        
+        val udpgwAddr = if (selectedProfile.dnsOverride) selectedProfile.udpgwAddr else SettingsManager.getUdpgwAddr(this@MyVpnService)
+
         val config = JSONObject().apply {
             put("local_addr", "127.0.0.1:$SOCKS_PORT")
             put("ssh_addr", selectedProfile.sshAddr)
@@ -190,9 +193,10 @@ class MyVpnService : VpnService() {
             put("custom_host", selectedProfile.customHost)
             put("custom_path", selectedProfile.customPath)
             put("http_payload", selectedProfile.httpPayload)
+            put("udpgw_addr", udpgwAddr)
         }
 
-        StunRepository.appendLog("Go lib: Dialing SSH...")
+        StunRepository.appendLog("Go lib: Dialing SSH with UDPGW: $udpgwAddr...")
         return myssh.Myssh.startSshTProxy2(config.toString())
     }
 

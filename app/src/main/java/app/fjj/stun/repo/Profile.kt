@@ -23,6 +23,7 @@ data class Profile(
     var dnsOverride: Boolean = false,
     var remoteDns: String = SettingsManager.DEFAULT_REMOTE_DNS_SERVER,
     var localDns: String = SettingsManager.DEFAULT_LOCAL_DNS_SERVER,
+    var udpgwAddr: String = SettingsManager.DEFAULT_UDPGW_ADDR,
     var geositeDirect: String = SettingsManager.DEFAULT_GEOSITE_DIRECT_FLAGS,
     var geoipDirect: String = SettingsManager.DEFAULT_GEOIP_DIRECT_FLAGS
 ) {
