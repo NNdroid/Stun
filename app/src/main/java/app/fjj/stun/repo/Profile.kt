@@ -29,6 +29,7 @@ data class Profile(
         const val TUNNEL_TYPE_H2C = "h2c"
         const val TUNNEL_TYPE_GRPC = "grpc"
         const val TUNNEL_TYPE_GRPCC = "grpcc"
+        const val TUNNEL_TYPE_H3 = "h3"
 
         fun getAllTunnelTypes() = arrayOf(
             TUNNEL_TYPE_BASE,
@@ -39,7 +40,8 @@ data class Profile(
             TUNNEL_TYPE_H2,
             TUNNEL_TYPE_H2C,
             TUNNEL_TYPE_GRPC,
-            TUNNEL_TYPE_GRPCC
+            TUNNEL_TYPE_GRPCC,
+            TUNNEL_TYPE_H3
         )
     }
 }
