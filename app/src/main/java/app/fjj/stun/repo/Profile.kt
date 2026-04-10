@@ -21,10 +21,10 @@ data class Profile(
 
     // DNS and Routing Overrides
     var dnsOverride: Boolean = false,
-    var remoteDns: String = "1.1.1.1:53",
-    var localDns: String = "8.8.8.8:53",
-    var geositeDirect: String = "cn,apple",
-    var geoipDirect: String = "cn,private"
+    var remoteDns: String = SettingsManager.DEFAULT_REMOTE_DNS_SERVER,
+    var localDns: String = SettingsManager.DEFAULT_LOCAL_DNS_SERVER,
+    var geositeDirect: String = SettingsManager.DEFAULT_GEOSITE_DIRECT_FLAGS,
+    var geoipDirect: String = SettingsManager.DEFAULT_GEOIP_DIRECT_FLAGS
 ) {
     companion object {
         const val TUNNEL_TYPE_BASE = "base"
