@@ -69,6 +69,10 @@ class ConfigActivity : AppCompatActivity() {
             binding.layoutCustomPath.visibility = if (isWsOrWssOrH2OrGrpcOrH3) View.VISIBLE else View.GONE
         }
 
+        binding.switchDnsOverride.setOnCheckedChangeListener { _, isChecked ->
+            binding.layoutDnsOverride.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
+
         // Load values
         thread {
             currentProfile = if (isEdit) {
@@ -101,6 +105,14 @@ class ConfigActivity : AppCompatActivity() {
                 binding.etProxyAddr.setText(currentProfile.proxyAddr)
                 binding.etCustomHost.setText(currentProfile.customHost)
                 binding.etCustomPath.setText(currentProfile.customPath)
+
+                // DNS and Routing Overrides
+                binding.switchDnsOverride.isChecked = currentProfile.dnsOverride
+                binding.layoutDnsOverride.visibility = if (currentProfile.dnsOverride) View.VISIBLE else View.GONE
+                binding.etRemoteDns.setText(currentProfile.remoteDns)
+                binding.etLocalDns.setText(currentProfile.localDns)
+                binding.etGeositeDirect.setText(currentProfile.geositeDirect)
+                binding.etGeoipDirect.setText(currentProfile.geoipDirect)
             }
         }
 
@@ -114,7 +126,12 @@ class ConfigActivity : AppCompatActivity() {
                 httpPayload = binding.etHttpPayload.text.toString(),
                 proxyAddr = binding.etProxyAddr.text.toString(),
                 customHost = binding.etCustomHost.text.toString(),
-                customPath = binding.etCustomPath.text.toString()
+                customPath = binding.etCustomPath.text.toString(),
+                dnsOverride = binding.switchDnsOverride.isChecked,
+                remoteDns = binding.etRemoteDns.text.toString(),
+                localDns = binding.etLocalDns.text.toString(),
+                geositeDirect = binding.etGeositeDirect.text.toString(),
+                geoipDirect = binding.etGeoipDirect.text.toString()
             )
 
             thread {

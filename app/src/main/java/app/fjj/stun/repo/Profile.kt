@@ -17,7 +17,14 @@ data class Profile(
     var customHost: String = "microsoft.com",
     var customPath: String = "/path/to/custom/path",
     var httpPayload: String = "CONNECT [host] HTTP/1.1[crlf]Host: [host][crlf][crlf]",
-    var type: String = "ssh"
+    var type: String = "ssh",
+
+    // DNS and Routing Overrides
+    var dnsOverride: Boolean = false,
+    var remoteDns: String = "1.1.1.1:53",
+    var localDns: String = "8.8.8.8:53",
+    var geositeDirect: String = "cn,apple",
+    var geoipDirect: String = "cn,private"
 ) {
     companion object {
         const val TUNNEL_TYPE_BASE = "base"

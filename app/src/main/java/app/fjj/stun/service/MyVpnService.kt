@@ -149,13 +149,20 @@ class MyVpnService : VpnService() {
     }
 
     private fun loadGlobalConfigFromJson() {
+        val selectedProfile = ProfileManager.getSelectedProfile(this@MyVpnService)
+        
+        val remoteDns = if (selectedProfile.dnsOverride) selectedProfile.remoteDns else SettingsManager.getRemoteDnsServer(this@MyVpnService)
+        val localDns = if (selectedProfile.dnsOverride) selectedProfile.localDns else SettingsManager.getLocalDnsServer(this@MyVpnService)
+        val geositeDirect = if (selectedProfile.dnsOverride) selectedProfile.geositeDirect.split(",").filter { it.isNotBlank() } else SettingsManager.getGeositeDirectTags(this@MyVpnService)
+        val geoipDirect = if (selectedProfile.dnsOverride) selectedProfile.geoipDirect.split(",").filter { it.isNotBlank() } else SettingsManager.getGeoipDirectTags(this@MyVpnService)
+
         val config = JSONObject().apply {
-            put("remote_dns_server", SettingsManager.getRemoteDnsServer(this@MyVpnService))
-            put("local_dns_server", SettingsManager.getLocalDnsServer(this@MyVpnService))
+            put("remote_dns_server", remoteDns)
+            put("local_dns_server", localDns)
             put("geosite_filepath", SettingsManager.getGeositeCachePath(this@MyVpnService))
             put("geoip_filepath", SettingsManager.getGeoipCachePath(this@MyVpnService))
-            put("direct_site_tags", JSONArray(SettingsManager.getGeositeDirectTags(this@MyVpnService)))
-            put("direct_ip_tags", JSONArray(SettingsManager.getGeoipDirectTags(this@MyVpnService)))
+            put("direct_site_tags", JSONArray(geositeDirect))
+            put("direct_ip_tags", JSONArray(geoipDirect))
         }
         myssh.Myssh.loadGlobalConfigFromJson(config.toString())
     }
