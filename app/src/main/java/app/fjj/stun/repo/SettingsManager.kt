@@ -22,8 +22,8 @@ object SettingsManager {
     private const val KEY_LAST_UPDATE_TIME = "last_update_time"
 
     const val DEFAULT_LOG_LEVEL = "V"
-    const val DEFAULT_REMOTE_DNS_SERVER = "8.8.8.8:53"
-    const val DEFAULT_LOCAL_DNS_SERVER = "223.5.5.5:53"
+    const val DEFAULT_REMOTE_DNS_SERVER = "doh://8.8.8.8/dns-query"
+    const val DEFAULT_LOCAL_DNS_SERVER = "doh://223.5.5.5/dns-query"
     const val DEFAULT_GEOSITE_URL = "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geosite.dat"
     const val DEFAULT_GEOIP_URL = "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geoip.dat"
     const val DEFAULT_UPDATE_INTERVAL = 86400L // 24 hours
