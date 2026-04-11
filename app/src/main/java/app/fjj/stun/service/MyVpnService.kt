@@ -97,7 +97,36 @@ class MyVpnService : VpnService() {
                     .addAddress("fd00:1::2", 64)
                     .addRoute("::", 0)
                     .addDnsServer("8.8.8.8")
-                    .addDisallowedApplication(packageName)
+
+                // Configure App Filtering
+                val selectedProfile = ProfileManager.getSelectedProfile(this@MyVpnService)
+                val appFilterOverride = selectedProfile.appFilterOverride
+                val filterApps = if (appFilterOverride) selectedProfile.filterApps else SettingsManager.getFilterApps(this@MyVpnService)
+                val filterMode = if (appFilterOverride) selectedProfile.filterMode else SettingsManager.getFilterMode(this@MyVpnService)
+
+                if (filterApps.isNotBlank()) {
+                    val apps = filterApps.split(",").map { it.trim() }.filter { it.isNotBlank() }
+                    if (filterMode == 1) { // Allow
+                        for (app in apps) {
+                            try {
+                                builder.addAllowedApplication(app)
+                            } catch (e: Exception) {
+                                StunRepository.appendLog("⚠️ Failed to add app to allowed filter: $app")
+                            }
+                        }
+                    } else { // Disallow
+                        for (app in apps) {
+                            try {
+                                builder.addDisallowedApplication(app)
+                            } catch (e: Exception) {
+                                StunRepository.appendLog("⚠️ Failed to add app to disallowed filter: $app")
+                            }
+                        }
+                        builder.addDisallowedApplication(packageName)
+                    }
+                } else {
+                    builder.addDisallowedApplication(packageName)
+                }
 
                 vpnInterface = builder.establish()
 

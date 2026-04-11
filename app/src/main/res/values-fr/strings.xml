@@ -85,7 +85,16 @@
     <string name="notif_title">Stun est en cours d\'exécution</string>
     <string name="notif_text">Le trafic est protégé</string>
 
-
     <string name="reason_ssh_down">Go SSH library offline</string>
     <string name="reason_hev_down">HEV engine offline</string>
+
+    <string name="app_filtering">Filtrage d\'applications</string>
+    <string name="filter_mode">Mode de filtrage</string>
+    <string name="filter_apps_hint">Applications à filtrer (séparées par des virgules)</string>
+    <string name="override_app_filtering">Outrepasser le filtrage</string>
+    <string name="filter_allow">Autoriser</string>
+    <string name="filter_disallow">Interdire</string>
+    <string name="search_apps">Rechercher des applications…</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Annuler</string>
 </resources>

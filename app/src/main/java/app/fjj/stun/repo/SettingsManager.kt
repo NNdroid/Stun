@@ -21,6 +21,8 @@ object SettingsManager {
     private const val KEY_GEOSITE_DIRECT = "geosite_direct"
     private const val KEY_GEOIP_DIRECT = "geoip_direct"
     private const val KEY_LAST_UPDATE_TIME = "last_update_time"
+    private const val KEY_FILTER_APPS = "filter_apps"
+    private const val KEY_FILTER_MODE = "filter_mode"
 
     const val DEFAULT_LOG_LEVEL = "INFO"
     const val DEFAULT_REMOTE_DNS_SERVER = "doh://8.8.8.8/dns-query"
@@ -69,6 +71,12 @@ object SettingsManager {
 
     fun getLastUpdateTime(context: Context): Long = getPrefs(context).getLong(KEY_LAST_UPDATE_TIME, 0L)
     fun saveLastUpdateTime(context: Context, time: Long) = getPrefs(context).edit { putLong(KEY_LAST_UPDATE_TIME, time) }
+
+    fun getFilterApps(context: Context): String = getPrefs(context).getString(KEY_FILTER_APPS, "") ?: ""
+    fun saveFilterApps(context: Context, apps: String) = getPrefs(context).edit { putString(KEY_FILTER_APPS, apps) }
+
+    fun getFilterMode(context: Context): Int = getPrefs(context).getInt(KEY_FILTER_MODE, 0)
+    fun saveFilterMode(context: Context, mode: Int) = getPrefs(context).edit { putInt(KEY_FILTER_MODE, mode) }
 
     fun getGeositeCachePath(context: Context): String = File(context.cacheDir, "geosite.dat").absolutePath
     fun getGeoipCachePath(context: Context): String = File(context.cacheDir, "geoip.dat").absolutePath

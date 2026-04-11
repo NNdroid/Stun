@@ -19,6 +19,7 @@ class ConfigActivity : AppCompatActivity() {
     private lateinit var binding: ActivityConfigBinding
     private var profileId: String? = null
     private var currentProfile: Profile = Profile()
+    private val filterModes = arrayOf("Disallow", "Allow")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -74,6 +75,13 @@ class ConfigActivity : AppCompatActivity() {
             binding.layoutDnsOverride.visibility = if (isChecked) View.VISIBLE else View.GONE
         }
 
+        binding.switchAppFilterOverride.setOnCheckedChangeListener { _, isChecked ->
+            binding.layoutAppFilterOverride.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
+
+        val filterAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, filterModes)
+        binding.spinnerFilterMode.setAdapter(filterAdapter)
+
         // Load values
         thread {
             currentProfile = if (isEdit) {
@@ -117,6 +125,25 @@ class ConfigActivity : AppCompatActivity() {
                 binding.etUdpgwAddr.setText(currentProfile.udpgwAddr)
                 binding.etGeositeDirect.setText(currentProfile.geositeDirect)
                 binding.etGeoipDirect.setText(currentProfile.geoipDirect)
+
+                // App Filtering Overrides
+                binding.switchAppFilterOverride.isChecked = currentProfile.appFilterOverride
+                binding.layoutAppFilterOverride.visibility = if (currentProfile.appFilterOverride) View.VISIBLE else View.GONE
+                binding.spinnerFilterMode.setText(if (currentProfile.filterMode == 1) "Allow" else "Disallow", false)
+                binding.etFilterApps.setText(currentProfile.filterApps)
+
+                binding.etFilterApps.setOnClickListener {
+                    val fragment = AppFilterDialogFragment.newInstance(binding.etFilterApps.text.toString())
+                    fragment.setOnAppFilterSelectedListener(object : AppFilterDialogFragment.OnAppFilterSelectedListener {
+                        override fun onAppFilterSelected(selectedPackages: String) {
+                            binding.etFilterApps.setText(selectedPackages)
+                        }
+                    })
+                    fragment.show(supportFragmentManager, "AppFilterDialog")
+                }
+
+                binding.etFilterApps.isFocusable = false
+                binding.etFilterApps.isClickable = true
             }
         }
 
@@ -137,7 +164,10 @@ class ConfigActivity : AppCompatActivity() {
                 localDns = binding.etLocalDns.text.toString(),
                 udpgwAddr = binding.etUdpgwAddr.text.toString(),
                 geositeDirect = binding.etGeositeDirect.text.toString(),
-                geoipDirect = binding.etGeoipDirect.text.toString()
+                geoipDirect = binding.etGeoipDirect.text.toString(),
+                appFilterOverride = binding.switchAppFilterOverride.isChecked,
+                filterMode = if (binding.spinnerFilterMode.text.toString() == "Allow") 1 else 0,
+                filterApps = binding.etFilterApps.text.toString()
             )
 
             thread {

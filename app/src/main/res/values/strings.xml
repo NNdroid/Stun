@@ -88,4 +88,14 @@
 
     <string name="reason_ssh_down">Go SSH library offline</string>
     <string name="reason_hev_down">HEV engine offline</string>
+
+    <string name="app_filtering">Application Filtering</string>
+    <string name="filter_mode">Filter Mode</string>
+    <string name="filter_apps_hint">Apps to Filter (comma separated)</string>
+    <string name="override_app_filtering">Override App Filtering</string>
+    <string name="filter_allow">Allow</string>
+    <string name="filter_disallow">Disallow</string>
+    <string name="search_apps">Search apps...</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
 </resources>

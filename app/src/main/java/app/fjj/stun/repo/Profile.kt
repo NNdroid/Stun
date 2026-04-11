@@ -27,6 +27,11 @@ data class Profile(
     var geositeDirect: String = SettingsManager.DEFAULT_GEOSITE_DIRECT_FLAGS,
     var geoipDirect: String = SettingsManager.DEFAULT_GEOIP_DIRECT_FLAGS,
 
+    // App Filtering Overrides
+    var appFilterOverride: Boolean = false,
+    var filterApps: String = "",
+    var filterMode: Int = 0, // 0: Disallow, 1: Allow
+
     // HTTP specific options
     var disableStatusCheck: Boolean = false
 ) {

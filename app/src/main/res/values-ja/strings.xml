@@ -87,4 +87,14 @@
 
     <string name="reason_ssh_down">Go SSHライブラリがオフラインです</string>
     <string name="reason_hev_down">HEVエンジンがオフラインです</string>
+
+    <string name="app_filtering">アプリのフィルタリング</string>
+    <string name="filter_mode">フィルタモード</string>
+    <string name="filter_apps_hint">フィルターするアプリ (カンマ区切り)</string>
+    <string name="override_app_filtering">アプリフィルタリングをオーバーライド</string>
+    <string name="filter_allow">許可</string>
+    <string name="filter_disallow">禁止</string>
+    <string name="search_apps">アプリを検索…</string>
+    <string name="ok">OK</string>
+    <string name="cancel">キャンセル</string>
 </resources>

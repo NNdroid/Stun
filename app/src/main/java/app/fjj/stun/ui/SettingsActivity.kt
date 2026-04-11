@@ -18,6 +18,7 @@ class SettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySettingsBinding
     private val logLevels = arrayOf("DEBUG", "INFO", "WARN", "ERROR")
+    private val filterModes = arrayOf("Disallow", "Allow")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -54,6 +55,26 @@ class SettingsActivity : AppCompatActivity() {
         binding.etLocalDnsServer.setText(SettingsManager.getLocalDnsServer(this))
         binding.etUdpgwAddr.setText(SettingsManager.getUdpgwAddr(this))
 
+        // Setup Application Filtering
+        val filterAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, filterModes)
+        binding.spinnerFilterMode.setAdapter(filterAdapter)
+        val currentFilterMode = SettingsManager.getFilterMode(this)
+        binding.spinnerFilterMode.setText(if (currentFilterMode == 1) "Allow" else "Disallow", false)
+        binding.etFilterApps.setText(SettingsManager.getFilterApps(this))
+
+        binding.etFilterApps.setOnClickListener {
+            val fragment = AppFilterDialogFragment.newInstance(binding.etFilterApps.text.toString())
+            fragment.setOnAppFilterSelectedListener(object : AppFilterDialogFragment.OnAppFilterSelectedListener {
+                override fun onAppFilterSelected(selectedPackages: String) {
+                    binding.etFilterApps.setText(selectedPackages)
+                }
+            })
+            fragment.show(supportFragmentManager, "AppFilterDialog")
+        }
+
+        binding.etFilterApps.isFocusable = false
+        binding.etFilterApps.isClickable = true
+
         // Setup Geo Data
         binding.etGeositeUrl.setText(SettingsManager.getGeositeUrl(this))
         binding.etGeoipUrl.setText(SettingsManager.getGeoipUrl(this))
@@ -89,6 +110,10 @@ class SettingsActivity : AppCompatActivity() {
             SettingsManager.saveUpdateInterval(this, interval)
             SettingsManager.saveGeositeDirect(this, binding.etGeositeDirect.text.toString())
             SettingsManager.saveGeoipDirect(this, binding.etGeoipDirect.text.toString())
+
+            val filterMode = if (binding.spinnerFilterMode.text.toString() == "Allow") 1 else 0
+            SettingsManager.saveFilterMode(this, filterMode)
+            SettingsManager.saveFilterApps(this, binding.etFilterApps.text.toString())
 
             Toast.makeText(this, getString(app.fjj.stun.R.string.settings_saved), Toast.LENGTH_SHORT).show()
             finish()

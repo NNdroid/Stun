@@ -85,7 +85,16 @@
     <string name="notif_title">Stun 正在運行</string>
     <string name="notif_text">流量正受到保護</string>
 
-
     <string name="reason_ssh_down">Go SSH library offline</string>
     <string name="reason_hev_down">HEV engine offline</string>
+
+    <string name="app_filtering">應用過濾</string>
+    <string name="filter_mode">過濾模式</string>
+    <string name="filter_apps_hint">要過濾的應用 (逗號分隔)</string>
+    <string name="override_app_filtering">覆蓋應用過濾</string>
+    <string name="filter_allow">允許</string>
+    <string name="filter_disallow">不允許</string>
+    <string name="search_apps">搜尋應用…</string>
+    <string name="ok">確定</string>
+    <string name="cancel">取消</string>
 </resources>
