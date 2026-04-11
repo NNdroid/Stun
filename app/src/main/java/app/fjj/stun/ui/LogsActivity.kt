@@ -9,10 +9,12 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import app.fjj.stun.databinding.ActivityLogsBinding
 import app.fjj.stun.repo.StunRepository
+import com.google.android.material.tabs.TabLayout
 
 class LogsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLogsBinding
+    private var currentTab = 0 // 0 for App Logs, 1 for Tunnel Logs
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -37,12 +39,21 @@ class LogsActivity : AppCompatActivity() {
             insets
         }
 
-        StunRepository.logData.observe(this) { logs ->
-            binding.tvLogs.text = logs
-            // Auto scroll to bottom
-            binding.scrollView.post {
-                binding.scrollView.fullScroll(android.view.View.FOCUS_DOWN)
+        binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab?) {
+                currentTab = tab?.position ?: 0
+                updateLogView()
             }
+            override fun onTabUnselected(tab: TabLayout.Tab?) {}
+            override fun onTabReselected(tab: TabLayout.Tab?) {}
+        })
+
+        StunRepository.appLogs.observe(this) {
+            if (currentTab == 0) updateLogView(it)
+        }
+
+        StunRepository.tunnelLogs.observe(this) {
+            if (currentTab == 1) updateLogView(it)
         }
 
         binding.btnClear.setOnClickListener {
@@ -54,6 +65,22 @@ class LogsActivity : AppCompatActivity() {
             val clip = android.content.ClipData.newPlainText("VPN Logs", binding.tvLogs.text)
             clipboard.setPrimaryClip(clip)
             Toast.makeText(this, "Logs copied to clipboard", Toast.LENGTH_SHORT).show()
+        }
+
+        updateLogView()
+    }
+
+    private fun updateLogView(logs: String? = null) {
+        val content = logs ?: if (currentTab == 0) {
+            StunRepository.appLogs.value ?: ""
+        } else {
+            StunRepository.tunnelLogs.value ?: ""
+        }
+        binding.tvLogs.text = content
+        
+        // Auto scroll to bottom
+        binding.scrollView.post {
+            binding.scrollView.fullScroll(android.view.View.FOCUS_DOWN)
         }
     }
 

@@ -27,11 +27,13 @@
     <string name="custom_host">自定义域名</string>
     <string name="custom_path">自定义路径</string>
     <string name="save_configuration">保存配置</string>
+    <string name="disable_status_check">禁用状态码验证</string>
 
     <string name="unified_config">通用配置</string>
     <string name="log_level">日志过滤等级</string>
     <string name="remote_dns">远程 DNS 服务器 (IP:端口)</string>
     <string name="local_dns">本地 DNS 服务器 (IP:端口)</string>
+    <string name="udpgw_addr">UDP Gateway 地址 (IP:端口)</string>
     <string name="geo_data_config">Geo 数据配置</string>
     <string name="geosite_url">GeoSite URL</string>
     <string name="geoip_url">GeoIP URL</string>
@@ -48,7 +50,8 @@
     <string name="clear_logs">清空日志</string>
     <string name="copy">复制</string>
     <string name="close">关闭</string>
-
+    <string name="app_logs">应用日志</string>
+    <string name="tunnel_logs">隧道日志</string>
     <string name="action_export">导出配置</string>
     <string name="action_import">导入配置</string>
 

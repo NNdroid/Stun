@@ -25,7 +25,10 @@ data class Profile(
     var localDns: String = SettingsManager.DEFAULT_LOCAL_DNS_SERVER,
     var udpgwAddr: String = SettingsManager.DEFAULT_UDPGW_ADDR,
     var geositeDirect: String = SettingsManager.DEFAULT_GEOSITE_DIRECT_FLAGS,
-    var geoipDirect: String = SettingsManager.DEFAULT_GEOIP_DIRECT_FLAGS
+    var geoipDirect: String = SettingsManager.DEFAULT_GEOIP_DIRECT_FLAGS,
+
+    // HTTP specific options
+    var disableStatusCheck: Boolean = false
 ) {
     companion object {
         const val TUNNEL_TYPE_BASE = "base"

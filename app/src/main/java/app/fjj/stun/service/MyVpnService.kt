@@ -168,10 +168,37 @@ class MyVpnService : VpnService() {
     }
 
     private fun loadMySshLogger() {
-        val logPath = StunRepository.getLogFilePath(this@MyVpnService)
+        val logPath = StunRepository.getTunnelLogFilePath(this@MyVpnService)
         val logLevel = SettingsManager.getLogLevel(this@MyVpnService)
         myssh.Myssh.initLogger(logPath, logLevel)
         myssh.Myssh.startWebLogger(10880, logPath)
+
+        // 启动一个线程实时读取 go.log 并更新到 LiveData
+        thread(start = true, name = "TunnelLogWatcher") {
+            val file = File(logPath)
+            var lastPos = 0L
+            while (!userRequestedStop) {
+                if (file.exists()) {
+                    val len = file.length()
+                    if (len < lastPos) {
+                        // 文件被清空或截断
+                        lastPos = 0
+                    }
+                    if (len > lastPos) {
+                        file.inputStream().use { input ->
+                            input.skip(lastPos)
+                            val bytes = input.readBytes()
+                            if (bytes.isNotEmpty()) {
+                                val text = String(bytes)
+                                StunRepository.appendTunnelLog(text.trimEnd())
+                            }
+                        }
+                        lastPos = len
+                    }
+                }
+                Thread.sleep(500)
+            }
+        }
     }
 
     /**
@@ -194,9 +221,10 @@ class MyVpnService : VpnService() {
             put("custom_path", selectedProfile.customPath)
             put("http_payload", selectedProfile.httpPayload)
             put("udpgw_addr", udpgwAddr)
+            put("disable_status_check", selectedProfile.disableStatusCheck)
         }
 
-        StunRepository.appendLog("Go lib: Dialing SSH with UDPGW: $udpgwAddr...")
+        StunRepository.appendLog("Go lib: Dialing SSH with UdpGW: $udpgwAddr...")
         return myssh.Myssh.startSshTProxy2(config.toString())
     }
 

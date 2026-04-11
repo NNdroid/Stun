@@ -27,11 +27,13 @@
     <string name="custom_host">Hôte personnalisé</string>
     <string name="custom_path">Chemin personnalisé</string>
     <string name="save_configuration">Enregistrer la configuration</string>
+    <string name="disable_status_check">Désactiver la validation du code d\'état</string>
 
     <string name="unified_config">Configuration unifiée</string>
     <string name="log_level">Niveau de filtrage des journaux</string>
     <string name="remote_dns">Serveur DNS distant (IP:Port)</string>
     <string name="local_dns">Serveur DNS local (IP:Port)</string>
+    <string name="udpgw_addr">Adresse de la passerelle UDP (IP:Port)</string>
     <string name="geo_data_config">Configuration des données géo</string>
     <string name="geosite_url">URL GeoSite</string>
     <string name="geoip_url">URL GeoIP</string>
@@ -48,7 +50,8 @@
     <string name="clear_logs">Effacer les journaux</string>
     <string name="copy">Copier</string>
     <string name="close">Fermer</string>
-
+    <string name="app_logs">Journaux d\'application</string>
+    <string name="tunnel_logs">Journaux de tunnel</string>
     <string name="action_export">Exporter les profils</string>
     <string name="action_import">Importer les profils</string>
 

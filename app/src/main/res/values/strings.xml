@@ -27,6 +27,7 @@
     <string name="custom_host">Custom Host</string>
     <string name="custom_path">Custom Path</string>
     <string name="save_configuration">Save Configuration</string>
+    <string name="disable_status_check">Disable Status Code Validation</string>
 
     <string name="unified_config">Unified Configuration</string>
     <string name="log_level">Log Filter Level</string>
@@ -49,6 +50,8 @@
     <string name="clear_logs">Clear Logs</string>
     <string name="copy">Copy</string>
     <string name="close">Close</string>
+    <string name="app_logs">App Logs</string>
+    <string name="tunnel_logs">Tunnel Logs</string>
 
     <string name="action_export">Export Profiles</string>
     <string name="action_import">Import Profiles</string>

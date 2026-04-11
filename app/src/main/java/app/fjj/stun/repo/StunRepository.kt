@@ -5,53 +5,58 @@ import androidx.lifecycle.MutableLiveData
 import java.io.File
 
 object StunRepository {
-    // 限制最大保留字符数，防止内存无限增长（约 10000 字符）
     private const val MAX_LOG_SIZE = 10000
 
-    // 使用 StringBuilder 提高拼接效率
-    private val logBuilder = StringBuilder()
+    private val appLogBuilder = StringBuilder()
+    private val tunnelLogBuilder = StringBuilder()
 
-    val vpnState = MutableLiveData<VpnState>(VpnState.DISCONNECTED)
-    val logData = MutableLiveData("")
+    val vpnState = MutableLiveData(VpnState.DISCONNECTED)
+    val appLogs = MutableLiveData("")
+    val tunnelLogs = MutableLiveData("")
 
     /**
-     * 向日志中追加一行内容
-     * 自动处理线程同步、字符串裁剪和 UI 更新
+     * 向指定日志源追加内容
      */
-    @Synchronized
+    private fun append(builder: StringBuilder, liveData: MutableLiveData<String>, text: String) {
+        synchronized(builder) {
+            builder.append(text)
+            if (builder.length > MAX_LOG_SIZE) {
+                val overflow = builder.length - MAX_LOG_SIZE
+                val firstLineEnd = builder.indexOf("\n", overflow)
+                if (firstLineEnd != -1) {
+                    builder.delete(0, firstLineEnd + 1)
+                }
+            }
+            liveData.postValue(builder.toString())
+        }
+    }
+
+    fun appendAppLog(text: String) = append(appLogBuilder, appLogs, text)
+    fun appendTunnelLog(text: String) = append(tunnelLogBuilder, tunnelLogs, text + "\n")
+
+    /**
+     * 兼容旧接口，底层 StunLogger 仍会通过此方法间接触发 appendAppLog
+     */
     fun appendLog(line: String) {
         StunLogger.i("StunRepo", line)
     }
 
-    /**
-     * 清空所有日志
-     */
     @Synchronized
     fun clearLogs() {
-        logBuilder.setLength(0)
-        logData.postValue("")
-    }
-
-    /**
-     * 初始化日志监听，将 StunLogger 的输出同步到 LiveData
-     */
-    fun setupLogBridge() {
-        StunLogger.logListener = { line ->
-            synchronized(logBuilder) {
-                logBuilder.append(line)
-                if (logBuilder.length > MAX_LOG_SIZE) {
-                    val overflow = logBuilder.length - MAX_LOG_SIZE
-                    val firstLineEnd = logBuilder.indexOf("\n", overflow)
-                    if (firstLineEnd != -1) {
-                        logBuilder.delete(0, firstLineEnd + 1)
-                    }
-                }
-                logData.postValue(logBuilder.toString())
-            }
+        synchronized(appLogBuilder) {
+            appLogBuilder.setLength(0)
+            appLogs.postValue("")
+        }
+        synchronized(tunnelLogBuilder) {
+            tunnelLogBuilder.setLength(0)
+            tunnelLogs.postValue("")
         }
     }
 
-    fun getLogFilePath(ctx: Context): String {
-        return File(ctx.cacheDir, "go.log").absolutePath
+    fun setupLogBridge() {
+        StunLogger.logListener = { line -> appendAppLog(line) }
     }
+
+    fun getAppLogFilePath(ctx: Context) = File(ctx.cacheDir, "stun.log").absolutePath
+    fun getTunnelLogFilePath(ctx: Context) = File(ctx.cacheDir, "go.log").absolutePath
 }

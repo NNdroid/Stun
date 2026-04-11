@@ -156,6 +156,14 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_disable_status_check"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/disable_status_check"
+                android:visibility="gone" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/switch_dns_override"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

@@ -67,6 +67,7 @@ class ConfigActivity : AppCompatActivity() {
             binding.layoutProxyAddr.visibility = if (isBase) View.GONE else View.VISIBLE
             binding.layoutCustomHost.visibility = if (isBase) View.GONE else View.VISIBLE
             binding.layoutCustomPath.visibility = if (isWsOrWssOrH2OrGrpcOrH3OrWt) View.VISIBLE else View.GONE
+            binding.switchDisableStatusCheck.visibility = if (isHttp) View.VISIBLE else View.GONE
         }
 
         binding.switchDnsOverride.setOnCheckedChangeListener { _, isChecked ->
@@ -100,8 +101,10 @@ class ConfigActivity : AppCompatActivity() {
                 binding.layoutProxyAddr.visibility = if (isBase) View.GONE else View.VISIBLE
                 binding.layoutCustomHost.visibility = if (isBase) View.GONE else View.VISIBLE
                 binding.layoutCustomPath.visibility = if (isWsOrWssOrH2OrGrpcOrH3OrWt) View.VISIBLE else View.GONE
+                binding.switchDisableStatusCheck.visibility = if (isHttp) View.VISIBLE else View.GONE
 
                 binding.etHttpPayload.setText(currentProfile.httpPayload)
+                binding.switchDisableStatusCheck.isChecked = currentProfile.disableStatusCheck
                 binding.etProxyAddr.setText(currentProfile.proxyAddr)
                 binding.etCustomHost.setText(currentProfile.customHost)
                 binding.etCustomPath.setText(currentProfile.customPath)
@@ -125,6 +128,7 @@ class ConfigActivity : AppCompatActivity() {
                 pass = binding.etPass.text.toString(),
                 tunnelType = binding.spinnerTunnelType.text.toString(),
                 httpPayload = binding.etHttpPayload.text.toString(),
+                disableStatusCheck = binding.switchDisableStatusCheck.isChecked,
                 proxyAddr = binding.etProxyAddr.text.toString(),
                 customHost = binding.etCustomHost.text.toString(),
                 customPath = binding.etCustomPath.text.toString(),
