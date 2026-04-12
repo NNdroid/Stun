@@ -30,6 +30,7 @@ import app.fjj.stun.repo.StunRepository
 import app.fjj.stun.repo.VpnState
 import app.fjj.stun.service.MyVpnService
 import app.fjj.stun.util.AppUtils
+import app.fjj.stun.util.KeystoreUtils
 import app.fjj.stun.util.QRUtils
 import com.google.android.material.navigation.NavigationView
 import com.google.gson.Gson
@@ -136,7 +137,6 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         }
 
         val initialRvPadding = binding.rvProfiles.paddingBottom
-        val initialBottomPadding = binding.bottomContainer.paddingBottom
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -144,7 +144,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             binding.appBar.updatePadding(top = systemBars.top)
 
             binding.rvProfiles.updatePadding(bottom = initialRvPadding + systemBars.bottom)
-            binding.bottomContainer.updatePadding(bottom = initialBottomPadding + systemBars.bottom)
+            binding.bottomContainer.updatePadding(bottom = systemBars.bottom)
             insets
         }
 
@@ -159,7 +159,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             prepareVpn()
         }
 
-        binding.statusBar.setOnClickListener {
+        binding.tvStatus.setOnClickListener {
             testSelectedProfileLatency()
         }
 
@@ -263,7 +263,10 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     private fun showShareDialog(profile: Profile) {
         val json = Gson().toJson(profile)
         val base64String = Base64.encodeToString(json.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-        val bitmap = QRUtils.generateQRCode(base64String, 500, 500)
+        
+        val displayMetrics = resources.displayMetrics
+        val qrSize = (displayMetrics.widthPixels * 0.83).toInt()
+        val bitmap = QRUtils.generateQRCode(base64String, qrSize, qrSize)
 
         if (bitmap != null) {
             val dialogView = LayoutInflater.from(this).inflate(app.fjj.stun.R.layout.dialog_qr_code, null)
@@ -364,7 +367,6 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
     private fun testSelectedProfileLatency() {
         if (!isVpnRunning) {
-            prepareVpn()
             return
         }
 
@@ -426,13 +428,64 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         }
     }
 
+    private fun validateSelectedProfile(): Boolean {
+        val profile = ProfileManager.getSelectedProfile(this)
+        if (profile.id.isEmpty()) {
+            Toast.makeText(this, getString(app.fjj.stun.R.string.error_no_profile_selected), Toast.LENGTH_SHORT).show()
+            return false
+        }
+
+        if (profile.authType == Profile.AUTH_TYPE_PASSWORD) {
+            if (profile.pass.isEmpty()) {
+                Toast.makeText(this, getString(app.fjj.stun.R.string.error_field_required), Toast.LENGTH_SHORT).show()
+                return false
+            }
+        } else if (profile.authType == Profile.AUTH_TYPE_PRIVATEKEY) {
+            if (profile.privateKey.isEmpty()) {
+                Toast.makeText(this, getString(app.fjj.stun.R.string.error_field_required), Toast.LENGTH_SHORT).show()
+                return false
+            }
+
+            val checkResult = myssh.Myssh.checkIfKeyEncrypted(profile.privateKey)
+            when (checkResult) {
+                1L -> { // Password required
+                    val decryptedPass = KeystoreUtils.decrypt(profile.keyPass)
+                    if (decryptedPass.isEmpty()) {
+                        Toast.makeText(this, getString(app.fjj.stun.R.string.error_key_password_required), Toast.LENGTH_SHORT).show()
+                        return false
+                    }
+                    try {
+                        if (!myssh.Myssh.validatePassphrase(profile.privateKey, decryptedPass)) {
+                            Toast.makeText(this, getString(app.fjj.stun.R.string.error_invalid_key_password), Toast.LENGTH_SHORT).show()
+                            return false
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(this, getString(app.fjj.stun.R.string.error_invalid_key_password), Toast.LENGTH_SHORT).show()
+                        return false
+                    }
+                }
+                2L -> { // Incorrect format
+                    Toast.makeText(this, getString(app.fjj.stun.R.string.error_invalid_private_key), Toast.LENGTH_SHORT).show()
+                    return false
+                }
+            }
+        }
+        return true
+    }
+
     private fun prepareVpn() {
+        val currentState = StunRepository.vpnState.value ?: VpnState.DISCONNECTED
+        
+        // If we're not currently connected or reconnecting, we're trying to start a new connection.
+        // Perform credential validation before proceeding.
+        if (currentState != VpnState.CONNECTED && currentState != VpnState.RECONNECTING) {
+            if (!validateSelectedProfile()) return
+        }
+
         val intent = VpnService.prepare(this)
         if (intent != null) {
             vpnLauncher.launch(intent)
         } else {
-            val currentState = StunRepository.vpnState.value ?: VpnState.DISCONNECTED
-
             // 如果正在连接中，忽略操作（理论上按钮已被禁用，加一层防护）
             if (currentState == VpnState.CONNECTING) return
 

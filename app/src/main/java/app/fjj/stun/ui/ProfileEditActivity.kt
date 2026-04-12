@@ -13,6 +13,7 @@ import androidx.core.widget.doAfterTextChanged
 import app.fjj.stun.databinding.ActivityProfileEditBinding
 import app.fjj.stun.repo.ProfileManager
 import app.fjj.stun.repo.Profile
+import app.fjj.stun.util.KeystoreUtils
 import kotlin.concurrent.thread
 
 class ProfileEditActivity : AppCompatActivity() {
@@ -117,8 +118,9 @@ class ProfileEditActivity : AppCompatActivity() {
                 
                 binding.spinnerAuthType.setText(if (currentProfile.authType == Profile.AUTH_TYPE_PRIVATEKEY) getString(app.fjj.stun.R.string.auth_key) else getString(app.fjj.stun.R.string.auth_password), false)
                 updateAuthTypeVisibility(currentProfile.authType)
-                binding.etPass.setText(currentProfile.pass)
+                binding.etPass.setText("")
                 binding.etPrivateKey.setText(currentProfile.privateKey)
+                binding.etKeyPass.setText("")
 
                 binding.spinnerTunnelType.setText(currentProfile.tunnelType, false)
                 updateTunnelTypeVisibility()
@@ -192,13 +194,50 @@ class ProfileEditActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
+            if (authType == Profile.AUTH_TYPE_PRIVATEKEY) {
+                val privateKey = binding.etPrivateKey.text.toString()
+                val inputKeyPass = binding.etKeyPass.text.toString()
+                val actualKeyPass = inputKeyPass.ifEmpty { KeystoreUtils.decrypt(currentProfile.keyPass) }
+
+                val checkResult = myssh.Myssh.checkIfKeyEncrypted(privateKey)
+                when (checkResult) {
+                    1L -> { // Password required
+                        if (actualKeyPass.isEmpty()) {
+                            binding.layoutKeyPass.error = getString(app.fjj.stun.R.string.error_field_required)
+                            Toast.makeText(this, getString(app.fjj.stun.R.string.error_key_password_required), Toast.LENGTH_SHORT).show()
+                            return@setOnClickListener
+                        }
+                        // Try to parse with password to verify it
+                        try {
+                            val validatePassphraseResult = myssh.Myssh.validatePassphrase(privateKey, actualKeyPass)
+                            if (!validatePassphraseResult) {
+                                binding.layoutKeyPass.error = getString(app.fjj.stun.R.string.error_invalid_key_password)
+                                Toast.makeText(this, getString(app.fjj.stun.R.string.error_invalid_key_password), Toast.LENGTH_SHORT).show()
+                                return@setOnClickListener
+                            }
+                        } catch (e: Exception) {
+                            binding.layoutKeyPass.error = getString(app.fjj.stun.R.string.error_invalid_key_password)
+                            Toast.makeText(this, getString(app.fjj.stun.R.string.error_invalid_key_password), Toast.LENGTH_SHORT).show()
+                            return@setOnClickListener
+                        }
+                    }
+                    2L -> { // Incorrect format
+                        binding.layoutPrivateKey.error = getString(app.fjj.stun.R.string.error_invalid_private_key)
+                        Toast.makeText(this, getString(app.fjj.stun.R.string.error_invalid_private_key), Toast.LENGTH_SHORT).show()
+                        return@setOnClickListener
+                    }
+                }
+                binding.layoutKeyPass.error = null
+            }
+
             val updatedProfile = currentProfile.copy(
                 name = binding.etName.text.toString(),
                 sshAddr = binding.etSshAddr.text.toString(),
                 user = binding.etUser.text.toString(),
                 authType = authType,
-                pass = binding.etPass.text.toString(),
+                pass = binding.etPass.text.toString().ifEmpty { currentProfile.pass },
                 privateKey = binding.etPrivateKey.text.toString(),
+                keyPass = if (binding.etKeyPass.text.toString().isNotEmpty()) KeystoreUtils.encrypt(binding.etKeyPass.text.toString()) else currentProfile.keyPass,
                 tunnelType = binding.spinnerTunnelType.text.toString(),
                 httpPayload = binding.etHttpPayload.text.toString(),
                 disableStatusCheck = binding.switchDisableStatusCheck.isChecked,
@@ -259,7 +298,7 @@ class ProfileEditActivity : AppCompatActivity() {
     }
 
     private fun validatePassword(content: String) {
-        if (content.isBlank()) {
+        if (content.isBlank() && currentProfile.pass.isEmpty()) {
             binding.layoutPass.error = getString(app.fjj.stun.R.string.error_field_required)
         } else {
             binding.layoutPass.error = null
@@ -278,6 +317,7 @@ class ProfileEditActivity : AppCompatActivity() {
         val isKey = authType == Profile.AUTH_TYPE_PRIVATEKEY
         binding.layoutPass.visibility = if (isKey) View.GONE else View.VISIBLE
         binding.layoutPrivateKey.visibility = if (isKey) View.VISIBLE else View.GONE
+        binding.layoutKeyPass.visibility = if (isKey) View.VISIBLE else View.GONE
         
         // Trigger validation when switching
         if (isKey) {

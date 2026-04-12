@@ -29,6 +29,7 @@
     <string name="username">Username</string>
     <string name="password">Password</string>
     <string name="private_key">Private Key</string>
+    <string name="key_password">Key Password (Optional)</string>
     <string name="auth_type">Authentication Type</string>
     <string name="auth_password">Password</string>
     <string name="auth_key">Private Key</string>
@@ -97,6 +98,9 @@
     <string name="geodata_success">GeoData updated successfully</string>
     <string name="error_field_required">This field cannot be empty</string>
     <string name="error_invalid_path">Path must start with /</string>
+    <string name="error_no_profile_selected">Please select a profile first</string>
+    <string name="error_key_password_required">Key password required for this key</string>
+    <string name="error_invalid_key_password">Incorrect key password</string>
     <string name="verify_fingerprint">Verify Server Fingerprint</string>
     <string name="server_fingerprint">Server Fingerprint (SHA256)</string>
     <string name="override_dns_routing">Override DNS and Routing</string>

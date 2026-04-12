@@ -8,6 +8,7 @@
     <string name="about_source_code">源代码</string>
     <string name="about_license">开源许可</string>
     <string name="about_feedback">反馈</string>
+    <string name="about_telegram">Telegram 频道</string>
     <string name="about_privacy_policy">隐私政策</string>
     <string name="about_version_format">v%1$s (Lib %2$s)</string>
 
@@ -28,6 +29,7 @@
     <string name="username">用户名</string>
     <string name="password">密码</string>
     <string name="private_key">私钥</string>
+    <string name="key_password">密钥密码（可选）</string>
     <string name="auth_type">认证类型</string>
     <string name="auth_password">密码</string>
     <string name="auth_key">私钥</string>
@@ -70,6 +72,9 @@
     <string name="vpn_permission_denied">VPN 权限被拒绝</string>
     <string name="settings_saved">设置已保存</string>
     <string name="error_invalid_path">路径必须以 / 开头</string>
+    <string name="error_no_profile_selected">请先选择一个配置</string>
+    <string name="error_key_password_required">此密钥需要密码</string>
+    <string name="error_invalid_key_password">密钥密码错误</string>
     <string name="verify_fingerprint">验证服务器指纹</string>
     <string name="server_fingerprint">服务器指纹 (SHA256)</string>
     <string name="override_dns_routing">覆盖 DNS 和路由</string>

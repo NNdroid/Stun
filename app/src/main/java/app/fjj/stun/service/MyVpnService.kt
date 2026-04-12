@@ -13,6 +13,7 @@ import app.fjj.stun.repo.ProfileManager
 import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.StunLogger
 import app.fjj.stun.repo.VpnState
+import app.fjj.stun.util.KeystoreUtils
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -246,6 +247,7 @@ class MyVpnService : VpnService() {
             put("auth_type", selectedProfile.authType)
             put("pass", selectedProfile.pass)
             put("private_key", selectedProfile.privateKey)
+            put("private_key_passphrase", KeystoreUtils.decrypt(selectedProfile.keyPass))
             put("tunnel_type", selectedProfile.tunnelType)
             put("proxy_addr", selectedProfile.proxyAddr)
             put("custom_host", selectedProfile.customHost)

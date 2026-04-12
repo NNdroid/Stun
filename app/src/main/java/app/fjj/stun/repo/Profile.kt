@@ -39,7 +39,10 @@ data class Profile(
 
     // Server Fingerprint
     var verifyFingerprint: Boolean = false,
-    var serverFingerprint: String = ""
+    var serverFingerprint: String = "",
+
+    // Private key password (stored encrypted)
+    var keyPass: String = ""
 ) {
     companion object {
         const val TUNNEL_TYPE_BASE = "base"

@@ -28,6 +28,7 @@
     <string name="username">用戶名</string>
     <string name="password">密碼</string>
     <string name="private_key">私鑰</string>
+    <string name="key_password">密鑰密碼（可選）</string>
     <string name="auth_type">認證類型</string>
     <string name="auth_password">密碼</string>
     <string name="auth_key">私鑰</string>

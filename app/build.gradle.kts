@@ -78,6 +78,7 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.core.ktx)
     implementation(libs.zxing.android.embedded)
+    implementation(libs.tink.android)
 
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.room.runtime)

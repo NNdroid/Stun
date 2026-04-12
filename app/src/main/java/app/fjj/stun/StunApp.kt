@@ -12,6 +12,8 @@ class StunApp : Application() {
         // Initialize StunLogger in cache directory
         val logFile = File(cacheDir, "stun.log")
         StunLogger.init(logFile, append = true)
+
+        app.fjj.stun.util.KeystoreUtils.init(this)
         
         // Setup bridge to UI LiveData
         app.fjj.stun.repo.StunRepository.setupLogBridge()

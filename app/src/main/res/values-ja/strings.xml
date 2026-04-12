@@ -3,7 +3,12 @@
     <string name="action_add">追加</string>
     <string name="action_filter">フィルター</string>
     <string name="action_logs">ログ</string>
-    <string name="action_settings">設定</string>
+    <string name="about_source_code">ソースコード</string>
+    <string name="about_license">オープンソースライセンス</string>
+    <string name="about_feedback">フィードバック</string>
+    <string name="about_telegram">Telegramチャンネル</string>
+    <string name="about_privacy_policy">プライバシーポリシー</string>
+    <string name="about_version_format">v%1$s (Lib %2$s)</string>
 
     <string name="status_disconnected">未接続、タップして開始</string>
     <string name="status_connected">接続済み</string>
@@ -22,6 +27,7 @@
     <string name="username">ユーザー名</string>
     <string name="password">パスワード</string>
     <string name="private_key">秘密鍵</string>
+    <string name="key_password">キーのパスワード（任意）</string>
     <string name="auth_type">認証タイプ</string>
     <string name="auth_password">パスワード</string>
     <string name="auth_key">秘密鍵</string>
@@ -91,6 +97,9 @@
     <string name="filter_allow_mode">許可 (正方向)</string>
     <string name="profile_saved">プロファイルを保存しました</string>
     <string name="error_field_required">このフィールドは必須です</string>
+    <string name="error_no_profile_selected">最初にプロファイルを選択してください</string>
+    <string name="error_key_password_required">このキーにはパスワードが必要です</string>
+    <string name="error_invalid_key_password">キーのパスワードが正しくありません</string>
     <string name="error_invalid_private_key">秘密鍵の形式が無効です</string>
     <string name="geodata_success">Geoデータが正常に更新されました</string>
 
