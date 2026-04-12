@@ -20,7 +20,7 @@ class ProfileEditActivity : AppCompatActivity() {
     private lateinit var binding: ActivityProfileEditBinding
     private var profileId: String? = null
     private var currentProfile: Profile = Profile()
-    private val filterModes = arrayOf("Disallow", "Allow")
+    private lateinit var filterModes: Array<String>
     private val authTypes = arrayOf(Profile.AUTH_TYPE_PASSWORD, Profile.AUTH_TYPE_PRIVATEKEY)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,6 +28,11 @@ class ProfileEditActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityProfileEditBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        filterModes = arrayOf(
+            getString(app.fjj.stun.R.string.filter_disallow_mode),
+            getString(app.fjj.stun.R.string.filter_allow_mode)
+        )
 
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
@@ -141,7 +146,7 @@ class ProfileEditActivity : AppCompatActivity() {
                 // App Filtering Overrides
                 binding.switchAppFilterOverride.isChecked = currentProfile.appFilterOverride
                 binding.layoutAppFilterOverride.visibility = if (currentProfile.appFilterOverride) View.VISIBLE else View.GONE
-                binding.spinnerFilterMode.setText(if (currentProfile.filterMode == 1) "Allow" else "Disallow", false)
+                binding.spinnerFilterMode.setText(if (currentProfile.filterMode == 1) getString(app.fjj.stun.R.string.filter_allow_mode) else getString(app.fjj.stun.R.string.filter_disallow_mode), false)
                 binding.etFilterApps.setText(currentProfile.filterApps)
 
                 binding.etFilterApps.setOnClickListener {
@@ -207,7 +212,7 @@ class ProfileEditActivity : AppCompatActivity() {
                 geositeDirect = binding.etGeositeDirect.text.toString(),
                 geoipDirect = binding.etGeoipDirect.text.toString(),
                 appFilterOverride = binding.switchAppFilterOverride.isChecked,
-                filterMode = if (binding.spinnerFilterMode.text.toString() == "Allow") 1 else 0,
+                filterMode = if (binding.spinnerFilterMode.text.toString() == getString(app.fjj.stun.R.string.filter_allow_mode)) 1 else 0,
                 filterApps = binding.etFilterApps.text.toString(),
                 verifyFingerprint = binding.switchVerifyFingerprint.isChecked,
                 serverFingerprint = binding.etServerFingerprint.text.toString()

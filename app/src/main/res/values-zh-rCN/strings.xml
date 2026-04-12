@@ -63,9 +63,16 @@
     <string name="invalid_qr">二维码格式无效</string>
     <string name="vpn_permission_denied">VPN 权限被拒绝</string>
     <string name="settings_saved">设置已保存</string>
+    <string name="error_invalid_path">路径必须以 / 开头</string>
+    <string name="verify_fingerprint">验证服务器指纹</string>
+    <string name="server_fingerprint">服务器指纹 (SHA256)</string>
+    <string name="override_dns_routing">覆盖 DNS 和路由</string>
+    <string name="filter_disallow_mode">不允许 (反向)</string>
+    <string name="filter_allow_mode">允许 (正向)</string>
     <string name="profile_saved">配置已保存</string>
     <string name="error_invalid_private_key">私钥格式无效</string>
     <string name="geodata_success">GeoData 更新成功</string>
+    <string name="error_field_required">该项必填</string>
 
     <string name="main_disconnected">未连接</string>
     <string name="main_connected">已连接</string>

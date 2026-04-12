@@ -30,7 +30,7 @@
     <string name="proxy_address">Proxy Address</string>
     <string name="custom_host">Custom Host</string>
     <string name="custom_path">Custom Path</string>
-    <string name="override_dns_routing">Override DNS and Routing</string>
+
     <string name="save_configuration">Save Configuration</string>
     <string name="disable_status_check">Disable Status Code Validation</string>
 
@@ -92,6 +92,8 @@
     <string name="error_invalid_path">Path must start with /</string>
     <string name="verify_fingerprint">Verify Server Fingerprint</string>
     <string name="server_fingerprint">Server Fingerprint (SHA256)</string>
+    <string name="override_dns_routing">Override DNS and Routing</string>
+
 
     <string name="notif_title">Stun is running</string>
     <string name="notif_text">Traffic is being protected</string>
@@ -105,6 +107,8 @@
     <string name="override_app_filtering">Override App Filtering</string>
     <string name="filter_allow">Allow</string>
     <string name="filter_disallow">Disallow</string>
+    <string name="filter_disallow_mode">Disallow (Reverse)</string>
+    <string name="filter_allow_mode">Allow (Forward)</string>
     <string name="search_apps">Search apps...</string>
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>

@@ -63,7 +63,14 @@
     <string name="invalid_qr">Format de code QR invalide</string>
     <string name="vpn_permission_denied">Permission VPN refusée</string>
     <string name="settings_saved">Paramètres enregistrés</string>
+    <string name="error_invalid_path">Le chemin doit commencer par /</string>
+    <string name="verify_fingerprint">Vérifier l\'empreinte du serveur</string>
+    <string name="server_fingerprint">Empreinte du serveur (SHA256)</string>
+    <string name="override_dns_routing">Outrepasser le DNS et le routage</string>
+    <string name="filter_disallow_mode">Interdire (Inversé)</string>
+    <string name="filter_allow_mode">Autoriser (Normal)</string>
     <string name="profile_saved">Profil enregistré</string>
+    <string name="error_field_required">Ce champ ne peut pas être vide</string>
     <string name="error_invalid_private_key">Format de clé privée invalide</string>
     <string name="geodata_success">GeoData mise à jour avec succès</string>
 
