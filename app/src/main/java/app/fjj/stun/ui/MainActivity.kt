@@ -29,6 +29,7 @@ import app.fjj.stun.repo.StunLogger
 import app.fjj.stun.repo.StunRepository
 import app.fjj.stun.repo.VpnState
 import app.fjj.stun.service.MyVpnService
+import app.fjj.stun.util.AppUtils
 import app.fjj.stun.util.QRUtils
 import com.google.android.material.navigation.NavigationView
 import com.google.gson.Gson
@@ -129,7 +130,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         }
 
         try {
-            headerView.findViewById<TextView>(app.fjj.stun.R.id.tv_version)?.text = myssh.Myssh.getVersion()
+            headerView.findViewById<TextView>(app.fjj.stun.R.id.tv_version)?.text = AppUtils.getAppVersion(this)
         } catch (e: Exception) {
             headerView.findViewById<TextView>(app.fjj.stun.R.id.tv_version)?.text = "v1.0.0"
         }
@@ -220,6 +221,9 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             }
             app.fjj.stun.R.id.nav_logs -> {
                 startActivity(Intent(this, LogsActivity::class.java))
+            }
+            app.fjj.stun.R.id.nav_about -> {
+                startActivity(Intent(this, AboutActivity::class.java))
             }
         }
         binding.drawerLayout.closeDrawer(GravityCompat.START)

@@ -3,7 +3,13 @@
     <string name="action_add">Ajouter</string>
     <string name="action_filter">Filtrer</string>
     <string name="action_logs">Journaux</string>
+    <string name="action_about">À propos</string>
     <string name="action_settings">Paramètres</string>
+    <string name="about_source_code">Code source</string>
+    <string name="about_license">Licences open source</string>
+    <string name="about_feedback">Commentaires</string>
+    <string name="about_privacy_policy">Politique de confidentialité</string>
+    <string name="about_version_format">v%1$s (Lib %2$s)</string>
 
     <string name="status_disconnected">Déconnecté, appuyez pour démarrer</string>
     <string name="status_connected">Connecté</string>

@@ -46,7 +46,14 @@
         <activity
             android:name=".ui.LogsActivity"
             android:label="@string/app_logs"
-            android:exported="false" />
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.AboutActivity"
+            android:label="@string/action_about"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name="com.journeyapps.barcodescanner.CaptureActivity"

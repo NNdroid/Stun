@@ -3,7 +3,13 @@
     <string name="action_add">添加</string>
     <string name="action_filter">过滤</string>
     <string name="action_logs">日志</string>
+    <string name="action_about">关于</string>
     <string name="action_settings">设置</string>
+    <string name="about_source_code">源代码</string>
+    <string name="about_license">开源许可</string>
+    <string name="about_feedback">反馈</string>
+    <string name="about_privacy_policy">隐私政策</string>
+    <string name="about_version_format">v%1$s (Lib %2$s)</string>
 
     <string name="status_disconnected">未连接，点击启动</string>
     <string name="status_connected">已连接</string>
