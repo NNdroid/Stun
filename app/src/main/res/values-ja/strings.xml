@@ -21,6 +21,10 @@
     <string name="ssh_address">SSHアドレス (IP:ポート)</string>
     <string name="username">ユーザー名</string>
     <string name="password">パスワード</string>
+    <string name="private_key">秘密鍵</string>
+    <string name="auth_type">認証タイプ</string>
+    <string name="auth_password">パスワード</string>
+    <string name="auth_key">秘密鍵</string>
     <string name="tunnel_type">トンネルタイプ</string>
     <string name="http_payload">HTTPペイロード</string>
     <string name="proxy_address">プロキシアドレス</string>
@@ -80,6 +84,7 @@
     <string name="vpn_permission_denied">VPN権限が拒否されました</string>
     <string name="settings_saved">設定を保存しました</string>
     <string name="profile_saved">プロファイルを保存しました</string>
+    <string name="error_invalid_private_key">秘密鍵の形式が無効です</string>
     <string name="geodata_success">Geoデータが正常に更新されました</string>
 
     <string name="notif_title">Stunが実行中です</string>

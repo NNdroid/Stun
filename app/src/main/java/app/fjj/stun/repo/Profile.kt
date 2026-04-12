@@ -12,6 +12,8 @@ data class Profile(
     var sshAddr: String = "198.98.61.214:666",
     var user: String = "opentunnel.net-test007",
     var pass: String = "521qqwq",
+    var authType: String = AUTH_TYPE_PASSWORD,
+    var privateKey: String = "",
     var tunnelType: String = TUNNEL_TYPE_TLS,
     var proxyAddr: String = "198.98.61.214:443",
     var customHost: String = "microsoft.com",
@@ -33,7 +35,11 @@ data class Profile(
     var filterMode: Int = 0, // 0: Disallow, 1: Allow
 
     // HTTP specific options
-    var disableStatusCheck: Boolean = false
+    var disableStatusCheck: Boolean = false,
+
+    // Server Fingerprint
+    var verifyFingerprint: Boolean = false,
+    var serverFingerprint: String = ""
 ) {
     companion object {
         const val TUNNEL_TYPE_BASE = "base"
@@ -47,6 +53,9 @@ data class Profile(
         const val TUNNEL_TYPE_GRPCC = "grpcc"
         const val TUNNEL_TYPE_H3 = "h3"
         const val TUNNEL_TYPE_WT = "wt"
+
+        const val AUTH_TYPE_PASSWORD = "password"
+        const val AUTH_TYPE_PRIVATEKEY = "privatekey"
 
         fun getAllTunnelTypes() = arrayOf(
             TUNNEL_TYPE_BASE,

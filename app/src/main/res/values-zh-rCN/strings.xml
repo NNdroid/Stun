@@ -21,6 +21,10 @@
     <string name="ssh_address">SSH 地址 (IP:端口)</string>
     <string name="username">用户名</string>
     <string name="password">密码</string>
+    <string name="private_key">私钥</string>
+    <string name="auth_type">认证类型</string>
+    <string name="auth_password">密码</string>
+    <string name="auth_key">私钥</string>
     <string name="tunnel_type">隧道类型</string>
     <string name="http_payload">HTTP 载荷</string>
     <string name="proxy_address">代理地址</string>
@@ -60,6 +64,7 @@
     <string name="vpn_permission_denied">VPN 权限被拒绝</string>
     <string name="settings_saved">设置已保存</string>
     <string name="profile_saved">配置已保存</string>
+    <string name="error_invalid_private_key">私钥格式无效</string>
     <string name="geodata_success">GeoData 更新成功</string>
 
     <string name="main_disconnected">未连接</string>

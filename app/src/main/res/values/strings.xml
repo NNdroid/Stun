@@ -21,11 +21,16 @@
     <string name="ssh_address">SSH Address (IP:Port)</string>
     <string name="username">Username</string>
     <string name="password">Password</string>
+    <string name="private_key">Private Key</string>
+    <string name="auth_type">Authentication Type</string>
+    <string name="auth_password">Password</string>
+    <string name="auth_key">Private Key</string>
     <string name="tunnel_type">Tunnel Type</string>
     <string name="http_payload">HTTP Payload</string>
     <string name="proxy_address">Proxy Address</string>
     <string name="custom_host">Custom Host</string>
     <string name="custom_path">Custom Path</string>
+    <string name="override_dns_routing">Override DNS and Routing</string>
     <string name="save_configuration">Save Configuration</string>
     <string name="disable_status_check">Disable Status Code Validation</string>
 
@@ -81,7 +86,12 @@
     <string name="vpn_permission_denied">VPN Permission Denied</string>
     <string name="settings_saved">Settings saved</string>
     <string name="profile_saved">Profile saved</string>
+    <string name="error_invalid_private_key">Invalid private key format</string>
     <string name="geodata_success">GeoData updated successfully</string>
+    <string name="error_field_required">This field cannot be empty</string>
+    <string name="error_invalid_path">Path must start with /</string>
+    <string name="verify_fingerprint">Verify Server Fingerprint</string>
+    <string name="server_fingerprint">Server Fingerprint (SHA256)</string>
 
     <string name="notif_title">Stun is running</string>
     <string name="notif_text">Traffic is being protected</string>

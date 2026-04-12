@@ -183,7 +183,7 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, getString(app.fjj.stun.R.string.main_selected, profile.name), Toast.LENGTH_SHORT).show()
             },
             onEditClick = { profile ->
-                val intent = Intent(this, ConfigActivity::class.java)
+                val intent = Intent(this, ProfileEditActivity::class.java)
                 intent.putExtra("EXTRA_PROFILE_ID", profile.id)
                 startActivity(intent)
             },
@@ -275,7 +275,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle(getString(app.fjj.stun.R.string.main_add_profile_title))
             .setItems(options) { _, which ->
                 when (which) {
-                    0 -> startActivity(Intent(this, ConfigActivity::class.java))
+                    0 -> startActivity(Intent(this, ProfileEditActivity::class.java))
                     1 -> scanQRCode()
                 }
             }

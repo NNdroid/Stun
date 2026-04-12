@@ -21,6 +21,10 @@
     <string name="ssh_address">Adresse SSH (IP:Port)</string>
     <string name="username">Nom d\'utilisateur</string>
     <string name="password">Mot de passe</string>
+    <string name="private_key">Clé privée</string>
+    <string name="auth_type">Type d\'authentification</string>
+    <string name="auth_password">Mot de passe</string>
+    <string name="auth_key">Clé privée</string>
     <string name="tunnel_type">Type de tunnel</string>
     <string name="http_payload">Charge utile HTTP</string>
     <string name="proxy_address">Adresse du proxy</string>
@@ -60,6 +64,7 @@
     <string name="vpn_permission_denied">Permission VPN refusée</string>
     <string name="settings_saved">Paramètres enregistrés</string>
     <string name="profile_saved">Profil enregistré</string>
+    <string name="error_invalid_private_key">Format de clé privée invalide</string>
     <string name="geodata_success">GeoData mise à jour avec succès</string>
 
     <string name="main_disconnected">Déconnecté</string>

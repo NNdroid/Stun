@@ -32,7 +32,7 @@
         </activity>
 
         <activity
-            android:name=".ui.ConfigActivity"
+            android:name=".ui.ProfileEditActivity"
             android:label="VPN Configuration"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
