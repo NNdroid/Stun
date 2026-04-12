@@ -7,21 +7,19 @@ import app.fjj.stun.repo.StunLogger
  * 因为 libhev-socks5-tunnel.so 内部硬编码了对该路径的引用。
  */
 object TProxyService {
+    init {
+        System.loadLibrary("hev-socks5-tunnel")
+    }
     // 启动服务：传入配置文件路径和虚拟网卡的文件描述符(FD)
+    @JvmStatic
     external fun TProxyStartService(config_path: String?, fd: Int)
 
     // 停止服务
+    @JvmStatic
     external fun TProxyStopService()
 
     // 获取统计数据（可选）
+    @JvmStatic
+    @Suppress("unused")
     external fun TProxyGetStats(): LongArray?
-
-    init {
-        // 加载 C++ 库
-        try {
-            System.loadLibrary("hev-socks5-tunnel")
-        } catch (e: UnsatisfiedLinkError) {
-            StunLogger.e("HEV-JNI", "无法加载库: " + e.message, e)
-        }
-    }
 }
