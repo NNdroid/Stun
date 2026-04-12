@@ -10,10 +10,13 @@ import android.view.MenuItem
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.GravityCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
@@ -24,9 +27,10 @@ import app.fjj.stun.repo.ProfileManager
 import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.StunLogger
 import app.fjj.stun.repo.StunRepository
-import app.fjj.stun.service.MyVpnService
 import app.fjj.stun.repo.VpnState
+import app.fjj.stun.service.MyVpnService
 import app.fjj.stun.util.QRUtils
+import com.google.android.material.navigation.NavigationView
 import com.google.gson.Gson
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
@@ -36,7 +40,7 @@ import java.net.Proxy
 import java.net.URL
 import kotlin.concurrent.thread
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var adapter: ProfileAdapter
@@ -104,6 +108,32 @@ class MainActivity : AppCompatActivity() {
 
         setSupportActionBar(binding.toolbar)
 
+        val toggle = ActionBarDrawerToggle(
+            this, binding.drawerLayout, binding.toolbar,
+            app.fjj.stun.R.string.connect, app.fjj.stun.R.string.disconnect
+        )
+        binding.drawerLayout.addDrawerListener(toggle)
+        toggle.syncState()
+
+        binding.navView.setNavigationItemSelectedListener(this)
+
+        // Update version in header
+        val headerView = binding.navView.getHeaderView(0)
+        val ivHeaderBg = headerView.findViewById<ImageView>(app.fjj.stun.R.id.iv_header_bg)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            ivHeaderBg?.setRenderEffect(
+                android.graphics.RenderEffect.createBlurEffect(
+                    25f, 25f, android.graphics.Shader.TileMode.CLAMP
+                )
+            )
+        }
+
+        try {
+            headerView.findViewById<TextView>(app.fjj.stun.R.id.tv_version)?.text = myssh.Myssh.getVersion()
+        } catch (e: Exception) {
+            headerView.findViewById<TextView>(app.fjj.stun.R.id.tv_version)?.text = "v1.0.0"
+        }
+
         val initialRvPadding = binding.rvProfiles.paddingBottom
         val initialBottomPadding = binding.bottomContainer.paddingBottom
 
@@ -169,6 +199,31 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (binding.drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                    binding.drawerLayout.closeDrawer(GravityCompat.START)
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                    isEnabled = true
+                }
+            }
+        })
+    }
+
+    override fun onNavigationItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            app.fjj.stun.R.id.nav_settings -> {
+                startActivity(Intent(this, SettingsActivity::class.java))
+            }
+            app.fjj.stun.R.id.nav_logs -> {
+                startActivity(Intent(this, LogsActivity::class.java))
+            }
+        }
+        binding.drawerLayout.closeDrawer(GravityCompat.START)
+        return true
     }
 
     private fun setupRecyclerView() {
@@ -237,6 +292,21 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(app.fjj.stun.R.menu.main_menu, menu)
+
+        val filterItem = menu?.findItem(app.fjj.stun.R.id.action_filter)
+        val searchView = filterItem?.actionView as? androidx.appcompat.widget.SearchView
+
+        searchView?.setOnQueryTextListener(object : androidx.appcompat.widget.SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                return false
+            }
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                adapter.filter(newText ?: "")
+                return true
+            }
+        })
+
         return true
     }
 
@@ -246,8 +316,7 @@ class MainActivity : AppCompatActivity() {
                 showAddOptions()
                 return true
             }
-            app.fjj.stun.R.id.action_settings -> {
-                startActivity(Intent(this, SettingsActivity::class.java))
+            app.fjj.stun.R.id.action_filter -> {
                 return true
             }
             app.fjj.stun.R.id.action_export -> {
@@ -256,10 +325,6 @@ class MainActivity : AppCompatActivity() {
             }
             app.fjj.stun.R.id.action_import -> {
                 importLauncher.launch(arrayOf("application/json", "application/octet-stream", "*/*"))
-                return true
-            }
-            app.fjj.stun.R.id.action_logs -> {
-                startActivity(Intent(this, LogsActivity::class.java))
                 return true
             }
         }
@@ -289,10 +354,16 @@ class MainActivity : AppCompatActivity() {
         options.setCameraId(0)
         options.setBeepEnabled(false)
         options.setBarcodeImageEnabled(true)
+        options.setOrientationLocked(false)
         barcodeLauncher.launch(options)
     }
 
     private fun testSelectedProfileLatency() {
+        if (!isVpnRunning) {
+            prepareVpn()
+            return
+        }
+
         val selectedProfile = ProfileManager.getSelectedProfile(this)
         binding.tvStatus.text = getString(app.fjj.stun.R.string.main_testing_latency)
 
@@ -351,7 +422,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 🌟 核心修改区：更新点击逻辑，基于当前 Enum 状态进行操作
     private fun prepareVpn() {
         val intent = VpnService.prepare(this)
         if (intent != null) {

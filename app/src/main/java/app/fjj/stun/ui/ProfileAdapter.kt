@@ -16,6 +16,7 @@ class ProfileAdapter(
     private val onShareClick: (Profile) -> Unit
 ) : RecyclerView.Adapter<ProfileAdapter.ProfileViewHolder>() {
 
+    private var allProfiles: List<Profile> = emptyList()
     private val delays = mutableMapOf<String, String>()
 
     inner class ProfileViewHolder(val binding: ItemProfileBinding) : RecyclerView.ViewHolder(binding.root)
@@ -80,8 +81,19 @@ class ProfileAdapter(
     fun getProfiles() = profiles
 
     fun updateProfiles(newProfiles: List<Profile>, newSelectedId: String?) {
-        profiles = newProfiles
+        allProfiles = newProfiles
         selectedProfileId = newSelectedId
+        // Maintain current filter if possible, or just reset for now
+        profiles = newProfiles
+        notifyDataSetChanged()
+    }
+
+    fun filter(query: String) {
+        profiles = if (query.isEmpty()) {
+            allProfiles
+        } else {
+            allProfiles.filter { it.name.contains(query, ignoreCase = true) }
+        }
         notifyDataSetChanged()
     }
 

@@ -18,13 +18,18 @@ class SettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySettingsBinding
     private val logLevels = arrayOf("DEBUG", "INFO", "WARN", "ERROR")
-    private val filterModes = arrayOf("Disallow", "Allow")
+    private lateinit var filterModes: Array<String>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         binding = ActivitySettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        filterModes = arrayOf(
+            getString(app.fjj.stun.R.string.filter_disallow_mode),
+            getString(app.fjj.stun.R.string.filter_allow_mode)
+        )
 
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
@@ -59,7 +64,7 @@ class SettingsActivity : AppCompatActivity() {
         val filterAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, filterModes)
         binding.spinnerFilterMode.setAdapter(filterAdapter)
         val currentFilterMode = SettingsManager.getFilterMode(this)
-        binding.spinnerFilterMode.setText(if (currentFilterMode == 1) "Allow" else "Disallow", false)
+        binding.spinnerFilterMode.setText(if (currentFilterMode == 1) getString(app.fjj.stun.R.string.filter_allow_mode) else getString(app.fjj.stun.R.string.filter_disallow_mode), false)
         binding.etFilterApps.setText(SettingsManager.getFilterApps(this))
 
         binding.etFilterApps.setOnClickListener {
@@ -111,7 +116,7 @@ class SettingsActivity : AppCompatActivity() {
             SettingsManager.saveGeositeDirect(this, binding.etGeositeDirect.text.toString())
             SettingsManager.saveGeoipDirect(this, binding.etGeoipDirect.text.toString())
 
-            val filterMode = if (binding.spinnerFilterMode.text.toString() == "Allow") 1 else 0
+            val filterMode = if (binding.spinnerFilterMode.text.toString() == getString(app.fjj.stun.R.string.filter_allow_mode)) 1 else 0
             SettingsManager.saveFilterMode(this, filterMode)
             SettingsManager.saveFilterApps(this, binding.etFilterApps.text.toString())
 
