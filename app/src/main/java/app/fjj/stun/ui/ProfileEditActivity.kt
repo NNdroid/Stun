@@ -26,7 +26,7 @@ class ProfileEditActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        binding = ActivityConfigBinding.inflate(layoutInflater)
+        binding = ActivityProfileEditBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         setSupportActionBar(binding.toolbar)
