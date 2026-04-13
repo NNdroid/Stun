@@ -1,7 +1,10 @@
 package app.fjj.stun.ui
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.VpnService
+import android.os.Build
 import android.os.Bundle
 import android.util.Base64
 import android.view.LayoutInflater
@@ -16,6 +19,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.GravityCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -54,10 +58,16 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == RESULT_OK) {
-            startVpnService()
+            checkAndRequestNotificationPermission()
         } else {
             Toast.makeText(this, getString(app.fjj.stun.R.string.vpn_permission_denied), Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { _ ->
+        startVpnService()
     }
 
     private val barcodeLauncher = registerForActivityResult(
@@ -494,8 +504,20 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 stopVpnService()
             } else {
                 // 如果处于断开或错误状态，发送启动指令
+                checkAndRequestNotificationPermission()
+            }
+        }
+    }
+
+    private fun checkAndRequestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
                 startVpnService()
             }
+        } else {
+            startVpnService()
         }
     }
 
