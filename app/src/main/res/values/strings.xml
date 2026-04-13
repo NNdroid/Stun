@@ -37,6 +37,7 @@
     <string name="http_payload">HTTP Payload</string>
     <string name="proxy_address">Proxy Address</string>
     <string name="custom_host">Custom Host</string>
+    <string name="server_name">Server Name</string>
     <string name="custom_path">Custom Path</string>
 
     <string name="save_configuration">Save Configuration</string>

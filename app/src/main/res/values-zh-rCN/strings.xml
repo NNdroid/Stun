@@ -36,7 +36,8 @@
     <string name="tunnel_type">隧道类型</string>
     <string name="http_payload">HTTP 载荷</string>
     <string name="proxy_address">代理地址</string>
-    <string name="custom_host">自定义域名</string>
+    <string name="custom_host">自定义 Host</string>
+    <string name="server_name">自定义 ServerName</string>
     <string name="custom_path">自定义路径</string>
     <string name="save_configuration">保存配置</string>
     <string name="disable_status_check">禁用状态码验证</string>

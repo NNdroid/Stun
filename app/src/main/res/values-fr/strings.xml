@@ -37,6 +37,7 @@
     <string name="http_payload">Charge utile HTTP</string>
     <string name="proxy_address">Adresse du proxy</string>
     <string name="custom_host">Hôte personnalisé</string>
+    <string name="server_name">Nom du serveur</string>
     <string name="custom_path">Chemin personnalisé</string>
     <string name="save_configuration">Enregistrer la configuration</string>
     <string name="disable_status_check">Désactiver la validation du code d\'état</string>

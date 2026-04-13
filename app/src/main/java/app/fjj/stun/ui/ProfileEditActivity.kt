@@ -129,6 +129,7 @@ class ProfileEditActivity : AppCompatActivity() {
                 binding.switchDisableStatusCheck.isChecked = currentProfile.disableStatusCheck
                 binding.etProxyAddr.setText(currentProfile.proxyAddr)
                 binding.etCustomHost.setText(currentProfile.customHost)
+                binding.etServerName.setText(currentProfile.serverName)
                 binding.etCustomPath.setText(currentProfile.customPath)
 
                 // Server Fingerprint
@@ -243,6 +244,7 @@ class ProfileEditActivity : AppCompatActivity() {
                 disableStatusCheck = binding.switchDisableStatusCheck.isChecked,
                 proxyAddr = binding.etProxyAddr.text.toString(),
                 customHost = binding.etCustomHost.text.toString(),
+                serverName = binding.etServerName.text.toString(),
                 customPath = binding.etCustomPath.text.toString(),
                 dnsOverride = binding.switchDnsOverride.isChecked,
                 remoteDns = binding.etRemoteDns.text.toString(),
@@ -279,10 +281,17 @@ class ProfileEditActivity : AppCompatActivity() {
                 selected == Profile.TUNNEL_TYPE_H2 || selected == Profile.TUNNEL_TYPE_H2C ||
                 selected == Profile.TUNNEL_TYPE_GRPC || selected == Profile.TUNNEL_TYPE_GRPCC ||
                 selected == Profile.TUNNEL_TYPE_H3 || selected == Profile.TUNNEL_TYPE_WT
+        
+        val isWssOrH2OrGrpcOrH3OrWt = selected == Profile.TUNNEL_TYPE_WSS ||
+                selected == Profile.TUNNEL_TYPE_H2 ||
+                selected == Profile.TUNNEL_TYPE_GRPC ||
+                selected == Profile.TUNNEL_TYPE_H3 ||
+                selected == Profile.TUNNEL_TYPE_WT
 
         binding.layoutHttpPayload.visibility = if (isHttp) View.VISIBLE else View.GONE
         binding.layoutProxyAddr.visibility = if (isBase) View.GONE else View.VISIBLE
         binding.layoutCustomHost.visibility = if (isBase) View.GONE else View.VISIBLE
+        binding.layoutServerName.visibility = if (isWssOrH2OrGrpcOrH3OrWt) View.VISIBLE else View.GONE
         binding.layoutCustomPath.visibility = if (isWsOrWssOrH2OrGrpcOrH3OrWt) View.VISIBLE else View.GONE
         binding.switchDisableStatusCheck.visibility = if (isHttp) View.VISIBLE else View.GONE
     }

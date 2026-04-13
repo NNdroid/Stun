@@ -35,6 +35,7 @@
     <string name="http_payload">HTTPペイロード</string>
     <string name="proxy_address">プロキシアドレス</string>
     <string name="custom_host">カスタムホスト</string>
+    <string name="server_name">サーバー名</string>
     <string name="custom_path">カスタムパス</string>
     <string name="save_configuration">設定を保存</string>
     <string name="disable_status_check">ステータスコードの検証を無効にする</string>
