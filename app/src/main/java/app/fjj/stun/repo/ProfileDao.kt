@@ -25,4 +25,7 @@ interface ProfileDao {
 
     @Query("DELETE FROM profiles")
     fun deleteAll()
+
+    @Query("UPDATE profiles SET totalTx = :tx, totalRx = :rx WHERE id = :id")
+    fun updateTrafficStats(id: String, tx: Long, rx: Long)
 }

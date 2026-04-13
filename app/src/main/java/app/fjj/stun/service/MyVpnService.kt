@@ -8,6 +8,7 @@ import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import androidx.core.app.NotificationCompat
+import kotlinx.coroutines.*
 import app.fjj.stun.repo.StunRepository
 import app.fjj.stun.repo.ProfileManager
 import app.fjj.stun.repo.SettingsManager
@@ -20,12 +21,19 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import kotlin.concurrent.thread
+import kotlin.math.log10
+import kotlin.math.pow
 
 @SuppressLint("VpnServicePolicy")
 class MyVpnService : VpnService() {
 
     private var vpnInterface: ParcelFileDescriptor? = null
     private val CHANNEL_ID = "StunVpnChannel"
+
+    private var lastTxBytes = 0L
+    private var lastRxBytes = 0L
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var monitorJob: Job? = null
 
     // 使用 Volatile 确保多线程间状态立即可见
     @Volatile private var userRequestedStop = false
@@ -142,6 +150,7 @@ class MyVpnService : VpnService() {
 
                     // 🌟 核心就绪，正式通知 UI “已连接”
                     StunRepository.vpnState.postValue(VpnState.CONNECTED)
+                    startTrafficMonitor()
 
                     // 阻塞当前线程，等待 Go 核心释放
                     myssh.Myssh.wgWait()
@@ -308,6 +317,8 @@ class MyVpnService : VpnService() {
      * 底层资源清理：需严格遵循关闭顺序，且多次调用绝对安全
      */
     private fun cleanupNative() {
+        monitorJob?.cancel()
+
         // 1. 发送 Go 核心停止指令 (这会触发所有网络断开，并使得 wgWait 自动解除阻塞)
         try { myssh.Myssh.stopSshTProxy() } catch (_: Exception) {}
 
@@ -333,7 +344,7 @@ class MyVpnService : VpnService() {
         stopSelf()
     }
 
-    private fun updateNotification() {
+    private fun updateNotification(contentText: String? = null) {
         val nm = getSystemService(NotificationManager::class.java)
         nm?.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, "VPN Status", NotificationManager.IMPORTANCE_LOW)
@@ -341,9 +352,10 @@ class MyVpnService : VpnService() {
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(app.fjj.stun.R.string.notif_title))
-            .setContentText(getString(app.fjj.stun.R.string.notif_text))
+            .setContentText(contentText ?: getString(app.fjj.stun.R.string.notif_text))
             .setSmallIcon(app.fjj.stun.R.drawable.ic_fox_logo)
             .setOngoing(true)
+            .setOnlyAlertOnce(true)
             .build()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -353,9 +365,52 @@ class MyVpnService : VpnService() {
         }
     }
 
+    private fun startTrafficMonitor() {
+        monitorJob?.cancel()
+        lastTxBytes = 0L
+        lastRxBytes = 0L
+        monitorJob = scope.launch {
+            while (isActive) {
+                val stats = try { hev.htproxy.TProxyService.TProxyGetStats() } catch (e: Exception) { null }
+                if (stats != null && stats.size >= 4) {
+                    val currentTxBytes = stats[1]
+                    val currentRxBytes = stats[3]
+
+                    val txSpeedBytes = if (lastTxBytes > 0) currentTxBytes - lastTxBytes else 0L
+                    val rxSpeedBytes = if (lastRxBytes > 0) currentRxBytes - lastRxBytes else 0L
+
+                    lastTxBytes = currentTxBytes
+                    lastRxBytes = currentRxBytes
+
+                    // Update profile stats in database
+                    val selectedProfileId = SettingsManager.getSelectedProfileId(this@MyVpnService)
+                    if (selectedProfileId != null) {
+                        ProfileManager.updateTrafficStats(this@MyVpnService, selectedProfileId, currentTxBytes, currentRxBytes)
+                    }
+
+                    val statusText = "↑ ${formatBytes(txSpeedBytes)}/s (${formatBytes(currentTxBytes)}) " +
+                                   "↓ ${formatBytes(rxSpeedBytes)}/s (${formatBytes(currentRxBytes)})"
+
+                    withContext(Dispatchers.Main) {
+                        updateNotification(statusText)
+                    }
+                }
+                delay(1000)
+            }
+        }
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        if (bytes <= 0) return "0 B"
+        val units = arrayOf("B", "KB", "MB", "GB", "TB")
+        val digitGroups = (log10(bytes.toDouble()) / log10(1024.0)).toInt().coerceIn(0, units.size - 1)
+        return String.format(java.util.Locale.US, "%.1f %s", bytes / 1024.0.pow(digitGroups.toDouble()), units[digitGroups])
+    }
+
     override fun onDestroy() {
         userRequestedStop = true
         stopVpnService()
+        scope.cancel()
         super.onDestroy()
     }
 }

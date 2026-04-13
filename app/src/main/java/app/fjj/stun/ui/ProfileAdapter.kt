@@ -69,6 +69,13 @@ class ProfileAdapter(
             
             tvDelay.text = delays[profile.id] ?: ""
 
+            if (profile.totalTx > 0 || profile.totalRx > 0) {
+                tvStats.visibility = View.VISIBLE
+                tvStats.text = "↑ ${formatBytes(profile.totalTx)}  ↓ ${formatBytes(profile.totalRx)}"
+            } else {
+                tvStats.visibility = View.GONE
+            }
+
             root.setOnClickListener { onProfileClick(profile) }
             btnEdit.setOnClickListener { onEditClick(profile) }
             btnDelete.setOnClickListener { onDeleteClick(profile) }
@@ -103,5 +110,12 @@ class ProfileAdapter(
         if (index != -1) {
             notifyItemChanged(index)
         }
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        if (bytes <= 0) return "0 B"
+        val units = arrayOf("B", "KB", "MB", "GB", "TB")
+        val digitGroups = (kotlin.math.log10(bytes.toDouble()) / kotlin.math.log10(1024.0)).toInt().coerceIn(0, units.size - 1)
+        return String.format(java.util.Locale.US, "%.1f %s", bytes / Math.pow(1024.0, digitGroups.toDouble()), units[digitGroups])
     }
 }

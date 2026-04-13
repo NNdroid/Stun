@@ -42,7 +42,11 @@ data class Profile(
     var serverFingerprint: String = "",
 
     // Private key password (stored encrypted)
-    var keyPass: String = ""
+    var keyPass: String = "",
+
+    // Traffic statistics
+    var totalTx: Long = 0,
+    var totalRx: Long = 0
 ) {
     companion object {
         const val TUNNEL_TYPE_BASE = "base"

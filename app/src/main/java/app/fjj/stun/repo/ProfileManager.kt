@@ -38,4 +38,8 @@ object ProfileManager {
             getProfiles(context).firstOrNull() ?: Profile()
         }
     }
+
+    fun updateTrafficStats(context: Context, id: String, tx: Long, rx: Long) {
+        AppDatabase.getDatabase(context).profileDao().updateTrafficStats(id, tx, rx)
+    }
 }
