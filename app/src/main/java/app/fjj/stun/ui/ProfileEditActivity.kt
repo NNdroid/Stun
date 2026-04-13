@@ -277,22 +277,23 @@ class ProfileEditActivity : AppCompatActivity() {
         val selected = binding.spinnerTunnelType.text.toString()
         val isHttp = selected == Profile.TUNNEL_TYPE_HTTP
         val isBase = selected == Profile.TUNNEL_TYPE_BASE
-        val isWsOrWssOrH2OrGrpcOrH3OrWt = selected == Profile.TUNNEL_TYPE_WS || selected == Profile.TUNNEL_TYPE_WSS ||
+        val isCustomPathSupported = selected == Profile.TUNNEL_TYPE_WS || selected == Profile.TUNNEL_TYPE_WSS ||
                 selected == Profile.TUNNEL_TYPE_H2 || selected == Profile.TUNNEL_TYPE_H2C ||
                 selected == Profile.TUNNEL_TYPE_GRPC || selected == Profile.TUNNEL_TYPE_GRPCC ||
                 selected == Profile.TUNNEL_TYPE_H3 || selected == Profile.TUNNEL_TYPE_WT
         
-        val isWssOrH2OrGrpcOrH3OrWt = selected == Profile.TUNNEL_TYPE_WSS ||
+        val isServerNameSupported = selected == Profile.TUNNEL_TYPE_WSS ||
                 selected == Profile.TUNNEL_TYPE_H2 ||
                 selected == Profile.TUNNEL_TYPE_GRPC ||
                 selected == Profile.TUNNEL_TYPE_H3 ||
-                selected == Profile.TUNNEL_TYPE_WT
+                selected == Profile.TUNNEL_TYPE_WT ||
+                selected == Profile.TUNNEL_TYPE_MASQUE
 
         binding.layoutHttpPayload.visibility = if (isHttp) View.VISIBLE else View.GONE
         binding.layoutProxyAddr.visibility = if (isBase) View.GONE else View.VISIBLE
         binding.layoutCustomHost.visibility = if (isBase) View.GONE else View.VISIBLE
-        binding.layoutServerName.visibility = if (isWssOrH2OrGrpcOrH3OrWt) View.VISIBLE else View.GONE
-        binding.layoutCustomPath.visibility = if (isWsOrWssOrH2OrGrpcOrH3OrWt) View.VISIBLE else View.GONE
+        binding.layoutServerName.visibility = if (isServerNameSupported) View.VISIBLE else View.GONE
+        binding.layoutCustomPath.visibility = if (isCustomPathSupported) View.VISIBLE else View.GONE
         binding.switchDisableStatusCheck.visibility = if (isHttp) View.VISIBLE else View.GONE
     }
 
