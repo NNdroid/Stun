@@ -35,28 +35,7 @@ class ProfileAdapter(
             val chain = if (profile.tunnelType == Profile.TUNNEL_TYPE_BASE) {
                 profile.sshAddr
             } else {
-                val sb = StringBuilder()
-                sb.append(profile.proxyAddr)
-                sb.append(" (")
-                sb.append(profile.tunnelType.uppercase())
-                
-                // Show custom host if present
-                if (profile.customHost.isNotBlank()) {
-                    sb.append(" @").append(profile.customHost)
-                }
-                
-                // Show custom path for appropriate types
-                val needsPath = profile.tunnelType in listOf(
-                    Profile.TUNNEL_TYPE_WS, Profile.TUNNEL_TYPE_WSS,
-                    Profile.TUNNEL_TYPE_H2, Profile.TUNNEL_TYPE_H2C
-                )
-                if (needsPath && profile.customPath.isNotBlank()) {
-                    sb.append(profile.customPath)
-                }
-                
-                sb.append(") ➔ ")
-                sb.append(profile.sshAddr)
-                sb.toString()
+                "${profile.proxyAddr} ➔ ${profile.sshAddr}"
             }
             
             tvAddr.text = chain

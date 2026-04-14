@@ -1,6 +1,7 @@
 package app.fjj.stun.repo
 
 import android.util.Log
+import androidx.annotation.Keep
 import java.io.File
 import java.io.FileWriter
 import java.text.SimpleDateFormat
@@ -8,12 +9,8 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.Executors
 
+@Keep
 object StunLogger {
-    private var fileWriter: FileWriter? = null
-
-    // 使用单线程池：既保证不在主线程写文件，又保证了日志按顺序逐条写入，彻底解决并发冲突
-    private val executor = Executors.newSingleThreadExecutor()
-
     // 日志时间格式，与 Go 端的 ISO8601 类似
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault())
 
@@ -22,27 +19,6 @@ object StunLogger {
 
     // 可选：用于 UI 实时显示的监听器
     var logListener: ((String) -> Unit)? = null
-
-    /**
-     * 初始化日志引擎
-     * @param logFile 日志文件路径
-     * @param append true 为追加模式，false 为每次启动清空旧日志 (对应 Go 端的 O_TRUNC)
-     */
-    fun init(logFile: File, append: Boolean = false) {
-        executor.execute {
-            try {
-                if (!logFile.exists()) {
-                    logFile.parentFile?.mkdirs()
-                    logFile.createNewFile()
-                }
-                // 初始化 FileWriter
-                fileWriter = FileWriter(logFile, append)
-                i("FileLogger", "================ Android 日志引擎初始化成功 ================")
-            } catch (e: Exception) {
-                Log.e("FileLogger", "初始化文件日志失败", e)
-            }
-        }
-    }
 
     // ==========================================
     // 对外暴露的便捷打印方法
@@ -80,29 +56,17 @@ object StunLogger {
 
         // 5. 通知监听器 (UI 更新)
         logListener?.invoke(logStr)
-
-        // 4. 扔到单线程池中异步写入文件
-        executor.execute {
-            try {
-                fileWriter?.append(logStr)
-                fileWriter?.flush() // 立即刷新到磁盘，防止 App 突然崩溃导致日志丢失
-            } catch (e: Exception) {
-                // 写文件失败时静默处理或回退到 logcat
-            }
-        }
     }
 
-    /**
-     * 退出 App 或关闭 VPN 服务时调用，释放句柄
-     */
-    fun release() {
-        executor.execute {
-            try {
-                fileWriter?.close()
-                fileWriter = null
-            } catch (e: Exception) {
-                // ignore
-            }
+    @JvmStatic
+    fun receiveGoLog(level: Int, tag: String, msg: String) {
+        when (level) {
+            0 -> d(tag, msg)
+            1 -> i(tag, msg)
+            2 -> w(tag, msg)
+            3 -> e(tag, msg)
+            4 -> e(tag, "🔥 PANIC: $msg") // 对应 Go Panic
+            5 -> e(tag, "💀 FATAL: $msg") // 对应 Go Fatal
         }
     }
 }

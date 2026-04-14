@@ -34,6 +34,16 @@ data class Profile(
     var serverName: String = "learn.microsoft.com",
     @SerializedName("customPath")
     var customPath: String = "/path/to/custom/path",
+    @SerializedName("enableCustomPath")
+    var enableCustomPath: Boolean = false,
+    @SerializedName("proxyAuthRequired")
+    var proxyAuthRequired: Boolean = false,
+    @SerializedName("proxyAuthToken")
+    var proxyAuthToken: String = "",
+    @SerializedName("proxyAuthUser")
+    var proxyAuthUser: String = "",
+    @SerializedName("proxyAuthPass")
+    var proxyAuthPass: String = "",
     @SerializedName("httpPayload")
     var httpPayload: String = "CONNECT [host] HTTP/1.1[crlf]Host: [host][crlf][crlf]",
     @SerializedName("type")

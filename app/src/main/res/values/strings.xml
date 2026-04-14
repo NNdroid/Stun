@@ -39,7 +39,12 @@
     <string name="custom_host">Custom Host</string>
     <string name="server_name">Server Name</string>
     <string name="custom_path">Custom Path</string>
+    <string name="enable_custom_path">Enable Custom Path</string>
 
+    <string name="proxy_auth_required">Proxy Authentication Required</string>
+    <string name="proxy_auth_token">Proxy Authentication Token</string>
+    <string name="proxy_auth_user">Proxy Authentication Username</string>
+    <string name="proxy_auth_pass">Proxy Authentication Password</string>
     <string name="save_configuration">Save Configuration</string>
     <string name="disable_status_check">Disable Status Code Validation</string>
 
@@ -63,6 +68,7 @@
 
     <string name="clear_logs">Clear Logs</string>
     <string name="copy">Copy</string>
+    <string name="copy_success">Logs copied to clipboard</string>
     <string name="close">Close</string>
     <string name="app_logs">App Logs</string>
     <string name="tunnel_logs">Tunnel Logs</string>

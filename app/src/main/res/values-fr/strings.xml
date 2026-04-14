@@ -39,6 +39,11 @@
     <string name="custom_host">Hôte personnalisé</string>
     <string name="server_name">Nom du serveur</string>
     <string name="custom_path">Chemin personnalisé</string>
+    <string name="enable_custom_path">Activer le chemin personnalisé</string>
+    <string name="proxy_auth_required">Authentification proxy requise</string>
+    <string name="proxy_auth_token">Jeton d\'authentification proxy</string>
+    <string name="proxy_auth_user">Nom d\'utilisateur d\'authentification proxy</string>
+    <string name="proxy_auth_pass">Mot de passe d\'authentification proxy</string>
     <string name="save_configuration">Enregistrer la configuration</string>
     <string name="disable_status_check">Désactiver la validation du code d\'état</string>
 
@@ -62,6 +67,7 @@
 
     <string name="clear_logs">Effacer les journaux</string>
     <string name="copy">Copier</string>
+    <string name="copy_success">Logs copiés dans le presse-papiers</string>
     <string name="close">Fermer</string>
     <string name="app_logs">Journaux d\'application</string>
     <string name="tunnel_logs">Journaux de tunnel</string>

@@ -39,6 +39,11 @@
     <string name="custom_host">自定义 Host</string>
     <string name="server_name">自定义 ServerName</string>
     <string name="custom_path">自定义路径</string>
+    <string name="enable_custom_path">启用自定义路径</string>
+    <string name="proxy_auth_required">需要代理认证</string>
+    <string name="proxy_auth_token">代理认证 Token</string>
+    <string name="proxy_auth_user">代理认证用户名</string>
+    <string name="proxy_auth_pass">代理认证密码</string>
     <string name="save_configuration">保存配置</string>
     <string name="disable_status_check">禁用状态码验证</string>
 
@@ -62,6 +67,7 @@
 
     <string name="clear_logs">清空日志</string>
     <string name="copy">复制</string>
+    <string name="copy_success">日志已复制到剪贴板</string>
     <string name="close">关闭</string>
     <string name="app_logs">应用日志</string>
     <string name="tunnel_logs">隧道日志</string>

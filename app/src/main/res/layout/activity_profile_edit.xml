@@ -9,15 +9,13 @@
         android:id="@+id/app_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorSurface"
-        app:elevation="0dp">
+        app:liftOnScroll="true">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:title="@string/add_profile"
-            app:titleCentered="true" />
+            app:title="@string/add_profile" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
@@ -29,10 +27,11 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="24dp">
+            android:padding="16dp">
 
+            <!-- Profile Info Section -->
             <com.google.android.material.textfield.TextInputLayout
-                style="?attr/textInputOutlinedStyle"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="@string/profile_name"
@@ -44,7 +43,7 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
-                style="?attr/textInputOutlinedStyle"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
@@ -57,7 +56,7 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
-                style="?attr/textInputOutlinedStyle"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
@@ -69,6 +68,7 @@
                     android:layout_height="wrap_content" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- Authentication Section -->
             <com.google.android.material.textfield.TextInputLayout
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
@@ -85,11 +85,12 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/layout_pass"
-                style="?attr/textInputOutlinedStyle"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:hint="@string/password"
+                app:endIconMode="password_toggle"
                 app:startIconDrawable="@drawable/ic_lock">
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_pass"
@@ -100,13 +101,13 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/layout_private_key"
-                style="?attr/textInputOutlinedStyle"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:hint="@string/private_key"
-                app:startIconDrawable="@drawable/ic_lock"
-                android:visibility="gone">
+                android:visibility="gone"
+                app:startIconDrawable="@drawable/ic_lock">
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_private_key"
                     android:layout_width="match_parent"
@@ -118,13 +119,14 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/layout_key_pass"
-                style="?attr/textInputOutlinedStyle"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:hint="@string/key_password"
-                app:startIconDrawable="@drawable/ic_lock"
-                android:visibility="gone">
+                android:visibility="gone"
+                app:endIconMode="password_toggle"
+                app:startIconDrawable="@drawable/ic_lock">
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_key_pass"
                     android:layout_width="match_parent"
@@ -132,6 +134,7 @@
                     android:inputType="textPassword" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- Tunnel Section -->
             <com.google.android.material.textfield.TextInputLayout
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
@@ -148,7 +151,7 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/layout_http_payload"
-                style="?attr/textInputOutlinedStyle"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
@@ -165,7 +168,7 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/layout_proxy_addr"
-                style="?attr/textInputOutlinedStyle"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
@@ -178,7 +181,7 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/layout_custom_host"
-                style="?attr/textInputOutlinedStyle"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
@@ -191,7 +194,7 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/layout_server_name"
-                style="?attr/textInputOutlinedStyle"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
@@ -203,12 +206,20 @@
                     android:layout_height="wrap_content" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/layout_custom_path"
-                style="?attr/textInputOutlinedStyle"
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switch_enable_custom_path"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
+                android:text="@string/enable_custom_path"
+                android:visibility="gone" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_custom_path"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
                 android:hint="@string/custom_path"
                 android:visibility="gone">
                 <com.google.android.material.textfield.TextInputEditText
@@ -217,7 +228,62 @@
                     android:layout_height="wrap_content" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <com.google.android.material.switchmaterial.SwitchMaterial
+            <!-- Material 3 Switches -->
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switch_auth_required"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/proxy_auth_required"
+                android:visibility="gone" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_auth_token"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="@string/proxy_auth_token"
+                android:visibility="gone"
+                app:endIconMode="password_toggle">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_auth_token"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textPassword" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_auth_user"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="@string/proxy_auth_user"
+                android:visibility="gone">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_auth_user"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_auth_pass"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="@string/proxy_auth_pass"
+                android:visibility="gone"
+                app:endIconMode="password_toggle">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_auth_pass"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textPassword" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.materialswitch.MaterialSwitch
                 android:id="@+id/switch_disable_status_check"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -225,7 +291,7 @@
                 android:text="@string/disable_status_check"
                 android:visibility="gone" />
 
-            <com.google.android.material.switchmaterial.SwitchMaterial
+            <com.google.android.material.materialswitch.MaterialSwitch
                 android:id="@+id/switch_verify_fingerprint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -234,7 +300,7 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/layout_server_fingerprint"
-                style="?attr/textInputOutlinedStyle"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
@@ -246,7 +312,12 @@
                     android:layout_height="wrap_content" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <com.google.android.material.switchmaterial.SwitchMaterial
+            <com.google.android.material.divider.MaterialDivider
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
                 android:id="@+id/switch_dns_override"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -262,7 +333,7 @@
                 android:visibility="gone">
 
                 <com.google.android.material.textfield.TextInputLayout
-                    style="?attr/textInputOutlinedStyle"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
@@ -274,7 +345,7 @@
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
-                    style="?attr/textInputOutlinedStyle"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
@@ -286,7 +357,7 @@
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
-                    style="?attr/textInputOutlinedStyle"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
@@ -298,7 +369,7 @@
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
-                    style="?attr/textInputOutlinedStyle"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
@@ -310,7 +381,7 @@
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
-                    style="?attr/textInputOutlinedStyle"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
@@ -322,7 +393,12 @@
                 </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
 
-            <com.google.android.material.switchmaterial.SwitchMaterial
+            <com.google.android.material.divider.MaterialDivider
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
                 android:id="@+id/switch_app_filter_override"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -351,7 +427,7 @@
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
-                    style="?attr/textInputOutlinedStyle"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
@@ -363,14 +439,14 @@
                 </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_save"
-                style="?attr/materialButtonStyle"
+                style="@style/Widget.Material3.Button"
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
+                android:layout_height="wrap_content"
                 android:layout_marginTop="32dp"
-                android:text="@string/save_configuration"
-                app:cornerRadius="16dp" />
+                android:minHeight="56dp"
+                android:text="@string/save_configuration" />
 
             <View
                 android:layout_width="match_parent"

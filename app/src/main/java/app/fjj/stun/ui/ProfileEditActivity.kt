@@ -15,6 +15,7 @@ import app.fjj.stun.repo.ProfileManager
 import app.fjj.stun.repo.Profile
 import app.fjj.stun.util.KeystoreUtils
 import kotlin.concurrent.thread
+import androidx.core.view.isVisible
 
 class ProfileEditActivity : AppCompatActivity() {
 
@@ -80,12 +81,20 @@ class ProfileEditActivity : AppCompatActivity() {
             binding.layoutDnsOverride.visibility = if (isChecked) View.VISIBLE else View.GONE
         }
 
+        binding.switchAuthRequired.setOnCheckedChangeListener { _, _ ->
+            updateProxyAuthTokenVisibility()
+        }
+
         binding.switchAppFilterOverride.setOnCheckedChangeListener { _, isChecked ->
             binding.layoutAppFilterOverride.visibility = if (isChecked) View.VISIBLE else View.GONE
         }
 
         binding.switchVerifyFingerprint.setOnCheckedChangeListener { _, isChecked ->
             binding.layoutServerFingerprint.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
+
+        binding.switchEnableCustomPath.setOnCheckedChangeListener { _, _ ->
+            updateTunnelTypeVisibility()
         }
 
         val filterAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, filterModes)
@@ -130,7 +139,13 @@ class ProfileEditActivity : AppCompatActivity() {
                 binding.etProxyAddr.setText(currentProfile.proxyAddr)
                 binding.etCustomHost.setText(currentProfile.customHost)
                 binding.etServerName.setText(currentProfile.serverName)
+                binding.switchEnableCustomPath.isChecked = currentProfile.enableCustomPath
                 binding.etCustomPath.setText(currentProfile.customPath)
+
+                binding.switchAuthRequired.isChecked = currentProfile.proxyAuthRequired
+                binding.etAuthToken.setText(currentProfile.proxyAuthToken)
+                binding.etAuthUser.setText(currentProfile.proxyAuthUser)
+                binding.etAuthPass.setText(currentProfile.proxyAuthPass)
 
                 // Server Fingerprint
                 binding.switchVerifyFingerprint.isChecked = currentProfile.verifyFingerprint
@@ -245,6 +260,7 @@ class ProfileEditActivity : AppCompatActivity() {
                 proxyAddr = binding.etProxyAddr.text.toString(),
                 customHost = binding.etCustomHost.text.toString(),
                 serverName = binding.etServerName.text.toString(),
+                enableCustomPath = binding.switchEnableCustomPath.isChecked,
                 customPath = binding.etCustomPath.text.toString(),
                 dnsOverride = binding.switchDnsOverride.isChecked,
                 remoteDns = binding.etRemoteDns.text.toString(),
@@ -256,7 +272,11 @@ class ProfileEditActivity : AppCompatActivity() {
                 filterMode = if (binding.spinnerFilterMode.text.toString() == getString(app.fjj.stun.R.string.filter_allow_mode)) 1 else 0,
                 filterApps = binding.etFilterApps.text.toString(),
                 verifyFingerprint = binding.switchVerifyFingerprint.isChecked,
-                serverFingerprint = binding.etServerFingerprint.text.toString()
+                serverFingerprint = binding.etServerFingerprint.text.toString(),
+                proxyAuthRequired = binding.switchAuthRequired.isChecked,
+                proxyAuthToken = binding.etAuthToken.text.toString(),
+                proxyAuthUser = binding.etAuthUser.text.toString(),
+                proxyAuthPass = binding.etAuthPass.text.toString()
             )
 
             thread {
@@ -277,6 +297,8 @@ class ProfileEditActivity : AppCompatActivity() {
         val selected = binding.spinnerTunnelType.text.toString()
         val isHttp = selected == Profile.TUNNEL_TYPE_HTTP
         val isBase = selected == Profile.TUNNEL_TYPE_BASE
+        val isMasque = selected == Profile.TUNNEL_TYPE_MASQUE
+
         val isCustomPathSupported = selected == Profile.TUNNEL_TYPE_WS || selected == Profile.TUNNEL_TYPE_WSS ||
                 selected == Profile.TUNNEL_TYPE_H2 || selected == Profile.TUNNEL_TYPE_H2C ||
                 selected == Profile.TUNNEL_TYPE_GRPC || selected == Profile.TUNNEL_TYPE_GRPCC ||
@@ -293,8 +315,48 @@ class ProfileEditActivity : AppCompatActivity() {
         binding.layoutProxyAddr.visibility = if (isBase) View.GONE else View.VISIBLE
         binding.layoutCustomHost.visibility = if (isBase) View.GONE else View.VISIBLE
         binding.layoutServerName.visibility = if (isServerNameSupported) View.VISIBLE else View.GONE
-        binding.layoutCustomPath.visibility = if (isCustomPathSupported) View.VISIBLE else View.GONE
+        
+        binding.switchEnableCustomPath.visibility = if (isMasque) View.VISIBLE else View.GONE
+        //非MASQUE时该值必须为true
+        if (!isMasque && !binding.switchEnableCustomPath.isChecked) {
+            binding.switchEnableCustomPath.isChecked = true
+        }
+        val showCustomPath = (isMasque && binding.switchEnableCustomPath.isChecked) || isCustomPathSupported
+        binding.layoutCustomPath.visibility = if (showCustomPath) View.VISIBLE else View.GONE
+
         binding.switchDisableStatusCheck.visibility = if (isHttp) View.VISIBLE else View.GONE
+
+        val supportsProxyAuth = selected == Profile.TUNNEL_TYPE_H2 ||
+                selected == Profile.TUNNEL_TYPE_H2C ||
+                selected == Profile.TUNNEL_TYPE_GRPC ||
+                selected == Profile.TUNNEL_TYPE_GRPCC ||
+                selected == Profile.TUNNEL_TYPE_H3 ||
+                selected == Profile.TUNNEL_TYPE_WT ||
+                selected == Profile.TUNNEL_TYPE_MASQUE ||
+                selected == Profile.TUNNEL_TYPE_WS ||
+                selected == Profile.TUNNEL_TYPE_WSS ||
+                selected == Profile.TUNNEL_TYPE_HTTP
+
+        binding.switchAuthRequired.visibility = if (supportsProxyAuth) View.VISIBLE else View.GONE
+        updateProxyAuthTokenVisibility()
+    }
+
+    private fun updateProxyAuthTokenVisibility() {
+        val selected = binding.spinnerTunnelType.text.toString()
+        val isAuthEnabled = binding.switchAuthRequired.isVisible && binding.switchAuthRequired.isChecked
+        
+        val isTokenMode = selected in listOf(
+            Profile.TUNNEL_TYPE_H2, Profile.TUNNEL_TYPE_H2C, 
+            Profile.TUNNEL_TYPE_GRPC, Profile.TUNNEL_TYPE_GRPCC,
+            Profile.TUNNEL_TYPE_H3, Profile.TUNNEL_TYPE_WT, Profile.TUNNEL_TYPE_MASQUE
+        )
+        val isUserPassMode = selected in listOf(
+            Profile.TUNNEL_TYPE_WS, Profile.TUNNEL_TYPE_WSS, Profile.TUNNEL_TYPE_HTTP
+        )
+
+        binding.layoutAuthToken.visibility = if (isAuthEnabled && isTokenMode) View.VISIBLE else View.GONE
+        binding.layoutAuthUser.visibility = if (isAuthEnabled && isUserPassMode) View.VISIBLE else View.GONE
+        binding.layoutAuthPass.visibility = if (isAuthEnabled && isUserPassMode) View.VISIBLE else View.GONE
     }
 
     private fun validatePrivateKey(content: String) {

@@ -37,6 +37,11 @@
     <string name="custom_host">カスタムホスト</string>
     <string name="server_name">サーバー名</string>
     <string name="custom_path">カスタムパス</string>
+    <string name="enable_custom_path">カスタムパスを有効にする</string>
+    <string name="proxy_auth_required">プロキシ認証が必要</string>
+    <string name="proxy_auth_token">プロキシ認証トークン</string>
+    <string name="proxy_auth_user">プロキシ認証ユーザー名</string>
+    <string name="proxy_auth_pass">プロキシ認証パスワード</string>
     <string name="save_configuration">設定を保存</string>
     <string name="disable_status_check">ステータスコードの検証を無効にする</string>
 
@@ -60,6 +65,7 @@
 
     <string name="clear_logs">ログを消去</string>
     <string name="copy">コピー</string>
+    <string name="copy_success">ログをクリップボードにコピーしました</string>
     <string name="close">閉じる</string>
     <string name="app_logs">アプリログ</string>
     <string name="tunnel_logs">トンネルログ</string>

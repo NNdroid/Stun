@@ -1,0 +1,130 @@
+<resources>
+    <string name="app_name">Stun</string>
+    <string name="action_add">Hinzufügen</string>
+    <string name="action_filter">Filter</string>
+    <string name="action_logs">Protokolle</string>
+    <string name="action_about">Über</string>
+    <string name="action_settings">Einstellungen</string>
+    <string name="about_source_code">Quellcode</string>
+    <string name="about_license">Open-Source-Lizenzen</string>
+    <string name="about_feedback">Feedback</string>
+    <string name="about_telegram">Telegram-Kanal</string>
+    <string name="about_privacy_policy">Datenschutz-Bestimmungen</string>
+    <string name="about_version_format">v%1$s (Lib %2$s)</string>
+
+    <string name="status_disconnected">Getrennt, zum Starten tippen</string>
+    <string name="status_connected">Verbunden</string>
+    <string name="status_testing">Latenz testen...</string>
+    <string name="connect">Verbinden</string>
+    <string name="disconnect">Trennen</string>
+
+    <string name="add_profile">Profil hinzufügen</string>
+    <string name="edit_profile">Profil bearbeiten</string>
+    <string name="add_manually">Manuell hinzufügen</string>
+    <string name="scan_qr_code">QR-Code scannen</string>
+    <string name="scan_prompt">Einen Profil-QR-Code scannen</string>
+
+    <string name="profile_name">Profilname</string>
+    <string name="ssh_address">SSH-Adresse (IP:Port)</string>
+    <string name="username">Benutzername</string>
+    <string name="password">Passwort</string>
+    <string name="private_key">Privater Schlüssel</string>
+    <string name="key_password">Schlüssel-Passwort (optional)</string>
+    <string name="auth_type">Authentifizierungstyp</string>
+    <string name="auth_password">Passwort</string>
+    <string name="auth_key">Privater Schlüssel</string>
+    <string name="tunnel_type">Tunneltyp</string>
+    <string name="http_payload">HTTP-Payload</string>
+    <string name="proxy_address">Proxy-Adresse</string>
+    <string name="custom_host">Benutzerdefinierter Host</string>
+    <string name="server_name">Servername</string>
+    <string name="custom_path">Benutzerdefinierter Pfad</string>
+    <string name="enable_custom_path">Benutzerdefinierten Pfad aktivieren</string>
+    <string name="proxy_auth_required">Proxy-Authentifizierung erforderlich</string>
+    <string name="proxy_auth_token">Proxy-Authentifizierungs-Token</string>
+    <string name="proxy_auth_user">Proxy-Authentifizierungs-Benutzername</string>
+    <string name="proxy_auth_pass">Proxy-Authentifizierungs-Passwort</string>
+    <string name="save_configuration">Konfiguration speichern</string>
+    <string name="disable_status_check">Statuscode-Validierung deaktivieren</string>
+
+    <string name="unified_config">Einheitliche Konfiguration</string>
+    <string name="log_level">Protokoll-Filterebene</string>
+    <string name="remote_dns">Remoter DNS-Server (IP:Port)</string>
+    <string name="local_dns">Lokaler DNS-Server (IP:Port)</string>
+    <string name="udpgw_addr">UDP-Gateway-Adresse (IP:Port)</string>
+    <string name="geo_data_config">Geodaten-Konfiguration</string>
+    <string name="geosite_url">GeoSite-URL</string>
+    <string name="geoip_url">GeoIP-URL</string>
+    <string name="update_interval">Aktualisierungsintervall (Sekunden)</string>
+    <string name="last_updated">Zuletzt aktualisiert: %1$s</string>
+    <string name="never">Niemals</string>
+    <string name="update_now">Jetzt aktualisieren</string>
+    <string name="updating">Aktualisierung...</string>
+    <string name="direct_routing">Direkt-Routing-Flags</string>
+    <string name="geosite_direct">GeoSite Direkt (z.B. cn,apple)</string>
+    <string name="geoip_direct">GeoIP Direkt (z.B. cn,private)</string>
+    <string name="save_settings">Einstellungen speichern</string>
+
+    <string name="clear_logs">Protokolle löschen</string>
+    <string name="copy">Kopieren</string>
+    <string name="copy_success">Protokolle in Zwischenablage kopiert</string>
+    <string name="close">Schließen</string>
+    <string name="app_logs">App-Protokolle</string>
+    <string name="tunnel_logs">Tunnel-Protokolle</string>
+    <string name="action_export">Profile exportieren</string>
+    <string name="action_import">Profile importieren</string>
+
+    <string name="profile_added">Profil hinzugefügt: %1$s</string>
+    <string name="invalid_qr">Ungültiges QR-Code-Format</string>
+    <string name="vpn_permission_denied">VPN-Berechtigung verweigert</string>
+    <string name="settings_saved">Einstellungen gespeichert</string>
+    <string name="profile_saved">Profil gespeichert</string>
+    <string name="error_invalid_path">Pfad muss mit / beginnen</string>
+    <string name="verify_fingerprint">Server-Fingerabdruck überprüfen</string>
+    <string name="server_fingerprint">Server-Fingerabdruck (SHA256)</string>
+    <string name="override_dns_routing">DNS und Routing überschreiben</string>
+    <string name="filter_disallow_mode">Nicht erlaubt (Umgekehrt)</string>
+    <string name="filter_allow_mode">Erlaubt (Vorwärts)</string>
+    <string name="error_field_required">Dieses Feld darf nicht leer sein</string>
+    <string name="error_no_profile_selected">Bitte wählen Sie zuerst ein Profil aus</string>
+    <string name="error_key_password_required">Schlüssel-Passwort für diesen Schlüssel erforderlich</string>
+    <string name="error_invalid_key_password">Falsches Schlüssel-Passwort</string>
+    <string name="error_invalid_private_key">Ungültiges Format des privaten Schlüssels</string>
+    <string name="geodata_success">Geodaten erfolgreich aktualisiert</string>
+
+    <string name="main_disconnected">Getrennt</string>
+    <string name="main_connected">Verbunden</string>
+    <string name="main_connecting">Verbindung wird hergestellt...</string>
+    <string name="main_reconnecting">Wiederverbindung...</string>
+    <string name="main_connection_failed">Verbindung fehlgeschlagen</string>
+    <string name="main_connect">Verbinden</string>
+    <string name="main_disconnect">Trennen</string>
+    <string name="main_testing_latency">Latenz testen…</string>
+    <string name="main_add_manually">Manuell hinzufügen</string>
+    <string name="main_scan_qr">QR-Code scannen</string>
+    <string name="main_add_profile_title">Profil hinzufügen</string>
+    <string name="main_scan_prompt">Einen Profil-QR-Code scannen</string>
+    <string name="main_selected">Ausgewählt: %1$s</string>
+    <string name="main_qr_fail">QR-Code konnte nicht generiert werden</string>
+
+    <string name="export_success">Profile erfolgreich exportiert</string>
+    <string name="export_failed">Export fehlgeschlagen: %1$s</string>
+    <string name="import_success">%1$d Profile importiert</string>
+    <string name="import_failed">Import fehlgeschlagen: %1$s</string>
+
+    <string name="notif_title">Stun läuft</string>
+    <string name="notif_text">Datenverkehr wird geschützt</string>
+
+    <string name="reason_ssh_down">Go SSH library offline</string>
+    <string name="reason_hev_down">HEV engine offline</string>
+
+    <string name="app_filtering">Anwendungsfilterung</string>
+    <string name="filter_mode">Filtermodus</string>
+    <string name="filter_apps_hint">Zu filternde Apps (kommagetrennt)</string>
+    <string name="override_app_filtering">App-Filterung überschreiben</string>
+    <string name="filter_allow">Zulassen</string>
+    <string name="filter_disallow">Nicht zulassen</string>
+    <string name="search_apps">Apps suchen…</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Abbrechen</string>
+</resources>
