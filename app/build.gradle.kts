@@ -83,6 +83,7 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation("io.github.rosaleskevin:katch:1.0.0")
     kapt("androidx.room:room-compiler:${libs.versions.roomVersion.get()}")
     // Use annotationProcessor for Java or kapt/ksp for Kotlin
     // Since I don't know if kapt is enabled, I'll check plugins or assume kapt for now.
