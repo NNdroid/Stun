@@ -13,6 +13,7 @@ import app.fjj.stun.repo.SettingsManager
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.concurrent.thread
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -50,22 +51,7 @@ class SettingsActivity : AppCompatActivity() {
             insets
         }
 
-        // Setup Log Level Spinner
-        val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, logLevels)
-        binding.spinnerLogLevel.setAdapter(adapter)
-        binding.spinnerLogLevel.setText(SettingsManager.getLogLevel(this), false)
-
-        // Setup DNS Servers
-        binding.etRemoteDnsServer.setText(SettingsManager.getRemoteDnsServer(this))
-        binding.etLocalDnsServer.setText(SettingsManager.getLocalDnsServer(this))
-        binding.etUdpgwAddr.setText(SettingsManager.getUdpgwAddr(this))
-
-        // Setup Application Filtering
-        val filterAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, filterModes)
-        binding.spinnerFilterMode.setAdapter(filterAdapter)
-        val currentFilterMode = SettingsManager.getFilterMode(this)
-        binding.spinnerFilterMode.setText(if (currentFilterMode == 1) getString(app.fjj.stun.R.string.filter_allow_mode) else getString(app.fjj.stun.R.string.filter_disallow_mode), false)
-        binding.etFilterApps.setText(SettingsManager.getFilterApps(this))
+        loadSettings()
 
         binding.etFilterApps.setOnClickListener {
             val fragment = AppFilterDialogFragment.newInstance(binding.etFilterApps.text.toString())
@@ -122,6 +108,50 @@ class SettingsActivity : AppCompatActivity() {
 
             Toast.makeText(this, getString(app.fjj.stun.R.string.settings_saved), Toast.LENGTH_SHORT).show()
             finish()
+        }
+    }
+
+    private fun loadSettings() {
+        thread {
+            val logLevel = SettingsManager.getLogLevel(this)
+            val remoteDns = SettingsManager.getRemoteDnsServer(this)
+            val localDns = SettingsManager.getLocalDnsServer(this)
+            val udpgw = SettingsManager.getUdpgwAddr(this)
+            val filterMode = SettingsManager.getFilterMode(this)
+            val filterApps = SettingsManager.getFilterApps(this)
+            val geositeUrl = SettingsManager.getGeositeUrl(this)
+            val geoipUrl = SettingsManager.getGeoipUrl(this)
+            val interval = SettingsManager.getUpdateInterval(this)
+            val geositeDirect = SettingsManager.getGeositeDirect(this)
+            val geoipDirect = SettingsManager.getGeoipDirect(this)
+
+            runOnUiThread {
+                // Setup Log Level Spinner
+                val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, logLevels)
+                binding.spinnerLogLevel.setAdapter(adapter)
+                binding.spinnerLogLevel.setText(logLevel, false)
+
+                // Setup DNS Servers
+                binding.etRemoteDnsServer.setText(remoteDns)
+                binding.etLocalDnsServer.setText(localDns)
+                binding.etUdpgwAddr.setText(udpgw)
+
+                // Setup Application Filtering
+                val filterAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, filterModes)
+                binding.spinnerFilterMode.setAdapter(filterAdapter)
+                binding.spinnerFilterMode.setText(if (filterMode == 1) getString(app.fjj.stun.R.string.filter_allow_mode) else getString(app.fjj.stun.R.string.filter_disallow_mode), false)
+                binding.etFilterApps.setText(filterApps)
+
+                // Setup Geo Data
+                binding.etGeositeUrl.setText(geositeUrl)
+                binding.etGeoipUrl.setText(geoipUrl)
+                binding.etUpdateInterval.setText(interval.toString())
+                binding.etGeositeDirect.setText(geositeDirect)
+                binding.etGeoipDirect.setText(geoipDirect)
+
+                // Setup Last Update Time
+                updateLastUpdateText()
+            }
         }
     }
 

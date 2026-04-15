@@ -21,7 +21,7 @@
 #-renamesourcefileattribute SourceFile
 
 -keep class hev.htproxy.TProxyService { *; }
--keep class myssh.* { *; }
+-keep class myssh.** { *; }
 -keep class app.fjj.stun.repo.StunLogger { *; }
 
 # 移除 android.util.Log 的所有日志

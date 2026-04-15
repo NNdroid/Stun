@@ -85,14 +85,14 @@ class AppFilterDialogFragment : DialogFragment() {
     private fun loadApps(adapter: AppAdapter) {
         thread {
             val pm = requireContext().packageManager
-            val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+            val packages = pm.getInstalledApplications(0)
                 val apps = packages
                     .filter { (it.flags and ApplicationInfo.FLAG_SYSTEM == 0) || (it.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0) || it.packageName == requireContext().packageName }
                     .map {
                     AppInfo(
                         name = it.loadLabel(pm).toString(),
                         packageName = it.packageName,
-                        icon = it.loadIcon(pm)
+                        icon = null // Load icon lazily in adapter
                     )
                 }.sortedBy { it.name.lowercase() }
 
@@ -140,7 +140,37 @@ class AppFilterDialogFragment : DialogFragment() {
             val app = filteredApps[position]
             holder.binding.tvAppName.text = app.name
             holder.binding.tvPackageName.text = app.packageName
-            holder.binding.ivAppIcon.setImageDrawable(app.icon)
+            
+            // Load icon lazily
+            if (app.icon == null) {
+                holder.binding.ivAppIcon.setImageDrawable(null)
+                thread {
+                    try {
+                        val pm = holder.itemView.context.packageManager
+                        val icon = pm.getApplicationIcon(app.packageName)
+                        val updatedApp = app.copy(icon = icon)
+                        
+                        // Update the cached app info if it's still in the list
+                        val indexInAll = allApps.indexOfFirst { it.packageName == app.packageName }
+                        if (indexInAll != -1) {
+                            allApps[indexInAll] = updatedApp
+                        }
+                        
+                        holder.itemView.post {
+                            val currentPos = holder.bindingAdapterPosition
+                            if (currentPos != RecyclerView.NO_POSITION && filteredApps[currentPos].packageName == app.packageName) {
+                                filteredApps[currentPos] = updatedApp
+                                holder.binding.ivAppIcon.setImageDrawable(icon)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // Ignore
+                    }
+                }
+            } else {
+                holder.binding.ivAppIcon.setImageDrawable(app.icon)
+            }
+
             holder.binding.cbSelected.isChecked = selectedPackages.contains(app.packageName)
 
             holder.itemView.setOnClickListener {
