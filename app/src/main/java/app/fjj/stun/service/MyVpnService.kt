@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Intent
+import android.net.IpPrefix
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
@@ -14,6 +15,7 @@ import app.fjj.stun.repo.*
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.net.InetAddress
 import java.util.Locale
 import kotlin.concurrent.thread
 import kotlin.math.log10
@@ -131,6 +133,13 @@ class MyVpnService : VpnService() {
             .addAddress("fd00:1::2", 64)
             .addRoute("::", 0)
             .addDnsServer("8.8.8.8")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+        {
+            builder
+                .excludeRoute(IpPrefix(InetAddress.getByName("127.0.0.0"), 8))
+                .excludeRoute(IpPrefix(InetAddress.getByName("::1"), 128))
+        }
 
         applyAppFiltering(builder, profile)
         return builder.establish()
