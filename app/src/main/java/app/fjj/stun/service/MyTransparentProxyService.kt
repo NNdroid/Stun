@@ -40,7 +40,7 @@ class MyTransparentProxyService : Service() {
         private const val DNS_HIJACK_PORT = 10553
         private const val BIN_TPROXY = "hev-socks5-tproxy"
         private const val FILE_TPROXY_CONF = "hev-socks5-tproxy.conf" // YAML for core
-        private const val SCRIPT_TPROXY = "scripts/tproxy.sh"
+        private const val SCRIPT_TPROXY = "tproxy.sh"
         private const val FILE_SHELL_CONF = "tproxy.conf"  // Env for script
         private const val FILE_TPROXY_LOG = "tproxy.log"
     }
@@ -159,7 +159,7 @@ class MyTransparentProxyService : Service() {
 
     private fun applyRules(context: Context, enabled: Boolean) {
         val cachePath = cacheDir.absolutePath
-        val scriptFile = File(cachePath, SCRIPT_TPROXY)
+        val scriptFile = File(cacheDir, SCRIPT_TPROXY)
 
             if (enabled) {
             StunLogger.i(TAG, "Enabling TProxy firewall rules...")
