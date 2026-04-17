@@ -5,7 +5,6 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import app.fjj.stun.R
@@ -38,11 +37,16 @@ class MyTransparentProxyService : Service() {
         private const val SOCKS_PORT = 10808
         private const val TPROXY_PORT = 10812
         private const val DNS_HIJACK_PORT = 10553
-        private const val BIN_TPROXY = "hev-socks5-tproxy"
-        private const val FILE_TPROXY_CONF = "hev-socks5-tproxy.conf" // YAML for core
+
+        private const val BIN_HEV_SOCKS5_TPROXY = "hev-socks5-tproxy"
+        private const val FILE_HEV_SOCKS5_TPROXY_CONF = "hev-socks5-tproxy.conf"
+        private const val FILE_HEV_SOCKS5_TPROXY_LOG = "tproxy.log"
+
         private const val SCRIPT_TPROXY = "tproxy.sh"
-        private const val FILE_SHELL_CONF = "tproxy.conf"  // Env for script
-        private const val FILE_TPROXY_LOG = "tproxy.log"
+        private const val FILE_TPROXY_CONF = "tproxy.conf"
+
+        private const val SCRIPT_WATCHDOG = "watchdog.sh"
+        private const val FILE_WATCHDOG_LOG = "watchdog.log"
     }
 
     override fun attachBaseContext(newBase: android.content.Context) {
@@ -103,13 +107,13 @@ class MyTransparentProxyService : Service() {
 
                 // 2. Deploy and Configure TProxy Core
                 StunLogger.i(TAG, "Step 2: Deploying TProxy binary and configuration...")
-                val coreFile = ExecUtils.binaryDeploy(context, BIN_TPROXY)
+                val coreFile = ExecUtils.binaryDeploy(context, BIN_HEV_SOCKS5_TPROXY)
                     ?: throw IOException("Failed to deploy TProxy binary")
 
                 val yamlConfig = TransparentProxyConfigBuilder.buildTProxyConfig(
                     context, profile, SOCKS_PORT, TPROXY_PORT, DNS_HIJACK_PORT
                 )
-                File(cacheDir, FILE_TPROXY_CONF).writeText(yamlConfig)
+                File(cacheDir, FILE_HEV_SOCKS5_TPROXY_CONF).writeText(yamlConfig)
 
                 // 3. Start Core Engine
                 StunLogger.i(TAG, "Step 3: Launching TProxy core engine...")
@@ -148,8 +152,8 @@ class MyTransparentProxyService : Service() {
 
     private fun startCoreEngine(coreFile: File) {
         coreJob = serviceScope.launch {
-            val configFile = File(cacheDir, FILE_TPROXY_CONF)
-            val logFile = File(cacheDir, FILE_TPROXY_LOG).absolutePath
+            val configFile = File(cacheDir, FILE_HEV_SOCKS5_TPROXY_CONF)
+            val logFile = File(cacheDir, FILE_HEV_SOCKS5_TPROXY_LOG).absolutePath
 
             val cmd = "${coreFile.absolutePath} ${configFile.absolutePath} > $logFile 2>&1"
             StunLogger.i(TAG, "Executing Start hev-socks5-tproxy Cmd: $cmd")
@@ -166,7 +170,7 @@ class MyTransparentProxyService : Service() {
             val shellConfig = TransparentProxyConfigBuilder.buildShellConfig(
                 this, TPROXY_PORT, TPROXY_PORT, DNS_HIJACK_PORT
             )
-            File(cacheDir, FILE_SHELL_CONF).writeText(shellConfig)
+            File(cacheDir, FILE_TPROXY_CONF).writeText(shellConfig)
 
             ExecUtils.executeRootCommand("${scriptFile.absolutePath} -d $cachePath ${(if (app.fjj.stun.BuildConfig.DEBUG) "--verbose" else "")} start")
         } else {
@@ -201,7 +205,7 @@ class MyTransparentProxyService : Service() {
 
                 // 2. 强杀底层的二进制进程
                 StunLogger.i(TAG, "Killing TProxy binary processes...")
-                ExecUtils.executeRootCommand("killall -9 $BIN_TPROXY || true")
+                ExecUtils.executeRootCommand("killall -9 $BIN_HEV_SOCKS5_TPROXY || true")
 
                 // 3. 停止 SSH 后端
                 try {
@@ -230,14 +234,13 @@ class MyTransparentProxyService : Service() {
 
     private fun startWatchdog() {
         val pid = android.os.Process.myPid()
-        val scriptPath = File(cacheDir, "watchdog.sh").absolutePath
-
-        // 获取当前动态的包名
-        val currentPackageName = packageName
-
-        // 执行脚本时，传入 PID ($1) 和 包名 ($2)
-        val cmd = "nohup sh $scriptPath $pid $currentPackageName > /dev/null 2>&1 &"
-
+        var currentPackageName = packageName
+        // 获取当前动态的 cache 目录的绝对路径
+        val cachePath = cacheDir.absolutePath
+        val scriptPath = File(cacheDir, SCRIPT_WATCHDOG).absolutePath
+        val watchdogLogPath = File(cacheDir, FILE_WATCHDOG_LOG).absolutePath
+// 执行脚本时，传入 PID ($1) 和 Cache目录路径 ($2)
+        val cmd = "nohup sh $scriptPath $pid $cachePath > $watchdogLogPath 2>&1 &"
         StunLogger.i(TAG, "Starting Watchdog for PID: $pid, Package: $currentPackageName")
         ExecUtils.executeRootCommand(cmd)
     }
@@ -269,10 +272,8 @@ class MyTransparentProxyService : Service() {
 
     private fun createNotificationChannel() {
         val nm = getSystemService(NotificationManager::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(CHANNEL_ID, getString(R.string.service_mode_tproxy), NotificationManager.IMPORTANCE_LOW)
-            nm?.createNotificationChannel(channel)
-        }
+        val channel = NotificationChannel(CHANNEL_ID, getString(R.string.service_mode_tproxy), NotificationManager.IMPORTANCE_LOW)
+        nm?.createNotificationChannel(channel)
     }
 
     private fun updateNotification(content: String) {

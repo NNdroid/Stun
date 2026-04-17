@@ -47,7 +47,7 @@ class StunApp : Application() {
 
     private fun initAssets(context: Context) {
         ExecUtils.binaryDeploy(context, "hev-socks5-tproxy")
-        ExecUtils.scriptDeploy(context, "scripts/tproxy.sh")
+        ExecUtils.scriptDeploy(context, "tproxy.sh")
         ExecUtils.scriptDeploy(context, "watchdog.sh")
     }
 }

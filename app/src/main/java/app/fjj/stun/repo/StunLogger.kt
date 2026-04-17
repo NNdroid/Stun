@@ -8,22 +8,55 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.concurrent.Executors
+import java.util.concurrent.LinkedBlockingQueue
+import kotlin.concurrent.thread
 
 @Keep
 object StunLogger {
     private const val TAG = "StunLogger"
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault())
-    private val executor = Executors.newSingleThreadExecutor()
 
-    // ADDED @Volatile to ensure background threads see the initialization immediately
+    // --- 核心优化 1：有界队列 ---
+    // 限制最大缓存 5000 条，防止在极端网络拥塞/疯狂刷日志时耗尽应用内存导致 OOM
+    private val logQueue = LinkedBlockingQueue<String>(5000)
+
     @Volatile
     private var logFile: File? = null
+
+    @Volatile
+    private var currentFileSize = 0L
+    private const val MAX_FILE_SIZE = 5 * 1024 * 1024L // 5MB
 
     var isLogcatEnabled = true
     var logListener: ((String) -> Unit)? = null
 
+    init {
+        // --- 核心优化 2：单一后台守护线程专门负责写盘 ---
+        thread(name = "StunLogger-Writer", isDaemon = true) {
+            val buffer = mutableListOf<String>()
+            while (true) {
+                try {
+                    // take() 会阻塞休眠，直到队列里至少有一条日志，完全不占 CPU
+                    val firstLog = logQueue.take()
+                    buffer.add(firstLog)
+
+                    // drainTo 会瞬间把队列里目前积压的所有日志全部“收割”到 buffer 里
+                    logQueue.drainTo(buffer)
+
+                    // 批量写入磁盘
+                    writeBatchToFile(buffer)
+                    buffer.clear()
+                } catch (e: InterruptedException) {
+                    break // 线程被系统中断时退出
+                } catch (e: Exception) {
+                    Log.e(TAG, "Log writer thread error", e)
+                }
+            }
+        }
+    }
+
     fun init(context: Context) {
+        // 注意：如果你这边的路径获取方式不同，请替换回你的方法
         val path = StunRepository.getAppLogFilePath(context)
         Log.w(TAG, "🔧 [Self-check] Preparing to initialize log path: $path")
 
@@ -31,35 +64,36 @@ object StunLogger {
             val file = File(path)
             val parentDir = file.parentFile
 
-            // 1. Test directory creation
+            // 1. 测试并创建父目录
             if (parentDir != null && !parentDir.exists()) {
                 val isCreated = parentDir.mkdirs()
-                Log.w(TAG, "🔧 [Self-check] Parent directory does not exist, attempting to create... Result: $isCreated")
                 if (!isCreated && !parentDir.exists()) {
-                    Log.e(TAG, "❌ [Fatal Error] Unable to create parent directory, possibly due to insufficient permissions or invalid path!")
-                    return // Intercept directly, no need to go further
+                    Log.e(TAG, "❌ [Fatal Error] Unable to create parent directory!")
+                    return
                 }
             }
 
-            // 2. Test file creation and write permission
+            // 2. 测试并创建文件
             if (!file.exists()) {
-                val isFileCreated = file.createNewFile()
-                Log.w(TAG, "🔧 [Self-check] Log file does not exist, attempting to create... Result: $isFileCreated")
-            }
-
-            if (!file.canWrite()) {
-                Log.e(TAG, "❌ [Fatal Error] File exists, but system denied write permission! Check Scoped Storage.")
-                return
-            }
-
-            // Clean up large logs (> 15MB)
-            if (file.exists() && file.length() > 15 * 1024 * 1024) {
-                file.delete()
                 file.createNewFile()
             }
 
+            // 3. 校验读写权限
+            if (!file.canWrite()) {
+                Log.e(TAG, "❌ [Fatal Error] File exists, but system denied write permission!")
+                return
+            }
+
+            // 4. 初始化状态
             logFile = file
-            i(TAG, "✅ [Self-check passed] Logger initialized successfully, file locked.")
+            currentFileSize = file.length()
+
+            // 5. 启动时如果发现文件已经超大，立即触发一次滚动
+            if (currentFileSize > MAX_FILE_SIZE) {
+                rotateLogFiles(file)
+            }
+
+            i(TAG, "✅ [Self-check passed] Logger initialized successfully. Size: ${currentFileSize / 1024} KB")
 
         } catch (e: Exception) {
             Log.e(TAG, "❌ [Fatal Error] Crash during initialization: ${e.message}", e)
@@ -72,45 +106,98 @@ object StunLogger {
     fun e(tag: String, msg: String, tr: Throwable? = null) = log("ERROR", tag, msg, tr)
 
     /**
-     * Core logging logic (Optimized: async writing, file persistence)
+     * 核心日志生产逻辑 (完全非阻塞，只做字符串拼接和入队)
      */
     private fun log(level: String, tag: String, msg: String, tr: Throwable? = null) {
-        val currentTime = Date()
-        executor.execute {
-            // 1. Output to Logcat if enabled
-            if (isLogcatEnabled) {
-                when (level) {
-                    "DEBUG" -> Log.d(tag, msg)
-                    "INFO" -> Log.i(tag, msg)
-                    "WARN" -> Log.w(tag, msg)
-                    "ERROR" -> if (tr != null) Log.e(tag, msg, tr) else Log.e(tag, msg)
-                }
+        val timeStr = dateFormat.format(Date())
+        val logStr = buildString {
+            append(timeStr).append("\t").append(level).append("\t[").append(tag).append("]\t").append(msg).append("\n")
+            if (tr != null) {
+                append(Log.getStackTraceString(tr)).append("\n")
+            }
+        }
+
+        // 1. 投递给 UI 或控制台 (保持即时性)
+        if (isLogcatEnabled) {
+            when (level) {
+                "DEBUG" -> Log.d(tag, msg)
+                "INFO" -> Log.i(tag, msg)
+                "WARN" -> Log.w(tag, msg)
+                "ERROR" -> if (tr != null) Log.e(tag, msg, tr) else Log.e(tag, msg)
+            }
+        }
+        logListener?.invoke(logStr)
+
+        // 2. 投递到写盘队列 (如果队列满，offer 会返回 false，默默丢弃以保护内存)
+        if (!logQueue.offer(logStr)) {
+            Log.w(TAG, "Log queue is full! Dropping log to prevent OOM: $msg")
+        }
+    }
+
+    /**
+     * 批量写盘逻辑 (仅由后台守护线程调用)
+     */
+    private fun writeBatchToFile(logs: List<String>) {
+        val file = logFile ?: return
+        try {
+            // 将百上千条日志合并为一个 String/ByteArray
+            val batchString = buildString {
+                for (log in logs) append(log)
+            }
+            val bytes = batchString.toByteArray()
+
+            // 检查加上这批日志后是否会超出 5MB 限制
+            if (currentFileSize + bytes.size > MAX_FILE_SIZE) {
+                rotateLogFiles(file)
             }
 
-            // 2. Format log string
-            val timeStr = dateFormat.format(currentTime)
-            val logStr = buildString {
-                append(timeStr).append("\t").append(level).append("\t[").append(tag).append("]\t").append(msg).append("\n")
-                if (tr != null) {
-                    append(Log.getStackTraceString(tr)).append("\n")
-                }
+            // --- 核心优化 3：批量 I/O ---
+            // 哪怕有 1000 条日志，这里也只执行一次打开、写入、关闭。大大降低 CPU 和闪存负担。
+            FileOutputStream(file, true).use { fos ->
+                fos.write(bytes)
+                fos.flush()
+            }
+            currentFileSize += bytes.size
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to write log batch", e)
+        }
+    }
+
+    /**
+     * --- 核心优化 4：多级文件滚动 ---
+     * 维持 app.log -> old.1 -> old.2 的流转
+     */
+    private fun rotateLogFiles(currentFile: File) {
+        try {
+            val parent = currentFile.parentFile ?: return
+            val fileName = currentFile.name // 比如 "app.log"
+
+            val old1 = File(parent, "$fileName.old.1")
+            val old2 = File(parent, "$fileName.old.2")
+
+            // 1. 删除最旧的 .old.2
+            if (old2.exists()) {
+                old2.delete()
             }
 
-            // 3. Write to app.log
-            logFile?.let { file ->
-                try {
-                    // FileOutputStream will now succeed because parent directories exist
-                    FileOutputStream(file, true).use { fos ->
-                        fos.write(logStr.toByteArray())
-                        fos.flush()
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to write log to file: ${e.message}", e)
-                }
+            // 2. 将 .old.1 重命名为 .old.2
+            if (old1.exists()) {
+                old1.renameTo(old2)
             }
 
-            // 4. Notify listener (UI update)
-            logListener?.invoke(logStr)
+            // 3. 将当前 app.log 重命名为 .old.1
+            currentFile.renameTo(old1)
+
+            // 4. 创建新的空白 app.log
+            currentFile.createNewFile()
+
+            // 5. 重置内存中的文件大小计数器
+            currentFileSize = 0L
+
+            Log.i(TAG, "Log rotation completed: app.log -> old.1 -> old.2")
+        } catch (e: Exception) {
+            Log.e(TAG, "Log rotation failed", e)
         }
     }
 

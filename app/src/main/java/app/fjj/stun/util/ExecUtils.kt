@@ -63,7 +63,14 @@ object ExecUtils {
             process.inputStream.bufferedReader().use { reader ->
                 reader.forEachLine { line -> StunLogger.d(tag, "[EXEC] $line") }
             }
-            process.waitFor()
+            val exited = process.waitFor(8, TimeUnit.SECONDS)
+            if (!exited) {
+                StunLogger.e(tag, "Root execution timed out: $cmd")
+                process.destroy()
+                -1
+            } else {
+                process.exitValue()
+            }
         } catch (e: Exception) {
             StunLogger.e(tag, "Root execution failed: $cmd", e)
             -1
