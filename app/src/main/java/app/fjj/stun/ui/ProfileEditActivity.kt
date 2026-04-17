@@ -5,7 +5,6 @@ import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
@@ -17,7 +16,7 @@ import app.fjj.stun.util.KeystoreUtils
 import kotlin.concurrent.thread
 import androidx.core.view.isVisible
 
-class ProfileEditActivity : AppCompatActivity() {
+class ProfileEditActivity : BaseActivity() {
 
     private lateinit var binding: ActivityProfileEditBinding
     private var profileId: String? = null
@@ -43,6 +42,8 @@ class ProfileEditActivity : AppCompatActivity() {
         val isEdit = profileId != null
         supportActionBar?.title = if (isEdit) getString(app.fjj.stun.R.string.edit_profile) else getString(app.fjj.stun.R.string.add_profile)
 
+        setupAdapters()
+
         val initialPaddingBottom = binding.btnSave.parent.let { (it as View).paddingBottom }
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
@@ -59,20 +60,10 @@ class ProfileEditActivity : AppCompatActivity() {
             insets
         }
 
-        // Setup Tunnel Type Dropdown
-        val tunnelTypes = Profile.getAllTunnelTypes()
-        val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, tunnelTypes)
-        binding.spinnerTunnelType.setAdapter(adapter)
-
         binding.spinnerTunnelType.setOnItemClickListener { _, _, _, _ ->
             updateTunnelTypeVisibility()
         }
 
-        // Setup Auth Type Dropdown
-        val authAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, authTypes.map {
-            if (it == Profile.AUTH_TYPE_PASSWORD) getString(app.fjj.stun.R.string.auth_password) else getString(app.fjj.stun.R.string.auth_key)
-        })
-        binding.spinnerAuthType.setAdapter(authAdapter)
         binding.spinnerAuthType.setOnItemClickListener { _, _, position, _ ->
             updateAuthTypeVisibility(authTypes[position])
         }
@@ -97,9 +88,6 @@ class ProfileEditActivity : AppCompatActivity() {
             updateTunnelTypeVisibility()
         }
 
-        val filterAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, filterModes)
-        binding.spinnerFilterMode.setAdapter(filterAdapter)
-
         binding.etPrivateKey.doAfterTextChanged { text ->
             validatePrivateKey(text.toString())
         }
@@ -112,75 +100,17 @@ class ProfileEditActivity : AppCompatActivity() {
             validatePath(text.toString())
         }
 
-        // Load values
-        thread {
-            currentProfile = if (isEdit) {
-                ProfileManager.getProfiles(this).find { it.id == profileId } ?: Profile()
-            } else {
-                Profile()
-            }
-
-            runOnUiThread {
-                binding.etName.setText(currentProfile.name)
-                binding.etSshAddr.setText(currentProfile.sshAddr)
-                binding.etUser.setText(currentProfile.user)
-                
-                binding.spinnerAuthType.setText(if (currentProfile.authType == Profile.AUTH_TYPE_PRIVATEKEY) getString(app.fjj.stun.R.string.auth_key) else getString(app.fjj.stun.R.string.auth_password), false)
-                updateAuthTypeVisibility(currentProfile.authType)
-                binding.etPass.setText("")
-                binding.etPrivateKey.setText(currentProfile.privateKey)
-                binding.etKeyPass.setText("")
-
-                binding.spinnerTunnelType.setText(currentProfile.tunnelType, false)
-                updateTunnelTypeVisibility()
-
-                binding.etHttpPayload.setText(currentProfile.httpPayload)
-                binding.switchDisableStatusCheck.isChecked = currentProfile.disableStatusCheck
-                binding.etProxyAddr.setText(currentProfile.proxyAddr)
-                binding.etCustomHost.setText(currentProfile.customHost)
-                binding.etServerName.setText(currentProfile.serverName)
-                binding.switchEnableCustomPath.isChecked = currentProfile.enableCustomPath
-                binding.etCustomPath.setText(currentProfile.customPath)
-
-                binding.switchAuthRequired.isChecked = currentProfile.proxyAuthRequired
-                binding.etAuthToken.setText(currentProfile.proxyAuthToken)
-                binding.etAuthUser.setText(currentProfile.proxyAuthUser)
-                binding.etAuthPass.setText(currentProfile.proxyAuthPass)
-
-                // Server Fingerprint
-                binding.switchVerifyFingerprint.isChecked = currentProfile.verifyFingerprint
-                binding.layoutServerFingerprint.visibility = if (currentProfile.verifyFingerprint) View.VISIBLE else View.GONE
-                binding.etServerFingerprint.setText(currentProfile.serverFingerprint)
-
-                // DNS and Routing Overrides
-                binding.switchDnsOverride.isChecked = currentProfile.dnsOverride
-                binding.layoutDnsOverride.visibility = if (currentProfile.dnsOverride) View.VISIBLE else View.GONE
-                binding.etRemoteDns.setText(currentProfile.remoteDns)
-                binding.etLocalDns.setText(currentProfile.localDns)
-                binding.etUdpgwAddr.setText(currentProfile.udpgwAddr)
-                binding.etGeositeDirect.setText(currentProfile.geositeDirect)
-                binding.etGeoipDirect.setText(currentProfile.geoipDirect)
-
-                // App Filtering Overrides
-                binding.switchAppFilterOverride.isChecked = currentProfile.appFilterOverride
-                binding.layoutAppFilterOverride.visibility = if (currentProfile.appFilterOverride) View.VISIBLE else View.GONE
-                binding.spinnerFilterMode.setText(if (currentProfile.filterMode == 1) getString(app.fjj.stun.R.string.filter_allow_mode) else getString(app.fjj.stun.R.string.filter_disallow_mode), false)
-                binding.etFilterApps.setText(currentProfile.filterApps)
-
-                binding.etFilterApps.setOnClickListener {
-                    val fragment = AppFilterDialogFragment.newInstance(binding.etFilterApps.text.toString())
-                    fragment.setOnAppFilterSelectedListener(object : AppFilterDialogFragment.OnAppFilterSelectedListener {
-                        override fun onAppFilterSelected(selectedPackages: String) {
-                            binding.etFilterApps.setText(selectedPackages)
-                        }
-                    })
-                    fragment.show(supportFragmentManager, "AppFilterDialog")
+        binding.etFilterApps.setOnClickListener {
+            val fragment = AppFilterDialogFragment.newInstance(binding.etFilterApps.text.toString())
+            fragment.setOnAppFilterSelectedListener(object : AppFilterDialogFragment.OnAppFilterSelectedListener {
+                override fun onAppFilterSelected(selectedPackages: String) {
+                    binding.etFilterApps.setText(selectedPackages)
                 }
-
-                binding.etFilterApps.isFocusable = false
-                binding.etFilterApps.isClickable = true
-            }
+            })
+            fragment.show(supportFragmentManager, "AppFilterDialog")
         }
+        binding.etFilterApps.isFocusable = false
+        binding.etFilterApps.isClickable = true
 
         binding.btnSave.setOnClickListener {
             val authTypeString = binding.spinnerAuthType.text.toString()
@@ -289,6 +219,78 @@ class ProfileEditActivity : AppCompatActivity() {
                     Toast.makeText(this, getString(app.fjj.stun.R.string.profile_saved), Toast.LENGTH_SHORT).show()
                     finish()
                 }
+            }
+        }
+
+        loadProfileValues(isEdit)
+    }
+
+    private fun setupAdapters() {
+        val tunnelTypes = Profile.getAllTunnelTypes()
+        binding.spinnerTunnelType.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, tunnelTypes))
+
+        val authAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, authTypes.map {
+            if (it == Profile.AUTH_TYPE_PASSWORD) getString(app.fjj.stun.R.string.auth_password) else getString(app.fjj.stun.R.string.auth_key)
+        })
+        binding.spinnerAuthType.setAdapter(authAdapter)
+
+        binding.spinnerFilterMode.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, filterModes))
+    }
+
+    private fun loadProfileValues(isEdit: Boolean) {
+        thread {
+            currentProfile = if (isEdit && profileId != null) {
+                ProfileManager.getProfileById(this, profileId!!) ?: Profile()
+            } else {
+                Profile()
+            }
+
+            runOnUiThread {
+                binding.etName.setText(currentProfile.name)
+                binding.etSshAddr.setText(currentProfile.sshAddr)
+                binding.etUser.setText(currentProfile.user)
+                
+                binding.spinnerAuthType.setText(if (currentProfile.authType == Profile.AUTH_TYPE_PRIVATEKEY) getString(app.fjj.stun.R.string.auth_key) else getString(app.fjj.stun.R.string.auth_password), false)
+                updateAuthTypeVisibility(currentProfile.authType)
+                binding.etPass.setText("")
+                binding.etPrivateKey.setText(currentProfile.privateKey)
+                binding.etKeyPass.setText("")
+
+                binding.spinnerTunnelType.setText(currentProfile.tunnelType, false)
+                updateTunnelTypeVisibility()
+
+                binding.etHttpPayload.setText(currentProfile.httpPayload)
+                binding.switchDisableStatusCheck.isChecked = currentProfile.disableStatusCheck
+                binding.etProxyAddr.setText(currentProfile.proxyAddr)
+                binding.etCustomHost.setText(currentProfile.customHost)
+                binding.etServerName.setText(currentProfile.serverName)
+                binding.switchEnableCustomPath.isChecked = currentProfile.enableCustomPath
+                binding.etCustomPath.setText(currentProfile.customPath)
+
+                binding.switchAuthRequired.isChecked = currentProfile.proxyAuthRequired
+                binding.etAuthToken.setText(currentProfile.proxyAuthToken)
+                binding.etAuthUser.setText(currentProfile.proxyAuthUser)
+                binding.etAuthPass.setText(currentProfile.proxyAuthPass)
+
+                // Server Fingerprint
+                binding.switchVerifyFingerprint.isChecked = currentProfile.verifyFingerprint
+                binding.layoutServerFingerprint.visibility = if (currentProfile.verifyFingerprint) View.VISIBLE else View.GONE
+                binding.etServerFingerprint.setText(currentProfile.serverFingerprint)
+
+                // DNS and Routing Overrides
+                binding.switchDnsOverride.isChecked = currentProfile.dnsOverride
+                binding.layoutDnsOverride.visibility = if (currentProfile.dnsOverride) View.VISIBLE else View.GONE
+                binding.etRemoteDns.setText(currentProfile.remoteDns)
+                binding.etLocalDns.setText(currentProfile.localDns)
+                binding.etUdpgwAddr.setText(currentProfile.udpgwAddr)
+                binding.etGeositeDirect.setText(currentProfile.geositeDirect)
+                binding.etGeoipDirect.setText(currentProfile.geoipDirect)
+
+                // App Filtering Overrides
+                binding.switchAppFilterOverride.isChecked = currentProfile.appFilterOverride
+                binding.layoutAppFilterOverride.visibility = if (currentProfile.appFilterOverride) View.VISIBLE else View.GONE
+                binding.spinnerFilterMode.setText(if (currentProfile.filterMode == 1) getString(app.fjj.stun.R.string.filter_allow_mode) else getString(app.fjj.stun.R.string.filter_disallow_mode), false)
+                binding.etFilterApps.setText(currentProfile.filterApps)
             }
         }
     }

@@ -47,7 +47,7 @@ import java.net.Proxy
 import java.net.URL
 import kotlin.concurrent.thread
 
-class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
+class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedListener {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var adapter: ProfileAdapter

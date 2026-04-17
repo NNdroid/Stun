@@ -12,36 +12,36 @@ import java.util.concurrent.TimeUnit
 
 object ExecUtils {
     /**
-     * 安全且防卡死的 Root 检查
+     * Safe and non-blocking Root check
      */
     fun checkIsRootPermission(): Boolean {
         var process: Process? = null
         var os: DataOutputStream? = null
         try {
-            // 尝试申请 su
+            // Attempt to request su
             process = Runtime.getRuntime().exec("su")
             os = DataOutputStream(process.outputStream)
 
-            // 随便执行一个轻量命令并退出，防止挂起
+            // Execute a lightweight command and exit to prevent hanging
             os.writeBytes("id\n")
             os.writeBytes("exit\n")
             os.flush()
 
-            // 【关键修复】：绝对不能使用无限期的 process.waitFor()
-            // 设定 2 秒超时。如果 2 秒内 su 没有返回（比如弹窗没点），直接当作没有 Root 权限
+            // [CRITICAL FIX]: Never use an indefinite process.waitFor()
+            // Set a 2-second timeout. If su does not return within 2 seconds (e.g. no user response), assume no root.
             val isFinished = process.waitFor(2, TimeUnit.SECONDS)
 
             if (!isFinished) {
-                // 超时了，强行杀掉挂起的 su 进程
+                // Timed out, forcibly killing the hanging su process
                 process.destroy()
                 return false
             }
 
-            // exitValue 为 0 代表 su 命令正常结束且拥有权限
+            // exitValue of 0 means su command finished normally and has permissions
             return process.exitValue() == 0
 
         } catch (e: Exception) {
-            // 找不到 su 二进制文件或抛出异常，说明没 Root
+            // su binary not found or exception thrown, indicating no Root access
             return false
         } finally {
             try {
@@ -84,51 +84,93 @@ object ExecUtils {
         }
     }
     /**
-     * 自動部署架構對應的二進位文件到 cache 目錄
-     * @param context 上下文
-     * @param binName 二進位文件名，例如 "tproxy_core"
-     * @return 部署後的 File 對象，失敗則返回 null
+     * Automatically deploy the architecture-specific binary file to the cache directory.
+     * @param context Context
+     * @param binName Binary file name, e.g., "tproxy_core"
+     * @return The deployed File object, or null if deployment fails.
      */
     @SuppressLint("SetWorldReadable", "SetWorldWritable")
     fun binaryDeploy(context: Context, binName: String): File? {
         val tag = "binaryDeploy"
 
-        // 1. 打印设备真实支持的所有 ABI 列表
+        // 1. Log the list of ABIs supported by the device
         val supportedAbis = Build.SUPPORTED_ABIS
-        StunLogger.i(tag, "📱 设备支持的架构优先级: ${supportedAbis.joinToString(", ")}")
+        StunLogger.i(tag, "📱 Supported ABIs in order of priority: ${supportedAbis.joinToString(", ")}")
 
         val targetFile = File(context.cacheDir, binName)
 
         for (abi in supportedAbis) {
             val assetPath = "bin/$abi/$binName"
-            StunLogger.d(tag, "🔍 正在尝试匹配路径: assets/$assetPath")
+            StunLogger.d(tag, "🔍 Attempting to match path: assets/$assetPath")
 
             try {
-                // 檢查該 ABI 夾路徑是否存在於 assets 中
+                // Check if the binary for this ABI exists in assets
                 context.assets.open(assetPath).use { inputStream ->
-                    StunLogger.i(tag, "✅ 命中！侦测到匹配架构: $abi, 正在复制...")
+                    StunLogger.i(tag, "✅ Hit! Detected matching architecture: $abi, copying...")
 
-                    // 2. 執行複製
+                    // 2. Perform copy
                     FileOutputStream(targetFile).use { outputStream ->
                         inputStream.copyTo(outputStream)
                     }
 
-                    // 3. 賦予可執行權限
+                    // 3. Grant execution permissions
                     targetFile.setExecutable(true, false)
                     targetFile.setReadable(true, false)
                     targetFile.setWritable(true, false)
 
-                    StunLogger.i(tag, "🚀 $binName ($abi) 部署成功: ${targetFile.absolutePath}")
+                    StunLogger.i(tag, "🚀 $binName ($abi) deployed successfully: ${targetFile.absolutePath}")
                     return targetFile
                 }
             } catch (e: IOException) {
-                // 明确打印是因为找不到文件跳过，还是因为其他 IO 异常跳过
-                StunLogger.w(tag, "⚠️ 跳过架构 $abi: assets/$assetPath 不存在或无法读取，casue by: ${e.message}")
+                // Specifically log whether it was skipped because file not found or other IO error
+                StunLogger.w(tag, "⚠️ Skipping architecture $abi: assets/$assetPath does not exist or is unreadable, caused by: ${e.message}")
                 continue
             }
         }
 
-        StunLogger.e(tag, "❌ 找不到适合当前设备架构的 $binName 二进制文件")
+        StunLogger.e(tag, "❌ No suitable $binName binary found for the current device architecture")
         return null
+    }
+
+    /**
+     * 部署脚本文件（如 .sh 文件）到缓存目录。
+     * 脚本不需要区分 CPU 架构。
+     * * @param context 上下文
+     * @param scriptName 脚本在 assets 中的文件名（例如 "tproxy.sh"）
+     * @return 部署成功返回 File，失败返回 null
+     */
+    @SuppressLint("SetWorldReadable", "SetWorldWritable", "SetWorldExecutable")
+    fun scriptDeploy(context: Context, scriptName: String): File? {
+        val tag = "scriptDeploy"
+
+        val targetFile = File(context.cacheDir, scriptName)
+        // 假设你的脚本直接放在 assets/ 根目录下。
+        // 如果你放在了特定的文件夹里（比如 assets/scripts/），请改为 "scripts/$scriptName"
+        val assetPath = "scripts/$scriptName"
+
+        StunLogger.d(tag, "🔍 Attempting to deploy script: assets/$assetPath")
+
+        try {
+            context.assets.open(assetPath).use { inputStream ->
+                StunLogger.i(tag, "✅ Found script: $scriptName, copying to cache...")
+
+                // 1. 执行文件拷贝
+                FileOutputStream(targetFile).use { outputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+
+                // 2. 赋予读写和执行权限 (脚本文件必须有执行权限才能通过 root 运行)
+                targetFile.setExecutable(true, false)
+                targetFile.setReadable(true, false)
+                targetFile.setWritable(true, false)
+
+                StunLogger.i(tag, "🚀 Script $scriptName deployed successfully: ${targetFile.absolutePath}")
+                return targetFile
+            }
+        } catch (e: IOException) {
+            // 如果文件不存在或发生 IO 异常，直接抛出错误日志
+            StunLogger.e(tag, "❌ Failed to deploy script $scriptName. Does assets/$assetPath exist? Caused by: ${e.message}")
+            return null
+        }
     }
 }

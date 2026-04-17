@@ -10,6 +10,10 @@ import com.katch.Katch
 import myssh.LogReceiver
 
 class StunApp : Application() {
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(app.fjj.stun.util.LocaleHelper.wrapContext(base))
+    }
+
     override fun onCreate() {
         super.onCreate()
         Katch.init(this)
@@ -43,5 +47,7 @@ class StunApp : Application() {
 
     private fun initAssets(context: Context) {
         ExecUtils.binaryDeploy(context, "hev-socks5-tproxy")
+        ExecUtils.scriptDeploy(context, "scripts/tproxy.sh")
+        ExecUtils.scriptDeploy(context, "watchdog.sh")
     }
 }

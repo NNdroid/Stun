@@ -41,6 +41,10 @@ class MyVpnService : VpnService() {
         const val NOTIFICATION_ID = 1001
     }
 
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(app.fjj.stun.util.LocaleHelper.wrapContext(newBase))
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> handleStopRequest()
@@ -192,7 +196,7 @@ class MyVpnService : VpnService() {
     private fun updateNotification(contentText: String? = null) {
         val nm = getSystemService(NotificationManager::class.java)
         nm?.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "VPN Status", NotificationManager.IMPORTANCE_LOW)
+            NotificationChannel(CHANNEL_ID, getString(app.fjj.stun.R.string.service_mode_vpn), NotificationManager.IMPORTANCE_LOW)
         )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)

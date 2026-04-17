@@ -65,6 +65,15 @@
     <string name="geoip_direct">GeoIP Direct (ex: cn,private)</string>
     <string name="save_settings">Enregistrer les paramètres</string>
 
+    <string name="language">Langue</string>
+    <string name="lang_auto">Par défaut</string>
+    <string name="lang_en">English</string>
+    <string name="lang_zh_cn">Simplified Chinese</string>
+    <string name="lang_zh_tw">Traditional Chinese</string>
+    <string name="lang_de">Deutsch</string>
+    <string name="lang_fr">Français</string>
+    <string name="lang_ja">日本語</string>
+
     <string name="clear_logs">Effacer les journaux</string>
     <string name="copy">Copier</string>
     <string name="copy_success">Logs copiés dans le presse-papiers</string>
@@ -115,6 +124,12 @@
 
     <string name="reason_ssh_down">Go SSH library offline</string>
     <string name="reason_hev_down">HEV engine offline</string>
+
+    <string name="main_profile_switch_disabled">Le VPN est en cours d\'exécution. Veuillez l\'arrêter avant de changer de profil.</string>
+
+    <string name="service_mode">Mode de service</string>
+    <string name="service_mode_vpn">VPN</string>
+    <string name="service_mode_tproxy">Proxy transparent (Root)</string>
 
     <string name="app_filtering">Filtrage d\'applications</string>
     <string name="filter_mode">Mode de filtrage</string>

@@ -24,6 +24,7 @@ object SettingsManager {
     private const val KEY_FILTER_APPS = "filter_apps"
     private const val KEY_FILTER_MODE = "filter_mode"
     private const val KEY_SERVICE_MODE = "service_mode"
+    private const val KEY_LANGUAGE = "language"
 
     const val SERVICE_MODE_VPN = 0
     const val SERVICE_MODE_TPROXY = 1
@@ -84,6 +85,9 @@ object SettingsManager {
 
     fun getServiceMode(context: Context): Int = getPrefs(context).getInt(KEY_SERVICE_MODE, SERVICE_MODE_VPN)
     fun saveServiceMode(context: Context, mode: Int) = getPrefs(context).edit { putInt(KEY_SERVICE_MODE, mode) }
+
+    fun getLanguage(context: Context): String = getPrefs(context).getString(KEY_LANGUAGE, "auto") ?: "auto"
+    fun saveLanguage(context: Context, lang: String) = getPrefs(context).edit { putString(KEY_LANGUAGE, lang) }
 
     fun getGeositeCachePath(context: Context): String = File(context.cacheDir, "geosite.dat").absolutePath
     fun getGeoipCachePath(context: Context): String = File(context.cacheDir, "geoip.dat").absolutePath

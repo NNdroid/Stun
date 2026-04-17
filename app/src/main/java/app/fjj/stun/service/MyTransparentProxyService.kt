@@ -40,9 +40,13 @@ class MyTransparentProxyService : Service() {
         private const val DNS_HIJACK_PORT = 10553
         private const val BIN_TPROXY = "hev-socks5-tproxy"
         private const val FILE_TPROXY_CONF = "hev-socks5-tproxy.conf" // YAML for core
-        private const val SCRIPT_TPROXY = "tproxy.sh"
+        private const val SCRIPT_TPROXY = "scripts/tproxy.sh"
         private const val FILE_SHELL_CONF = "tproxy.conf"  // Env for script
         private const val FILE_TPROXY_LOG = "tproxy.log"
+    }
+
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(app.fjj.stun.util.LocaleHelper.wrapContext(newBase))
     }
 
     override fun onCreate() {
@@ -77,7 +81,7 @@ class MyTransparentProxyService : Service() {
         }
 
         StunRepository.vpnState.postValue(VpnState.CONNECTING)
-        updateNotification("Initializing Transparent Proxy...")
+        updateNotification(getString(R.string.main_connecting))
 
         mainJob = serviceScope.launch {
             try {
@@ -122,10 +126,12 @@ class MyTransparentProxyService : Service() {
                 // 5. Update State & Notifications
                 StunLogger.i(TAG, "Start Sequence Completed Successfully.")
                 StunRepository.vpnState.postValue(VpnState.CONNECTED)
-                updateNotification("Transparent Proxy Active")
+                updateNotification(getString(R.string.notif_text))
 
                 // 6. System Optimizations
                 optimizeSystemForBackground()
+
+                startWatchdog()
 
                 // Block and wait for core (监听 JNI 底层状态，阻塞当前协程)
                 StunLogger.i(TAG, "Entering wgWait() block...")
@@ -145,22 +151,17 @@ class MyTransparentProxyService : Service() {
             val configFile = File(cacheDir, FILE_TPROXY_CONF)
             val logFile = File(cacheDir, FILE_TPROXY_LOG).absolutePath
 
-            // 使用 nohup 和 & 让核心进程脱离当前 Root Shell，在后台作为守护进程运行。避免 Shell 阻塞和后续指令死锁
-            val cmd = "nohup ${coreFile.absolutePath} ${configFile.absolutePath} > $logFile 2>&1 &"
-
-            StunLogger.i(TAG, "Executing Background Root Cmd: $cmd")
+            val cmd = "${coreFile.absolutePath} ${configFile.absolutePath} > $logFile 2>&1"
+            StunLogger.i(TAG, "Executing Start hev-socks5-tproxy Cmd: $cmd")
             ExecUtils.executeRootCommand(cmd)
         }
     }
 
     private fun applyRules(context: Context, enabled: Boolean) {
-        val scriptFile = ExecUtils.copyAssetToCache(context, SCRIPT_TPROXY) ?: run {
-            StunLogger.e(TAG, "Failed to copy tproxy.sh script from assets.")
-            return
-        }
         val cachePath = cacheDir.absolutePath
+        val scriptFile = File(cachePath, SCRIPT_TPROXY)
 
-        if (enabled) {
+            if (enabled) {
             StunLogger.i(TAG, "Enabling TProxy firewall rules...")
             val shellConfig = TransparentProxyConfigBuilder.buildShellConfig(
                 this, TPROXY_PORT, TPROXY_PORT, DNS_HIJACK_PORT
@@ -192,6 +193,8 @@ class MyTransparentProxyService : Service() {
         serviceScope.launch(NonCancellable) {
             try {
                 StunLogger.i(TAG, "--- Stop Sequence Initiated ---")
+
+                stopWatchdog()
 
                 // 1. 清除防火墙规则 (恢复系统网络)
                 applyRules(context, false)
@@ -225,17 +228,56 @@ class MyTransparentProxyService : Service() {
         ExecUtils.executeRootCommand("appops set $packageName WAKE_LOCK allow")
     }
 
+    private fun startWatchdog() {
+        val pid = android.os.Process.myPid()
+        val scriptPath = File(cacheDir, "watchdog.sh").absolutePath
+
+        // 获取当前动态的包名
+        val currentPackageName = packageName
+
+        // 执行脚本时，传入 PID ($1) 和 包名 ($2)
+        val cmd = "nohup sh $scriptPath $pid $currentPackageName > /dev/null 2>&1 &"
+
+        StunLogger.i(TAG, "Starting Watchdog for PID: $pid, Package: $currentPackageName")
+        ExecUtils.executeRootCommand(cmd)
+    }
+
+    private fun stopWatchdog() {
+        StunLogger.i(TAG, "Stopping Native Watchdog...")
+
+        // 脚本的名称，与 startWatchdog 中保持一致
+        val scriptName = "watchdog.sh"
+
+        // 构建精准击杀命令：
+        // 1. 优先尝试 pkill -f，它会匹配整个命令行字符串，是最优雅的方式。
+        // 2. 如果系统不支持 pkill (某些精简版 ROM)，使用 ps + grep + kill 作为兼容方案。
+        // 3. 最后加上 || true 防止因为找不到进程而导致命令执行抛出异常。
+        val killCmd = """
+        pkill -f $scriptName || \
+        kill -9 $(ps -A | grep $scriptName | grep -v grep | awk '{print $2}') || \
+        true
+    """.trimIndent()
+
+        ExecUtils.executeRootCommand(killCmd)
+
+        // 可选：清理残留在缓存中的脚本文件
+        val scriptFile = File(cacheDir, scriptName)
+        if (scriptFile.exists()) {
+            scriptFile.delete()
+        }
+    }
+
     private fun createNotificationChannel() {
         val nm = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(CHANNEL_ID, "TProxy Service", NotificationManager.IMPORTANCE_LOW)
+            val channel = NotificationChannel(CHANNEL_ID, getString(R.string.service_mode_tproxy), NotificationManager.IMPORTANCE_LOW)
             nm?.createNotificationChannel(channel)
         }
     }
 
     private fun updateNotification(content: String) {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Stun Transparent Proxy")
+            .setContentTitle(getString(R.string.notif_title))
             .setContentText(content)
             .setSmallIcon(R.drawable.ic_fox_logo)
             .setOngoing(true)

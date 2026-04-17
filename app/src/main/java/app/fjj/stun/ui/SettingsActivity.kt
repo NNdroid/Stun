@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
@@ -15,12 +14,14 @@ import java.util.Date
 import java.util.Locale
 import kotlin.concurrent.thread
 
-class SettingsActivity : AppCompatActivity() {
+class SettingsActivity : BaseActivity() {
 
     private lateinit var binding: ActivitySettingsBinding
     private val logLevels = arrayOf("DEBUG", "INFO", "WARN", "ERROR")
     private lateinit var serviceModes: Array<String>
     private lateinit var filterModes: Array<String>
+    private lateinit var languageLabels: Array<String>
+    private val languageValues = arrayOf("auto", "en", "zh", "zh-rTW", "de", "fr", "ja")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -28,6 +29,7 @@ class SettingsActivity : AppCompatActivity() {
         binding = ActivitySettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Initialize resource-dependent arrays
         serviceModes = arrayOf(
             getString(app.fjj.stun.R.string.service_mode_vpn),
             getString(app.fjj.stun.R.string.service_mode_tproxy)
@@ -36,9 +38,21 @@ class SettingsActivity : AppCompatActivity() {
             getString(app.fjj.stun.R.string.filter_disallow_mode),
             getString(app.fjj.stun.R.string.filter_allow_mode)
         )
+        languageLabels = arrayOf(
+            getString(app.fjj.stun.R.string.lang_auto),
+            getString(app.fjj.stun.R.string.lang_en),
+            getString(app.fjj.stun.R.string.lang_zh_cn),
+            getString(app.fjj.stun.R.string.lang_zh_tw),
+            getString(app.fjj.stun.R.string.lang_de),
+            getString(app.fjj.stun.R.string.lang_fr),
+            getString(app.fjj.stun.R.string.lang_ja)
+        )
 
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+
+        // Setup adapters immediately so UI doesn't flicker/jump
+        setupAdapters()
 
         val initialPaddingBottom = binding.btnSave.parent.let { (it as android.view.View).paddingBottom }
 
@@ -49,14 +63,11 @@ class SettingsActivity : AppCompatActivity() {
             v.updatePadding(left = systemBars.left, right = systemBars.right)
             binding.appBar.updatePadding(top = systemBars.top)
             
-            // Apply bottom padding to the scrollable container's child to keep content above nav bar/keyboard
             binding.btnSave.parent.let { 
                 (it as android.view.View).updatePadding(bottom = initialPaddingBottom + systemBars.bottom + ime.bottom) 
             }
             insets
         }
-
-        loadSettings()
 
         binding.etFilterApps.setOnClickListener {
             val fragment = AppFilterDialogFragment.newInstance(binding.etFilterApps.text.toString())
@@ -67,19 +78,8 @@ class SettingsActivity : AppCompatActivity() {
             })
             fragment.show(supportFragmentManager, "AppFilterDialog")
         }
-
         binding.etFilterApps.isFocusable = false
         binding.etFilterApps.isClickable = true
-
-        // Setup Geo Data
-        binding.etGeositeUrl.setText(SettingsManager.getGeositeUrl(this))
-        binding.etGeoipUrl.setText(SettingsManager.getGeoipUrl(this))
-        binding.etUpdateInterval.setText(SettingsManager.getUpdateInterval(this).toString())
-        binding.etGeositeDirect.setText(SettingsManager.getGeositeDirect(this))
-        binding.etGeoipDirect.setText(SettingsManager.getGeoipDirect(this))
-
-        // Setup Last Update Time
-        updateLastUpdateText()
 
         binding.btnUpdateNow.setOnClickListener {
             binding.btnUpdateNow.isEnabled = false
@@ -95,29 +95,17 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         binding.btnSave.setOnClickListener {
-            val serviceMode = if (binding.spinnerServiceMode.text.toString() == getString(app.fjj.stun.R.string.service_mode_tproxy)) 
-                SettingsManager.SERVICE_MODE_TPROXY else SettingsManager.SERVICE_MODE_VPN
-            SettingsManager.saveServiceMode(this, serviceMode)
-
-            SettingsManager.saveLogLevel(this, binding.spinnerLogLevel.text.toString())
-            SettingsManager.saveRemoteDnsServer(this, binding.etRemoteDnsServer.text.toString())
-            SettingsManager.saveLocalDnsServer(this, binding.etLocalDnsServer.text.toString())
-            SettingsManager.saveUdpgwAddr(this, binding.etUdpgwAddr.text.toString())
-            
-            SettingsManager.saveGeositeUrl(this, binding.etGeositeUrl.text.toString())
-            SettingsManager.saveGeoipUrl(this, binding.etGeoipUrl.text.toString())
-            val interval = binding.etUpdateInterval.text.toString().toLongOrNull() ?: 0L
-            SettingsManager.saveUpdateInterval(this, interval)
-            SettingsManager.saveGeositeDirect(this, binding.etGeositeDirect.text.toString())
-            SettingsManager.saveGeoipDirect(this, binding.etGeoipDirect.text.toString())
-
-            val filterMode = if (binding.spinnerFilterMode.text.toString() == getString(app.fjj.stun.R.string.filter_allow_mode)) 1 else 0
-            SettingsManager.saveFilterMode(this, filterMode)
-            SettingsManager.saveFilterApps(this, binding.etFilterApps.text.toString())
-
-            Toast.makeText(this, getString(app.fjj.stun.R.string.settings_saved), Toast.LENGTH_SHORT).show()
-            finish()
+            saveSettings()
         }
+
+        loadSettings()
+    }
+
+    private fun setupAdapters() {
+        binding.spinnerServiceMode.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, serviceModes))
+        binding.spinnerLanguage.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, languageLabels))
+        binding.spinnerLogLevel.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, logLevels))
+        binding.spinnerFilterMode.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, filterModes))
     }
 
     private fun loadSettings() {
@@ -129,56 +117,75 @@ class SettingsActivity : AppCompatActivity() {
             val filterMode = SettingsManager.getFilterMode(this)
             val filterApps = SettingsManager.getFilterApps(this)
             val serviceMode = SettingsManager.getServiceMode(this)
+            val language = SettingsManager.getLanguage(this)
             val geositeUrl = SettingsManager.getGeositeUrl(this)
             val geoipUrl = SettingsManager.getGeoipUrl(this)
             val interval = SettingsManager.getUpdateInterval(this)
             val geositeDirect = SettingsManager.getGeositeDirect(this)
             val geoipDirect = SettingsManager.getGeoipDirect(this)
+            val lastUpdate = SettingsManager.getLastUpdateTime(this)
 
             runOnUiThread {
-                // Setup Service Mode Spinner
-                val serviceAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, serviceModes)
-                binding.spinnerServiceMode.setAdapter(serviceAdapter)
                 binding.spinnerServiceMode.setText(if (serviceMode == SettingsManager.SERVICE_MODE_TPROXY) 
                     getString(app.fjj.stun.R.string.service_mode_tproxy) else getString(app.fjj.stun.R.string.service_mode_vpn), false)
 
-                // Setup Log Level Spinner
-                val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, logLevels)
-                binding.spinnerLogLevel.setAdapter(adapter)
-                binding.spinnerLogLevel.setText(logLevel, false)
+                val langIndex = languageValues.indexOf(language)
+                binding.spinnerLanguage.setText(if (langIndex >= 0) languageLabels[langIndex] else languageLabels[0], false)
 
-                // Setup DNS Servers
+                binding.spinnerLogLevel.setText(logLevel, false)
                 binding.etRemoteDnsServer.setText(remoteDns)
                 binding.etLocalDnsServer.setText(localDns)
                 binding.etUdpgwAddr.setText(udpgw)
-
-                // Setup Application Filtering
-                val filterAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, filterModes)
-                binding.spinnerFilterMode.setAdapter(filterAdapter)
                 binding.spinnerFilterMode.setText(if (filterMode == 1) getString(app.fjj.stun.R.string.filter_allow_mode) else getString(app.fjj.stun.R.string.filter_disallow_mode), false)
                 binding.etFilterApps.setText(filterApps)
-
-                // Setup Geo Data
                 binding.etGeositeUrl.setText(geositeUrl)
                 binding.etGeoipUrl.setText(geoipUrl)
                 binding.etUpdateInterval.setText(interval.toString())
                 binding.etGeositeDirect.setText(geositeDirect)
                 binding.etGeoipDirect.setText(geoipDirect)
 
-                // Setup Last Update Time
-                updateLastUpdateText()
+                updateLastUpdateText(lastUpdate)
             }
         }
     }
 
-    private fun updateLastUpdateText() {
-        val lastUpdate = SettingsManager.getLastUpdateTime(this)
+    private fun updateLastUpdateText(lastUpdate: Long = SettingsManager.getLastUpdateTime(this)) {
         if (lastUpdate > 0) {
             val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
             binding.tvLastUpdate.text = getString(app.fjj.stun.R.string.last_updated, sdf.format(Date(lastUpdate * 1000)))
         } else {
             binding.tvLastUpdate.text = getString(app.fjj.stun.R.string.last_updated, getString(app.fjj.stun.R.string.never))
         }
+    }
+
+    private fun saveSettings() {
+        val serviceMode = if (binding.spinnerServiceMode.text.toString() == getString(app.fjj.stun.R.string.service_mode_tproxy)) 
+            SettingsManager.SERVICE_MODE_TPROXY else SettingsManager.SERVICE_MODE_VPN
+        SettingsManager.saveServiceMode(this, serviceMode)
+        SettingsManager.saveLogLevel(this, binding.spinnerLogLevel.text.toString())
+        SettingsManager.saveRemoteDnsServer(this, binding.etRemoteDnsServer.text.toString())
+        SettingsManager.saveLocalDnsServer(this, binding.etLocalDnsServer.text.toString())
+        SettingsManager.saveUdpgwAddr(this, binding.etUdpgwAddr.text.toString())
+        SettingsManager.saveGeositeUrl(this, binding.etGeositeUrl.text.toString())
+        SettingsManager.saveGeoipUrl(this, binding.etGeoipUrl.text.toString())
+        SettingsManager.saveUpdateInterval(this, binding.etUpdateInterval.text.toString().toLongOrNull() ?: 0L)
+        SettingsManager.saveGeositeDirect(this, binding.etGeositeDirect.text.toString())
+        SettingsManager.saveGeoipDirect(this, binding.etGeoipDirect.text.toString())
+        SettingsManager.saveFilterMode(this, if (binding.spinnerFilterMode.text.toString() == getString(app.fjj.stun.R.string.filter_allow_mode)) 1 else 0)
+        SettingsManager.saveFilterApps(this, binding.etFilterApps.text.toString())
+
+        val langIndex = languageLabels.indexOf(binding.spinnerLanguage.text.toString())
+        if (langIndex >= 0) {
+            val newLang = languageValues[langIndex]
+            if (newLang != SettingsManager.getLanguage(this)) {
+                SettingsManager.saveLanguage(this, newLang)
+                app.fjj.stun.util.LocaleHelper.applyLocale(this)
+                recreate()
+                return
+            }
+        }
+        Toast.makeText(this, getString(app.fjj.stun.R.string.settings_saved), Toast.LENGTH_SHORT).show()
+        finish()
     }
 
     override fun onSupportNavigateUp(): Boolean {

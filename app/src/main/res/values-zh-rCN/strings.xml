@@ -65,6 +65,15 @@
     <string name="geoip_direct">GeoIP 直连 (例如 cn,private)</string>
     <string name="save_settings">保存设置</string>
 
+    <string name="language">语言</string>
+    <string name="lang_auto">系统默认</string>
+    <string name="lang_en">English</string>
+    <string name="lang_zh_cn">简体中文</string>
+    <string name="lang_zh_tw">繁体中文</string>
+    <string name="lang_de">Deutsch</string>
+    <string name="lang_fr">Français</string>
+    <string name="lang_ja">日本語</string>
+
     <string name="clear_logs">清空日志</string>
     <string name="copy">复制</string>
     <string name="copy_success">日志已复制到剪贴板</string>
@@ -117,6 +126,12 @@
 
     <string name="reason_ssh_down">Go SSH library offline</string>
     <string name="reason_hev_down">HEV engine offline</string>
+
+    <string name="main_profile_switch_disabled">VPN 正在运行。切换配置前请先停止。</string>
+
+    <string name="service_mode">服务模式</string>
+    <string name="service_mode_vpn">VPN</string>
+    <string name="service_mode_tproxy">透明代理 (Root)</string>
 
     <string name="app_filtering">应用过滤</string>
     <string name="filter_mode">过滤模式</string>

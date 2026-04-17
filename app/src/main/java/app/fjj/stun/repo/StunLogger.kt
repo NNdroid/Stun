@@ -25,44 +25,44 @@ object StunLogger {
 
     fun init(context: Context) {
         val path = StunRepository.getAppLogFilePath(context)
-        Log.w(TAG, "🔧 [自检] 准备初始化日志路径: $path") // 看看路径到底是什么
+        Log.w(TAG, "🔧 [Self-check] Preparing to initialize log path: $path")
 
         try {
             val file = File(path)
             val parentDir = file.parentFile
 
-            // 1. 测试目录创建
+            // 1. Test directory creation
             if (parentDir != null && !parentDir.exists()) {
                 val isCreated = parentDir.mkdirs()
-                Log.w(TAG, "🔧 [自检] 父目录不存在，尝试创建... 结果: $isCreated")
+                Log.w(TAG, "🔧 [Self-check] Parent directory does not exist, attempting to create... Result: $isCreated")
                 if (!isCreated && !parentDir.exists()) {
-                    Log.e(TAG, "❌ [致命错误] 无法创建父目录，可能是权限不足或路径不合法！")
-                    return // 直接拦截，不用往下走了
+                    Log.e(TAG, "❌ [Fatal Error] Unable to create parent directory, possibly due to insufficient permissions or invalid path!")
+                    return // Intercept directly, no need to go further
                 }
             }
 
-            // 2. 测试文件创建与写入权限
+            // 2. Test file creation and write permission
             if (!file.exists()) {
                 val isFileCreated = file.createNewFile()
-                Log.w(TAG, "🔧 [自检] 日志文件不存在，尝试创建... 结果: $isFileCreated")
+                Log.w(TAG, "🔧 [Self-check] Log file does not exist, attempting to create... Result: $isFileCreated")
             }
 
             if (!file.canWrite()) {
-                Log.e(TAG, "❌ [致命错误] 文件存在，但系统拒绝了写入权限！检查 Scoped Storage。")
+                Log.e(TAG, "❌ [Fatal Error] File exists, but system denied write permission! Check Scoped Storage.")
                 return
             }
 
-            // 清理过大的日志 (> 15MB)
+            // Clean up large logs (> 15MB)
             if (file.exists() && file.length() > 15 * 1024 * 1024) {
                 file.delete()
                 file.createNewFile()
             }
 
             logFile = file
-            i(TAG, "✅ [自检通过] Logger 初始化成功，文件已锁定。")
+            i(TAG, "✅ [Self-check passed] Logger initialized successfully, file locked.")
 
         } catch (e: Exception) {
-            Log.e(TAG, "❌ [致命错误] 初始化过程发生崩溃: ${e.message}", e)
+            Log.e(TAG, "❌ [Fatal Error] Crash during initialization: ${e.message}", e)
         }
     }
 

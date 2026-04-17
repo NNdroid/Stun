@@ -12,6 +12,10 @@ object ProfileManager {
         return AppDatabase.getDatabase(context).profileDao().getAllStatic()
     }
 
+    fun getProfileById(context: Context, id: String): Profile? {
+        return AppDatabase.getDatabase(context).profileDao().getById(id)
+    }
+
     fun addProfile(context: Context, profile: Profile) {
         AppDatabase.getDatabase(context).profileDao().insert(profile)
     }

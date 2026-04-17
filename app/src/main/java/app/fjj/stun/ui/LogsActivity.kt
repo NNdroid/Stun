@@ -12,7 +12,7 @@ import androidx.core.view.updatePadding
 import app.fjj.stun.databinding.ActivityLogsBinding
 import app.fjj.stun.repo.StunRepository
 
-class LogsActivity : AppCompatActivity() {
+class LogsActivity : BaseActivity() {
 
     private lateinit var binding: ActivityLogsBinding
 

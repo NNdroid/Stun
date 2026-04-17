@@ -17,7 +17,7 @@ import app.fjj.stun.repo.StunLogger
 import androidx.core.net.toUri
 import app.fjj.stun.util.AppUtils
 
-class AboutActivity : AppCompatActivity() {
+class AboutActivity : BaseActivity() {
 
     private lateinit var binding: ActivityAboutBinding
 

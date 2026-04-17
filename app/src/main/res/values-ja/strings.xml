@@ -63,6 +63,15 @@
     <string name="geoip_direct">GeoIPダイレクト (例: cn,private)</string>
     <string name="save_settings">設定を保存</string>
 
+    <string name="language">言語</string>
+    <string name="lang_auto">システムデフォルト</string>
+    <string name="lang_en">English</string>
+    <string name="lang_zh_cn">Simplified Chinese</string>
+    <string name="lang_zh_tw">Traditional Chinese</string>
+    <string name="lang_de">Deutsch</string>
+    <string name="lang_fr">Français</string>
+    <string name="lang_ja">日本語</string>
+
     <string name="clear_logs">ログを消去</string>
     <string name="copy">コピー</string>
     <string name="copy_success">ログをクリップボードにコピーしました</string>
@@ -115,6 +124,12 @@
 
     <string name="reason_ssh_down">Go SSHライブラリがオフラインです</string>
     <string name="reason_hev_down">HEVエンジンがオフラインです</string>
+
+    <string name="main_profile_switch_disabled">VPNが動作中です。プロファイルを切り替える前に停止してください。</string>
+
+    <string name="service_mode">サービスモード</string>
+    <string name="service_mode_vpn">VPN</string>
+    <string name="service_mode_tproxy">透明プロキシ (Root)</string>
 
     <string name="app_filtering">アプリのフィルタリング</string>
     <string name="filter_mode">フィルタモード</string>
