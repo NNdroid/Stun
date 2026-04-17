@@ -1,0 +1,50 @@
+diff --git a/Android.mk b/Android.mk
+index beb2ea3..ae31620 100644
+--- a/Android.mk
++++ b/Android.mk
+@@ -16,9 +16,17 @@
+ LOCAL_PATH := $(call my-dir)
+ TUNNEL_PATH := $(LOCAL_PATH)
+ 
+-include $(TUNNEL_PATH)/third-part/yaml/Android.mk
+ include $(TUNNEL_PATH)/third-part/lwip/Android.mk
++
++ifeq ($(filter yaml,$(SUB_MODULES)),)
++SUB_MODULES += yaml
++include $(TUNNEL_PATH)/third-part/yaml/Android.mk
++endif
++
++ifeq ($(filter hev-task-system,$(SUB_MODULES)),)
++SUB_MODULES += hev-task-system
+ include $(TUNNEL_PATH)/third-part/hev-task-system/Android.mk
++endif
+ 
+ LOCAL_PATH := $(TUNNEL_PATH)
+ SRCDIR := $(LOCAL_PATH)/src
+diff --git a/src/hev-jni.c b/src/hev-jni.c
+index 9698555..f073f1e 100644
+--- a/src/hev-jni.c
++++ b/src/hev-jni.c
+@@ -26,7 +26,7 @@
+ #define PKGNAME hev/htproxy
+ #endif
+ #ifndef CLSNAME
+-#define CLSNAME TProxyService
++#define CLSNAME TTunnelService
+ #endif
+ /* clang-format on */
+ 
+@@ -54,10 +54,10 @@ static void native_stop_service (JNIEnv *env, jobject thiz);
+ static jlongArray native_get_stats (JNIEnv *env, jobject thiz);
+ 
+ static JNINativeMethod native_methods[] = {
+-    { "TProxyStartService", "(Ljava/lang/String;I)V",
++    { "TTunnelStartService", "(Ljava/lang/String;I)V",
+       (void *)native_start_service },
+-    { "TProxyStopService", "()V", (void *)native_stop_service },
+-    { "TProxyGetStats", "()[J", (void *)native_get_stats },
++    { "TTunnelStopService", "()V", (void *)native_stop_service },
++    { "TTunnelGetStats", "()[J", (void *)native_get_stats },
+ };
+ 
+ static void

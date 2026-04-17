@@ -52,6 +52,51 @@ tasks.configureEach {
     }
 }
 
+// ========================================================
+// Task to automatically patch JNI submodules (Config Cache Safe)
+// ========================================================
+val applyJniPatches = tasks.register("applyJniPatches") {
+    // 【关键修复 1】：在配置阶段（doLast 外部）提前获取并锁定目录对象
+    // 使用 project.layout API 是 Configuration Cache 推荐的最佳实践
+    val jniDirectory = project.layout.projectDirectory.dir("jni")
+
+    doLast {
+        // 【关键修复 2】：在执行阶段（doLast 内部）完全脱离 project 对象
+        // 只操作前面捕获的纯净 File 对象
+        val jniDir = jniDirectory.asFile
+        val patchesDir = File(jniDir, "patches")
+
+        if (!patchesDir.exists()) {
+            return@doLast
+        }
+
+        println("=== Starting JNI Submodule Patching ===")
+
+        patchesDir.listFiles { _, name -> name.endsWith(".patch") }?.forEach { patchFile ->
+            val submoduleName = patchFile.name.replace(".patch", "")
+            val submoduleDir = File(jniDir, submoduleName)
+
+            if (submoduleDir.exists()) {
+                println("📦 Processing: $submoduleName")
+                try {
+                    val process = ProcessBuilder("git", "apply", "--ignore-whitespace", "--reject", patchFile.absolutePath)
+                        .directory(submoduleDir)
+                        .start()
+
+                    process.waitFor()
+
+                    println("✅ $submoduleName patch applied or already present")
+                } catch (e: Exception) {
+                    println("⚠️ Skipping $submoduleName: ${e.message}")
+                }
+            } else {
+                println("❌ Submodule directory not found: ${submoduleDir.absolutePath}")
+            }
+        }
+        println("=== JNI Patching Complete ===")
+    }
+}
+
 android {
     namespace = "app.fjj.stun"
     compileSdk = 36
@@ -66,7 +111,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
         ndk {
-            // Specify only 64-bit ABIs to include in the package
+            // Specify ABIs to include in the package
             abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86"))
         }
     }
@@ -105,13 +150,16 @@ android {
         viewBinding = true
     }
 
-    // IMPORTANT: Point sourceSets to your JNI folder if you want to include extra libs
-    // Although externalNativeBuild handles this automatically for built artifacts.
     sourceSets {
         getByName("main") {
             jniLibs.directories.add("src/main/jniLibs")
         }
     }
+}
+
+// Ensure patches are applied before any build starts
+tasks.named("preBuild") {
+    dependsOn(applyJniPatches)
 }
 
 dependencies {
