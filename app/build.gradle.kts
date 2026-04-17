@@ -99,12 +99,12 @@ val applyJniPatches = tasks.register("applyJniPatches") {
 
 android {
     namespace = "app.fjj.stun"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "app.fjj.stun"
         minSdk = 28
-        targetSdk = 37
+        targetSdk = 36
         versionCode = 6
         versionName = "1.5"
 

@@ -100,10 +100,15 @@ object StunLogger {
         }
     }
 
+    var errorListener: ((String, String, Throwable?) -> Unit)? = null
+
     fun d(tag: String, msg: String) = log("DEBUG", tag, msg)
     fun i(tag: String, msg: String) = log("INFO", tag, msg)
     fun w(tag: String, msg: String) = log("WARN", tag, msg)
-    fun e(tag: String, msg: String, tr: Throwable? = null) = log("ERROR", tag, msg, tr)
+    fun e(tag: String, msg: String, tr: Throwable? = null) {
+        log("ERROR", tag, msg, tr)
+        errorListener?.invoke(tag, msg, tr)
+    }
 
     /**
      * 核心日志生产逻辑 (完全非阻塞，只做字符串拼接和入队)

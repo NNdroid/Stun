@@ -144,4 +144,5 @@
     <string name="search_apps">Search apps...</string>
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
+    <string name="desc_scroll_to_bottom">Scroll to bottom</string>
 </resources>

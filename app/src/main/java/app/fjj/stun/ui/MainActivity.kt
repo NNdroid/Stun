@@ -232,6 +232,16 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
             }
         }
 
+        StunLogger.errorListener = { tag, msg, _ ->
+            runOnUiThread {
+                com.google.android.material.snackbar.Snackbar.make(
+                    binding.root,
+                    "[$tag] $msg",
+                    com.google.android.material.snackbar.Snackbar.LENGTH_LONG
+                ).setAnchorView(binding.bottomContainer).show()
+            }
+        }
+
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (binding.drawerLayout.isDrawerOpen(GravityCompat.START)) {
@@ -243,6 +253,11 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                 }
             }
         })
+    }
+
+    override fun onDestroy() {
+        StunLogger.errorListener = null
+        super.onDestroy()
     }
 
     override fun onNavigationItemSelected(item: MenuItem): Boolean {

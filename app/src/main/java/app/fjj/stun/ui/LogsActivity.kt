@@ -38,6 +38,17 @@ class LogsActivity : BaseActivity() {
             updateLogView(it)
         }
 
+        binding.fabScrollBottom.setOnClickListener {
+            binding.scrollView.fullScroll(android.view.View.FOCUS_DOWN)
+            binding.fabScrollBottom.hide()
+        }
+
+        binding.scrollView.setOnScrollChangeListener { _, _, _, _, _ ->
+            if (isAtBottom()) {
+                binding.fabScrollBottom.hide()
+            }
+        }
+
         updateLogView()
     }
 
@@ -66,11 +77,22 @@ class LogsActivity : BaseActivity() {
     private fun updateLogView(logs: String? = null) {
         val content = logs ?: StunRepository.appLogs.value ?: ""
         binding.tvLogs.text = content
-        
-        // Auto scroll to bottom
-        binding.scrollView.post {
-            binding.scrollView.fullScroll(android.view.View.FOCUS_DOWN)
+
+        // Only auto-scroll if we are already at the bottom
+        if (isAtBottom()) {
+            binding.scrollView.post {
+                binding.scrollView.fullScroll(android.view.View.FOCUS_DOWN)
+            }
+        } else {
+            binding.fabScrollBottom.show()
         }
+    }
+
+    private fun isAtBottom(): Boolean {
+        val scrollY = binding.scrollView.scrollY
+        val innerHeight = binding.scrollView.getChildAt(0).height
+        val scrollViewHeight = binding.scrollView.height
+        return scrollY + scrollViewHeight >= innerHeight - 50 // 50px buffer
     }
 
     override fun onSupportNavigateUp(): Boolean {
