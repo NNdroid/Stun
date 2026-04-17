@@ -54,8 +54,7 @@ object VpnConfigBuilder {
     fun buildHevConfig(socksPort: Int): String {
         return """
             misc:
-              task-stack-size: 8192
-              log-level: warn
+              log-level: ${(if (app.fjj.stun.BuildConfig.DEBUG) "debug" else "warn")}
             tunnel:
               mtu: 1500
               ipv4: true

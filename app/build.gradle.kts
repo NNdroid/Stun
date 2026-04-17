@@ -56,12 +56,12 @@ tasks.configureEach {
 // Task to automatically patch JNI submodules (Config Cache Safe)
 // ========================================================
 val applyJniPatches = tasks.register("applyJniPatches") {
-    // 【关键修复 1】：在配置阶段（doLast 外部）提前获取并锁定目录对象
+    // 在配置阶段（doLast 外部）提前获取并锁定目录对象
     // 使用 project.layout API 是 Configuration Cache 推荐的最佳实践
     val jniDirectory = project.layout.projectDirectory.dir("jni")
 
     doLast {
-        // 【关键修复 2】：在执行阶段（doLast 内部）完全脱离 project 对象
+        // 在执行阶段（doLast 内部）完全脱离 project 对象
         // 只操作前面捕获的纯净 File 对象
         val jniDir = jniDirectory.asFile
         val patchesDir = File(jniDir, "patches")
@@ -99,12 +99,12 @@ val applyJniPatches = tasks.register("applyJniPatches") {
 
 android {
     namespace = "app.fjj.stun"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "app.fjj.stun"
         minSdk = 28
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 5
         versionName = "1.4"
 
@@ -148,6 +148,7 @@ android {
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 
     sourceSets {

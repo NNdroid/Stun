@@ -68,7 +68,7 @@ object TransparentProxyConfigBuilder {
             main:
               workers: 1
             misc:
-              log-level: debug
+              log-level: ${(if (app.fjj.stun.BuildConfig.DEBUG) "debug" else "warn")}
             tcp:
               port: $tproxyPort
               address: '::' # Listen on all interfaces (IPv4/IPv6)

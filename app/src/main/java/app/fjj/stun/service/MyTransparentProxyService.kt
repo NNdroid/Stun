@@ -167,10 +167,10 @@ class MyTransparentProxyService : Service() {
             )
             File(cacheDir, FILE_SHELL_CONF).writeText(shellConfig)
 
-            ExecUtils.executeRootCommand("${scriptFile.absolutePath} -d $cachePath --verbose start")
+            ExecUtils.executeRootCommand("${scriptFile.absolutePath} -d $cachePath ${(if (app.fjj.stun.BuildConfig.DEBUG) "--verbose" else "")} start")
         } else {
             StunLogger.i(TAG, "Disabling TProxy firewall rules...")
-            ExecUtils.executeRootCommand("${scriptFile.absolutePath} -d $cachePath --verbose stop")
+            ExecUtils.executeRootCommand("${scriptFile.absolutePath} -d $cachePath ${(if (app.fjj.stun.BuildConfig.DEBUG) "--verbose" else "")} stop")
         }
     }
 
