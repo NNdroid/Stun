@@ -1,3 +1,5 @@
+import java.io.File
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.legacy.kapt)
@@ -5,6 +7,49 @@ plugins {
 
 kotlin {
     jvmToolchain(17)
+}
+
+// Automate moving the TProxy executable to assets
+val copyTProxyBinaries = tasks.register("copyTProxyBinaries") {
+    val buildDirectory = project.layout.buildDirectory
+    val projectDirectory = project.layout.projectDirectory
+
+    doLast {
+        val abis = listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
+        val buildDir = buildDirectory.get().asFile
+        val cxxDir = File(buildDir, "intermediates/cxx")
+
+        if (!cxxDir.exists()) {
+            println("CXX intermediates directory not found: ${cxxDir.path}")
+            return@doLast
+        }
+
+        abis.forEach { abi ->
+            var found = false
+            cxxDir.walkBottomUp().forEach { file ->
+                if (file.isFile && file.name == "hev-socks5-tproxy" && file.parentFile.name == abi) {
+                    val destDir = projectDirectory.dir("src/main/assets/bin/$abi").asFile
+                    destDir.mkdirs()
+                    file.copyTo(File(destDir, "hev-socks5-tproxy"), overwrite = true)
+                    println("Copied $abi binary to assets from: ${file.path}")
+                    found = true
+                }
+            }
+            if (!found) {
+                println("Could not find hev-socks5-tproxy for ABI: $abi")
+            }
+        }
+    }
+}
+
+// Ensure assets are copied before merging
+tasks.configureEach {
+    if (name.startsWith("merge") && name.endsWith("Assets")) {
+        dependsOn(copyTProxyBinaries)
+    }
+    if (name.contains("externalNativeBuild", ignoreCase = true)) {
+        finalizedBy(copyTProxyBinaries)
+    }
 }
 
 android {
@@ -85,9 +130,6 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     implementation("io.github.rosaleskevin:katch:1.0.0")
     kapt("androidx.room:room-compiler:${libs.versions.roomVersion.get()}")
-    // Use annotationProcessor for Java or kapt/ksp for Kotlin
-    // Since I don't know if kapt is enabled, I'll check plugins or assume kapt for now.
-    // Actually, I should check plugins first.
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

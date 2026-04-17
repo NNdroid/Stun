@@ -90,6 +90,11 @@
     <string name="main_scan_prompt">Scan a profile QR code</string>
     <string name="main_selected">Selected: %1$s</string>
     <string name="main_qr_fail">Failed to generate QR code</string>
+    <string name="main_profile_switch_disabled">VPN is running. Please stop it before switching profiles.</string>
+
+    <string name="service_mode">Service Mode</string>
+    <string name="service_mode_vpn">VPN</string>
+    <string name="service_mode_tproxy">Transparent Proxy (Root)</string>
 
     <string name="export_success">Profiles exported successfully</string>
     <string name="export_failed">Export failed: %1$s</string>

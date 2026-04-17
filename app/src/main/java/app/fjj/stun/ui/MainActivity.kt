@@ -32,6 +32,7 @@ import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.StunLogger
 import app.fjj.stun.repo.StunRepository
 import app.fjj.stun.repo.VpnState
+import app.fjj.stun.service.MyTransparentProxyService
 import app.fjj.stun.service.MyVpnService
 import app.fjj.stun.util.AppUtils
 import app.fjj.stun.util.KeystoreUtils
@@ -67,7 +68,12 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { _ ->
-        startVpnService()
+        val mode = SettingsManager.getServiceMode(this)
+        if (mode == SettingsManager.SERVICE_MODE_TPROXY) {
+            startTProxyService()
+        } else {
+            startVpnService()
+        }
     }
 
     private val barcodeLauncher = registerForActivityResult(
@@ -166,7 +172,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         }
 
         binding.fabStartStop.setOnClickListener {
-            prepareVpn()
+            handleStartStop()
         }
 
         binding.tvStatus.setOnClickListener {
@@ -175,6 +181,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
         // 🌟 核心修改区：监听枚举状态并精细化控制 UI
         StunRepository.vpnState.observe(this) { state ->
+            binding.fabStartStop.clearAnimation() // 停止之前的动画
             when (state) {
                 VpnState.DISCONNECTED -> {
                     isVpnRunning = false
@@ -185,6 +192,20 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 VpnState.CONNECTING -> {
                     isVpnRunning = false
                     binding.fabStartStop.isEnabled = false // 禁用按钮，防止连点
+                    binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_sync)
+                    
+                    // 开始旋转动画
+                    val rotate = android.view.animation.RotateAnimation(
+                        0f, 360f,
+                        android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f,
+                        android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f
+                    ).apply {
+                        duration = 1000
+                        repeatCount = android.view.animation.Animation.INFINITE
+                        interpolator = android.view.animation.LinearInterpolator()
+                    }
+                    binding.fabStartStop.startAnimation(rotate)
+
                     binding.tvStatus.text = getString(app.fjj.stun.R.string.main_connecting)
                 }
                 VpnState.CONNECTED -> {
@@ -247,9 +268,13 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             profiles = emptyList(),
             selectedProfileId = selectedId,
             onProfileClick = { profile ->
-                SettingsManager.setSelectedProfileId(this, profile.id)
-                adapter.updateProfiles(adapter.getProfiles(), profile.id)
-                Toast.makeText(this, getString(app.fjj.stun.R.string.main_selected, profile.name), Toast.LENGTH_SHORT).show()
+                if (!isVpnRunning) {
+                    SettingsManager.setSelectedProfileId(this, profile.id)
+                    adapter.updateProfiles(adapter.getProfiles(), profile.id)
+                    Toast.makeText(this, getString(app.fjj.stun.R.string.main_selected, profile.name), Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, getString(app.fjj.stun.R.string.main_profile_switch_disabled), Toast.LENGTH_SHORT).show()
+                }
             },
             onEditClick = { profile ->
                 val intent = Intent(this, ProfileEditActivity::class.java)
@@ -483,30 +508,47 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         return true
     }
 
-    private fun prepareVpn() {
+    private fun handleStartStop() {
+        val mode = SettingsManager.getServiceMode(this)
         val currentState = StunRepository.vpnState.value ?: VpnState.DISCONNECTED
-        
-        // If we're not currently connected or reconnecting, we're trying to start a new connection.
-        // Perform credential validation before proceeding.
-        if (currentState != VpnState.CONNECTED && currentState != VpnState.RECONNECTING) {
-            if (!validateSelectedProfile()) return
-        }
 
+        if (currentState == VpnState.CONNECTED || currentState == VpnState.RECONNECTING) {
+            if (mode == SettingsManager.SERVICE_MODE_TPROXY) {
+                stopTProxyProcess()
+            } else {
+                stopVpnProcess()
+            }
+        } else {
+            if (currentState == VpnState.CONNECTING) return
+            if (!validateSelectedProfile()) return
+
+            if (mode == SettingsManager.SERVICE_MODE_TPROXY) {
+                startTProxyProcess()
+            } else {
+                startVpnProcess()
+            }
+        }
+    }
+
+    private fun startVpnProcess() {
         val intent = VpnService.prepare(this)
         if (intent != null) {
             vpnLauncher.launch(intent)
         } else {
-            // 如果正在连接中，忽略操作（理论上按钮已被禁用，加一层防护）
-            if (currentState == VpnState.CONNECTING) return
-
-            // 如果处于连接或重连状态，发送停止指令
-            if (currentState == VpnState.CONNECTED || currentState == VpnState.RECONNECTING) {
-                stopVpnService()
-            } else {
-                // 如果处于断开或错误状态，发送启动指令
-                checkAndRequestNotificationPermission()
-            }
+            checkAndRequestNotificationPermission()
         }
+    }
+
+    private fun stopVpnProcess() {
+        stopVpnService()
+    }
+
+    private fun startTProxyProcess() {
+        checkAndRequestNotificationPermission()
+    }
+
+    private fun stopTProxyProcess() {
+        stopTProxyService()
     }
 
     private fun checkAndRequestNotificationPermission() {
@@ -514,10 +556,12 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             } else {
-                startVpnService()
+                val mode = SettingsManager.getServiceMode(this)
+                if (mode == SettingsManager.SERVICE_MODE_TPROXY) startTProxyService() else startVpnService()
             }
         } else {
-            startVpnService()
+            val mode = SettingsManager.getServiceMode(this)
+            if (mode == SettingsManager.SERVICE_MODE_TPROXY) startTProxyService() else startVpnService()
         }
     }
 
@@ -530,6 +574,18 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     private fun startVpnService() {
         val intent = Intent(this, MyVpnService::class.java)
         intent.action = MyVpnService.ACTION_START
+        startService(intent)
+    }
+
+    private fun stopTProxyService() {
+        val intent = Intent(this, MyTransparentProxyService::class.java)
+        intent.action = MyTransparentProxyService.ACTION_STOP
+        startService(intent)
+    }
+
+    private fun startTProxyService() {
+        val intent = Intent(this, MyTransparentProxyService::class.java)
+        intent.action = MyTransparentProxyService.ACTION_START
         startService(intent)
     }
 

@@ -58,6 +58,6 @@ object StunRepository {
         StunLogger.logListener = { line -> appendAppLog(line) }
     }
 
-    fun getAppLogFilePath(ctx: Context) = File(ctx.cacheDir, "stun.log").absolutePath
-    fun getTunnelLogFilePath(ctx: Context) = File(ctx.cacheDir, "go.log").absolutePath
+    fun getAppLogFilePath(ctx: Context): String = File(ctx.cacheDir, "app.log").absolutePath
+    fun getTunnelLogFilePath(ctx: Context): String = File(ctx.cacheDir, "go.log").absolutePath
 }

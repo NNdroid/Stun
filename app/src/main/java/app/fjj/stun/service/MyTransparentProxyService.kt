@@ -1,0 +1,254 @@
+package app.fjj.stun.service
+
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.Service
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.os.IBinder
+import androidx.core.app.NotificationCompat
+import app.fjj.stun.R
+import app.fjj.stun.repo.*
+import app.fjj.stun.util.ExecUtils
+import kotlinx.coroutines.*
+import java.io.File
+import java.io.IOException
+import java.util.concurrent.atomic.AtomicBoolean
+
+/**
+ * a root-based transparent proxy.
+ * Uses iptables (via tproxy.sh) and hev-socks5-tproxy core.
+ */
+class MyTransparentProxyService : Service() {
+    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var mainJob: Job? = null
+    private var coreJob: Job? = null
+    private val isRunning = AtomicBoolean(false)
+    private val TAG: String
+        get() = "TProxyService-[${Thread.currentThread().name}]"
+
+    companion object {
+        // Actions
+        const val ACTION_START = "app.fjj.stun.ROOT_START"
+        const val ACTION_STOP = "app.fjj.stun.ROOT_STOP"
+        // Constants
+        private const val CHANNEL_ID = "StunTransparentProxyChannel"
+        private const val NOTIFICATION_ID = 3004
+        private const val SOCKS_PORT = 10808
+        private const val TPROXY_PORT = 10812
+        private const val DNS_HIJACK_PORT = 10553
+        private const val BIN_TPROXY = "hev-socks5-tproxy"
+        private const val FILE_TPROXY_CONF = "hev-socks5-tproxy.conf" // YAML for core
+        private const val SCRIPT_TPROXY = "tproxy.sh"
+        private const val FILE_SHELL_CONF = "tproxy.conf"  // Env for script
+        private const val FILE_TPROXY_LOG = "tproxy.log"
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        StunLogger.i(TAG, "Service onCreate")
+        createNotificationChannel()
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        StunLogger.i(TAG, "Received intent action: ${intent?.action}")
+        when (intent?.action) {
+            ACTION_STOP -> stopTProxy(this@MyTransparentProxyService)
+            else -> startTProxy(this@MyTransparentProxyService)
+        }
+        return START_STICKY
+    }
+
+    private fun startTProxy(context: Context) {
+        StunLogger.i(TAG, "Attempting to start Transparent Proxy...")
+
+        // 如果没有 Root 权限，必须调用 stopSelf() 结束服务，否则会引发系统 ANR / 崩溃
+        if (!ExecUtils.checkIsRootPermission()) {
+            StunLogger.e(TAG, "Root permission required but not granted. Stopping service.")
+            stopSelf()
+            return
+        }
+
+        // 使用原子操作检查并设置运行状态：如果已经是 true，直接返回
+        if (!isRunning.compareAndSet(false, true)) {
+            StunLogger.w(TAG, "Service is already running, ignoring start request.")
+            return
+        }
+
+        StunRepository.vpnState.postValue(VpnState.CONNECTING)
+        updateNotification("Initializing Transparent Proxy...")
+
+        mainJob = serviceScope.launch {
+            try {
+                StunLogger.i(TAG, "--- Start Sequence Initiated ---")
+
+                // 0. 清理可能残留的旧防火墙规则
+                StunLogger.i(TAG, "Step 0: Clearing legacy firewall rules...")
+                applyRules(context, false)
+
+                val profile = ProfileManager.getSelectedProfile(context)
+                    ?: throw IllegalStateException("No profile selected")
+
+                // 1. Start SSH Core (SOCKS5 Backend)
+                StunLogger.i(TAG, "Step 1: Starting SSH Core backend...")
+                myssh.Myssh.loadGlobalConfigFromJson(VpnConfigBuilder.buildGlobalConfig(context, profile))
+                val sshStatus = myssh.Myssh.startSshTProxy2(VpnConfigBuilder.buildSshConfig(context, profile, SOCKS_PORT))
+                if (sshStatus != 0L) throw RuntimeException("SSH Core failed to start with status: $sshStatus")
+                StunLogger.i(TAG, "SSH Core started successfully.")
+
+                // 2. Deploy and Configure TProxy Core
+                StunLogger.i(TAG, "Step 2: Deploying TProxy binary and configuration...")
+                val coreFile = ExecUtils.binaryDeploy(context, BIN_TPROXY)
+                    ?: throw IOException("Failed to deploy TProxy binary")
+
+                val yamlConfig = TransparentProxyConfigBuilder.buildTProxyConfig(
+                    context, profile, SOCKS_PORT, TPROXY_PORT, DNS_HIJACK_PORT
+                )
+                File(cacheDir, FILE_TPROXY_CONF).writeText(yamlConfig)
+
+                // 3. Start Core Engine
+                StunLogger.i(TAG, "Step 3: Launching TProxy core engine...")
+                startCoreEngine(coreFile)
+
+                // 【修复】：挂起协程 1000 毫秒，给底层 C/Go 核心程序分配端口和监听的时间，避免 iptables 导流过早导致断网
+                StunLogger.i(TAG, "Waiting for core engine to bind ports...")
+                delay(1000)
+
+                // 4. Apply Firewall Rules
+                StunLogger.i(TAG, "Step 4: Applying Iptables firewall rules...")
+                applyRules(context, true)
+
+                // 5. Update State & Notifications
+                StunLogger.i(TAG, "Start Sequence Completed Successfully.")
+                StunRepository.vpnState.postValue(VpnState.CONNECTED)
+                updateNotification("Transparent Proxy Active")
+
+                // 6. System Optimizations
+                optimizeSystemForBackground()
+
+                // Block and wait for core (监听 JNI 底层状态，阻塞当前协程)
+                StunLogger.i(TAG, "Entering wgWait() block...")
+                myssh.Myssh.wgWait()
+                StunLogger.i(TAG, "wgWait() returned gracefully.")
+
+            } catch (e: Exception) {
+                StunLogger.e(TAG, "Critical Failure during start sequence: ${e.message}", e)
+                // 启动失败时的自动回滚与清理
+                stopTProxy(context)
+            }
+        }
+    }
+
+    private fun startCoreEngine(coreFile: File) {
+        coreJob = serviceScope.launch {
+            val configFile = File(cacheDir, FILE_TPROXY_CONF)
+            val logFile = File(cacheDir, FILE_TPROXY_LOG).absolutePath
+
+            // 使用 nohup 和 & 让核心进程脱离当前 Root Shell，在后台作为守护进程运行。避免 Shell 阻塞和后续指令死锁
+            val cmd = "nohup ${coreFile.absolutePath} ${configFile.absolutePath} > $logFile 2>&1 &"
+
+            StunLogger.i(TAG, "Executing Background Root Cmd: $cmd")
+            ExecUtils.executeRootCommand(cmd)
+        }
+    }
+
+    private fun applyRules(context: Context, enabled: Boolean) {
+        val scriptFile = ExecUtils.copyAssetToCache(context, SCRIPT_TPROXY) ?: run {
+            StunLogger.e(TAG, "Failed to copy tproxy.sh script from assets.")
+            return
+        }
+        val cachePath = cacheDir.absolutePath
+
+        if (enabled) {
+            StunLogger.i(TAG, "Enabling TProxy firewall rules...")
+            val shellConfig = TransparentProxyConfigBuilder.buildShellConfig(
+                this, TPROXY_PORT, TPROXY_PORT, DNS_HIJACK_PORT
+            )
+            File(cacheDir, FILE_SHELL_CONF).writeText(shellConfig)
+
+            ExecUtils.executeRootCommand("${scriptFile.absolutePath} -d $cachePath --verbose start")
+        } else {
+            StunLogger.i(TAG, "Disabling TProxy firewall rules...")
+            ExecUtils.executeRootCommand("${scriptFile.absolutePath} -d $cachePath --verbose stop")
+        }
+    }
+
+    private fun stopTProxy(context: Context) {
+        StunLogger.i(TAG, "Attempting to stop Transparent Proxy...")
+
+        // 如果当前不是运行状态 (isRunning=false)，就提前返回。必须加 !
+        if (!isRunning.compareAndSet(true, false)) {
+            StunLogger.w(TAG, "Service is not running, ignoring stop request.")
+            return
+        }
+
+        // 取消相关协程，停止产生新的指令
+        mainJob?.cancel()
+        coreJob?.cancel()
+        StunLogger.i(TAG, "Jobs cancelled.")
+
+        // 启动不可取消的清理协程，确保即使上层协程被取消，清理工作也能执行完毕
+        serviceScope.launch(NonCancellable) {
+            try {
+                StunLogger.i(TAG, "--- Stop Sequence Initiated ---")
+
+                // 1. 清除防火墙规则 (恢复系统网络)
+                applyRules(context, false)
+
+                // 2. 强杀底层的二进制进程
+                StunLogger.i(TAG, "Killing TProxy binary processes...")
+                ExecUtils.executeRootCommand("killall -9 $BIN_TPROXY || true")
+
+                // 3. 停止 SSH 后端
+                try {
+                    StunLogger.i(TAG, "Stopping SSH Core...")
+                    myssh.Myssh.stopSshTProxy()
+                } catch (e: Exception) {
+                    StunLogger.w(TAG, "Exception while stopping SSH Core: ${e.message}")
+                }
+
+            } finally {
+                // 4. 重置状态并销毁 Service
+                StunLogger.i(TAG, "Stop Sequence Completed. Tearing down service.")
+                StunRepository.vpnState.postValue(VpnState.DISCONNECTED)
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            }
+        }
+    }
+
+    private fun optimizeSystemForBackground() {
+        StunLogger.i(TAG, "Applying background execution optimizations...")
+        ExecUtils.executeRootCommand("dumpsys deviceidle whitelist +$packageName")
+        ExecUtils.executeRootCommand("appops set $packageName RUN_IN_BACKGROUND allow")
+        ExecUtils.executeRootCommand("appops set $packageName WAKE_LOCK allow")
+    }
+
+    private fun createNotificationChannel() {
+        val nm = getSystemService(NotificationManager::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(CHANNEL_ID, "TProxy Service", NotificationManager.IMPORTANCE_LOW)
+            nm?.createNotificationChannel(channel)
+        }
+    }
+
+    private fun updateNotification(content: String) {
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Stun Transparent Proxy")
+            .setContentText(content)
+            .setSmallIcon(R.drawable.ic_fox_logo)
+            .setOngoing(true)
+            .build()
+        startForeground(NOTIFICATION_ID, notification)
+    }
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onDestroy() {
+        StunLogger.i(TAG, "Service onDestroy called.")
+        stopTProxy(this@MyTransparentProxyService)
+        serviceScope.cancel() // 彻底销毁作用域
+        super.onDestroy()
+    }
+}

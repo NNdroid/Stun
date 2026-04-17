@@ -5,9 +5,9 @@ import android.content.Context
 import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.StunLogger
 import app.fjj.stun.repo.StunRepository
+import app.fjj.stun.util.ExecUtils
 import com.katch.Katch
 import myssh.LogReceiver
-import java.io.File
 
 class StunApp : Application() {
     override fun onCreate() {
@@ -16,12 +16,9 @@ class StunApp : Application() {
         // Initialize StunLogger
         initLogger(this@StunApp)
         app.fjj.stun.util.KeystoreUtils.init(this@StunApp)
-        
         // Setup bridge to UI LiveData
         app.fjj.stun.repo.StunRepository.setupLogBridge()
-        
-        StunLogger.i("StunApp", "Application initialized and StunLogger started.")
-
+        initAssets(this@StunApp)
         // Trigger GeoData update check on startup
         SettingsManager.checkAndUpdateGeoData(this@StunApp)
     }
@@ -31,6 +28,7 @@ class StunApp : Application() {
     }
 
     private fun initLogger(context: Context) {
+        StunLogger.init(context)
         val logPath = StunRepository.getTunnelLogFilePath(context)
         val logLevel = SettingsManager.getLogLevel(context)
         // 1. 实现接口
@@ -41,5 +39,9 @@ class StunApp : Application() {
         // 2. 注入并启动
         myssh.Myssh.setLogReceiver(goLogReceiver)
         myssh.Myssh.initLogger(logPath, logLevel)
+    }
+
+    private fun initAssets(context: Context) {
+        ExecUtils.binaryDeploy(context, "hev-socks5-tproxy")
     }
 }

@@ -23,6 +23,10 @@ object SettingsManager {
     private const val KEY_LAST_UPDATE_TIME = "last_update_time"
     private const val KEY_FILTER_APPS = "filter_apps"
     private const val KEY_FILTER_MODE = "filter_mode"
+    private const val KEY_SERVICE_MODE = "service_mode"
+
+    const val SERVICE_MODE_VPN = 0
+    const val SERVICE_MODE_TPROXY = 1
 
     const val DEFAULT_LOG_LEVEL = "INFO"
     const val DEFAULT_REMOTE_DNS_SERVER = "doh://8.8.8.8/dns-query"
@@ -77,6 +81,9 @@ object SettingsManager {
 
     fun getFilterMode(context: Context): Int = getPrefs(context).getInt(KEY_FILTER_MODE, 0)
     fun saveFilterMode(context: Context, mode: Int) = getPrefs(context).edit { putInt(KEY_FILTER_MODE, mode) }
+
+    fun getServiceMode(context: Context): Int = getPrefs(context).getInt(KEY_SERVICE_MODE, SERVICE_MODE_VPN)
+    fun saveServiceMode(context: Context, mode: Int) = getPrefs(context).edit { putInt(KEY_SERVICE_MODE, mode) }
 
     fun getGeositeCachePath(context: Context): String = File(context.cacheDir, "geosite.dat").absolutePath
     fun getGeoipCachePath(context: Context): String = File(context.cacheDir, "geoip.dat").absolutePath

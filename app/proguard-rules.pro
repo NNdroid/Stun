@@ -20,7 +20,7 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
--keep class hev.htproxy.TProxyService { *; }
+-keep class hev.htproxy.* { *; }
 -keep class myssh.** { *; }
 -keep class app.fjj.stun.repo.StunLogger { *; }
 

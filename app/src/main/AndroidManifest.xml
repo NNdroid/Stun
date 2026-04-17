@@ -76,6 +76,15 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Proxy and tunneling service for secure network connection." />
         </service>
+
+        <service
+            android:name=".service.MyTransparentProxyService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Root-based transparent proxy system using iptables/T-Proxy." />
+        </service>
     </application>
 
 </manifest>

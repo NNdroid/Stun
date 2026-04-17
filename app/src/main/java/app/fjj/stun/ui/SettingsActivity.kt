@@ -19,6 +19,7 @@ class SettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySettingsBinding
     private val logLevels = arrayOf("DEBUG", "INFO", "WARN", "ERROR")
+    private lateinit var serviceModes: Array<String>
     private lateinit var filterModes: Array<String>
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,6 +28,10 @@ class SettingsActivity : AppCompatActivity() {
         binding = ActivitySettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        serviceModes = arrayOf(
+            getString(app.fjj.stun.R.string.service_mode_vpn),
+            getString(app.fjj.stun.R.string.service_mode_tproxy)
+        )
         filterModes = arrayOf(
             getString(app.fjj.stun.R.string.filter_disallow_mode),
             getString(app.fjj.stun.R.string.filter_allow_mode)
@@ -90,6 +95,10 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         binding.btnSave.setOnClickListener {
+            val serviceMode = if (binding.spinnerServiceMode.text.toString() == getString(app.fjj.stun.R.string.service_mode_tproxy)) 
+                SettingsManager.SERVICE_MODE_TPROXY else SettingsManager.SERVICE_MODE_VPN
+            SettingsManager.saveServiceMode(this, serviceMode)
+
             SettingsManager.saveLogLevel(this, binding.spinnerLogLevel.text.toString())
             SettingsManager.saveRemoteDnsServer(this, binding.etRemoteDnsServer.text.toString())
             SettingsManager.saveLocalDnsServer(this, binding.etLocalDnsServer.text.toString())
@@ -119,6 +128,7 @@ class SettingsActivity : AppCompatActivity() {
             val udpgw = SettingsManager.getUdpgwAddr(this)
             val filterMode = SettingsManager.getFilterMode(this)
             val filterApps = SettingsManager.getFilterApps(this)
+            val serviceMode = SettingsManager.getServiceMode(this)
             val geositeUrl = SettingsManager.getGeositeUrl(this)
             val geoipUrl = SettingsManager.getGeoipUrl(this)
             val interval = SettingsManager.getUpdateInterval(this)
@@ -126,6 +136,12 @@ class SettingsActivity : AppCompatActivity() {
             val geoipDirect = SettingsManager.getGeoipDirect(this)
 
             runOnUiThread {
+                // Setup Service Mode Spinner
+                val serviceAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, serviceModes)
+                binding.spinnerServiceMode.setAdapter(serviceAdapter)
+                binding.spinnerServiceMode.setText(if (serviceMode == SettingsManager.SERVICE_MODE_TPROXY) 
+                    getString(app.fjj.stun.R.string.service_mode_tproxy) else getString(app.fjj.stun.R.string.service_mode_vpn), false)
+
                 // Setup Log Level Spinner
                 val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, logLevels)
                 binding.spinnerLogLevel.setAdapter(adapter)
