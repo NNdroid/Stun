@@ -274,11 +274,6 @@ class MyTransparentProxyService : Service() {
         true
     """.trimIndent()
         ExecUtils.executeRootCommand(killCmd)
-        // 可选：清理残留在缓存中的脚本文件
-        val scriptFile = File(cacheDir, scriptName)
-        if (scriptFile.exists()) {
-            scriptFile.delete()
-        }
     }
 
     private fun createNotificationChannel() {
