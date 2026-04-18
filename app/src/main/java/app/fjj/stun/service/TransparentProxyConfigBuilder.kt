@@ -35,7 +35,7 @@ object TransparentProxyConfigBuilder {
             PROXY_MODE=1
             DNS_HIJACK_ENABLE=1
             DNS_PORT=$dnsPort
-            BLOCK_QUIC=1
+            BLOCK_QUIC=0
             BYPASS_CN_IP=0
             CN_IP_URL=https://push.4544.de/https://raw.githubusercontent.com/Hackl0us/GeoIP2-CN/release/CN-ip-cidr.txt
             CN_IPV6_URL=https://push.4544.de/https://ispip.clang.cn/all_cn_ipv6.txt

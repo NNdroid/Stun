@@ -106,7 +106,7 @@ readonly DEFAULT_MAC_PROXY_MODE="blacklist"
 # "blacklist" or "whitelist"
 
 # block quic
-readonly DEFAULT_BLOCK_QUIC=1
+readonly DEFAULT_BLOCK_QUIC=0
 
 # Whether to include timestamp in logs (0=disable, 1=enable)
 # Disabling this can improve performance by avoiding a process fork for each log entry.
