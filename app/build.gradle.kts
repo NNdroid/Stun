@@ -2,11 +2,7 @@ import java.io.File
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.legacy.kapt)
-}
-
-kotlin {
-    jvmToolchain(17)
+    alias(libs.plugins.ksp)
 }
 
 // Automate moving the TProxy executable to assets
@@ -42,27 +38,13 @@ val copyTProxyBinaries = tasks.register("copyTProxyBinaries") {
     }
 }
 
-// Ensure assets are copied before merging
-tasks.configureEach {
-    if (name.startsWith("merge") && name.endsWith("Assets")) {
-        dependsOn(copyTProxyBinaries)
-    }
-    if (name.contains("externalNativeBuild", ignoreCase = true)) {
-        finalizedBy(copyTProxyBinaries)
-    }
-}
-
 // ========================================================
 // Task to automatically patch JNI submodules (Config Cache Safe)
 // ========================================================
 val applyJniPatches = tasks.register("applyJniPatches") {
-    // 在配置阶段（doLast 外部）提前获取并锁定目录对象
-    // 使用 project.layout API 是 Configuration Cache 推荐的最佳实践
     val jniDirectory = project.layout.projectDirectory.dir("jni")
 
     doLast {
-        // 在执行阶段（doLast 内部）完全脱离 project 对象
-        // 只操作前面捕获的纯净 File 对象
         val jniDir = jniDirectory.asFile
         val patchesDir = File(jniDir, "patches")
 
@@ -111,7 +93,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
         ndk {
-            // Specify ABIs to include in the package
             abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86"))
         }
     }
@@ -149,12 +130,27 @@ android {
     buildFeatures {
         viewBinding = true
         buildConfig = true
+        aidl = true
     }
 
     sourceSets {
         getByName("main") {
             jniLibs.directories.add("src/main/jniLibs")
         }
+    }
+}
+
+kotlin {
+    jvmToolchain(17)
+}
+
+// Ensure assets are copied before merging
+tasks.configureEach {
+    if (name.startsWith("merge") && name.endsWith("Assets")) {
+        dependsOn(copyTProxyBinaries)
+    }
+    if (name.contains("externalNativeBuild", ignoreCase = true)) {
+        finalizedBy(copyTProxyBinaries)
     }
 }
 
@@ -165,20 +161,26 @@ tasks.named("preBuild") {
 
 dependencies {
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar", "*.aar"))))
+
+    implementation(libs.libsu.core)
+    implementation(libs.libsu.service)
+
+    implementation(libs.rikka.shizuku.api)
+    implementation(libs.rikka.shizuku.provider)
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.gson)
-    implementation(libs.core.ktx)
     implementation(libs.zxing.android.embedded)
     implementation(libs.tink.android)
 
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    implementation("io.github.rosaleskevin:katch:1.0.0")
-    kapt("androidx.room:room-compiler:${libs.versions.roomVersion.get()}")
+    implementation(libs.katch)
+    ksp(libs.androidx.room.compiler)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

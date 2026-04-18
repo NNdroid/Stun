@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Stun</string>
     <string name="action_add">Add</string>
     <string name="action_filter">Filter</string>

@@ -8,7 +8,12 @@ import java.io.DataOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import com.topjohnwu.superuser.CallbackList
+import com.topjohnwu.superuser.Shell
+import java.util.concurrent.Callable
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 object ExecUtils {
     /**
@@ -52,30 +57,76 @@ object ExecUtils {
             process?.destroy()
         }
     }
+    private val rootCommandExecutor = Executors.newCachedThreadPool()
     fun executeRootCommand(cmd: String): Int {
         val tag = "[MySsh|${Thread.currentThread().name}]"
         StunLogger.d(tag, "[ROOT] $cmd")
-        return try {
-            val process = ProcessBuilder("su", "-c", cmd)
-                .redirectErrorStream(true)
-                .start()
 
-            process.inputStream.bufferedReader().use { reader ->
-                reader.forEachLine { line -> StunLogger.d(tag, "[EXEC] $line") }
+        if (!Shell.getShell().isRoot) {
+            StunLogger.e(tag, "Root execution failed: No root access")
+            return -1
+        }
+
+        val outCallback = object : CallbackList<String>() {
+            override fun onAddElement(line: String?) {
+                line?.let { StunLogger.d(tag, "[EXEC-OUT] $it") }
             }
-            val exited = process.waitFor(8, TimeUnit.SECONDS)
-            if (!exited) {
-                StunLogger.e(tag, "Root execution timed out: $cmd")
-                process.destroy()
-                -1
-            } else {
-                process.exitValue()
+        }
+
+        val errCallback = object : CallbackList<String>() {
+            override fun onAddElement(line: String?) {
+                line?.let { StunLogger.e(tag, "[EXEC-ERR] $it") }
             }
+        }
+
+        return try {
+            // 使用自定义线程池提交 Callable，内部调用阻塞的 exec()，以此来获得 Future
+            val future = rootCommandExecutor.submit(Callable {
+                Shell.cmd(cmd)
+                    .to(outCallback, errCallback)
+                    .exec() // 重点：这里使用同步的 exec() 获取 Shell.Result
+            })
+
+            // 在这里实现 8 秒超时控制
+            val result = future.get(8, TimeUnit.SECONDS)
+            result.code
+
+        } catch (e: TimeoutException) {
+            StunLogger.e(tag, "Root execution timed out (8s): $cmd")
+            // 注意：由于超时中断，如果任务还没结束，我们可以尝试取消它
+            // future.cancel(true)
+            -1
         } catch (e: Exception) {
             StunLogger.e(tag, "Root execution failed: $cmd", e)
             -1
         }
     }
+
+//    fun executeRootCommand(cmd: String): Int {
+//        val tag = "[MySsh|${Thread.currentThread().name}]"
+//        StunLogger.d(tag, "[ROOT] $cmd")
+//        return try {
+//            val process = ProcessBuilder("su", "-c", cmd)
+//                .redirectErrorStream(true)
+//                .start()
+//
+//            process.inputStream.bufferedReader().use { reader ->
+//                reader.forEachLine { line -> StunLogger.d(tag, "[EXEC] $line") }
+//            }
+//            val exited = process.waitFor(8, TimeUnit.SECONDS)
+//            if (!exited) {
+//                StunLogger.e(tag, "Root execution timed out: $cmd")
+//                process.destroy()
+//                -1
+//            } else {
+//                process.exitValue()
+//            }
+//        } catch (e: Exception) {
+//            StunLogger.e(tag, "Root execution failed: $cmd", e)
+//            -1
+//        }
+//    }
+
     fun copyAssetToCache(context: Context, fileName: String): File? {
         val tag = "copyAssetToCache"
         val targetFile = File(context.cacheDir, fileName)

@@ -56,6 +56,6 @@ object LocaleHelper {
         val resources = context.resources
         val configuration = resources.configuration
         configuration.setLocale(locale)
-        resources.updateConfiguration(configuration, resources.displayMetrics)
+        context.createConfigurationContext(configuration)
     }
 }
