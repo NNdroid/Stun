@@ -85,7 +85,7 @@ class MyVpnService : VpnService() {
                 myssh.Myssh.loadGlobalConfigFromJson(VpnConfigBuilder.buildGlobalConfig(this, profile))
                 
                 // 2. Start SSH
-                val sshStatus = myssh.Myssh.startSshTProxy2(VpnConfigBuilder.buildSshConfig(this, profile, SOCKS_PORT))
+                val sshStatus = myssh.Myssh.startSshTProxy2(VpnConfigBuilder.buildMySshConfig(this, profile, SOCKS_PORT))
                 if (sshStatus != 0L) {
                     log("❌ Go SSH Core failed to start (Code: $sshStatus). Retrying...")
                     throw RuntimeException("SSH Core start failed")
@@ -170,7 +170,7 @@ class MyVpnService : VpnService() {
     private fun startHevTunnelEngine(fd: Int) {
         val confFile = File(cacheDir, "tproxy.conf")
         try {
-            FileOutputStream(confFile).use { it.write(VpnConfigBuilder.buildHevConfig(SOCKS_PORT).toByteArray()) }
+            FileOutputStream(confFile).use { it.write(VpnConfigBuilder.buildHevSocks5TunnelConfig(SOCKS_PORT).toByteArray()) }
             
             thread(start = true, name = "HevEngineThread") {
                 try {

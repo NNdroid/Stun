@@ -25,7 +25,7 @@ object VpnConfigBuilder {
         }.toString()
     }
 
-    fun buildSshConfig(context: Context, profile: Profile, socksPort: Int): String {
+    fun buildMySshConfig(context: Context, profile: Profile, socksPort: Int): String {
         val udpgwAddr = if (profile.dnsOverride) profile.udpgwAddr else SettingsManager.getUdpgwAddr(context)
 
         return JSONObject().apply {
@@ -51,7 +51,7 @@ object VpnConfigBuilder {
         }.toString()
     }
 
-    fun buildHevConfig(socksPort: Int): String {
+    fun buildHevSocks5TunnelConfig(socksPort: Int): String {
         return """
             misc:
               log-level: ${(if (app.fjj.stun.BuildConfig.DEBUG) "debug" else "warn")}

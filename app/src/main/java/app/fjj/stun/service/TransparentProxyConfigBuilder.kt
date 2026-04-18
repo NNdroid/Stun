@@ -2,9 +2,6 @@ package app.fjj.stun.service
 
 import android.content.Context
 import app.fjj.stun.repo.Profile
-import app.fjj.stun.repo.SettingsManager
-import app.fjj.stun.repo.StunLogger
-import java.io.File
 
 object TransparentProxyConfigBuilder {
 
@@ -18,7 +15,7 @@ object TransparentProxyConfigBuilder {
      * @param extraBypassApps Additional app package names to bypass
      * @return Generated configuration string
      */
-    fun buildShellConfig(
+    fun buildHevSocks5TProxyConfig(
         context: Context,
         tcpPort: Int,
         udpPort: Int,
@@ -59,7 +56,7 @@ object TransparentProxyConfigBuilder {
      * Builds the configuration for hev-socks5-tproxy (Root Mode).
      * Supports dual-stack IPv4/IPv6 and DNS hijacking.
      */
-    fun buildTProxyConfig(
+    fun buildHevSocks5TProxyConfig(
         context: Context,
         profile: Profile,
         socksPort: Int,
@@ -77,10 +74,10 @@ object TransparentProxyConfigBuilder {
             udp:
               port: $tproxyPort
               address: '::'
-            dns:
-              port: $dnsPort
-              address: '::'
-              upstream: '8.8.8.8'
+            #dns:
+            #  port: $dnsPort
+            #  address: '::'
+            #  upstream: '8.8.8.8'
             socks5:
               port: $socksPort
               address: '127.0.0.1'

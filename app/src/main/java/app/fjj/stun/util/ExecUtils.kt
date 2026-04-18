@@ -87,8 +87,8 @@ object ExecUtils {
                     .exec() // 重点：这里使用同步的 exec() 获取 Shell.Result
             })
 
-            // 在这里实现 8 秒超时控制
-            val result = future.get(8, TimeUnit.SECONDS)
+            // 在这里实现 90 秒超时控制
+            val result = future.get(90, TimeUnit.SECONDS)
             result.code
 
         } catch (e: TimeoutException) {

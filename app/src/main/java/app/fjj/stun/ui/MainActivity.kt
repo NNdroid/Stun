@@ -236,7 +236,7 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
             runOnUiThread {
                 com.google.android.material.snackbar.Snackbar.make(
                     binding.root,
-                    "[$tag] $msg",
+                    if (app.fjj.stun.BuildConfig.DEBUG) "[$tag] $msg" else "$msg",
                     com.google.android.material.snackbar.Snackbar.LENGTH_LONG
                 ).setAnchorView(binding.bottomContainer).show()
             }

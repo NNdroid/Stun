@@ -12,7 +12,6 @@ import app.fjj.stun.repo.*
 import app.fjj.stun.util.ExecUtils
 import kotlinx.coroutines.*
 import java.io.File
-import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -101,13 +100,14 @@ class MyTransparentProxyService : Service() {
                 // 1. Start SSH Core (SOCKS5 Backend)
                 StunLogger.i(TAG, "Step 1: Starting SSH Core backend...")
                 myssh.Myssh.loadGlobalConfigFromJson(VpnConfigBuilder.buildGlobalConfig(context, profile))
-                val sshStatus = myssh.Myssh.startSshTProxy2(VpnConfigBuilder.buildSshConfig(context, profile, SOCKS_PORT))
+                val sshStatus = myssh.Myssh.startSshTProxy2(VpnConfigBuilder.buildMySshConfig(context, profile, SOCKS_PORT))
                 if (sshStatus != 0L) throw RuntimeException("SSH Core failed to start with status: $sshStatus")
+                myssh.Myssh.startLocalDNSServer(DNS_HIJACK_PORT.toLong())
                 StunLogger.i(TAG, "SSH Core started successfully.")
 
                 // 2. Generate hev-socks5-tproxy config
                 StunLogger.i(TAG, "Step 2: Generating hev-socks5-tproxy config...")
-                val yamlConfig = TransparentProxyConfigBuilder.buildTProxyConfig(
+                val yamlConfig = TransparentProxyConfigBuilder.buildHevSocks5TProxyConfig(
                     context, profile, SOCKS_PORT, TPROXY_PORT, DNS_HIJACK_PORT
                 )
                 File(cacheDir, FILE_HEV_SOCKS5_TPROXY_CONF).writeText(yamlConfig)
@@ -153,7 +153,7 @@ class MyTransparentProxyService : Service() {
             val configFile = File(cacheDir, FILE_HEV_SOCKS5_TPROXY_CONF)
             val logFile = File(cacheDir, FILE_HEV_SOCKS5_TPROXY_LOG)
 
-            val cmd = "${coreFile.absolutePath} ${configFile.absolutePath} > ${logFile.absolutePath} 2>&1"
+            val cmd = "nohup ${coreFile.absolutePath} ${configFile.absolutePath} > ${logFile.absolutePath} 2>&1 &"
             StunLogger.i(TAG, "Executing Start hev-socks5-tproxy Cmd: $cmd")
             ExecUtils.executeRootCommand(cmd)
         }
@@ -169,7 +169,7 @@ class MyTransparentProxyService : Service() {
         val scriptFile = File(cacheDir, SCRIPT_TPROXY)
         if (enabled) {
             StunLogger.i(TAG, "Enabling TProxy firewall rules...")
-            val shellConfig = TransparentProxyConfigBuilder.buildShellConfig(
+            val shellConfig = TransparentProxyConfigBuilder.buildHevSocks5TProxyConfig(
                 this, TPROXY_PORT, TPROXY_PORT, DNS_HIJACK_PORT
             )
             File(cacheDir, FILE_TPROXY_CONF).writeText(shellConfig)
@@ -210,12 +210,17 @@ class MyTransparentProxyService : Service() {
 
                 // 3. 停止 SSH 后端
                 try {
+                    StunLogger.i(TAG, "Stopping Local DNS Server...")
+                    myssh.Myssh.stopLocalDNSServer()
+                } catch (e: Exception) {
+                    StunLogger.w(TAG, "Exception while stopping Local DNS Server: ${e.message}")
+                }
+                try {
                     StunLogger.i(TAG, "Stopping SSH Core...")
                     myssh.Myssh.stopSshTProxy()
                 } catch (e: Exception) {
                     StunLogger.w(TAG, "Exception while stopping SSH Core: ${e.message}")
                 }
-
             } finally {
                 // 4. 重置状态并销毁 Service
                 StunLogger.i(TAG, "Stop Sequence Completed. Tearing down service.")
