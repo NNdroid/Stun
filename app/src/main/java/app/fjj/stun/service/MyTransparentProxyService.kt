@@ -131,6 +131,7 @@ class MyTransparentProxyService : Service() {
 
                 // 6. System Optimizations
                 optimizeSystemForBackground()
+                applyShizukuOptimizations()
 
                 startWatchdog()
 
@@ -236,6 +237,14 @@ class MyTransparentProxyService : Service() {
         ExecUtils.executeRootCommand("dumpsys deviceidle whitelist +$packageName")
         ExecUtils.executeRootCommand("appops set $packageName RUN_IN_BACKGROUND allow")
         ExecUtils.executeRootCommand("appops set $packageName WAKE_LOCK allow")
+    }
+
+    private fun applyShizukuOptimizations() {
+        if (app.fjj.stun.util.ShizukuUtils.isReady) {
+            StunLogger.i(TAG, "Applying Shizuku background optimizations...")
+            app.fjj.stun.util.ShizukuUtils.addSelfToBatteryWhitelist(packageName)
+            app.fjj.stun.util.ShizukuUtils.setStandbyBucketActive(packageName)
+        }
     }
 
     private fun startWatchdog() {

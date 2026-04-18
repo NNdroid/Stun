@@ -12,6 +12,7 @@ import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.*
 import hev.htp.TTunnelService
 import app.fjj.stun.repo.*
+import app.fjj.stun.util.ShizukuUtils
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -103,6 +104,9 @@ class MyVpnService : VpnService() {
                 StunRepository.vpnState.postValue(VpnState.CONNECTED)
                 startTrafficMonitor()
 
+                // 5. Shizuku Optimizations
+                applyShizukuOptimizations()
+
                 // Block and wait for core
                 myssh.Myssh.wgWait()
                 log("⚠️ WG Wait released.")
@@ -164,6 +168,14 @@ class MyVpnService : VpnService() {
         
         if (filterMode != 1) {
             try { builder.addDisallowedApplication(packageName) } catch (_: Exception) {}
+        }
+    }
+
+    private fun applyShizukuOptimizations() {
+        if (ShizukuUtils.isReady) {
+            log("Applying Shizuku background optimizations...")
+            ShizukuUtils.addSelfToBatteryWhitelist(packageName)
+            ShizukuUtils.setStandbyBucketActive(packageName)
         }
     }
 

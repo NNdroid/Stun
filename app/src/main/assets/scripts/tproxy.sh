@@ -23,7 +23,7 @@ readonly DEFAULT_PROXY_MODE=1
 
 # Performance mode (0=normal, 1=performance optimized)
 # When enabled, may enable some features (e.g. conntrack) for better speed
-readonly DEFAULT_PERFORMANCE_MODE=0
+readonly DEFAULT_PERFORMANCE_MODE=1
 
 # DNS configuration
 # DNS hijack method (0: disabled, 1: tproxy, 2: redirect)

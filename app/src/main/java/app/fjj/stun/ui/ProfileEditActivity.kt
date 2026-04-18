@@ -307,15 +307,19 @@ class ProfileEditActivity : BaseActivity() {
                 selected == Profile.TUNNEL_TYPE_H3 || selected == Profile.TUNNEL_TYPE_WT
         
         val isServerNameSupported = selected == Profile.TUNNEL_TYPE_WSS ||
+                selected == Profile.TUNNEL_TYPE_TLS ||
+                selected == Profile.TUNNEL_TYPE_QUIC ||
                 selected == Profile.TUNNEL_TYPE_H2 ||
                 selected == Profile.TUNNEL_TYPE_GRPC ||
                 selected == Profile.TUNNEL_TYPE_H3 ||
                 selected == Profile.TUNNEL_TYPE_WT ||
                 selected == Profile.TUNNEL_TYPE_MASQUE
 
+        val isCustomHostSupported = !isBase && selected != Profile.TUNNEL_TYPE_TLS && selected != Profile.TUNNEL_TYPE_QUIC
+
         binding.layoutHttpPayload.visibility = if (isHttp) View.VISIBLE else View.GONE
         binding.layoutProxyAddr.visibility = if (isBase) View.GONE else View.VISIBLE
-        binding.layoutCustomHost.visibility = if (isBase) View.GONE else View.VISIBLE
+        binding.layoutCustomHost.visibility = if (isCustomHostSupported) View.VISIBLE else View.GONE
         binding.layoutServerName.visibility = if (isServerNameSupported) View.VISIBLE else View.GONE
         
         binding.switchEnableCustomPath.visibility = if (isMasque) View.VISIBLE else View.GONE
