@@ -18,7 +18,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.GravityCompat
 import androidx.core.view.ViewCompat
@@ -37,10 +36,15 @@ import app.fjj.stun.service.MyVpnService
 import app.fjj.stun.util.AppUtils
 import app.fjj.stun.util.KeystoreUtils
 import app.fjj.stun.util.QRUtils
+import app.fjj.stun.util.ShizukuUtils
 import com.google.android.material.navigation.NavigationView
 import com.google.gson.Gson
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import rikka.shizuku.Shizuku
 import java.net.HttpURLConnection
 import java.net.InetSocketAddress
 import java.net.Proxy
@@ -258,6 +262,23 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
     override fun onDestroy() {
         StunLogger.errorListener = null
         super.onDestroy()
+    }
+
+    private fun applyShizukuKeepAlive() {
+        // 在协程作用域中调用
+        CoroutineScope(Dispatchers.Main).launch {
+            // 这一行会挂起，直到权限请求出结果，不会阻塞主线程！
+            val granted = ShizukuUtils.requestPermissionAwait()
+            if (granted) {
+                // 授权成功，执行保活操作
+                ShizukuUtils.addSelfToBatteryWhitelist(packageName)
+                ShizukuUtils.setStandbyBucketActive(packageName)
+                StunLogger.i("MainActivity", "Shizuku permission granted")
+            } else {
+                // 授权失败或服务未启动
+                StunLogger.w("MainActivity", "Shizuku permission denied")
+            }
+        }
     }
 
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
@@ -524,6 +545,7 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
     }
 
     private fun handleStartStop() {
+        applyShizukuKeepAlive()
         val mode = SettingsManager.getServiceMode(this)
         val currentState = StunRepository.vpnState.value ?: VpnState.DISCONNECTED
 

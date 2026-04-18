@@ -19,7 +19,7 @@ readonly DEFAULT_PROXY_TCP_PORT="10812"
 readonly DEFAULT_PROXY_UDP_PORT="10812"
 
 # Proxy mode: 0=auto (check TPROXY support), 1=force TPROXY, 2=force REDIRECT
-readonly DEFAULT_PROXY_MODE=0
+readonly DEFAULT_PROXY_MODE=1
 
 # Performance mode (0=normal, 1=performance optimized)
 # When enabled, may enable some features (e.g. conntrack) for better speed
@@ -106,11 +106,11 @@ readonly DEFAULT_MAC_PROXY_MODE="blacklist"
 # "blacklist" or "whitelist"
 
 # block quic
-readonly DEFAULT_BLOCK_QUIC=0
+readonly DEFAULT_BLOCK_QUIC=1
 
 # Whether to include timestamp in logs (0=disable, 1=enable)
 # Disabling this can improve performance by avoiding a process fork for each log entry.
-readonly DEFAULT_LOG_TIMESTAMP=1
+readonly DEFAULT_LOG_TIMESTAMP=0
 
 # Dry-run mode (disabled by default)
 readonly DEFAULT_DRY_RUN=0
