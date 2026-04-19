@@ -1,24 +1,24 @@
 package app.fjj.stun.repo
 
 import android.content.Context
+import android.text.SpannableStringBuilder
 import androidx.lifecycle.MutableLiveData
 import java.io.File
-import kotlin.concurrent.thread
 
 object StunRepository {
     private const val MAX_LOG_SIZE = 10000
 
-    private val appLogBuilder = StringBuilder()
+    private val appLogBuilder = SpannableStringBuilder()
     private val tunnelLogBuilder = StringBuilder()
 
     val vpnState = MutableLiveData(VpnState.DISCONNECTED)
-    val appLogs = MutableLiveData("")
+    val appLogs = MutableLiveData<CharSequence>("")
     val tunnelLogs = MutableLiveData("")
 
     /**
      * 向指定日志源追加内容
      */
-    private fun append(builder: StringBuilder, liveData: MutableLiveData<String>, text: String) {
+    private fun append(builder: SpannableStringBuilder, liveData: MutableLiveData<CharSequence>, text: CharSequence) {
         synchronized(builder) {
             builder.append(text)
             if (builder.length > MAX_LOG_SIZE) {
@@ -28,12 +28,11 @@ object StunRepository {
                     builder.delete(0, firstLineEnd + 1)
                 }
             }
-            liveData.postValue(builder.toString())
+            liveData.postValue(SpannableStringBuilder(builder)) // Send a copy to avoid mutation issues
         }
     }
 
-    fun appendAppLog(text: String) = append(appLogBuilder, appLogs, text)
-    fun appendTunnelLog(text: String) = append(tunnelLogBuilder, tunnelLogs, text + "\n")
+    fun appendAppLog(text: CharSequence) = append(appLogBuilder, appLogs, text)
 
     /**
      * 兼容旧接口，底层 StunLogger 仍会通过此方法间接触发 appendAppLog
@@ -45,7 +44,7 @@ object StunRepository {
     @Synchronized
     fun clearLogs() {
         synchronized(appLogBuilder) {
-            appLogBuilder.setLength(0)
+            appLogBuilder.clear()
             appLogs.postValue("")
         }
         synchronized(tunnelLogBuilder) {

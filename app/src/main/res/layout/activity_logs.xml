@@ -44,6 +44,7 @@
                 android:padding="12dp"
                 android:textColor="#00FF00"
                 android:textSize="12sp"
+                android:textIsSelectable="true"
                 tools:text="[2023-10-27 10:00:00] INFO: Service started\n[2023-10-27 10:00:01] DEBUG: Connecting to server..." />
         </com.google.android.material.card.MaterialCardView>
     </androidx.core.widget.NestedScrollView>

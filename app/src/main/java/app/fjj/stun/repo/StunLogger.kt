@@ -1,15 +1,24 @@
 package app.fjj.stun.repo
 
 import android.content.Context
+import android.graphics.Color
+import android.text.Spannable
+import android.text.SpannableStringBuilder
+import android.text.style.ForegroundColorSpan
 import android.util.Log
 import androidx.annotation.Keep
+import app.fjj.stun.BuildConfig
+import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.LinkedBlockingQueue
 import kotlin.concurrent.thread
+import androidx.core.graphics.toColorInt
 
 @Keep
 object StunLogger {
@@ -28,7 +37,16 @@ object StunLogger {
     private const val MAX_FILE_SIZE = 5 * 1024 * 1024L // 5MB
 
     var isLogcatEnabled = true
-    var logListener: ((String) -> Unit)? = null
+    var logListener: ((CharSequence) -> Unit)? = null
+    private val TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
+        .withZone(ZoneId.systemDefault())
+    private val FALLBACK_DATE_FORMAT = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
+
+    // 定义日志颜色 (Material Design 配色)
+    private val COLOR_DEBUG = "#9E9E9E".toColorInt() // 灰色
+    private val COLOR_INFO  = "#4CAF50".toColorInt() // 绿色
+    private val COLOR_WARN  = "#FFC107".toColorInt() // 琥珀色
+    private val COLOR_ERROR = "#F44336".toColorInt() // 红色
 
     init {
         // --- 核心优化 2：单一后台守护线程专门负责写盘 ---
@@ -113,29 +131,92 @@ object StunLogger {
     /**
      * 核心日志生产逻辑 (完全非阻塞，只做字符串拼接和入队)
      */
-    private fun log(level: String, tag: String, msg: String, tr: Throwable? = null) {
-        val timeStr = dateFormat.format(Date())
-        val logStr = buildString {
-            append(timeStr).append("\t").append(level).append("\t[").append(tag).append("]\t").append(msg).append("\n")
-            if (tr != null) {
-                append(Log.getStackTraceString(tr)).append("\n")
+    private fun log(inLevel: String, tag: String, rawMsg: String, tr: Throwable? = null) {
+        var finalLevel = inLevel.uppercase()
+        var timeStr = ""
+        var msgContent = rawMsg
+        var metaInfo = ""
+
+        // 1. 解析日志内容
+        if (rawMsg.startsWith("{")) {
+            try {
+                val json = JSONObject(rawMsg)
+                msgContent = json.optString("msg", json.optString("message", rawMsg))
+                finalLevel = json.optString("level", json.optString("severity", finalLevel)).uppercase()
+                val caller = json.optString("caller")
+                val pid = json.optInt("pid")
+                val uid = json.optInt("uid")
+                val version = json.optString("v", json.optString("version"))
+                val ts = json.optString("ts", json.optString("timestamp"))
+
+                timeStr = if (ts.isNotEmpty()) {
+                    TIME_FORMATTER.format(java.time.Instant.parse(ts))
+                } else {
+                    FALLBACK_DATE_FORMAT.format(Date())
+                }
+
+                // 组装元数据 (根据 Debug/Release 模式动态精简)
+                metaInfo = buildString {
+                    append("[$tag")
+                    if (BuildConfig.DEBUG) {
+                        append(" v:$version U:$uid P:$pid")
+                    }
+                    append("]")
+                    if (caller.isNotEmpty()) append(" ($caller)")
+                }
+
+            } catch (e: Exception) {
+                // 解析失败时优雅降级
+                timeStr = FALLBACK_DATE_FORMAT.format(Date())
+                metaInfo = "[$tag]"
             }
+        } else {
+            timeStr = FALLBACK_DATE_FORMAT.format(Date())
+            metaInfo = "[$tag]"
         }
 
-        // 1. 投递给 UI 或控制台 (保持即时性)
+        val stackTrace = if (tr != null) "\n" + Log.getStackTraceString(tr) else ""
+
+        // 2. 组装纯文本日志 (用于 Logcat 和写盘，保证文件干净)
+        // 使用 %-5s 保证级别占 5 个字符，完美对齐
+        val plainLogStr = String.format("%s %-5s %s %s%s\n", timeStr, finalLevel, metaInfo, msgContent, stackTrace)
+
+        // 3. 投递给系统 Logcat
         if (isLogcatEnabled) {
-            when (level) {
-                "DEBUG" -> Log.d(tag, msg)
-                "INFO" -> Log.i(tag, msg)
-                "WARN" -> Log.w(tag, msg)
-                "ERROR" -> if (tr != null) Log.e(tag, msg, tr) else Log.e(tag, msg)
+            when (finalLevel) {
+                "DEBUG" -> Log.d(tag, msgContent)
+                "INFO"  -> Log.i(tag, msgContent)
+                "WARN"  -> Log.w(tag, msgContent)
+                "ERROR" -> Log.e(tag, msgContent, tr)
+                else    -> Log.v(tag, msgContent)
             }
         }
-        logListener?.invoke(logStr)
 
-        // 2. 投递到写盘队列 (如果队列满，offer 会返回 false，默默丢弃以保护内存)
-        if (!logQueue.offer(logStr)) {
-            Log.w(TAG, "Log queue is full! Dropping log to prevent OOM: $msg")
+        // 4. 写盘防 OOM 保护 (使用纯文本)
+        if (!logQueue.offer(plainLogStr)) {
+            Log.w("LogSystem", "Log queue is full! Dropping log: $msgContent")
+        }
+
+        // 5. 组装彩色文本并投递给 UI
+        // 注意：请将 logListener 的类型定义修改为 (CharSequence) -> Unit
+        logListener?.let { listener ->
+            val color = when (finalLevel) {
+                "DEBUG" -> COLOR_DEBUG
+                "WARN", "WARNING" -> COLOR_WARN
+                "ERROR", "FATAL"  -> COLOR_ERROR
+                else -> COLOR_INFO // INFO 默认为绿色
+            }
+
+            val spannableBuilder = SpannableStringBuilder(plainLogStr)
+            // 给整行文字上色
+            spannableBuilder.setSpan(
+                ForegroundColorSpan(color),
+                0,
+                spannableBuilder.length,
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+
+            listener.invoke(spannableBuilder)
         }
     }
 

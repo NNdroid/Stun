@@ -5,7 +5,6 @@ import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
@@ -74,15 +73,24 @@ class LogsActivity : BaseActivity() {
         return super.onOptionsItemSelected(item)
     }
 
-    private fun updateLogView(logs: String? = null) {
+    private var isFirstLoad = true
+
+    private fun updateLogView(logs: CharSequence? = null) {
+        // If user is currently selecting text, do not refresh to avoid clearing the selection
+        if (binding.tvLogs.hasSelection()) return
+
         val content = logs ?: StunRepository.appLogs.value ?: ""
+        if (content.isEmpty()) return
+        
         binding.tvLogs.text = content
 
-        // Only auto-scroll if we are already at the bottom
-        if (isAtBottom()) {
+        // Auto-scroll to bottom if we are already near the bottom or it's the first load
+        if (isAtBottom() || isFirstLoad) {
             binding.scrollView.post {
                 binding.scrollView.fullScroll(android.view.View.FOCUS_DOWN)
+                if (isFirstLoad) isFirstLoad = false
             }
+            binding.fabScrollBottom.hide()
         } else {
             binding.fabScrollBottom.show()
         }
@@ -92,7 +100,8 @@ class LogsActivity : BaseActivity() {
         val scrollY = binding.scrollView.scrollY
         val innerHeight = binding.scrollView.getChildAt(0).height
         val scrollViewHeight = binding.scrollView.height
-        return scrollY + scrollViewHeight >= innerHeight - 50 // 50px buffer
+        if (scrollViewHeight <= 0) return true
+        return scrollY + scrollViewHeight >= innerHeight - 150 // 150px buffer
     }
 
     override fun onSupportNavigateUp(): Boolean {

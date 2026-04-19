@@ -240,7 +240,7 @@ class MyTransparentProxyService : Service() {
     }
 
     private fun applyShizukuOptimizations() {
-        if (app.fjj.stun.util.ShizukuUtils.isReady) {
+        if (app.fjj.stun.util.ShizukuUtils.isReady()) {
             StunLogger.i(TAG, "Applying Shizuku background optimizations...")
             app.fjj.stun.util.ShizukuUtils.addSelfToBatteryWhitelist(packageName)
             app.fjj.stun.util.ShizukuUtils.setStandbyBucketActive(packageName)

@@ -14,20 +14,34 @@ object ShizukuUtils {
     private const val TAG = "ShizukuUtils"
     const val SHIZUKU_REQUEST_CODE = 1001
 
-    val isReady: Boolean
-        get() {
-            val notPreV11 = !Shizuku.isPreV11()
-            val isBinderAlive = Shizuku.pingBinder()
-            val hasPermission = Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
-
-            // 打印详细日志，帮我们定位到底是哪一个为 false
-            StunLogger.d(TAG, "isReady Check -> notPreV11: $notPreV11, isBinderAlive: $isBinderAlive, hasPermission: $hasPermission")
-
-            // 核心改动：只要 Binder 是活的，我们就放行。
-            // 因为即使 hasPermission 存在极短暂的同步延迟为 false，
-            // 我们强行往下走，底层的 Binder 调用（包裹在 try-catch 中）如果真没权限也会抛出 SecurityException，被我们捕获，不会导致崩溃。
-            return notPreV11 && isBinderAlive
+    /**
+     * 检查 Shizuku 服务是否在后台真正运行 (安全无异常)
+     */
+    fun isAvailable(): Boolean {
+        return try {
+            Shizuku.pingBinder()
+        } catch (e: Exception) {
+            // 极少数情况下可能会报 LinkageError 或其他异常，做个兜底
+            false
         }
+    }
+
+    /**
+     * 修复后的 isReady：先查服务，再查权限
+     */
+    fun isReady(): Boolean {
+        // 第一道防线：如果没有安装或未启动，直接返回 false，防止崩溃
+        if (!isAvailable()) {
+            return false
+        }
+
+        // 第二道防线：服务可用时，再检查是否被授权
+        return try {
+            Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+        } catch (e: Exception) {
+            false
+        }
+    }
 
     /**
      * 核心封装：使用协程挂起函数隐藏 Listener
@@ -37,8 +51,14 @@ object ShizukuUtils {
      */
     suspend fun requestPermissionAwait(): Boolean = suspendCancellableCoroutine { continuation ->
         StunLogger.i(TAG, "requestPermissionAwait called")
-        // 1. 如果已经就绪，直接返回 true
-        if (isReady) {
+        // 拦截 1：如果 Shizuku 根本没运行，直接回调失败
+        if (!isAvailable()) {
+            continuation.resume(false)
+            return@suspendCancellableCoroutine
+        }
+
+        // 拦截 2：如果已经有权限了，直接回调成功
+        if (isReady()) {
             continuation.resume(true)
             return@suspendCancellableCoroutine
         }
@@ -86,7 +106,7 @@ object ShizukuUtils {
     // ========== 下面是业务方法，内部不再负责请求权限 ==========
 
     fun addSelfToBatteryWhitelist(packageName: String) {
-        if (!isReady) return // 调用前由外部保证权限，这里只做最后一道防线拦截
+        if (!isReady()) return // 调用前由外部保证权限，这里只做最后一道防线拦截
         try {
             val binder = ShizukuBinderWrapper(SystemServiceHelper.getSystemService("deviceidle"))
             val idleController = IDeviceIdleController.Stub.asInterface(binder)
@@ -99,7 +119,7 @@ object ShizukuUtils {
     }
 
     fun setStandbyBucketActive(packageName: String) {
-        if (!isReady) return
+        if (!isReady()) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             executeShellCommand("am set-standby-bucket $packageName active")
         }

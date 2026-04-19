@@ -172,7 +172,7 @@ class MyVpnService : VpnService() {
     }
 
     private fun applyShizukuOptimizations() {
-        if (ShizukuUtils.isReady) {
+        if (ShizukuUtils.isReady()) {
             log("Applying Shizuku background optimizations...")
             ShizukuUtils.addSelfToBatteryWhitelist(packageName)
             ShizukuUtils.setStandbyBucketActive(packageName)
