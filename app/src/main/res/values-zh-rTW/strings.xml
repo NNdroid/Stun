@@ -93,8 +93,11 @@
     <string name="filter_allow_mode">允許 (正向)</string>
     <string name="profile_saved">配置已保存</string>
     <string name="error_invalid_private_key">私鑰格式無效</string>
+    <string name="error_invalid_address">地址格式無效 (host:端口)</string>
+    <string name="error_invalid_port">端口號無效 (1-65535)</string>
     <string name="geodata_success">GeoData 更新成功</string>
     <string name="error_field_required">該項必填</string>
+    <string name="desc_scroll_to_bottom">滾動到底部</string>
 
     <string name="main_disconnected">未連接</string>
     <string name="main_connected">已連接</string>

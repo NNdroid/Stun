@@ -45,6 +45,8 @@ class LogsActivity : BaseActivity() {
         binding.scrollView.setOnScrollChangeListener { _, _, _, _, _ ->
             if (isAtBottom()) {
                 binding.fabScrollBottom.hide()
+            } else {
+                binding.fabScrollBottom.show()
             }
         }
 
@@ -73,23 +75,18 @@ class LogsActivity : BaseActivity() {
         return super.onOptionsItemSelected(item)
     }
 
-    private var isFirstLoad = true
-
     private fun updateLogView(logs: CharSequence? = null) {
         // If user is currently selecting text, do not refresh to avoid clearing the selection
         if (binding.tvLogs.hasSelection()) return
 
         val content = logs ?: StunRepository.appLogs.value ?: ""
-        if (content.isEmpty()) return
         
         binding.tvLogs.text = content
 
-        // Auto-scroll to bottom if we are already near the bottom or it's the first load
-        if (isAtBottom() || isFirstLoad) {
-            binding.scrollView.post {
-                binding.scrollView.fullScroll(android.view.View.FOCUS_DOWN)
-                if (isFirstLoad) isFirstLoad = false
-            }
+        if (content.isEmpty()) return
+
+        // Display FAB only if we are not at the bottom
+        if (isAtBottom()) {
             binding.fabScrollBottom.hide()
         } else {
             binding.fabScrollBottom.show()

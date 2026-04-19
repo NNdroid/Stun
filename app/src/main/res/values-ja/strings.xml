@@ -117,7 +117,10 @@
     <string name="error_key_password_required">このキーにはパスワードが必要です</string>
     <string name="error_invalid_key_password">キーのパスワードが正しくありません</string>
     <string name="error_invalid_private_key">秘密鍵の形式が無効です</string>
+    <string name="error_invalid_address">アドレス形式が無効です (host:port)</string>
+    <string name="error_invalid_port">ポート番号が無効です (1-65535)</string>
     <string name="geodata_success">Geoデータが正常に更新されました</string>
+    <string name="desc_scroll_to_bottom">一番下までスクロール</string>
 
     <string name="notif_title">Stunが実行中です</string>
     <string name="notif_text">通信は保護されています</string>

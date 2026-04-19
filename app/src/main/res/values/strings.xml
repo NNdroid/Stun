@@ -116,6 +116,8 @@
     <string name="settings_saved">Settings saved</string>
     <string name="profile_saved">Profile saved</string>
     <string name="error_invalid_private_key">Invalid private key format</string>
+    <string name="error_invalid_address">Invalid address format (host:port)</string>
+    <string name="error_invalid_port">Invalid port number (1-65535)</string>
     <string name="geodata_success">GeoData updated successfully</string>
     <string name="error_field_required">This field cannot be empty</string>
     <string name="error_invalid_path">Path must start with /</string>

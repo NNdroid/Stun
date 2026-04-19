@@ -6,7 +6,7 @@ import androidx.lifecycle.MutableLiveData
 import java.io.File
 
 object StunRepository {
-    private const val MAX_LOG_SIZE = 10000
+    private const val MAX_LOG_SIZE = 10000000 // 10MB of text
 
     private val appLogBuilder = SpannableStringBuilder()
     private val tunnelLogBuilder = StringBuilder()
@@ -22,10 +22,13 @@ object StunRepository {
         synchronized(builder) {
             builder.append(text)
             if (builder.length > MAX_LOG_SIZE) {
-                val overflow = builder.length - MAX_LOG_SIZE
-                val firstLineEnd = builder.indexOf("\n", overflow)
+                // When exceeding limit, remove the first 10% of logs to avoid frequent deletions
+                val removeCount = MAX_LOG_SIZE / 10
+                val firstLineEnd = builder.indexOf("\n", removeCount)
                 if (firstLineEnd != -1) {
                     builder.delete(0, firstLineEnd + 1)
+                } else {
+                    builder.delete(0, removeCount)
                 }
             }
             liveData.postValue(SpannableStringBuilder(builder)) // Send a copy to avoid mutation issues

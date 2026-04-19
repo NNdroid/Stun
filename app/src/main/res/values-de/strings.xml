@@ -99,7 +99,10 @@
     <string name="error_key_password_required">Schlüssel-Passwort für diesen Schlüssel erforderlich</string>
     <string name="error_invalid_key_password">Falsches Schlüssel-Passwort</string>
     <string name="error_invalid_private_key">Ungültiges Format des privaten Schlüssels</string>
+    <string name="error_invalid_address">Ungültiges Adressformat (Host:Port)</string>
+    <string name="error_invalid_port">Ungültige Portnummer (1-65535)</string>
     <string name="geodata_success">Geodaten erfolgreich aktualisiert</string>
+    <string name="desc_scroll_to_bottom">Nach unten scrollen</string>
 
     <string name="main_disconnected">Getrennt</string>
     <string name="main_connected">Verbunden</string>

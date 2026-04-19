@@ -97,7 +97,10 @@
     <string name="error_key_password_required">Mot de passe de la clé requis pour cette clé</string>
     <string name="error_invalid_key_password">Mot de passe de la clé incorrect</string>
     <string name="error_invalid_private_key">Format de clé privée invalide</string>
+    <string name="error_invalid_address">Format d\'adresse invalide (hôte:port)</string>
+    <string name="error_invalid_port">Numéro de port invalide (1-65535)</string>
     <string name="geodata_success">GeoData mise à jour avec succès</string>
+    <string name="desc_scroll_to_bottom">Faire défiler vers le bas</string>
 
     <string name="main_disconnected">Déconnecté</string>
     <string name="main_connected">Connecté</string>

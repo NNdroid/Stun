@@ -105,6 +105,8 @@ data class Profile(
         const val TUNNEL_TYPE_H3 = "h3"
         const val TUNNEL_TYPE_WT = "wt"
         const val TUNNEL_TYPE_MASQUE = "masque"
+        const val TUNNEL_TYPE_XHTTP = "xhttp"
+        const val TUNNEL_TYPE_XHTTPC = "xhttpc"
 
         const val AUTH_TYPE_PASSWORD = "password"
         const val AUTH_TYPE_PRIVATEKEY = "privatekey"
@@ -122,7 +124,9 @@ data class Profile(
             TUNNEL_TYPE_GRPCC,
             TUNNEL_TYPE_H3,
             TUNNEL_TYPE_WT,
-            TUNNEL_TYPE_MASQUE
+            TUNNEL_TYPE_MASQUE,
+            TUNNEL_TYPE_XHTTP,
+            TUNNEL_TYPE_XHTTPC
         )
     }
 }

@@ -88,6 +88,14 @@ class ProfileEditActivity : BaseActivity() {
             updateTunnelTypeVisibility()
         }
 
+        binding.etSshAddr.doAfterTextChanged { text ->
+            validateAddress(text.toString(), binding.layoutSshAddr)
+        }
+
+        binding.etProxyAddr.doAfterTextChanged { text ->
+            validateAddress(text.toString(), binding.layoutProxyAddr)
+        }
+
         binding.etPrivateKey.doAfterTextChanged { text ->
             validatePrivateKey(text.toString())
         }
@@ -116,6 +124,22 @@ class ProfileEditActivity : BaseActivity() {
             val authTypeString = binding.spinnerAuthType.text.toString()
             val authType = if (authTypeString == getString(app.fjj.stun.R.string.auth_key)) Profile.AUTH_TYPE_PRIVATEKEY else Profile.AUTH_TYPE_PASSWORD
             
+            val sshAddr = binding.etSshAddr.text.toString()
+            validateAddress(sshAddr, binding.layoutSshAddr)
+            if (binding.layoutSshAddr.error != null) {
+                Toast.makeText(this, binding.layoutSshAddr.error, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            if (binding.layoutProxyAddr.visibility == View.VISIBLE) {
+                val proxyAddr = binding.etProxyAddr.text.toString()
+                validateAddress(proxyAddr, binding.layoutProxyAddr)
+                if (binding.layoutProxyAddr.error != null) {
+                    Toast.makeText(this, binding.layoutProxyAddr.error, Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+            }
+
             // Final validation check
             if (authType == Profile.AUTH_TYPE_PRIVATEKEY) {
                 val privateKey = binding.etPrivateKey.text.toString()
@@ -304,7 +328,8 @@ class ProfileEditActivity : BaseActivity() {
         val isCustomPathSupported = selected == Profile.TUNNEL_TYPE_WS || selected == Profile.TUNNEL_TYPE_WSS ||
                 selected == Profile.TUNNEL_TYPE_H2 || selected == Profile.TUNNEL_TYPE_H2C ||
                 selected == Profile.TUNNEL_TYPE_GRPC || selected == Profile.TUNNEL_TYPE_GRPCC ||
-                selected == Profile.TUNNEL_TYPE_H3 || selected == Profile.TUNNEL_TYPE_WT
+                selected == Profile.TUNNEL_TYPE_H3 || selected == Profile.TUNNEL_TYPE_WT ||
+                selected == Profile.TUNNEL_TYPE_XHTTP || selected == Profile.TUNNEL_TYPE_XHTTPC
         
         val isServerNameSupported = selected == Profile.TUNNEL_TYPE_WSS ||
                 selected == Profile.TUNNEL_TYPE_TLS ||
@@ -313,7 +338,8 @@ class ProfileEditActivity : BaseActivity() {
                 selected == Profile.TUNNEL_TYPE_GRPC ||
                 selected == Profile.TUNNEL_TYPE_H3 ||
                 selected == Profile.TUNNEL_TYPE_WT ||
-                selected == Profile.TUNNEL_TYPE_MASQUE
+                selected == Profile.TUNNEL_TYPE_MASQUE ||
+                selected == Profile.TUNNEL_TYPE_XHTTP
 
         val isCustomHostSupported = !isBase && selected != Profile.TUNNEL_TYPE_TLS && selected != Profile.TUNNEL_TYPE_QUIC
 
@@ -323,7 +349,7 @@ class ProfileEditActivity : BaseActivity() {
         binding.layoutServerName.visibility = if (isServerNameSupported) View.VISIBLE else View.GONE
         
         binding.switchEnableCustomPath.visibility = if (isMasque) View.VISIBLE else View.GONE
-        //非MASQUE时该值必须为true
+        
         if (!isMasque && !binding.switchEnableCustomPath.isChecked) {
             binding.switchEnableCustomPath.isChecked = true
         }
@@ -341,7 +367,9 @@ class ProfileEditActivity : BaseActivity() {
                 selected == Profile.TUNNEL_TYPE_MASQUE ||
                 selected == Profile.TUNNEL_TYPE_WS ||
                 selected == Profile.TUNNEL_TYPE_WSS ||
-                selected == Profile.TUNNEL_TYPE_HTTP
+                selected == Profile.TUNNEL_TYPE_HTTP ||
+                selected == Profile.TUNNEL_TYPE_XHTTP ||
+                selected == Profile.TUNNEL_TYPE_XHTTPC
 
         binding.switchAuthRequired.visibility = if (supportsProxyAuth) View.VISIBLE else View.GONE
         updateProxyAuthTokenVisibility()
@@ -354,7 +382,8 @@ class ProfileEditActivity : BaseActivity() {
         val isTokenMode = selected in listOf(
             Profile.TUNNEL_TYPE_H2, Profile.TUNNEL_TYPE_H2C, 
             Profile.TUNNEL_TYPE_GRPC, Profile.TUNNEL_TYPE_GRPCC,
-            Profile.TUNNEL_TYPE_H3, Profile.TUNNEL_TYPE_WT, Profile.TUNNEL_TYPE_MASQUE
+            Profile.TUNNEL_TYPE_H3, Profile.TUNNEL_TYPE_WT, Profile.TUNNEL_TYPE_MASQUE,
+            Profile.TUNNEL_TYPE_XHTTP, Profile.TUNNEL_TYPE_XHTTPC
         )
         val isUserPassMode = selected in listOf(
             Profile.TUNNEL_TYPE_WS, Profile.TUNNEL_TYPE_WSS, Profile.TUNNEL_TYPE_HTTP
@@ -362,7 +391,48 @@ class ProfileEditActivity : BaseActivity() {
 
         binding.layoutAuthToken.visibility = if (isAuthEnabled && isTokenMode) View.VISIBLE else View.GONE
         binding.layoutAuthUser.visibility = if (isAuthEnabled && isUserPassMode) View.VISIBLE else View.GONE
-        binding.layoutAuthPass.visibility = if (isAuthEnabled && isUserPassMode) View.VISIBLE else View.GONE
+        binding.layoutAuthPass.visibility = if (isAuthEnabled && isUserPassMode) View.GONE else View.VISIBLE
+    }
+
+    private fun validateAddress(content: String, layout: com.google.android.material.textfield.TextInputLayout) {
+        if (content.isBlank()) {
+            layout.error = getString(app.fjj.stun.R.string.error_field_required)
+            return
+        }
+
+        val ipv6Match = Regex("""^\[([0-9a-fA-F:]+)\]:(\d+)$""").find(content)
+        if (ipv6Match != null) {
+            val port = ipv6Match.groupValues[2].toIntOrNull()
+            if (port == null || port !in 1..65535) {
+                layout.error = getString(app.fjj.stun.R.string.error_invalid_port)
+            } else {
+                layout.error = null
+            }
+            return
+        }
+
+        val genericMatch = Regex("""^([^:]+):(\d+)$""").find(content)
+        if (genericMatch != null) {
+            val host = genericMatch.groupValues[1]
+            val port = genericMatch.groupValues[2].toIntOrNull()
+            
+            if (port == null || port !in 1..65535) {
+                layout.error = getString(app.fjj.stun.R.string.error_invalid_port)
+                return
+            }
+
+            val ipPattern = Regex("""^(\d{1,3}\.){3}\d{1,3}$""")
+            val domainPattern = Regex("""^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$""")
+            
+            if (ipPattern.matches(host) || domainPattern.matches(host) || host == "localhost") {
+                layout.error = null
+            } else {
+                layout.error = getString(app.fjj.stun.R.string.error_invalid_address)
+            }
+            return
+        }
+
+        layout.error = getString(app.fjj.stun.R.string.error_invalid_address)
     }
 
     private fun validatePrivateKey(content: String) {
@@ -397,7 +467,6 @@ class ProfileEditActivity : BaseActivity() {
         binding.layoutPrivateKey.visibility = if (isKey) View.VISIBLE else View.GONE
         binding.layoutKeyPass.visibility = if (isKey) View.VISIBLE else View.GONE
         
-        // Trigger validation when switching
         if (isKey) {
             validatePrivateKey(binding.etPrivateKey.text.toString())
             binding.layoutPass.error = null
