@@ -358,18 +358,18 @@ class ProfileEditActivity : BaseActivity() {
 
         binding.switchDisableStatusCheck.visibility = if (isHttp) View.VISIBLE else View.GONE
 
-        val supportsProxyAuth = selected == Profile.TUNNEL_TYPE_H2 ||
+        val supportsProxyAuth = selected == Profile.TUNNEL_TYPE_H2 ||//token
                 selected == Profile.TUNNEL_TYPE_H2C ||
                 selected == Profile.TUNNEL_TYPE_GRPC ||
                 selected == Profile.TUNNEL_TYPE_GRPCC ||
                 selected == Profile.TUNNEL_TYPE_H3 ||
                 selected == Profile.TUNNEL_TYPE_WT ||
-                selected == Profile.TUNNEL_TYPE_MASQUE ||
-                selected == Profile.TUNNEL_TYPE_WS ||
-                selected == Profile.TUNNEL_TYPE_WSS ||
-                selected == Profile.TUNNEL_TYPE_HTTP ||
+                selected == Profile.TUNNEL_TYPE_MASQUE||
                 selected == Profile.TUNNEL_TYPE_XHTTP ||
-                selected == Profile.TUNNEL_TYPE_XHTTPC
+                selected == Profile.TUNNEL_TYPE_XHTTPC ||
+                (selected == Profile.TUNNEL_TYPE_WS || // username:password
+                 selected == Profile.TUNNEL_TYPE_WSS ||
+                 selected == Profile.TUNNEL_TYPE_HTTP)
 
         binding.switchAuthRequired.visibility = if (supportsProxyAuth) View.VISIBLE else View.GONE
         updateProxyAuthTokenVisibility()
@@ -391,7 +391,7 @@ class ProfileEditActivity : BaseActivity() {
 
         binding.layoutAuthToken.visibility = if (isAuthEnabled && isTokenMode) View.VISIBLE else View.GONE
         binding.layoutAuthUser.visibility = if (isAuthEnabled && isUserPassMode) View.VISIBLE else View.GONE
-        binding.layoutAuthPass.visibility = if (isAuthEnabled && isUserPassMode) View.GONE else View.VISIBLE
+        binding.layoutAuthPass.visibility = if (isAuthEnabled && isUserPassMode) View.VISIBLE else View.GONE
     }
 
     private fun validateAddress(content: String, layout: com.google.android.material.textfield.TextInputLayout) {
