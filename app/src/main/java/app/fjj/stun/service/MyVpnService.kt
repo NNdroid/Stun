@@ -138,13 +138,6 @@ class MyVpnService : VpnService() {
             .addRoute("::", 0)
             .addDnsServer("8.8.8.8")
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-        {
-            builder
-                .excludeRoute(IpPrefix(InetAddress.getByName("127.0.0.0"), 8))
-                .excludeRoute(IpPrefix(InetAddress.getByName("::1"), 128))
-        }
-
         applyAppFiltering(builder, profile)
         return builder.establish()
     }

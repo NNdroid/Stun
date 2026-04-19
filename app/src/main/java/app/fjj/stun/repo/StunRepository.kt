@@ -6,7 +6,7 @@ import androidx.lifecycle.MutableLiveData
 import java.io.File
 
 object StunRepository {
-    private const val MAX_LOG_SIZE = 10000000 // 10MB of text
+    private const val MAX_LOG_SIZE = 100000
 
     private val appLogBuilder = SpannableStringBuilder()
     private val tunnelLogBuilder = StringBuilder()
