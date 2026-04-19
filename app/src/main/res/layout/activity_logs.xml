@@ -21,11 +21,12 @@
             app:titleCentered="true" />
     </com.google.android.material.appbar.AppBarLayout>
 
-    <androidx.core.widget.NestedScrollView
+    <app.fjj.stun.ui.NonJumpingScrollView
         android:id="@+id/scroll_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
+        android:contentDescription="@string/desc_logs_container"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <com.google.android.material.card.MaterialCardView
@@ -45,9 +46,10 @@
                 android:textColor="#00FF00"
                 android:textSize="12sp"
                 android:textIsSelectable="true"
+                android:contentDescription="@string/desc_log_text"
                 tools:text="[2023-10-27 10:00:00] INFO: Service started\n[2023-10-27 10:00:01] DEBUG: Connecting to server..." />
         </com.google.android.material.card.MaterialCardView>
-    </androidx.core.widget.NestedScrollView>
+    </app.fjj.stun.ui.NonJumpingScrollView>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_scroll_bottom"
@@ -55,6 +57,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="24dp"
+        android:contentDescription="@string/fab_desc_scrolling_to_bottom"
         android:src="@drawable/ic_arrow_down"
         android:visibility="gone"
         app:fabSize="mini"

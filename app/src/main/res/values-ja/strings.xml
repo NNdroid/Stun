@@ -143,4 +143,29 @@
     <string name="search_apps">アプリを検索…</string>
     <string name="ok">OK</string>
     <string name="cancel">キャンセル</string>
+    <string name="fab_desc_scrolling_to_bottom">一番下までスクロール</string>
+
+    <!-- Accessibility Descriptions -->
+    <string name="desc_logs_container">ログメッセージコンテナ</string>
+    <string name="desc_log_text">アプリログの詳細</string>
+    <string name="desc_main_menu">メインナビゲーションメニュー</string>
+    <string name="desc_profile_list">VPNプロファイルリスト</string>
+    <string name="desc_connection_status">VPN接続ステータス</string>
+    <string name="desc_start_stop_button">VPN接続を切り替える</string>
+    <string name="desc_nav_view">サイドナビゲーションメニュー</string>
+    <string name="desc_share_profile">プロファイルを共有</string>
+    <string name="desc_edit_profile_action">プロファイルを編集</string>
+    <string name="desc_delete_profile">プロファイルを削除</string>
+    <string name="desc_save_profile">プロファイル設定を保存</string>
+    <string name="desc_profile_name_input">プロファイル名を入力</string>
+    <string name="desc_ssh_address_input">SSHアドレスを入力</string>
+    <string name="desc_username_input">ユーザー名を入力</string>
+    <string name="desc_auth_type_select">認証タイプを選択</string>
+    <string name="desc_password_input">パスワードを入力</string>
+    <string name="desc_private_key_input">秘密鍵を入力</string>
+    <string name="desc_tunnel_type_select">トンネルタイプを選択</string>
+    <string name="desc_proxy_address_input">プロキシアドレスを入力</string>
+    <string name="desc_custom_host_input">カスタムホストを入力</string>
+    <string name="desc_dns_override_toggle">DNSとルーティングの上書きを切り替える</string>
+    <string name="desc_app_filter_toggle">アプリフィルタリングの上書きを切り替える</string>
 </resources>

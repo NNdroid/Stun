@@ -147,4 +147,29 @@
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
     <string name="desc_scroll_to_bottom">Scroll to bottom</string>
+    <string name="fab_desc_scrolling_to_bottom">scrolling to bottom</string>
+
+    <!-- Accessibility Descriptions -->
+    <string name="desc_logs_container">Log messages container</string>
+    <string name="desc_log_text">Application log details</string>
+    <string name="desc_main_menu">Main navigation menu</string>
+    <string name="desc_profile_list">VPN profile list</string>
+    <string name="desc_connection_status">VPN connection status</string>
+    <string name="desc_start_stop_button">Toggle VPN connection</string>
+    <string name="desc_nav_view">Side navigation menu</string>
+    <string name="desc_share_profile">Share profile</string>
+    <string name="desc_edit_profile_action">Edit profile</string>
+    <string name="desc_delete_profile">Delete profile</string>
+    <string name="desc_save_profile">Save profile configuration</string>
+    <string name="desc_profile_name_input">Input for profile name</string>
+    <string name="desc_ssh_address_input">Input for SSH address</string>
+    <string name="desc_username_input">Input for username</string>
+    <string name="desc_auth_type_select">Select authentication type</string>
+    <string name="desc_password_input">Input for password</string>
+    <string name="desc_private_key_input">Input for private key</string>
+    <string name="desc_tunnel_type_select">Select tunnel type</string>
+    <string name="desc_proxy_address_input">Input for proxy address</string>
+    <string name="desc_custom_host_input">Input for custom host</string>
+    <string name="desc_dns_override_toggle">Toggle DNS and routing override</string>
+    <string name="desc_app_filter_toggle">Toggle application filtering override</string>
 </resources>

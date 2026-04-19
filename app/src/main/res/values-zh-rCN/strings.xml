@@ -145,4 +145,29 @@
     <string name="search_apps">搜索应用…</string>
     <string name="ok">确定</string>
     <string name="cancel">取消</string>
+    <string name="fab_desc_scrolling_to_bottom">滚动到底部</string>
+
+    <!-- Accessibility Descriptions -->
+    <string name="desc_logs_container">日志消息容器</string>
+    <string name="desc_log_text">应用日志详情</string>
+    <string name="desc_main_menu">主导航菜单</string>
+    <string name="desc_profile_list">VPN 配置列表</string>
+    <string name="desc_connection_status">VPN 连接状态</string>
+    <string name="desc_start_stop_button">切换 VPN 连接</string>
+    <string name="desc_nav_view">侧边导航菜单</string>
+    <string name="desc_share_profile">分享配置</string>
+    <string name="desc_edit_profile_action">编辑配置</string>
+    <string name="desc_delete_profile">删除配置</string>
+    <string name="desc_save_profile">保存配置信息</string>
+    <string name="desc_profile_name_input">输入配置名称</string>
+    <string name="desc_ssh_address_input">输入 SSH 地址</string>
+    <string name="desc_username_input">输入用户名</string>
+    <string name="desc_auth_type_select">选择认证类型</string>
+    <string name="desc_password_input">输入密码</string>
+    <string name="desc_private_key_input">输入私钥</string>
+    <string name="desc_tunnel_type_select">选择隧道类型</string>
+    <string name="desc_proxy_address_input">输入代理地址</string>
+    <string name="desc_custom_host_input">输入自定义 Host</string>
+    <string name="desc_dns_override_toggle">切换 DNS 和路由覆盖</string>
+    <string name="desc_app_filter_toggle">切换应用过滤覆盖</string>
 </resources>

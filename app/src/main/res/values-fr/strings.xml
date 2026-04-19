@@ -145,4 +145,29 @@
     <string name="search_apps">Rechercher des applications…</string>
     <string name="ok">OK</string>
     <string name="cancel">Annuler</string>
+    <string name="fab_desc_scrolling_to_bottom">faire défiler vers le bas</string>
+
+    <!-- Accessibility Descriptions -->
+    <string name="desc_logs_container">Conteneur de messages de log</string>
+    <string name="desc_log_text">Détails des logs de l\'application</string>
+    <string name="desc_main_menu">Menu de navigation principal</string>
+    <string name="desc_profile_list">Liste des profils VPN</string>
+    <string name="desc_connection_status">Statut de la connexion VPN</string>
+    <string name="desc_start_stop_button">Basculer la connexion VPN</string>
+    <string name="desc_nav_view">Menu de navigation latéral</string>
+    <string name="desc_share_profile">Partager le profil</string>
+    <string name="desc_edit_profile_action">Modifier le profil</string>
+    <string name="desc_delete_profile">Supprimer le profil</string>
+    <string name="desc_save_profile">Enregistrer la configuration du profil</string>
+    <string name="desc_profile_name_input">Saisie du nom du profil</string>
+    <string name="desc_ssh_address_input">Saisie de l\'adresse SSH</string>
+    <string name="desc_username_input">Saisie du nom d\'utilisateur</string>
+    <string name="desc_auth_type_select">Sélectionner le type d\'authentification</string>
+    <string name="desc_password_input">Saisie du mot de passe</string>
+    <string name="desc_private_key_input">Saisie de la clé privée</string>
+    <string name="desc_tunnel_type_select">Sélectionner le type de tunnel</string>
+    <string name="desc_proxy_address_input">Saisie de l\'adresse proxy</string>
+    <string name="desc_custom_host_input">Saisie de l\'hôte personnalisé</string>
+    <string name="desc_dns_override_toggle">Basculer le remplacement du DNS et du routage</string>
+    <string name="desc_app_filter_toggle">Basculer le remplacement du filtrage d\'application</string>
 </resources>

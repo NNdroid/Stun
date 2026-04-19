@@ -25,6 +25,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
                 app:navigationIcon="@drawable/ic_menu"
+                app:navigationContentDescription="@string/desc_main_menu"
                 app:titleCentered="true" />
         </com.google.android.material.appbar.AppBarLayout>
 
@@ -39,6 +40,7 @@
                 android:layout_height="0dp"
                 android:clipToPadding="false"
                 android:paddingBottom="100dp"
+                android:contentDescription="@string/desc_profile_list"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -72,6 +74,7 @@
                 android:text="@string/status_disconnected"
                 android:textAppearance="?attr/textAppearanceBodyLarge"
                 android:textColor="?attr/colorOnSurfaceVariant"
+                android:contentDescription="@string/desc_connection_status"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@+id/fab_start_stop"
                 app:layout_constraintStart_toStartOf="parent"
@@ -83,6 +86,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="24dp"
                 android:src="@drawable/ic_play"
+                android:contentDescription="@string/desc_start_stop_button"
                 app:backgroundTint="?attr/colorSurfaceVariant"
                 app:elevation="2dp"
                 app:fabSize="normal"
@@ -102,6 +106,7 @@
         android:layout_height="match_parent"
         android:layout_gravity="start"
         android:fitsSystemWindows="true"
+        android:contentDescription="@string/desc_nav_view"
         app:headerLayout="@layout/nav_header"
         app:menu="@menu/drawer_menu" />
 

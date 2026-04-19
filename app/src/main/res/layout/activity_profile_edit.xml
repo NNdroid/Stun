@@ -39,7 +39,8 @@
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_name"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+                    android:layout_height="wrap_content"
+                    android:contentDescription="@string/desc_profile_name_input" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
@@ -53,7 +54,8 @@
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_ssh_addr"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+                    android:layout_height="wrap_content"
+                    android:contentDescription="@string/desc_ssh_address_input" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
@@ -66,7 +68,8 @@
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_user"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+                    android:layout_height="wrap_content"
+                    android:contentDescription="@string/desc_username_input" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Authentication Section -->
@@ -81,7 +84,8 @@
                     android:id="@+id/spinner_auth_type"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="none" />
+                    android:inputType="none"
+                    android:contentDescription="@string/desc_auth_type_select" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
@@ -97,7 +101,8 @@
                     android:id="@+id/et_pass"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textPassword" />
+                    android:inputType="textPassword"
+                    android:contentDescription="@string/desc_password_input" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
@@ -115,7 +120,8 @@
                     android:layout_height="wrap_content"
                     android:gravity="top"
                     android:inputType="textMultiLine"
-                    android:minLines="3" />
+                    android:minLines="3"
+                    android:contentDescription="@string/desc_private_key_input" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
@@ -147,7 +153,8 @@
                     android:id="@+id/spinner_tunnel_type"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="none" />
+                    android:inputType="none"
+                    android:contentDescription="@string/desc_tunnel_type_select" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
@@ -177,7 +184,8 @@
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_proxy_addr"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+                    android:layout_height="wrap_content"
+                    android:contentDescription="@string/desc_proxy_address_input" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
@@ -324,7 +332,8 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
                 android:text="@string/override_dns_routing"
-                android:textAppearance="?attr/textAppearanceTitleMedium" />
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:contentDescription="@string/desc_dns_override_toggle" />
 
             <LinearLayout
                 android:id="@+id/layout_dns_override"
@@ -405,7 +414,8 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
                 android:text="@string/override_app_filtering"
-                android:textAppearance="?attr/textAppearanceTitleMedium" />
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:contentDescription="@string/desc_app_filter_toggle" />
 
             <LinearLayout
                 android:id="@+id/layout_app_filter_override"
@@ -447,7 +457,8 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="32dp"
                 android:minHeight="56dp"
-                android:text="@string/save_configuration" />
+                android:text="@string/save_configuration"
+                android:contentDescription="@string/desc_save_profile" />
 
             <View
                 android:layout_width="match_parent"
