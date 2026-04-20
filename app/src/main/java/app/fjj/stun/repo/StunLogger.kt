@@ -23,7 +23,6 @@ import androidx.core.graphics.toColorInt
 @Keep
 object StunLogger {
     private const val TAG = "StunLogger"
-    private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault())
 
     // --- 核心优化 1：有界队列 ---
     // 限制最大缓存 5000 条，防止在极端网络拥塞/疯狂刷日志时耗尽应用内存导致 OOM
