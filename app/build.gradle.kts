@@ -114,6 +114,13 @@ android {
                 "proguard-rules.pro"
             )
         }
+        debug {
+            packaging {
+                jniLibs {
+                    keepDebugSymbols.add("**/*.so")
+                }
+            }
+        }
     }
 
     compileOptions {
@@ -179,7 +186,6 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    implementation(libs.katch)
     ksp(libs.androidx.room.compiler)
 
     testImplementation(libs.junit)

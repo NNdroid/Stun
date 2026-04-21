@@ -6,7 +6,6 @@ import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.StunLogger
 import app.fjj.stun.repo.StunRepository
 import app.fjj.stun.util.ExecUtils
-import com.katch.Katch
 import myssh.LogReceiver
 
 class StunApp : Application() {
@@ -16,7 +15,6 @@ class StunApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        Katch.init(this)
         // Initialize StunLogger
         initLogger(this@StunApp)
         app.fjj.stun.util.KeystoreUtils.init(this@StunApp)
@@ -35,12 +33,12 @@ class StunApp : Application() {
         StunLogger.init(context)
         val logPath = StunRepository.getTunnelLogFilePath(context)
         val logLevel = SettingsManager.getLogLevel(context)
-        // 1. 实现接口
+        // 实现接口
         val goLogReceiver = LogReceiver { level, tag, msg ->
             // 注意：Go 的 int 在 Java 中会变成 Long
             StunLogger.receiveGoLog(level.toInt(), tag, msg)
         }
-        // 2. 注入并启动
+        // 注入并启动
         myssh.Myssh.setLogReceiver(goLogReceiver)
         myssh.Myssh.initLogger(logPath, logLevel)
     }
