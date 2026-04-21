@@ -40,6 +40,7 @@
     <string name="server_name">Server Name</string>
     <string name="custom_path">Custom Path</string>
     <string name="enable_custom_path">Enable Custom Path</string>
+    <string name="alpn">Alpn</string>
 
     <string name="proxy_auth_required">Proxy Authentication Required</string>
     <string name="proxy_auth_token">Proxy Authentication Token</string>
@@ -170,6 +171,7 @@
     <string name="desc_tunnel_type_select">Select tunnel type</string>
     <string name="desc_proxy_address_input">Input for proxy address</string>
     <string name="desc_custom_host_input">Input for custom host</string>
+    <string name="desc_alpn_select">Select ALPN protocols</string>
     <string name="desc_dns_override_toggle">Toggle DNS and routing override</string>
     <string name="desc_app_filter_toggle">Toggle application filtering override</string>
 </resources>

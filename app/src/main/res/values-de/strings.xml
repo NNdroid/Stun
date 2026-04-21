@@ -40,6 +40,7 @@
     <string name="server_name">Servername</string>
     <string name="custom_path">Benutzerdefinierter Pfad</string>
     <string name="enable_custom_path">Benutzerdefinierten Pfad aktivieren</string>
+    <string name="alpn">Alpn</string>
     <string name="proxy_auth_required">Proxy-Authentifizierung erforderlich</string>
     <string name="proxy_auth_token">Proxy-Authentifizierungs-Token</string>
     <string name="proxy_auth_user">Proxy-Authentifizierungs-Benutzername</string>
@@ -168,6 +169,7 @@
     <string name="desc_tunnel_type_select">Tunneltyp auswählen</string>
     <string name="desc_proxy_address_input">Eingabe für Proxy-Adresse</string>
     <string name="desc_custom_host_input">Eingabe für benutzerdefinierten Host</string>
+    <string name="desc_alpn_select">ALPN-Protokolle auswählen</string>
     <string name="desc_dns_override_toggle">DNS- und Routing-Überschreibung umschalten</string>
     <string name="desc_app_filter_toggle">App-Filter-Überschreibung umschalten</string>
 </resources>

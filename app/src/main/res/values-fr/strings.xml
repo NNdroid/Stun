@@ -40,6 +40,7 @@
     <string name="server_name">Nom du serveur</string>
     <string name="custom_path">Chemin personnalisé</string>
     <string name="enable_custom_path">Activer le chemin personnalisé</string>
+    <string name="alpn">Alpn</string>
     <string name="proxy_auth_required">Authentification proxy requise</string>
     <string name="proxy_auth_token">Jeton d\'authentification proxy</string>
     <string name="proxy_auth_user">Nom d\'utilisateur d\'authentification proxy</string>
@@ -168,6 +169,7 @@
     <string name="desc_tunnel_type_select">Sélectionner le type de tunnel</string>
     <string name="desc_proxy_address_input">Saisie de l\'adresse proxy</string>
     <string name="desc_custom_host_input">Saisie de l\'hôte personnalisé</string>
+    <string name="desc_alpn_select">Sélectionner les protocoles ALPN</string>
     <string name="desc_dns_override_toggle">Basculer le remplacement du DNS et du routage</string>
     <string name="desc_app_filter_toggle">Basculer le remplacement du filtrage d\'application</string>
 </resources>

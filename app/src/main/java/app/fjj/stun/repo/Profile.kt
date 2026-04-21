@@ -81,6 +81,9 @@ data class Profile(
     @SerializedName("serverFingerprint")
     var serverFingerprint: String = "",
 
+    @SerializedName("alpn")
+    var alpn: String = "h2,http/1.1",
+
     // Private key password (stored encrypted)
     @SerializedName("keyPass")
     var keyPass: String = "",

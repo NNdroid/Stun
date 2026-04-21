@@ -23,6 +23,8 @@ class ProfileEditActivity : BaseActivity() {
     private var currentProfile: Profile = Profile()
     private lateinit var filterModes: Array<String>
     private val authTypes = arrayOf(Profile.AUTH_TYPE_PASSWORD, Profile.AUTH_TYPE_PRIVATEKEY)
+    private val alpnOptionsH3 = arrayOf("h3", "h2", "http/1.1", "h3,h2,http/1.1", "h3,h2", "h2,http/1.1")
+    private val alpnOptionsNoH3 = arrayOf("h2", "http/1.1", "h2,http/1.1")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -227,6 +229,7 @@ class ProfileEditActivity : BaseActivity() {
                 filterApps = binding.etFilterApps.text.toString(),
                 verifyFingerprint = binding.switchVerifyFingerprint.isChecked,
                 serverFingerprint = binding.etServerFingerprint.text.toString(),
+                alpn = binding.spinnerAlpn.text.toString(),
                 proxyAuthRequired = binding.switchAuthRequired.isChecked,
                 proxyAuthToken = binding.etAuthToken.text.toString(),
                 proxyAuthUser = binding.etAuthUser.text.toString(),
@@ -259,6 +262,8 @@ class ProfileEditActivity : BaseActivity() {
         binding.spinnerAuthType.setAdapter(authAdapter)
 
         binding.spinnerFilterMode.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, filterModes))
+
+        binding.spinnerAlpn.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, alpnOptionsH3))
     }
 
     private fun loadProfileValues(isEdit: Boolean) {
@@ -300,6 +305,8 @@ class ProfileEditActivity : BaseActivity() {
                 binding.switchVerifyFingerprint.isChecked = currentProfile.verifyFingerprint
                 binding.layoutServerFingerprint.visibility = if (currentProfile.verifyFingerprint) View.VISIBLE else View.GONE
                 binding.etServerFingerprint.setText(currentProfile.serverFingerprint)
+
+                binding.spinnerAlpn.setText(currentProfile.alpn, false)
 
                 // DNS and Routing Overrides
                 binding.switchDnsOverride.isChecked = currentProfile.dnsOverride
@@ -355,6 +362,22 @@ class ProfileEditActivity : BaseActivity() {
         }
         val showCustomPath = (isMasque && binding.switchEnableCustomPath.isChecked) || isCustomPathSupported
         binding.layoutCustomPath.visibility = if (showCustomPath) View.VISIBLE else View.GONE
+
+        val isXhttp = selected == Profile.TUNNEL_TYPE_XHTTP
+        val isXhttpc = selected == Profile.TUNNEL_TYPE_XHTTPC
+        binding.layoutAlpn.visibility = if (isXhttp || isXhttpc) View.VISIBLE else View.GONE
+        
+        if (isXhttp || isXhttpc) {
+            val options = if (isXhttp) alpnOptionsH3 else alpnOptionsNoH3
+            val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, options)
+            binding.spinnerAlpn.setAdapter(adapter)
+            
+            // If current ALPN is not in valid options (e.g. switched from xhttp to xhttpc), reset it
+            val currentAlpn = binding.spinnerAlpn.text.toString()
+            if (!options.contains(currentAlpn)) {
+                binding.spinnerAlpn.setText(options[0], false)
+            }
+        }
 
         binding.switchDisableStatusCheck.visibility = if (isHttp) View.VISIBLE else View.GONE
 

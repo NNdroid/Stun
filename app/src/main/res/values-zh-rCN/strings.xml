@@ -40,6 +40,7 @@
     <string name="server_name">自定义 ServerName</string>
     <string name="custom_path">自定义路径</string>
     <string name="enable_custom_path">启用自定义路径</string>
+    <string name="alpn">Alpn</string>
     <string name="proxy_auth_required">需要代理认证</string>
     <string name="proxy_auth_token">代理认证 Token</string>
     <string name="proxy_auth_user">代理认证用户名</string>
@@ -168,6 +169,7 @@
     <string name="desc_tunnel_type_select">选择隧道类型</string>
     <string name="desc_proxy_address_input">输入代理地址</string>
     <string name="desc_custom_host_input">输入自定义 Host</string>
+    <string name="desc_alpn_select">选择 ALPN 协议</string>
     <string name="desc_dns_override_toggle">切换 DNS 和路由覆盖</string>
     <string name="desc_app_filter_toggle">切换应用过滤覆盖</string>
 </resources>
