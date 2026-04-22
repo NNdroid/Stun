@@ -23,6 +23,7 @@ import androidx.core.view.GravityCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import app.fjj.stun.databinding.ActivityMainBinding
 import app.fjj.stun.repo.Profile
@@ -602,29 +603,18 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
         }
     }
 
-    private fun stopVpnService() {
-        val intent = Intent(this, MyVpnService::class.java)
-        intent.action = MyVpnService.ACTION_STOP
-        startService(intent)
+    private fun <T> startServiceInBackground(serviceClass: Class<T>, actionStr: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val intent = Intent(this@MainActivity, serviceClass)
+            intent.action = actionStr
+            startService(intent)
+        }
     }
 
-    private fun startVpnService() {
-        val intent = Intent(this, MyVpnService::class.java)
-        intent.action = MyVpnService.ACTION_START
-        startService(intent)
-    }
-
-    private fun stopTProxyService() {
-        val intent = Intent(this, MyTransparentProxyService::class.java)
-        intent.action = MyTransparentProxyService.ACTION_STOP
-        startService(intent)
-    }
-
-    private fun startTProxyService() {
-        val intent = Intent(this, MyTransparentProxyService::class.java)
-        intent.action = MyTransparentProxyService.ACTION_START
-        startService(intent)
-    }
+    private fun stopVpnService() = startServiceInBackground(MyVpnService::class.java, MyVpnService.ACTION_STOP)
+    private fun startVpnService() = startServiceInBackground(MyVpnService::class.java, MyVpnService.ACTION_START)
+    private fun stopTProxyService() = startServiceInBackground(MyTransparentProxyService::class.java, MyTransparentProxyService.ACTION_STOP)
+    private fun startTProxyService() = startServiceInBackground(MyTransparentProxyService::class.java, MyTransparentProxyService.ACTION_START)
 
     private fun exportProfilesToUri(uri: android.net.Uri) {
         thread {

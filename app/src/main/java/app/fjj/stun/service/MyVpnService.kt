@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Intent
-import android.net.IpPrefix
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
@@ -16,7 +15,6 @@ import app.fjj.stun.util.ShizukuUtils
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.net.InetAddress
 import java.util.Locale
 import kotlin.concurrent.thread
 import kotlin.math.log10
@@ -27,10 +25,13 @@ class MyVpnService : VpnService() {
 
     private var vpnInterface: ParcelFileDescriptor? = null
 
-    private var lastTxBytes = 0L
-    private var lastRxBytes = 0L
+    private var currentTxRate = 0L
+    private var currentRxRate = 0L
+    private var currentTxTotal = 0L
+    private var currentRxTotal = 0L
+    private var currentCpu = 0.0
+    private var currentMem = 0.0
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private var monitorJob: Job? = null
 
     @Volatile private var userRequestedStop = false
 
@@ -192,13 +193,16 @@ class MyVpnService : VpnService() {
     }
 
     private fun cleanupNativeResources() {
-        monitorJob?.cancel()
-        try { myssh.Myssh.stopSshTProxy() } catch (_: Exception) {}
+        try { myssh.Myssh.registerTrafficCallback(null) } catch (_: Exception) {}
+        try { myssh.Myssh.registerSysInfoCallback(null) } catch (_: Exception) {}
+
         try { TTunnelService.TTunnelStopService() } catch (_: Exception) {}
         try {
             vpnInterface?.close()
             vpnInterface = null
         } catch (_: Exception) {}
+
+        try { myssh.Myssh.stopSshTProxy() } catch (_: Exception) {}
     }
 
     private fun stopVpnService() {
@@ -229,33 +233,45 @@ class MyVpnService : VpnService() {
     }
 
     private fun startTrafficMonitor() {
-        monitorJob?.cancel()
-        lastTxBytes = 0L
-        lastRxBytes = 0L
-        monitorJob = serviceScope.launch {
-            while (isActive) {
-                val stats = try { TTunnelService.TTunnelGetStats() } catch (_: Exception) { null }
-                if (stats != null && stats.size >= 4) {
-                    updateStats(stats[1], stats[3])
+        myssh.Myssh.registerTrafficCallback(object : myssh.TrafficCallback {
+            override fun onTrafficUpdate(txRate: Long, rxRate: Long, txTotal: Long, rxTotal: Long) {
+                serviceScope.launch {
+                    updateStats(txRate, rxRate, txTotal, rxTotal)
                 }
-                delay(1000)
             }
-        }
+        })
+
+        myssh.Myssh.registerSysInfoCallback(object : myssh.SysInfoCallback {
+            override fun onSysInfoUpdate(cpuPercent: Double, memAllocMB: Double, memSysMB: Double, goroutines: Long) {
+                serviceScope.launch {
+                    updateSysInfo(cpuPercent, memAllocMB)
+                }
+            }
+        })
     }
 
-    private suspend fun updateStats(currentTxBytes: Long, currentRxBytes: Long) {
-        val txSpeed = if (lastTxBytes > 0) currentTxBytes - lastTxBytes else 0L
-        val rxSpeed = if (lastRxBytes > 0) currentRxBytes - lastRxBytes else 0L
-
-        lastTxBytes = currentTxBytes
-        lastRxBytes = currentRxBytes
+    private suspend fun updateStats(txRate: Long, rxRate: Long, txTotal: Long, rxTotal: Long) {
+        currentTxRate = txRate
+        currentRxRate = rxRate
+        currentTxTotal = txTotal
+        currentRxTotal = rxTotal
 
         SettingsManager.getSelectedProfileId(this)?.let { id ->
-            ProfileManager.updateTrafficStats(this, id, currentTxBytes, currentRxBytes)
+            ProfileManager.updateTrafficStats(this, id, txTotal, rxTotal)
         }
+        refreshNotification()
+    }
 
-        val statusText = "↑ ${formatBytes(txSpeed)}/s (${formatBytes(currentTxBytes)}) " +
-                         "↓ ${formatBytes(rxSpeed)}/s (${formatBytes(currentRxBytes)})"
+    private suspend fun updateSysInfo(cpu: Double, mem: Double) {
+        currentCpu = cpu
+        currentMem = mem
+        refreshNotification()
+    }
+
+    private suspend fun refreshNotification() {
+        val statusText = "↑ ${formatBytes(currentTxRate)}/s (${formatBytes(currentTxTotal)}) " +
+                         "↓ ${formatBytes(currentRxRate)}/s (${formatBytes(currentRxTotal)}) | " +
+                         "CPU: ${String.format(Locale.US, "%.1f", currentCpu)}% MEM: ${String.format(Locale.US, "%.1f", currentMem)}MB"
 
         withContext(Dispatchers.Main) {
             updateNotification(statusText)
@@ -276,5 +292,12 @@ class MyVpnService : VpnService() {
         stopVpnService()
         serviceScope.cancel()
         super.onDestroy()
+    }
+
+    override fun onRevoke() {
+        userRequestedStop = true
+        stopVpnService()
+        serviceScope.cancel()
+        super.onRevoke()
     }
 }

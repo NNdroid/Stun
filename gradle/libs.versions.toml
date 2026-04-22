@@ -1,5 +1,5 @@
 [versions]
-agp = "9.1.1"
+agp = "9.2.0"
 coreKtx = "1.18.0"
 gson = "2.13.2"
 junit = "4.13.2"
@@ -14,7 +14,7 @@ zxing = "4.3.0"
 tink = "1.21.0"
 libsu = "6.0.0"
 shizuku = "13.1.5"
-ksp = "2.1.0-1.0.29"
+ksp = "2.3.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

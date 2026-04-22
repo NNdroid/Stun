@@ -12,7 +12,10 @@ import app.fjj.stun.repo.*
 import app.fjj.stun.util.ExecUtils
 import kotlinx.coroutines.*
 import java.io.File
+import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.log10
+import kotlin.math.pow
 
 /**
  * a root-based transparent proxy.
@@ -23,6 +26,13 @@ class MyTransparentProxyService : Service() {
     private var mainJob: Job? = null
     private var coreJob: Job? = null
     private val isRunning = AtomicBoolean(false)
+
+    private var currentTxRate = 0L
+    private var currentRxRate = 0L
+    private var currentTxTotal = 0L
+    private var currentRxTotal = 0L
+    private var currentCpu = 0.0
+    private var currentMem = 0.0
     private val TAG: String
         get() = "TProxyService-[${Thread.currentThread().name}]"
 
@@ -134,6 +144,7 @@ class MyTransparentProxyService : Service() {
                 applyShizukuOptimizations()
 
                 startWatchdog()
+                startTrafficMonitor()
 
                 // Block and wait for core (监听 JNI 底层状态，阻塞当前协程)
                 StunLogger.i(TAG, "Entering wgWait() block...")
@@ -201,6 +212,7 @@ class MyTransparentProxyService : Service() {
             try {
                 StunLogger.i(TAG, "--- Stop Sequence Initiated ---")
 
+                stopTrafficMonitor()
                 stopWatchdog()
 
                 // 1. 清除防火墙规则 (恢复系统网络)
@@ -274,6 +286,64 @@ class MyTransparentProxyService : Service() {
         true
     """.trimIndent()
         ExecUtils.executeRootCommand(killCmd)
+    }
+
+    private fun startTrafficMonitor() {
+        myssh.Myssh.registerTrafficCallback(object : myssh.TrafficCallback {
+            override fun onTrafficUpdate(txRate: Long, rxRate: Long, txTotal: Long, rxTotal: Long) {
+                serviceScope.launch {
+                    updateStats(txRate, rxRate, txTotal, rxTotal)
+                }
+            }
+        })
+
+        myssh.Myssh.registerSysInfoCallback(object : myssh.SysInfoCallback {
+            override fun onSysInfoUpdate(cpuPercent: Double, memAllocMB: Double, memSysMB: Double, goroutines: Long) {
+                serviceScope.launch {
+                    updateSysInfo(cpuPercent, memAllocMB)
+                }
+            }
+        })
+    }
+
+    private fun stopTrafficMonitor() {
+        try { myssh.Myssh.registerTrafficCallback(null) } catch (_: Exception) {}
+        try { myssh.Myssh.registerSysInfoCallback(null) } catch (_: Exception) {}
+    }
+
+    private suspend fun updateStats(txRate: Long, rxRate: Long, txTotal: Long, rxTotal: Long) {
+        currentTxRate = txRate
+        currentRxRate = rxRate
+        currentTxTotal = txTotal
+        currentRxTotal = rxTotal
+
+        SettingsManager.getSelectedProfileId(this)?.let { id ->
+            ProfileManager.updateTrafficStats(this, id, txTotal, rxTotal)
+        }
+        refreshNotification()
+    }
+
+    private suspend fun updateSysInfo(cpu: Double, mem: Double) {
+        currentCpu = cpu
+        currentMem = mem
+        refreshNotification()
+    }
+
+    private suspend fun refreshNotification() {
+        val statusText = "↑ ${formatBytes(currentTxRate)}/s (${formatBytes(currentTxTotal)}) " +
+                         "↓ ${formatBytes(currentRxRate)}/s (${formatBytes(currentRxTotal)}) | " +
+                         "CPU: ${String.format(Locale.US, "%.1f", currentCpu)}% MEM: ${String.format(Locale.US, "%.1f", currentMem)}MB"
+
+        withContext(Dispatchers.Main) {
+            updateNotification(statusText)
+        }
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        if (bytes <= 0) return "0 B"
+        val units = arrayOf("B", "KB", "MB", "GB", "TB")
+        val digitGroups = (log10(bytes.toDouble()) / log10(1024.0)).toInt().coerceIn(0, units.size - 1)
+        return String.format(Locale.US, "%.1f %s", bytes / 1024.0.pow(digitGroups.toDouble()), units[digitGroups])
     }
 
     private fun createNotificationChannel() {

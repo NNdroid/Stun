@@ -35,7 +35,7 @@ object StunLogger {
     private var currentFileSize = 0L
     private const val MAX_FILE_SIZE = 5 * 1024 * 1024L // 5MB
 
-    var isLogcatEnabled = true
+    var isLogcatEnabled = false
     var logListener: ((CharSequence) -> Unit)? = null
     private val TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
         .withZone(ZoneId.systemDefault())
