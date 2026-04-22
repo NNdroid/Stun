@@ -167,7 +167,19 @@ tasks.named("preBuild") {
 }
 
 dependencies {
-    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar", "*.aar"))))
+    // 通用依赖：加载所有既不含 .debug 也不含 .release 的 aar/jar
+    implementation(fileTree("libs") {
+        include("*.aar", "*.jar")
+        exclude("*.debug.aar", "*.release.aar", "*.debug-sources.jar", "*.release-sources.jar")
+    })
+    // Debug 特有依赖
+    debugImplementation(fileTree("libs") {
+        include("*.debug-sources.jar", "*.debug.aar")
+    })
+    // Release 特有依赖
+    releaseImplementation(fileTree("libs") {
+        include("*.release-sources.jar", "*.release.aar")
+    })
 
     implementation(libs.libsu.core)
     implementation(libs.libsu.service)
