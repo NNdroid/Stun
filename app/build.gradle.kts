@@ -5,6 +5,18 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+fun fetchGitHash(): String {
+    return try {
+        val process = ProcessBuilder("git", "rev-parse", "--short=7", "HEAD").start()
+        process.inputStream.bufferedReader().readText().trim()
+    } catch (_: Exception) {
+        "unknown"
+    }
+}
+
+val gitHash = fetchGitHash()
+val baseVersionName = "1.5"
+
 // Automate moving the TProxy executable to assets
 val copyTProxyBinaries = tasks.register("copyTProxyBinaries") {
     val buildDirectory = project.layout.buildDirectory
@@ -88,7 +100,7 @@ android {
         minSdk = 28
         targetSdk = 36
         versionCode = 6
-        versionName = "1.5"
+        versionName = baseVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
@@ -105,6 +117,7 @@ android {
 
     buildTypes {
         release {
+            versionNameSuffix = "-release+$gitHash"
             isMinifyEnabled = true
             isShrinkResources = true
             isDebuggable = false
@@ -115,6 +128,7 @@ android {
             )
         }
         debug {
+            versionNameSuffix = "-debug+$gitHash"
             packaging {
                 jniLibs {
                     keepDebugSymbols.add("**/*.so")
