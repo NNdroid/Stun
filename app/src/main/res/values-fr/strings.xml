@@ -89,8 +89,10 @@
     <string name="vpn_permission_denied">Permission VPN refusée</string>
     <string name="settings_saved">Paramètres enregistrés</string>
     <string name="error_invalid_path">Le chemin doit commencer par /</string>
-    <string name="verify_fingerprint">Vérifier l\'empreinte du serveur</string>
-    <string name="server_fingerprint">Empreinte du serveur (SHA256)</string>
+    <string name="verify_ssh_fingerprint">Vérifier l\'empreinte SSH</string>
+    <string name="ssh_fingerprint">Empreinte SSH (SHA256)</string>
+    <string name="verify_cert_fingerprint">Vérifier l\'empreinte du certificat</string>
+    <string name="cert_fingerprint">Empreinte du certificat (SHA256)</string>
     <string name="override_dns_routing">Outrepasser le DNS et le routage</string>
     <string name="profile_saved">Profil enregistré</string>
     <string name="error_field_required">Ce champ ne peut pas être vide</string>

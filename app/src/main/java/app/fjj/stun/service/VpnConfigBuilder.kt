@@ -48,9 +48,11 @@ object VpnConfigBuilder {
             put("http_payload", profile.httpPayload)
             put("udpgw_addr", udpgwAddr)
             put("disable_status_check", profile.disableStatusCheck)
-            put("verify_finger_print", profile.verifyFingerprint)
-            put("server_finger_print", profile.serverFingerprint)
+            put("verify_ssh_finger_print", profile.verifyFingerprint)
+            put("server_ssh_finger_print", profile.serverFingerprint)
             put("alpn", profile.alpn)
+            put("verify_certificate_finger_print", profile.verifyCertFingerprint)
+            put("server_certificate_finger_print", profile.serverCertFingerprint)
         }.toString()
     }
 

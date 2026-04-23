@@ -90,8 +90,10 @@
     <string name="settings_saved">Einstellungen gespeichert</string>
     <string name="profile_saved">Profil gespeichert</string>
     <string name="error_invalid_path">Pfad muss mit / beginnen</string>
-    <string name="verify_fingerprint">Server-Fingerabdruck überprüfen</string>
-    <string name="server_fingerprint">Server-Fingerabdruck (SHA256)</string>
+    <string name="verify_ssh_fingerprint">SSH-Fingerabdruck überprüfen</string>
+    <string name="ssh_fingerprint">SSH-Fingerabdruck (SHA256)</string>
+    <string name="verify_cert_fingerprint">Zertifikats-Fingerabdruck überprüfen</string>
+    <string name="cert_fingerprint">Zertifikats-Fingerabdruck (SHA256)</string>
     <string name="override_dns_routing">DNS und Routing überschreiben</string>
     <string name="filter_disallow_mode">Nicht erlaubt (Umgekehrt)</string>
     <string name="filter_allow_mode">Erlaubt (Vorwärts)</string>

@@ -107,8 +107,10 @@
     <string name="vpn_permission_denied">VPN権限が拒否されました</string>
     <string name="settings_saved">設定を保存しました</string>
     <string name="error_invalid_path">パスは / で始まる必要があります</string>
-    <string name="verify_fingerprint">サーバー指紋を検証</string>
-    <string name="server_fingerprint">サーバー指紋 (SHA256)</string>
+    <string name="verify_ssh_fingerprint">SSH指紋を検証</string>
+    <string name="ssh_fingerprint">SSH指紋 (SHA256)</string>
+    <string name="verify_cert_fingerprint">証明書の指紋を検証</string>
+    <string name="cert_fingerprint">証明書の指紋 (SHA256)</string>
     <string name="override_dns_routing">DNSとルーティングをオーバーライド</string>
     <string name="filter_disallow_mode">禁止 (逆方向)</string>
     <string name="filter_allow_mode">許可 (正方向)</string>

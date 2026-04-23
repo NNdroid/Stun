@@ -75,11 +75,17 @@ data class Profile(
     @SerializedName("disableStatusCheck")
     var disableStatusCheck: Boolean = false,
 
-    // Server Fingerprint
+    // Server Fingerprint (SSH)
     @SerializedName("verifyFingerprint")
     var verifyFingerprint: Boolean = false,
     @SerializedName("serverFingerprint")
     var serverFingerprint: String = "",
+
+    // Certificate Fingerprint (TLS/QUIC)
+    @SerializedName("verifyCertFingerprint")
+    var verifyCertFingerprint: Boolean = false,
+    @SerializedName("serverCertFingerprint")
+    var serverCertFingerprint: String = "",
 
     @SerializedName("alpn")
     var alpn: String = "h2,http/1.1",

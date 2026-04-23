@@ -92,8 +92,10 @@
     <string name="error_no_profile_selected">请先选择一个配置</string>
     <string name="error_key_password_required">此密钥需要密码</string>
     <string name="error_invalid_key_password">密钥密码错误</string>
-    <string name="verify_fingerprint">验证服务器指纹</string>
-    <string name="server_fingerprint">服务器指纹 (SHA256)</string>
+    <string name="verify_ssh_fingerprint">验证 SSH 指纹</string>
+    <string name="ssh_fingerprint">SSH 指纹 (SHA256)</string>
+    <string name="verify_cert_fingerprint">验证证书指纹</string>
+    <string name="cert_fingerprint">证书指纹 (SHA256)</string>
     <string name="override_dns_routing">覆盖 DNS 和路由</string>
     <string name="filter_disallow_mode">不允许 (反向)</string>
     <string name="filter_allow_mode">允许 (正向)</string>

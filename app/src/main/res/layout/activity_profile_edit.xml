@@ -317,22 +317,44 @@
                 android:visibility="gone" />
 
             <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/switch_verify_fingerprint"
+                android:id="@+id/switch_verify_ssh_fingerprint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="@string/verify_fingerprint" />
+                android:text="@string/verify_ssh_fingerprint" />
 
             <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/layout_server_fingerprint"
+                android:id="@+id/layout_ssh_fingerprint"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:hint="@string/server_fingerprint"
+                android:hint="@string/ssh_fingerprint"
                 android:visibility="gone">
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/et_server_fingerprint"
+                    android:id="@+id/et_ssh_fingerprint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switch_verify_cert_fingerprint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/verify_cert_fingerprint"
+                android:visibility="gone" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_cert_fingerprint"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="@string/cert_fingerprint"
+                android:visibility="gone">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_cert_fingerprint"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content" />
             </com.google.android.material.textfield.TextInputLayout>

@@ -87,8 +87,10 @@
     <string name="vpn_permission_denied">VPN 權限被拒絕</string>
     <string name="settings_saved">設置已保存</string>
     <string name="error_invalid_path">路徑必須以 / 開頭</string>
-    <string name="verify_fingerprint">驗證服務器指紋</string>
-    <string name="server_fingerprint">服務器指紋 (SHA256)</string>
+    <string name="verify_ssh_fingerprint">驗證 SSH 指紋</string>
+    <string name="ssh_fingerprint">SSH 指紋 (SHA256)</string>
+    <string name="verify_cert_fingerprint">驗證證書指紋</string>
+    <string name="cert_fingerprint">證書指紋 (SHA256)</string>
     <string name="override_dns_routing">覆蓋 DNS 和路由</string>
     <string name="filter_disallow_mode">不允許 (反向)</string>
     <string name="filter_allow_mode">允許 (正向)</string>

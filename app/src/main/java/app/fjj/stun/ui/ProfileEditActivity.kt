@@ -82,8 +82,12 @@ class ProfileEditActivity : BaseActivity() {
             binding.layoutAppFilterOverride.visibility = if (isChecked) View.VISIBLE else View.GONE
         }
 
-        binding.switchVerifyFingerprint.setOnCheckedChangeListener { _, isChecked ->
-            binding.layoutServerFingerprint.visibility = if (isChecked) View.VISIBLE else View.GONE
+        binding.switchVerifySshFingerprint.setOnCheckedChangeListener { _, isChecked ->
+            binding.layoutSshFingerprint.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
+
+        binding.switchVerifyCertFingerprint.setOnCheckedChangeListener { _, isChecked ->
+            binding.layoutCertFingerprint.visibility = if (isChecked) View.VISIBLE else View.GONE
         }
 
         binding.switchEnableCustomPath.setOnCheckedChangeListener { _, _ ->
@@ -133,7 +137,7 @@ class ProfileEditActivity : BaseActivity() {
                 return@setOnClickListener
             }
 
-            if (binding.layoutProxyAddr.visibility == View.VISIBLE) {
+            if (binding.layoutProxyAddr.isVisible) {
                 val proxyAddr = binding.etProxyAddr.text.toString()
                 validateAddress(proxyAddr, binding.layoutProxyAddr)
                 if (binding.layoutProxyAddr.error != null) {
@@ -227,8 +231,10 @@ class ProfileEditActivity : BaseActivity() {
                 appFilterOverride = binding.switchAppFilterOverride.isChecked,
                 filterMode = if (binding.spinnerFilterMode.text.toString() == getString(app.fjj.stun.R.string.filter_allow_mode)) 1 else 0,
                 filterApps = binding.etFilterApps.text.toString(),
-                verifyFingerprint = binding.switchVerifyFingerprint.isChecked,
-                serverFingerprint = binding.etServerFingerprint.text.toString(),
+                verifyFingerprint = binding.switchVerifySshFingerprint.isChecked,
+                serverFingerprint = binding.etSshFingerprint.text.toString(),
+                verifyCertFingerprint = binding.switchVerifyCertFingerprint.isChecked,
+                serverCertFingerprint = binding.etCertFingerprint.text.toString(),
                 alpn = binding.spinnerAlpn.text.toString(),
                 proxyAuthRequired = binding.switchAuthRequired.isChecked,
                 proxyAuthToken = binding.etAuthToken.text.toString(),
@@ -301,10 +307,15 @@ class ProfileEditActivity : BaseActivity() {
                 binding.etAuthUser.setText(currentProfile.proxyAuthUser)
                 binding.etAuthPass.setText(currentProfile.proxyAuthPass)
 
-                // Server Fingerprint
-                binding.switchVerifyFingerprint.isChecked = currentProfile.verifyFingerprint
-                binding.layoutServerFingerprint.visibility = if (currentProfile.verifyFingerprint) View.VISIBLE else View.GONE
-                binding.etServerFingerprint.setText(currentProfile.serverFingerprint)
+                // SSH Fingerprint
+                binding.switchVerifySshFingerprint.isChecked = currentProfile.verifyFingerprint
+                binding.layoutSshFingerprint.visibility = if (currentProfile.verifyFingerprint) View.VISIBLE else View.GONE
+                binding.etSshFingerprint.setText(currentProfile.serverFingerprint)
+
+                // Certificate Fingerprint
+                binding.switchVerifyCertFingerprint.isChecked = currentProfile.verifyCertFingerprint
+                binding.layoutCertFingerprint.visibility = if (currentProfile.verifyCertFingerprint) View.VISIBLE else View.GONE
+                binding.etCertFingerprint.setText(currentProfile.serverCertFingerprint)
 
                 binding.spinnerAlpn.setText(currentProfile.alpn, false)
 
@@ -396,6 +407,29 @@ class ProfileEditActivity : BaseActivity() {
 
         binding.switchAuthRequired.visibility = if (supportsProxyAuth) View.VISIBLE else View.GONE
         updateProxyAuthTokenVisibility()
+        updateCertFingerprintVisibility()
+    }
+
+    private fun updateCertFingerprintVisibility() {
+        val selected = binding.spinnerTunnelType.text.toString()
+        val supportsCertFingerprint = selected in listOf(
+            Profile.TUNNEL_TYPE_TLS,
+            Profile.TUNNEL_TYPE_WSS,
+            Profile.TUNNEL_TYPE_H2,
+            Profile.TUNNEL_TYPE_QUIC,
+            Profile.TUNNEL_TYPE_GRPC,
+            Profile.TUNNEL_TYPE_H3,
+            Profile.TUNNEL_TYPE_WT,
+            Profile.TUNNEL_TYPE_MASQUE,
+            Profile.TUNNEL_TYPE_XHTTP
+        )
+
+        binding.switchVerifyCertFingerprint.visibility = if (supportsCertFingerprint) View.VISIBLE else View.GONE
+        if (!supportsCertFingerprint) {
+            binding.layoutCertFingerprint.visibility = View.GONE
+        } else {
+            binding.layoutCertFingerprint.visibility = if (binding.switchVerifyCertFingerprint.isChecked) View.VISIBLE else View.GONE
+        }
     }
 
     private fun updateProxyAuthTokenVisibility() {
