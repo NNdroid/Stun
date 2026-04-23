@@ -302,7 +302,6 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
         val selectedId = SettingsManager.getSelectedProfileId(this)
 
         adapter = ProfileAdapter(
-            profiles = emptyList(),
             selectedProfileId = selectedId,
             onProfileClick = { profile ->
                 if (!isVpnRunning) {

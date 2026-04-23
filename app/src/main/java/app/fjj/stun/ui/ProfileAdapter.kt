@@ -3,21 +3,23 @@ package app.fjj.stun.ui
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import app.fjj.stun.databinding.ItemProfileBinding
 import app.fjj.stun.repo.Profile
 
 class ProfileAdapter(
-    private var profiles: List<Profile>,
     private var selectedProfileId: String?,
     private val onProfileClick: (Profile) -> Unit,
     private val onEditClick: (Profile) -> Unit,
     private val onDeleteClick: (Profile) -> Unit,
     private val onShareClick: (Profile) -> Unit
-) : RecyclerView.Adapter<ProfileAdapter.ProfileViewHolder>() {
+) : ListAdapter<Profile, ProfileAdapter.ProfileViewHolder>(ProfileDiffCallback()) {
 
     private var allProfiles: List<Profile> = emptyList()
     private val delays = mutableMapOf<String, String>()
+    private var currentQuery: String = ""
 
     inner class ProfileViewHolder(val binding: ItemProfileBinding) : RecyclerView.ViewHolder(binding.root)
 
@@ -27,7 +29,7 @@ class ProfileAdapter(
     }
 
     override fun onBindViewHolder(holder: ProfileViewHolder, position: Int) {
-        val profile = profiles[position]
+        val profile = getItem(position)
         holder.binding.apply {
             tvName.text = profile.name
             
@@ -62,30 +64,41 @@ class ProfileAdapter(
         }
     }
 
-    override fun getItemCount() = profiles.size
-
-    fun getProfiles() = profiles
+    fun getProfiles() = allProfiles
 
     fun updateProfiles(newProfiles: List<Profile>, newSelectedId: String?) {
+        val selectionChanged = selectedProfileId != newSelectedId
         allProfiles = newProfiles
         selectedProfileId = newSelectedId
-        // Maintain current filter if possible, or just reset for now
-        profiles = newProfiles
-        notifyDataSetChanged()
+        
+        applyFilterAndSubmit()
+        
+        // If only the selection changed but the list content is the same, 
+        // ListAdapter might not re-bind. We might need to manually refresh visible items 
+        // or include isSelected in the DiffUtil (which requires a wrapper).
+        // For simplicity, if selection changed, we refresh the list.
+        if (selectionChanged) {
+            notifyDataSetChanged() 
+        }
     }
 
     fun filter(query: String) {
-        profiles = if (query.isEmpty()) {
+        currentQuery = query
+        applyFilterAndSubmit()
+    }
+
+    private fun applyFilterAndSubmit() {
+        val filteredList = if (currentQuery.isEmpty()) {
             allProfiles
         } else {
-            allProfiles.filter { it.name.contains(query, ignoreCase = true) }
+            allProfiles.filter { it.name.contains(currentQuery, ignoreCase = true) }
         }
-        notifyDataSetChanged()
+        submitList(filteredList)
     }
 
     fun updateDelay(profileId: String, delay: String) {
         delays[profileId] = delay
-        val index = profiles.indexOfFirst { it.id == profileId }
+        val index = currentList.indexOfFirst { it.id == profileId }
         if (index != -1) {
             notifyItemChanged(index)
         }
@@ -96,5 +109,15 @@ class ProfileAdapter(
         val units = arrayOf("B", "KB", "MB", "GB", "TB")
         val digitGroups = (kotlin.math.log10(bytes.toDouble()) / kotlin.math.log10(1024.0)).toInt().coerceIn(0, units.size - 1)
         return String.format(java.util.Locale.US, "%.1f %s", bytes / Math.pow(1024.0, digitGroups.toDouble()), units[digitGroups])
+    }
+
+    class ProfileDiffCallback : DiffUtil.ItemCallback<Profile>() {
+        override fun areItemsTheSame(oldItem: Profile, newItem: Profile): Boolean {
+            return oldItem.id == newItem.id
+        }
+
+        override fun areContentsTheSame(oldItem: Profile, newItem: Profile): Boolean {
+            return oldItem == newItem
+        }
     }
 }
