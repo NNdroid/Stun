@@ -29,7 +29,7 @@
     <string name="username">Benutzername</string>
     <string name="password">Passwort</string>
     <string name="private_key">Privater Schlüssel</string>
-    <string name="key_password">Schlüssel-Passwort (optional)</string>
+    <string name="key_password">Privatschlüssel-Passwort (optional)</string>
     <string name="auth_type">Authentifizierungstyp</string>
     <string name="auth_password">Passwort</string>
     <string name="auth_key">Privater Schlüssel</string>
@@ -100,8 +100,8 @@
     <string name="filter_allow_mode">Erlaubt (Vorwärts)</string>
     <string name="error_field_required">Dieses Feld darf nicht leer sein</string>
     <string name="error_no_profile_selected">Bitte wählen Sie zuerst ein Profil aus</string>
-    <string name="error_key_password_required">Schlüssel-Passwort für diesen Schlüssel erforderlich</string>
-    <string name="error_invalid_key_password">Falsches Schlüssel-Passwort</string>
+    <string name="error_key_password_required">Privatschlüssel-Passwort für diesen Schlüssel erforderlich</string>
+    <string name="error_invalid_key_password">Falsches Privatschlüssel-Passwort</string>
     <string name="error_invalid_private_key">Ungültiges Format des privaten Schlüssels</string>
     <string name="error_invalid_address">Ungültiges Adressformat (Host:Port)</string>
     <string name="error_invalid_port">Ungültige Portnummer (1-65535)</string>

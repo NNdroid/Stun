@@ -28,7 +28,7 @@
     <string name="username">用戶名</string>
     <string name="password">密碼</string>
     <string name="private_key">私鑰</string>
-    <string name="key_password">密鑰密碼（可選）</string>
+    <string name="key_password">私鑰密碼（可選）</string>
     <string name="auth_type">認證類型</string>
     <string name="auth_password">密碼</string>
     <string name="auth_key">私鑰</string>
@@ -101,6 +101,9 @@
     <string name="error_invalid_port">端口號無效 (1-65535)</string>
     <string name="geodata_success">GeoData 更新成功</string>
     <string name="error_field_required">該項必填</string>
+    <string name="error_no_profile_selected">請先選擇一個配置</string>
+    <string name="error_key_password_required">此私鑰需要密碼</string>
+    <string name="error_invalid_key_password">私鑰密碼錯誤</string>
     <string name="desc_scroll_to_bottom">滾動到底部</string>
 
     <string name="main_disconnected">未連接</string>
