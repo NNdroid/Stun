@@ -35,7 +35,7 @@
     <string name="auth_key">私钥</string>
     <string name="tunnel_type">隧道类型</string>
     <string name="http_payload">HTTP 载荷</string>
-    <string name="proxy_address">代理地址</string>
+    <string name="proxy_address">代理地址 (IP:端口)</string>
     <string name="custom_host">自定义 Host</string>
     <string name="server_name">自定义 ServerName</string>
     <string name="custom_path">自定义路径</string>
@@ -52,7 +52,8 @@
     <string name="log_level">日志过滤等级</string>
     <string name="remote_dns">远程 DNS 服务器 (IP:端口)</string>
     <string name="local_dns">本地 DNS 服务器 (IP:端口)</string>
-    <string name="udpgw_addr">UDP Gateway 地址 (IP:端口)</string>
+    <string name="udpgw_version">UDP 网关实现</string>
+    <string name="udpgw_addr">UDP 网关地址 (IP:端口)</string>
     <string name="geo_data_config">Geo 数据配置</string>
     <string name="geosite_url">GeoSite URL</string>
     <string name="geoip_url">GeoIP URL</string>

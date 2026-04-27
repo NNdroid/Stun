@@ -12,6 +12,7 @@ object SettingsManager {
     private const val KEY_LOG_LEVEL = "log_level"
     private const val KEY_REMOTE_DNS_SERVER = "remote_dns_server"
     private const val KEY_LOCAL_DNS_SERVER = "local_dns_server"
+    private const val KEY_UDPGW_VERSION = "udpgw_version"
     private const val KEY_UDPGW_ADDR = "udpgw_addr"
     private const val KEY_SELECTED_PROFILE_ID = "selected_profile_id"
     
@@ -32,6 +33,7 @@ object SettingsManager {
     const val DEFAULT_LOG_LEVEL = "INFO"
     const val DEFAULT_REMOTE_DNS_SERVER = "doh://8.8.8.8/dns-query"
     const val DEFAULT_LOCAL_DNS_SERVER = "doh://223.5.5.5/dns-query"
+    const val DEFAULT_UDPGW_VERSION = "tun2proxy"
     const val DEFAULT_UDPGW_ADDR = "127.0.0.1:7300"
     const val DEFAULT_GEOSITE_URL = "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geosite.dat"
     const val DEFAULT_GEOIP_URL = "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geoip.dat"
@@ -51,6 +53,9 @@ object SettingsManager {
 
     fun getLocalDnsServer(context: Context): String = getPrefs(context).getString(KEY_LOCAL_DNS_SERVER, DEFAULT_LOCAL_DNS_SERVER) ?: DEFAULT_LOCAL_DNS_SERVER
     fun saveLocalDnsServer(context: Context, dns: String) = getPrefs(context).edit { putString(KEY_LOCAL_DNS_SERVER, dns) }
+
+    fun getUdpgwVersion(context: Context): String = getPrefs(context).getString(KEY_UDPGW_VERSION, DEFAULT_UDPGW_VERSION) ?: DEFAULT_UDPGW_VERSION
+    fun saveUdpgwVersion(context: Context, version: String) = getPrefs(context).edit { putString(KEY_UDPGW_VERSION, version) }
 
     fun getUdpgwAddr(context: Context): String = getPrefs(context).getString(KEY_UDPGW_ADDR, DEFAULT_UDPGW_ADDR) ?: DEFAULT_UDPGW_ADDR
     fun saveUdpgwAddr(context: Context, addr: String) = getPrefs(context).edit { putString(KEY_UDPGW_ADDR, addr) }

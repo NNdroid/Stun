@@ -23,6 +23,7 @@ class ProfileEditActivity : BaseActivity() {
     private var currentProfile: Profile = Profile()
     private lateinit var filterModes: Array<String>
     private val authTypes = arrayOf(Profile.AUTH_TYPE_PASSWORD, Profile.AUTH_TYPE_PRIVATEKEY)
+    private val udpgwVersions = arrayOf("tun2proxy", "badvpn")
     private val alpnOptionsH3 = arrayOf("h3", "h2", "http/1.1", "h3,h2,http/1.1", "h3,h2", "h2,http/1.1")
     private val alpnOptionsNoH3 = arrayOf("h2", "http/1.1", "h2,http/1.1")
 
@@ -225,6 +226,7 @@ class ProfileEditActivity : BaseActivity() {
                 dnsOverride = binding.switchDnsOverride.isChecked,
                 remoteDns = binding.etRemoteDns.text.toString(),
                 localDns = binding.etLocalDns.text.toString(),
+                udpgwVersion = binding.spinnerUdpgwVersion.text.toString(),
                 udpgwAddr = binding.etUdpgwAddr.text.toString(),
                 geositeDirect = binding.etGeositeDirect.text.toString(),
                 geoipDirect = binding.etGeoipDirect.text.toString(),
@@ -269,6 +271,8 @@ class ProfileEditActivity : BaseActivity() {
 
         binding.spinnerFilterMode.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, filterModes))
 
+        binding.spinnerUdpgwVersion.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, udpgwVersions))
+
         binding.spinnerAlpn.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, alpnOptionsH3))
     }
 
@@ -277,7 +281,15 @@ class ProfileEditActivity : BaseActivity() {
             currentProfile = if (isEdit && profileId != null) {
                 ProfileManager.getProfileById(this, profileId!!) ?: Profile()
             } else {
-                Profile()
+                Profile().apply {
+                    val context = this@ProfileEditActivity
+                    remoteDns = app.fjj.stun.repo.SettingsManager.getRemoteDnsServer(context)
+                    localDns = app.fjj.stun.repo.SettingsManager.getLocalDnsServer(context)
+                    udpgwVersion = app.fjj.stun.repo.SettingsManager.getUdpgwVersion(context)
+                    udpgwAddr = app.fjj.stun.repo.SettingsManager.getUdpgwAddr(context)
+                    geositeDirect = app.fjj.stun.repo.SettingsManager.getGeositeDirect(context)
+                    geoipDirect = app.fjj.stun.repo.SettingsManager.getGeoipDirect(context)
+                }
             }
 
             runOnUiThread {
@@ -324,6 +336,7 @@ class ProfileEditActivity : BaseActivity() {
                 binding.layoutDnsOverride.visibility = if (currentProfile.dnsOverride) View.VISIBLE else View.GONE
                 binding.etRemoteDns.setText(currentProfile.remoteDns)
                 binding.etLocalDns.setText(currentProfile.localDns)
+                binding.spinnerUdpgwVersion.setText(currentProfile.udpgwVersion, false)
                 binding.etUdpgwAddr.setText(currentProfile.udpgwAddr)
                 binding.etGeositeDirect.setText(currentProfile.geositeDirect)
                 binding.etGeoipDirect.setText(currentProfile.geoipDirect)

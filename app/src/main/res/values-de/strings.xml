@@ -35,7 +35,7 @@
     <string name="auth_key">Privater Schlüssel</string>
     <string name="tunnel_type">Tunneltyp</string>
     <string name="http_payload">HTTP-Payload</string>
-    <string name="proxy_address">Proxy-Adresse</string>
+    <string name="proxy_address">Proxy-Adresse (IP:Port)</string>
     <string name="custom_host">Benutzerdefinierter Host</string>
     <string name="server_name">Servername</string>
     <string name="custom_path">Benutzerdefinierter Pfad</string>
@@ -52,6 +52,7 @@
     <string name="log_level">Protokoll-Filterebene</string>
     <string name="remote_dns">Remoter DNS-Server (IP:Port)</string>
     <string name="local_dns">Lokaler DNS-Server (IP:Port)</string>
+    <string name="udpgw_version">UDP-Gateway-Implementierung</string>
     <string name="udpgw_addr">UDP-Gateway-Adresse (IP:Port)</string>
     <string name="geo_data_config">Geodaten-Konfiguration</string>
     <string name="geosite_url">GeoSite-URL</string>

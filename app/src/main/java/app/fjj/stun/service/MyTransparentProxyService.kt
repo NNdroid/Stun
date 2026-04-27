@@ -110,9 +110,8 @@ class MyTransparentProxyService : Service() {
                 // 1. Start SSH Core (SOCKS5 Backend)
                 StunLogger.i(TAG, "Step 1: Starting SSH Core backend...")
                 myssh.Myssh.loadGlobalConfigFromJson(VpnConfigBuilder.buildGlobalConfig(context, profile))
-                val sshStatus = myssh.Myssh.startSshTProxy2(VpnConfigBuilder.buildMySshConfig(context, profile, SOCKS_PORT))
+                val sshStatus = myssh.Myssh.startSshTProxy2(VpnConfigBuilder.buildMySshConfig(context, profile, SOCKS_PORT, DNS_HIJACK_PORT))
                 if (sshStatus != 0L) throw RuntimeException("SSH Core failed to start with status: $sshStatus")
-                myssh.Myssh.startLocalDNSServer(DNS_HIJACK_PORT.toLong())
                 StunLogger.i(TAG, "SSH Core started successfully.")
 
                 // 2. Generate hev-socks5-tproxy config
@@ -221,13 +220,6 @@ class MyTransparentProxyService : Service() {
                 // 2. 强杀底层的二进制进程
                 stopCoreEngine()
 
-                // 3. 停止 SSH 后端
-                try {
-                    StunLogger.i(TAG, "Stopping Local DNS Server...")
-                    myssh.Myssh.stopLocalDNSServer()
-                } catch (e: Exception) {
-                    StunLogger.w(TAG, "Exception while stopping Local DNS Server: ${e.message}")
-                }
                 try {
                     StunLogger.i(TAG, "Stopping SSH Core...")
                     myssh.Myssh.stopSshTProxy()

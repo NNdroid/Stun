@@ -40,6 +40,7 @@ class MyVpnService : VpnService() {
         const val ACTION_START = "app.fjj.stun.START"
         const val ACTION_STOP = "app.fjj.stun.STOP"
         const val SOCKS_PORT = 10808
+        const val DNS_PORT = 10553
         const val RECONNECT_DELAY = 3000L
         const val CHANNEL_ID = "StunVpnChannel"
         const val NOTIFICATION_ID = 1001
@@ -87,7 +88,7 @@ class MyVpnService : VpnService() {
                 myssh.Myssh.loadGlobalConfigFromJson(VpnConfigBuilder.buildGlobalConfig(this, profile))
                 
                 // 2. Start SSH
-                val sshStatus = myssh.Myssh.startSshTProxy2(VpnConfigBuilder.buildMySshConfig(this, profile, SOCKS_PORT))
+                val sshStatus = myssh.Myssh.startSshTProxy2(VpnConfigBuilder.buildMySshConfig(this, profile, SOCKS_PORT, DNS_PORT))
                 if (sshStatus != 0L) {
                     log("❌ Go SSH Core failed to start (Code: $sshStatus). Retrying...")
                     throw RuntimeException("SSH Core start failed")

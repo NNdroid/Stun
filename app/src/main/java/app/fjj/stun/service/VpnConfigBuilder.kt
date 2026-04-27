@@ -25,8 +25,9 @@ object VpnConfigBuilder {
         }.toString()
     }
 
-    fun buildMySshConfig(context: Context, profile: Profile, socksPort: Int): String {
+    fun buildMySshConfig(context: Context, profile: Profile, socksPort: Int, dnsPort: Int): String {
         val udpgwAddr = if (profile.dnsOverride) profile.udpgwAddr else SettingsManager.getUdpgwAddr(context)
+        val udpgwVersion = if (profile.dnsOverride) profile.udpgwVersion else SettingsManager.getUdpgwVersion(context)
 
         return JSONObject().apply {
             put("local_addr", "127.0.0.1:$socksPort")
@@ -53,6 +54,8 @@ object VpnConfigBuilder {
             put("alpn", profile.alpn)
             put("verify_certificate_finger_print", profile.verifyCertFingerprint)
             put("server_certificate_finger_print", profile.serverCertFingerprint)
+            put("dns_addr", ":${dnsPort}")
+            put("udpgw_version", udpgwVersion)
         }.toString()
     }
 

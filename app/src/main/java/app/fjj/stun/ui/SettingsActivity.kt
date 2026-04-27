@@ -18,6 +18,7 @@ class SettingsActivity : BaseActivity() {
 
     private lateinit var binding: ActivitySettingsBinding
     private val logLevels = arrayOf("DEBUG", "INFO", "WARN", "ERROR")
+    private val udpgwVersions = arrayOf("tun2proxy", "badvpn")
     private lateinit var serviceModes: Array<String>
     private lateinit var filterModes: Array<String>
     private lateinit var languageLabels: Array<String>
@@ -105,6 +106,7 @@ class SettingsActivity : BaseActivity() {
         binding.spinnerServiceMode.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, serviceModes))
         binding.spinnerLanguage.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, languageLabels))
         binding.spinnerLogLevel.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, logLevels))
+        binding.spinnerUdpgwVersion.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, udpgwVersions))
         binding.spinnerFilterMode.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, filterModes))
     }
 
@@ -113,6 +115,7 @@ class SettingsActivity : BaseActivity() {
             val logLevel = SettingsManager.getLogLevel(this)
             val remoteDns = SettingsManager.getRemoteDnsServer(this)
             val localDns = SettingsManager.getLocalDnsServer(this)
+            val udpgwVersion = SettingsManager.getUdpgwVersion(this)
             val udpgw = SettingsManager.getUdpgwAddr(this)
             val filterMode = SettingsManager.getFilterMode(this)
             val filterApps = SettingsManager.getFilterApps(this)
@@ -135,6 +138,7 @@ class SettingsActivity : BaseActivity() {
                 binding.spinnerLogLevel.setText(logLevel, false)
                 binding.etRemoteDnsServer.setText(remoteDns)
                 binding.etLocalDnsServer.setText(localDns)
+                binding.spinnerUdpgwVersion.setText(udpgwVersion, false)
                 binding.etUdpgwAddr.setText(udpgw)
                 binding.spinnerFilterMode.setText(if (filterMode == 1) getString(app.fjj.stun.R.string.filter_allow_mode) else getString(app.fjj.stun.R.string.filter_disallow_mode), false)
                 binding.etFilterApps.setText(filterApps)
@@ -165,6 +169,7 @@ class SettingsActivity : BaseActivity() {
         SettingsManager.saveLogLevel(this, binding.spinnerLogLevel.text.toString())
         SettingsManager.saveRemoteDnsServer(this, binding.etRemoteDnsServer.text.toString())
         SettingsManager.saveLocalDnsServer(this, binding.etLocalDnsServer.text.toString())
+        SettingsManager.saveUdpgwVersion(this, binding.spinnerUdpgwVersion.text.toString())
         SettingsManager.saveUdpgwAddr(this, binding.etUdpgwAddr.text.toString())
         SettingsManager.saveGeositeUrl(this, binding.etGeositeUrl.text.toString())
         SettingsManager.saveGeoipUrl(this, binding.etGeoipUrl.text.toString())

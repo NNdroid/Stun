@@ -56,6 +56,8 @@ data class Profile(
     var remoteDns: String = SettingsManager.DEFAULT_REMOTE_DNS_SERVER,
     @SerializedName("localDns")
     var localDns: String = SettingsManager.DEFAULT_LOCAL_DNS_SERVER,
+    @SerializedName("udpgwVersion")
+    var udpgwVersion: String = SettingsManager.DEFAULT_UDPGW_VERSION,
     @SerializedName("udpgwAddr")
     var udpgwAddr: String = SettingsManager.DEFAULT_UDPGW_ADDR,
     @SerializedName("geositeDirect")
