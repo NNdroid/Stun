@@ -545,7 +545,6 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
     }
 
     private fun handleStartStop() {
-        applyShizukuKeepAlive()
         val mode = SettingsManager.getServiceMode(this)
         val currentState = StunRepository.vpnState.value ?: VpnState.DISCONNECTED
 
@@ -559,6 +558,7 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
             if (currentState == VpnState.CONNECTING) return
             if (!validateSelectedProfile()) return
 
+            applyShizukuKeepAlive()
             if (mode == SettingsManager.SERVICE_MODE_TPROXY) {
                 startTProxyProcess()
             } else {

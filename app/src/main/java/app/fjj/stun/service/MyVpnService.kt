@@ -12,6 +12,8 @@ import kotlinx.coroutines.*
 import hev.htp.TTunnelService
 import app.fjj.stun.repo.*
 import app.fjj.stun.util.ShizukuUtils
+import myssh.SysInfoCallback
+import myssh.TrafficCallback
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -61,7 +63,10 @@ class MyVpnService : VpnService() {
     private fun handleStopRequest() {
         log("User requested to stop service...")
         userRequestedStop = true
-        stopVpnService()
+        // Switch to IO dispatcher for cleanup to avoid UI freeze
+        serviceScope.launch {
+            stopVpnService()
+        }
     }
 
     private fun handleStartRequest() {
@@ -207,9 +212,13 @@ class MyVpnService : VpnService() {
     }
 
     private fun stopVpnService() {
-        cleanupNativeResources()
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
+        serviceScope.launch {
+            cleanupNativeResources()
+            withContext(Dispatchers.Main) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            }
+        }
     }
 
     private fun updateNotification(contentText: String? = null) {
@@ -234,19 +243,15 @@ class MyVpnService : VpnService() {
     }
 
     private fun startTrafficMonitor() {
-        myssh.Myssh.registerTrafficCallback(object : myssh.TrafficCallback {
-            override fun onTrafficUpdate(txRate: Long, rxRate: Long, txTotal: Long, rxTotal: Long) {
-                serviceScope.launch {
-                    updateStats(txRate, rxRate, txTotal, rxTotal)
-                }
+        myssh.Myssh.registerTrafficCallback(TrafficCallback { txRate, rxRate, txTotal, rxTotal, activeConns, totalConns ->
+            serviceScope.launch {
+                updateStats(txRate, rxRate, txTotal, rxTotal)
             }
         })
 
-        myssh.Myssh.registerSysInfoCallback(object : myssh.SysInfoCallback {
-            override fun onSysInfoUpdate(cpuPercent: Double, memAllocMB: Double, memSysMB: Double, goroutines: Long) {
-                serviceScope.launch {
-                    updateSysInfo(cpuPercent, memAllocMB)
-                }
+        myssh.Myssh.registerSysInfoCallback(SysInfoCallback { cpuPercent, memAllocMB, memSysMB, goroutines ->
+            serviceScope.launch {
+                updateSysInfo(cpuPercent, memAllocMB)
             }
         })
     }
@@ -290,7 +295,12 @@ class MyVpnService : VpnService() {
 
     override fun onDestroy() {
         userRequestedStop = true
-        stopVpnService()
+        // Switch to IO dispatcher for cleanup to avoid UI freeze during destruction
+        // Use GlobalScope here because serviceScope might be cancelled immediately
+        @OptIn(DelicateCoroutinesApi::class)
+        GlobalScope.launch(Dispatchers.IO) {
+            cleanupNativeResources()
+        }
         serviceScope.cancel()
         super.onDestroy()
     }
@@ -298,7 +308,6 @@ class MyVpnService : VpnService() {
     override fun onRevoke() {
         userRequestedStop = true
         stopVpnService()
-        serviceScope.cancel()
         super.onRevoke()
     }
 }

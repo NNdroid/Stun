@@ -8,6 +8,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import rikka.shizuku.Shizuku
 import rikka.shizuku.ShizukuBinderWrapper
 import rikka.shizuku.SystemServiceHelper
+import kotlin.concurrent.thread
 import kotlin.coroutines.resume
 
 object ShizukuUtils {
@@ -106,21 +107,25 @@ object ShizukuUtils {
     // ========== 下面是业务方法，内部不再负责请求权限 ==========
 
     fun addSelfToBatteryWhitelist(packageName: String) {
-        if (!isReady()) return // 调用前由外部保证权限，这里只做最后一道防线拦截
-        try {
-            val binder = ShizukuBinderWrapper(SystemServiceHelper.getSystemService("deviceidle"))
-            val idleController = IDeviceIdleController.Stub.asInterface(binder)
-            idleController.addPowerSaveWhitelistApp(packageName)
-            StunLogger.i(TAG, "Successfully added $packageName to battery whitelist")
-        } catch (e: Exception) {
-            StunLogger.e(TAG, "Binder call failed, fallback to shell command", e)
-            executeShellCommand("dumpsys deviceidle whitelist +$packageName")
+        if (!isReady()) return 
+        // Move to background thread to avoid UI freeze
+        thread {
+            try {
+                val binder = ShizukuBinderWrapper(SystemServiceHelper.getSystemService("deviceidle"))
+                val idleController = IDeviceIdleController.Stub.asInterface(binder)
+                idleController.addPowerSaveWhitelistApp(packageName)
+                StunLogger.i(TAG, "Successfully added $packageName to battery whitelist")
+            } catch (e: Exception) {
+                StunLogger.e(TAG, "Binder call failed, fallback to shell command", e)
+                executeShellCommand("dumpsys deviceidle whitelist +$packageName")
+            }
         }
     }
 
     fun setStandbyBucketActive(packageName: String) {
         if (!isReady()) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            // executeShellCommand already uses a background thread
             executeShellCommand("am set-standby-bucket $packageName active")
         }
     }
@@ -129,7 +134,18 @@ object ShizukuUtils {
         try {
             val binder = Shizuku.getBinder()
             val service = moe.shizuku.server.IShizukuService.Stub.asInterface(binder)
-            service.newProcess(command.split(" ").toTypedArray(), null, null).waitFor()
+            // Execute in a separate process and don't block the caller if not necessary.
+            // But since this is a utility, we should ensure it's on a background thread.
+            val process = service.newProcess(command.split(" ").toTypedArray(), null, null)
+            // If we really need to wait, it should be in a background thread.
+            // For am commands, we usually don't need to wait for completion to return to UI.
+            thread {
+                try {
+                    process.waitFor()
+                } catch (e: Exception) {
+                    StunLogger.e(TAG, "Error waiting for process: $command", e)
+                }
+            }
         } catch (e: Exception) {
             StunLogger.e(TAG, "Failed to execute shell command: $command", e)
         }

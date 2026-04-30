@@ -11,6 +11,8 @@ import app.fjj.stun.R
 import app.fjj.stun.repo.*
 import app.fjj.stun.util.ExecUtils
 import kotlinx.coroutines.*
+import myssh.SysInfoCallback
+import myssh.TrafficCallback
 import java.io.File
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
@@ -80,13 +82,6 @@ class MyTransparentProxyService : Service() {
     private fun startTProxy(context: Context) {
         StunLogger.i(TAG, "Attempting to start Transparent Proxy...")
 
-        // 如果没有 Root 权限，必须调用 stopSelf() 结束服务，否则会引发系统 ANR / 崩溃
-        if (!ExecUtils.checkIsRootPermission()) {
-            StunLogger.e(TAG, "Root permission required but not granted. Stopping service.")
-            stopSelf()
-            return
-        }
-
         // 使用原子操作检查并设置运行状态：如果已经是 true，直接返回
         if (!isRunning.compareAndSet(false, true)) {
             StunLogger.w(TAG, "Service is already running, ignoring start request.")
@@ -97,6 +92,18 @@ class MyTransparentProxyService : Service() {
         updateNotification(getString(R.string.main_connecting))
 
         mainJob = serviceScope.launch {
+            // 如果没有 Root 权限，必须调用 stopSelf() 结束服务
+            if (!withContext(Dispatchers.IO) { ExecUtils.checkIsRootPermission() }) {
+                StunLogger.e(TAG, "Root permission required but not granted. Stopping service.")
+                isRunning.set(false)
+                StunRepository.vpnState.postValue(VpnState.DISCONNECTED)
+                withContext(Dispatchers.Main) {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                }
+                return@launch
+            }
+
             try {
                 StunLogger.i(TAG, "--- Start Sequence Initiated ---")
 
@@ -207,7 +214,9 @@ class MyTransparentProxyService : Service() {
         StunLogger.i(TAG, "Jobs cancelled.")
 
         // 启动不可取消的清理协程，确保即使上层协程被取消，清理工作也能执行完毕
-        serviceScope.launch(NonCancellable) {
+        // 使用 GlobalScope 确保在 Service 销毁时清理任务不会被立即取消
+        @OptIn(DelicateCoroutinesApi::class)
+        GlobalScope.launch(Dispatchers.IO + NonCancellable) {
             try {
                 StunLogger.i(TAG, "--- Stop Sequence Initiated ---")
 
@@ -281,19 +290,15 @@ class MyTransparentProxyService : Service() {
     }
 
     private fun startTrafficMonitor() {
-        myssh.Myssh.registerTrafficCallback(object : myssh.TrafficCallback {
-            override fun onTrafficUpdate(txRate: Long, rxRate: Long, txTotal: Long, rxTotal: Long) {
-                serviceScope.launch {
-                    updateStats(txRate, rxRate, txTotal, rxTotal)
-                }
+        myssh.Myssh.registerTrafficCallback(TrafficCallback { txRate, rxRate, txTotal, rxTotal, activeConns, totalConns ->
+            serviceScope.launch {
+                updateStats(txRate, rxRate, txTotal, rxTotal)
             }
         })
 
-        myssh.Myssh.registerSysInfoCallback(object : myssh.SysInfoCallback {
-            override fun onSysInfoUpdate(cpuPercent: Double, memAllocMB: Double, memSysMB: Double, goroutines: Long) {
-                serviceScope.launch {
-                    updateSysInfo(cpuPercent, memAllocMB)
-                }
+        myssh.Myssh.registerSysInfoCallback(SysInfoCallback { cpuPercent, memAllocMB, memSysMB, goroutines ->
+            serviceScope.launch {
+                updateSysInfo(cpuPercent, memAllocMB)
             }
         })
     }
