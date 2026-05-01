@@ -59,6 +59,7 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
 
     // 仅在完全连接时为 true，用于控制延迟测试是否走代理
     private var isVpnRunning = false
+    private var isStopping = false
 
     private val vpnLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -177,14 +178,18 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
         }
 
         binding.fabStartStop.setOnClickListener {
-            handleStartStop()
+            // Click feedback animation
+            it.animate().scaleX(0.85f).scaleY(0.85f).setDuration(100).withEndAction {
+                it.animate().scaleX(1f).scaleY(1f).setDuration(100).start()
+                handleStartStop()
+            }.start()
         }
 
         binding.tvStatus.setOnClickListener {
             testSelectedProfileLatency()
         }
 
-        // 🌟 核心修改区：监听枚举状态并精细化控制 UI
+        // 🌟 监听枚举状态并精细化控制 UI
         StunRepository.vpnState.observe(this) { state ->
             binding.fabStartStop.clearAnimation() // 停止之前的动画
             when (state) {
@@ -193,13 +198,24 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                     binding.fabStartStop.isEnabled = true
                     binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_play)
                     binding.tvStatus.text = getString(app.fjj.stun.R.string.main_disconnected)
+                    binding.progressBar.visibility = android.view.View.GONE
+                    
+                    // Fade in animation
+                    binding.fabStartStop.alpha = 0f
+                    binding.fabStartStop.animate().alpha(1f).setDuration(300).start()
+
+                    if (isStopping) {
+                        isStopping = false
+                        //Toast.makeText(this, getString(app.fjj.stun.R.string.connection_complete), Toast.LENGTH_SHORT).show()
+                    }
                 }
                 VpnState.CONNECTING -> {
                     isVpnRunning = false
                     binding.fabStartStop.isEnabled = false // 禁用按钮，防止连点
                     binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_sync)
+                    binding.progressBar.visibility = android.view.View.VISIBLE
                     
-                    // 开始旋转动画
+                    // 开始旋转 + 呼吸缩放动画
                     val rotate = android.view.animation.RotateAnimation(
                         0f, 360f,
                         android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f,
@@ -209,7 +225,22 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                         repeatCount = android.view.animation.Animation.INFINITE
                         interpolator = android.view.animation.LinearInterpolator()
                     }
-                    binding.fabStartStop.startAnimation(rotate)
+                    
+                    val scale = android.view.animation.ScaleAnimation(
+                        1f, 1.1f, 1f, 1.1f,
+                        android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f,
+                        android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f
+                    ).apply {
+                        duration = 800
+                        repeatCount = android.view.animation.Animation.INFINITE
+                        repeatMode = android.view.animation.Animation.REVERSE
+                        interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+                    }
+
+                    val animSet = android.view.animation.AnimationSet(false)
+                    animSet.addAnimation(rotate)
+                    animSet.addAnimation(scale)
+                    binding.fabStartStop.startAnimation(animSet)
 
                     binding.tvStatus.text = getString(app.fjj.stun.R.string.main_connecting)
                 }
@@ -218,21 +249,35 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                     binding.fabStartStop.isEnabled = true
                     binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_pause)
                     binding.tvStatus.text = getString(app.fjj.stun.R.string.main_connected)
+                    binding.progressBar.visibility = android.view.View.GONE
+                    
+                    // Success "Pop" animation
+                    binding.fabStartStop.scaleX = 0.8f
+                    binding.fabStartStop.scaleY = 0.8f
+                    binding.fabStartStop.animate()
+                        .scaleX(1.1f).scaleY(1.1f)
+                        .setDuration(200)
+                        .withEndAction {
+                            binding.fabStartStop.animate().scaleX(1f).scaleY(1f).setDuration(100).start()
+                        }.start()
                 }
                 VpnState.RECONNECTING -> {
                     isVpnRunning = false
                     binding.fabStartStop.isEnabled = true // 允许用户在重连时打断
                     binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_pause)
                     binding.tvStatus.text = getString(app.fjj.stun.R.string.main_reconnecting)
+                    binding.progressBar.visibility = android.view.View.VISIBLE
                 }
                 VpnState.ERROR -> {
                     isVpnRunning = false
                     binding.fabStartStop.isEnabled = true
                     binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_play)
                     binding.tvStatus.text = getString(app.fjj.stun.R.string.main_connection_failed)
+                    binding.progressBar.visibility = android.view.View.GONE
                 }
                 null -> {
                     isVpnRunning = false
+                    binding.progressBar.visibility = android.view.View.GONE
                 }
             }
         }
@@ -549,6 +594,8 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
         val currentState = StunRepository.vpnState.value ?: VpnState.DISCONNECTED
 
         if (currentState == VpnState.CONNECTED || currentState == VpnState.RECONNECTING) {
+            isStopping = true
+            binding.progressBar.visibility = android.view.View.VISIBLE
             if (mode == SettingsManager.SERVICE_MODE_TPROXY) {
                 stopTProxyProcess()
             } else {
@@ -558,6 +605,7 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
             if (currentState == VpnState.CONNECTING) return
             if (!validateSelectedProfile()) return
 
+            isStopping = false
             applyShizukuKeepAlive()
             if (mode == SettingsManager.SERVICE_MODE_TPROXY) {
                 startTProxyProcess()

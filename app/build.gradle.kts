@@ -195,6 +195,11 @@ dependencies {
         include("*.release-sources.jar", "*.release.aar")
     })
 
+    debugImplementation(libs.debugoverlay)
+    // Optional extensions
+    debugImplementation(libs.debugoverlay.okhttp)
+    debugImplementation(libs.debugoverlay.timber)
+
     implementation(libs.libsu.core)
     implementation(libs.libsu.service)
 

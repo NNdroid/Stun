@@ -116,6 +116,7 @@
     <string name="filter_disallow_mode">禁止 (逆方向)</string>
     <string name="filter_allow_mode">許可 (正方向)</string>
     <string name="profile_saved">プロファイルを保存しました</string>
+    <string name="connection_complete">接続完了</string>
     <string name="error_field_required">このフィールドは必須です</string>
     <string name="error_no_profile_selected">最初にプロファイルを選択してください</string>
     <string name="error_key_password_required">この秘密鍵にはパスワードが必要です</string>

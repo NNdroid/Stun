@@ -101,6 +101,7 @@
     <string name="filter_disallow_mode">不允许 (反向)</string>
     <string name="filter_allow_mode">允许 (正向)</string>
     <string name="profile_saved">配置已保存</string>
+    <string name="connection_complete">连接完成</string>
     <string name="error_invalid_private_key">私钥格式无效</string>
     <string name="error_invalid_address">地址格式无效 (host:端口)</string>
     <string name="error_invalid_port">端口号无效 (1-65535)</string>

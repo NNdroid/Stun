@@ -56,6 +56,16 @@
             android:layout_gravity="bottom"
             android:background="?android:attr/colorBackground">
 
+            <com.google.android.material.progressindicator.LinearProgressIndicator
+                android:id="@+id/progress_bar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:indeterminate="true"
+                android:visibility="gone"
+                app:indicatorColor="?attr/colorPrimary"
+                app:layout_constraintTop_toTopOf="parent"
+                app:trackColor="@android:color/transparent" />
+
             <View
                 android:id="@+id/bottom_divider"
                 android:layout_width="match_parent"

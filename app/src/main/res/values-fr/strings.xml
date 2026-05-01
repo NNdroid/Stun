@@ -96,6 +96,7 @@
     <string name="cert_fingerprint">Empreinte du certificat (SHA256)</string>
     <string name="override_dns_routing">Outrepasser le DNS et le routage</string>
     <string name="profile_saved">Profil enregistré</string>
+    <string name="connection_complete">Connexion terminée</string>
     <string name="error_field_required">Ce champ ne peut pas être vide</string>
     <string name="error_no_profile_selected">Veuillez d\'abord sélectionner un profil</string>
     <string name="error_key_password_required">Mot de passe de la clé privée requis pour cette clé</string>

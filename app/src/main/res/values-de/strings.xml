@@ -90,6 +90,7 @@
     <string name="vpn_permission_denied">VPN-Berechtigung verweigert</string>
     <string name="settings_saved">Einstellungen gespeichert</string>
     <string name="profile_saved">Profil gespeichert</string>
+    <string name="connection_complete">Verbindung abgeschlossen</string>
     <string name="error_invalid_path">Pfad muss mit / beginnen</string>
     <string name="verify_ssh_fingerprint">SSH-Fingerabdruck überprüfen</string>
     <string name="ssh_fingerprint">SSH-Fingerabdruck (SHA256)</string>

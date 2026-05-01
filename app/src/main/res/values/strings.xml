@@ -117,6 +117,7 @@
     <string name="vpn_permission_denied">VPN Permission Denied</string>
     <string name="settings_saved">Settings saved</string>
     <string name="profile_saved">Profile saved</string>
+    <string name="connection_complete">Connection complete</string>
     <string name="error_invalid_private_key">Invalid private key format</string>
     <string name="error_invalid_address">Invalid address format (host:port)</string>
     <string name="error_invalid_port">Invalid port number (1-65535)</string>
