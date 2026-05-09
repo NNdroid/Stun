@@ -10,11 +10,18 @@ import myssh.LogReceiver
 
 class StunApp : Application() {
     override fun attachBaseContext(base: Context) {
-        super.attachBaseContext(app.fjj.stun.util.LocaleHelper.wrapContext(base))
+        // We rely on AppCompatDelegate.setApplicationLocales for Activities.
+        // For non-UI strings in Application context, we can still use wrapContext,
+        // but it's often safer to avoid it if setApplicationLocales is used to prevent conflicts.
+        super.attachBaseContext(base)
     }
 
     override fun onCreate() {
         super.onCreate()
+        
+        // Modern way to set app-wide locale (AppCompat 1.6.0+)
+        app.fjj.stun.util.LocaleHelper.applyLocale(this)
+
         // Initialize StunLogger
         initLogger(this@StunApp)
         app.fjj.stun.util.KeystoreUtils.init(this@StunApp)
@@ -23,10 +30,6 @@ class StunApp : Application() {
         initAssets(this@StunApp)
         // Trigger GeoData update check on startup
         SettingsManager.checkAndUpdateGeoData(this@StunApp)
-    }
-
-    override fun onTerminate() {
-        super.onTerminate()
     }
 
     private fun initLogger(context: Context) {

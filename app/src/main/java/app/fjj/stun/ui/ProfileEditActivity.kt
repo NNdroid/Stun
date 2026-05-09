@@ -10,15 +10,16 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.core.widget.doAfterTextChanged
 import app.fjj.stun.databinding.ActivityProfileEditBinding
-import app.fjj.stun.repo.ProfileManager
 import app.fjj.stun.repo.Profile
+import app.fjj.stun.ui.viewmodel.ProfileEditViewModel
+import androidx.activity.viewModels
 import app.fjj.stun.util.KeystoreUtils
-import kotlin.concurrent.thread
 import androidx.core.view.isVisible
 
 class ProfileEditActivity : BaseActivity() {
 
     private lateinit var binding: ActivityProfileEditBinding
+    private val viewModel: ProfileEditViewModel by viewModels()
     private var profileId: String? = null
     private var currentProfile: Profile = Profile()
     private lateinit var filterModes: Array<String>
@@ -45,8 +46,6 @@ class ProfileEditActivity : BaseActivity() {
         val isEdit = profileId != null
         supportActionBar?.title = if (isEdit) getString(app.fjj.stun.R.string.edit_profile) else getString(app.fjj.stun.R.string.add_profile)
 
-        setupAdapters()
-
         val initialPaddingBottom = binding.btnSave.parent.let { (it as View).paddingBottom }
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
@@ -56,7 +55,6 @@ class ProfileEditActivity : BaseActivity() {
             v.updatePadding(left = systemBars.left, right = systemBars.right)
             binding.appBar.updatePadding(top = systemBars.top)
             
-            // Apply bottom padding to the scrollable container's child to keep content above nav bar/keyboard
             binding.btnSave.parent.let { 
                 (it as View).updatePadding(bottom = initialPaddingBottom + systemBars.bottom + ime.bottom)
             }
@@ -128,136 +126,78 @@ class ProfileEditActivity : BaseActivity() {
         binding.etFilterApps.isClickable = true
 
         binding.btnSave.setOnClickListener {
-            val authTypeString = binding.spinnerAuthType.text.toString()
-            val authType = if (authTypeString == getString(app.fjj.stun.R.string.auth_key)) Profile.AUTH_TYPE_PRIVATEKEY else Profile.AUTH_TYPE_PASSWORD
+            saveProfile(isEdit)
+        }
+
+        viewModel.profile.observe(this) { profile ->
+            currentProfile = profile
             
-            val sshAddr = binding.etSshAddr.text.toString()
-            validateAddress(sshAddr, binding.layoutSshAddr)
-            if (binding.layoutSshAddr.error != null) {
-                Toast.makeText(this, binding.layoutSshAddr.error, Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
-            if (binding.layoutProxyAddr.isVisible) {
-                val proxyAddr = binding.etProxyAddr.text.toString()
-                validateAddress(proxyAddr, binding.layoutProxyAddr)
-                if (binding.layoutProxyAddr.error != null) {
-                    Toast.makeText(this, binding.layoutProxyAddr.error, Toast.LENGTH_SHORT).show()
-                    return@setOnClickListener
-                }
-            }
-
-            // Final validation check
-            if (authType == Profile.AUTH_TYPE_PRIVATEKEY) {
-                val privateKey = binding.etPrivateKey.text.toString()
-                validatePrivateKey(privateKey)
-                if (binding.layoutPrivateKey.error != null) {
-                    Toast.makeText(this, binding.layoutPrivateKey.error, Toast.LENGTH_SHORT).show()
-                    return@setOnClickListener
-                }
-            } else {
-                val password = binding.etPass.text.toString()
-                validatePassword(password)
-                if (binding.layoutPass.error != null) {
-                    Toast.makeText(this, binding.layoutPass.error, Toast.LENGTH_SHORT).show()
-                    return@setOnClickListener
-                }
-            }
+            binding.etName.setText(profile.name)
+            binding.etSshAddr.setText(profile.sshAddr)
+            binding.etUser.setText(profile.user)
             
-            val customPath = binding.etCustomPath.text.toString()
-            validatePath(customPath)
-            if (binding.layoutCustomPath.error != null) {
-                Toast.makeText(this, binding.layoutCustomPath.error, Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
+            binding.spinnerAuthType.setText(if (profile.authType == Profile.AUTH_TYPE_PRIVATEKEY) getString(app.fjj.stun.R.string.auth_key) else getString(app.fjj.stun.R.string.auth_password), false)
+            updateAuthTypeVisibility(profile.authType)
+            binding.etPass.setText("")
+            binding.etPrivateKey.setText(profile.privateKey)
+            binding.etKeyPass.setText("")
 
-            if (authType == Profile.AUTH_TYPE_PRIVATEKEY) {
-                val privateKey = binding.etPrivateKey.text.toString()
-                val inputKeyPass = binding.etKeyPass.text.toString()
-                val actualKeyPass = inputKeyPass.ifEmpty { KeystoreUtils.decrypt(currentProfile.keyPass) }
+            binding.spinnerTunnelType.setText(profile.tunnelType, false)
+            updateTunnelTypeVisibility()
 
-                val checkResult = myssh.Myssh.checkIfKeyEncrypted(privateKey)
-                when (checkResult) {
-                    1L -> { // Password required
-                        if (actualKeyPass.isEmpty()) {
-                            binding.layoutKeyPass.error = getString(app.fjj.stun.R.string.error_field_required)
-                            Toast.makeText(this, getString(app.fjj.stun.R.string.error_key_password_required), Toast.LENGTH_SHORT).show()
-                            return@setOnClickListener
-                        }
-                        // Try to parse with password to verify it
-                        try {
-                            val validatePassphraseResult = myssh.Myssh.validatePassphrase(privateKey, actualKeyPass)
-                            if (!validatePassphraseResult) {
-                                binding.layoutKeyPass.error = getString(app.fjj.stun.R.string.error_invalid_key_password)
-                                Toast.makeText(this, getString(app.fjj.stun.R.string.error_invalid_key_password), Toast.LENGTH_SHORT).show()
-                                return@setOnClickListener
-                            }
-                        } catch (e: Exception) {
-                            binding.layoutKeyPass.error = getString(app.fjj.stun.R.string.error_invalid_key_password)
-                            Toast.makeText(this, getString(app.fjj.stun.R.string.error_invalid_key_password), Toast.LENGTH_SHORT).show()
-                            return@setOnClickListener
-                        }
-                    }
-                    2L -> { // Incorrect format
-                        binding.layoutPrivateKey.error = getString(app.fjj.stun.R.string.error_invalid_private_key)
-                        Toast.makeText(this, getString(app.fjj.stun.R.string.error_invalid_private_key), Toast.LENGTH_SHORT).show()
-                        return@setOnClickListener
-                    }
-                }
-                binding.layoutKeyPass.error = null
-            }
+            binding.etHttpPayload.setText(profile.httpPayload)
+            binding.switchDisableStatusCheck.isChecked = profile.disableStatusCheck
+            binding.etProxyAddr.setText(profile.proxyAddr)
+            binding.etCustomHost.setText(profile.customHost)
+            binding.etServerName.setText(profile.serverName)
+            binding.switchEnableCustomPath.isChecked = profile.enableCustomPath
+            binding.etCustomPath.setText(profile.customPath)
 
-            val updatedProfile = currentProfile.copy(
-                name = binding.etName.text.toString(),
-                sshAddr = binding.etSshAddr.text.toString(),
-                user = binding.etUser.text.toString(),
-                authType = authType,
-                pass = binding.etPass.text.toString().ifEmpty { currentProfile.pass },
-                privateKey = binding.etPrivateKey.text.toString(),
-                keyPass = if (binding.etKeyPass.text.toString().isNotEmpty()) KeystoreUtils.encrypt(binding.etKeyPass.text.toString()) else currentProfile.keyPass,
-                tunnelType = binding.spinnerTunnelType.text.toString(),
-                httpPayload = binding.etHttpPayload.text.toString(),
-                disableStatusCheck = binding.switchDisableStatusCheck.isChecked,
-                proxyAddr = binding.etProxyAddr.text.toString(),
-                customHost = binding.etCustomHost.text.toString(),
-                serverName = binding.etServerName.text.toString(),
-                enableCustomPath = binding.switchEnableCustomPath.isChecked,
-                customPath = binding.etCustomPath.text.toString(),
-                dnsOverride = binding.switchDnsOverride.isChecked,
-                remoteDns = binding.etRemoteDns.text.toString(),
-                localDns = binding.etLocalDns.text.toString(),
-                udpgwVersion = binding.spinnerUdpgwVersion.text.toString(),
-                udpgwAddr = binding.etUdpgwAddr.text.toString(),
-                geositeDirect = binding.etGeositeDirect.text.toString(),
-                geoipDirect = binding.etGeoipDirect.text.toString(),
-                appFilterOverride = binding.switchAppFilterOverride.isChecked,
-                filterMode = if (binding.spinnerFilterMode.text.toString() == getString(app.fjj.stun.R.string.filter_allow_mode)) 1 else 0,
-                filterApps = binding.etFilterApps.text.toString(),
-                verifyFingerprint = binding.switchVerifySshFingerprint.isChecked,
-                serverFingerprint = binding.etSshFingerprint.text.toString(),
-                verifyCertFingerprint = binding.switchVerifyCertFingerprint.isChecked,
-                serverCertFingerprint = binding.etCertFingerprint.text.toString(),
-                alpn = binding.spinnerAlpn.text.toString(),
-                proxyAuthRequired = binding.switchAuthRequired.isChecked,
-                proxyAuthToken = binding.etAuthToken.text.toString(),
-                proxyAuthUser = binding.etAuthUser.text.toString(),
-                proxyAuthPass = binding.etAuthPass.text.toString()
-            )
+            binding.switchAuthRequired.isChecked = profile.proxyAuthRequired
+            binding.etAuthToken.setText(profile.proxyAuthToken)
+            binding.etAuthUser.setText(profile.proxyAuthUser)
+            binding.etAuthPass.setText(profile.proxyAuthPass)
 
-            thread {
-                if (isEdit) {
-                    ProfileManager.updateProfile(this, updatedProfile)
-                } else {
-                    ProfileManager.addProfile(this, updatedProfile)
-                }
-                runOnUiThread {
-                    Toast.makeText(this, getString(app.fjj.stun.R.string.profile_saved), Toast.LENGTH_SHORT).show()
-                    finish()
-                }
+            // SSH Fingerprint
+            binding.switchVerifySshFingerprint.isChecked = profile.verifyFingerprint
+            binding.layoutSshFingerprint.visibility = if (profile.verifyFingerprint) View.VISIBLE else View.GONE
+            binding.etSshFingerprint.setText(profile.serverFingerprint)
+
+            // Certificate Fingerprint
+            binding.switchVerifyCertFingerprint.isChecked = profile.verifyCertFingerprint
+            binding.layoutCertFingerprint.visibility = if (profile.verifyCertFingerprint) View.VISIBLE else View.GONE
+            binding.etCertFingerprint.setText(profile.serverCertFingerprint)
+
+            binding.spinnerAlpn.setText(profile.alpn, false)
+
+            // DNS and Routing Overrides
+            binding.switchDnsOverride.isChecked = profile.dnsOverride
+            binding.layoutDnsOverride.visibility = if (profile.dnsOverride) View.VISIBLE else View.GONE
+            binding.etRemoteDns.setText(profile.remoteDns)
+            binding.etLocalDns.setText(profile.localDns)
+            binding.spinnerUdpgwVersion.setText(profile.udpgwVersion, false)
+            binding.etUdpgwAddr.setText(profile.udpgwAddr)
+            binding.etGeositeDirect.setText(profile.geositeDirect)
+            binding.etGeoipDirect.setText(profile.geoipDirect)
+
+            // App Filtering Overrides
+            binding.switchAppFilterOverride.isChecked = profile.appFilterOverride
+            binding.layoutAppFilterOverride.visibility = if (profile.appFilterOverride) View.VISIBLE else View.GONE
+            binding.spinnerFilterMode.setText(if (profile.filterMode == 1) getString(app.fjj.stun.R.string.filter_allow_mode) else getString(app.fjj.stun.R.string.filter_disallow_mode), false)
+            binding.etFilterApps.setText(profile.filterApps)
+
+            // Initialize adapters AFTER setting values to ensure full dropdown lists
+            setupAdapters()
+        }
+
+        viewModel.saveResult.observe(this) { success ->
+            if (success) {
+                Toast.makeText(this, getString(app.fjj.stun.R.string.profile_saved), Toast.LENGTH_SHORT).show()
+                finish()
             }
         }
 
-        loadProfileValues(isEdit)
+        viewModel.loadProfile(profileId)
     }
 
     private fun setupAdapters() {
@@ -276,78 +216,122 @@ class ProfileEditActivity : BaseActivity() {
         binding.spinnerAlpn.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, alpnOptionsH3))
     }
 
-    private fun loadProfileValues(isEdit: Boolean) {
-        thread {
-            currentProfile = if (isEdit && profileId != null) {
-                ProfileManager.getProfileById(this, profileId!!) ?: Profile()
-            } else {
-                Profile().apply {
-                    val context = this@ProfileEditActivity
-                    remoteDns = app.fjj.stun.repo.SettingsManager.getRemoteDnsServer(context)
-                    localDns = app.fjj.stun.repo.SettingsManager.getLocalDnsServer(context)
-                    udpgwVersion = app.fjj.stun.repo.SettingsManager.getUdpgwVersion(context)
-                    udpgwAddr = app.fjj.stun.repo.SettingsManager.getUdpgwAddr(context)
-                    geositeDirect = app.fjj.stun.repo.SettingsManager.getGeositeDirect(context)
-                    geoipDirect = app.fjj.stun.repo.SettingsManager.getGeoipDirect(context)
-                }
-            }
+    private fun saveProfile(isEdit: Boolean) {
+        val authTypeString = binding.spinnerAuthType.text.toString()
+        val authType = if (authTypeString == getString(app.fjj.stun.R.string.auth_key)) Profile.AUTH_TYPE_PRIVATEKEY else Profile.AUTH_TYPE_PASSWORD
+        
+        val sshAddr = binding.etSshAddr.text.toString()
+        validateAddress(sshAddr, binding.layoutSshAddr)
+        if (binding.layoutSshAddr.error != null) {
+            Toast.makeText(this, binding.layoutSshAddr.error, Toast.LENGTH_SHORT).show()
+            return
+        }
 
-            runOnUiThread {
-                binding.etName.setText(currentProfile.name)
-                binding.etSshAddr.setText(currentProfile.sshAddr)
-                binding.etUser.setText(currentProfile.user)
-                
-                binding.spinnerAuthType.setText(if (currentProfile.authType == Profile.AUTH_TYPE_PRIVATEKEY) getString(app.fjj.stun.R.string.auth_key) else getString(app.fjj.stun.R.string.auth_password), false)
-                updateAuthTypeVisibility(currentProfile.authType)
-                binding.etPass.setText("")
-                binding.etPrivateKey.setText(currentProfile.privateKey)
-                binding.etKeyPass.setText("")
-
-                binding.spinnerTunnelType.setText(currentProfile.tunnelType, false)
-                updateTunnelTypeVisibility()
-
-                binding.etHttpPayload.setText(currentProfile.httpPayload)
-                binding.switchDisableStatusCheck.isChecked = currentProfile.disableStatusCheck
-                binding.etProxyAddr.setText(currentProfile.proxyAddr)
-                binding.etCustomHost.setText(currentProfile.customHost)
-                binding.etServerName.setText(currentProfile.serverName)
-                binding.switchEnableCustomPath.isChecked = currentProfile.enableCustomPath
-                binding.etCustomPath.setText(currentProfile.customPath)
-
-                binding.switchAuthRequired.isChecked = currentProfile.proxyAuthRequired
-                binding.etAuthToken.setText(currentProfile.proxyAuthToken)
-                binding.etAuthUser.setText(currentProfile.proxyAuthUser)
-                binding.etAuthPass.setText(currentProfile.proxyAuthPass)
-
-                // SSH Fingerprint
-                binding.switchVerifySshFingerprint.isChecked = currentProfile.verifyFingerprint
-                binding.layoutSshFingerprint.visibility = if (currentProfile.verifyFingerprint) View.VISIBLE else View.GONE
-                binding.etSshFingerprint.setText(currentProfile.serverFingerprint)
-
-                // Certificate Fingerprint
-                binding.switchVerifyCertFingerprint.isChecked = currentProfile.verifyCertFingerprint
-                binding.layoutCertFingerprint.visibility = if (currentProfile.verifyCertFingerprint) View.VISIBLE else View.GONE
-                binding.etCertFingerprint.setText(currentProfile.serverCertFingerprint)
-
-                binding.spinnerAlpn.setText(currentProfile.alpn, false)
-
-                // DNS and Routing Overrides
-                binding.switchDnsOverride.isChecked = currentProfile.dnsOverride
-                binding.layoutDnsOverride.visibility = if (currentProfile.dnsOverride) View.VISIBLE else View.GONE
-                binding.etRemoteDns.setText(currentProfile.remoteDns)
-                binding.etLocalDns.setText(currentProfile.localDns)
-                binding.spinnerUdpgwVersion.setText(currentProfile.udpgwVersion, false)
-                binding.etUdpgwAddr.setText(currentProfile.udpgwAddr)
-                binding.etGeositeDirect.setText(currentProfile.geositeDirect)
-                binding.etGeoipDirect.setText(currentProfile.geoipDirect)
-
-                // App Filtering Overrides
-                binding.switchAppFilterOverride.isChecked = currentProfile.appFilterOverride
-                binding.layoutAppFilterOverride.visibility = if (currentProfile.appFilterOverride) View.VISIBLE else View.GONE
-                binding.spinnerFilterMode.setText(if (currentProfile.filterMode == 1) getString(app.fjj.stun.R.string.filter_allow_mode) else getString(app.fjj.stun.R.string.filter_disallow_mode), false)
-                binding.etFilterApps.setText(currentProfile.filterApps)
+        if (binding.layoutProxyAddr.isVisible) {
+            val proxyAddr = binding.etProxyAddr.text.toString()
+            validateAddress(proxyAddr, binding.layoutProxyAddr)
+            if (binding.layoutProxyAddr.error != null) {
+                Toast.makeText(this, binding.layoutProxyAddr.error, Toast.LENGTH_SHORT).show()
+                return
             }
         }
+
+        if (authType == Profile.AUTH_TYPE_PRIVATEKEY) {
+            val privateKey = binding.etPrivateKey.text.toString()
+            validatePrivateKey(privateKey)
+            if (binding.layoutPrivateKey.error != null) {
+                Toast.makeText(this, binding.layoutPrivateKey.error, Toast.LENGTH_SHORT).show()
+                return
+            }
+        } else {
+            val password = binding.etPass.text.toString()
+            validatePassword(password)
+            if (binding.layoutPass.error != null) {
+                Toast.makeText(this, binding.layoutPass.error, Toast.LENGTH_SHORT).show()
+                return
+            }
+        }
+        
+        val customPath = binding.etCustomPath.text.toString()
+        validatePath(customPath)
+        if (binding.layoutCustomPath.error != null) {
+            Toast.makeText(this, binding.layoutCustomPath.error, Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (authType == Profile.AUTH_TYPE_PRIVATEKEY) {
+            val privateKey = binding.etPrivateKey.text.toString()
+            val inputKeyPass = binding.etKeyPass.text.toString()
+            val actualKeyPass = inputKeyPass.ifEmpty { KeystoreUtils.decrypt(currentProfile.keyPass) }
+
+            val checkResult = myssh.Myssh.checkIfKeyEncrypted(privateKey)
+            when (checkResult) {
+                1L -> {
+                    if (actualKeyPass.isEmpty()) {
+                        binding.layoutKeyPass.error = getString(app.fjj.stun.R.string.error_field_required)
+                        Toast.makeText(this, getString(app.fjj.stun.R.string.error_key_password_required), Toast.LENGTH_SHORT).show()
+                        return
+                    }
+                    try {
+                        val validatePassphraseResult = myssh.Myssh.validatePassphrase(privateKey, actualKeyPass)
+                        if (!validatePassphraseResult) {
+                            binding.layoutKeyPass.error = getString(app.fjj.stun.R.string.error_invalid_key_password)
+                            Toast.makeText(this, getString(app.fjj.stun.R.string.error_invalid_key_password), Toast.LENGTH_SHORT).show()
+                            return
+                        }
+                    } catch (e: Exception) {
+                        binding.layoutKeyPass.error = getString(app.fjj.stun.R.string.error_invalid_key_password)
+                        Toast.makeText(this, getString(app.fjj.stun.R.string.error_invalid_key_password), Toast.LENGTH_SHORT).show()
+                        return
+                    }
+                }
+                2L -> {
+                    binding.layoutPrivateKey.error = getString(app.fjj.stun.R.string.error_invalid_private_key)
+                    Toast.makeText(this, getString(app.fjj.stun.R.string.error_invalid_private_key), Toast.LENGTH_SHORT).show()
+                    return
+                }
+            }
+            binding.layoutKeyPass.error = null
+        }
+
+        val updatedProfile = currentProfile.copy(
+            name = binding.etName.text.toString(),
+            sshAddr = binding.etSshAddr.text.toString(),
+            user = binding.etUser.text.toString(),
+            authType = authType,
+            pass = binding.etPass.text.toString().ifEmpty { currentProfile.pass },
+            privateKey = binding.etPrivateKey.text.toString(),
+            keyPass = if (binding.etKeyPass.text.toString().isNotEmpty()) KeystoreUtils.encrypt(binding.etKeyPass.text.toString()) else currentProfile.keyPass,
+            tunnelType = binding.spinnerTunnelType.text.toString(),
+            httpPayload = binding.etHttpPayload.text.toString(),
+            disableStatusCheck = binding.switchDisableStatusCheck.isChecked,
+            proxyAddr = binding.etProxyAddr.text.toString(),
+            customHost = binding.etCustomHost.text.toString(),
+            serverName = binding.etServerName.text.toString(),
+            enableCustomPath = binding.switchEnableCustomPath.isChecked,
+            customPath = binding.etCustomPath.text.toString(),
+            dnsOverride = binding.switchDnsOverride.isChecked,
+            remoteDns = binding.etRemoteDns.text.toString(),
+            localDns = binding.etLocalDns.text.toString(),
+            udpgwVersion = binding.spinnerUdpgwVersion.text.toString(),
+            udpgwAddr = binding.etUdpgwAddr.text.toString(),
+            geositeDirect = binding.etGeositeDirect.text.toString(),
+            geoipDirect = binding.etGeoipDirect.text.toString(),
+            appFilterOverride = binding.switchAppFilterOverride.isChecked,
+            filterMode = if (binding.spinnerFilterMode.text.toString() == getString(app.fjj.stun.R.string.filter_allow_mode)) 1 else 0,
+            filterApps = binding.etFilterApps.text.toString(),
+            verifyFingerprint = binding.switchVerifySshFingerprint.isChecked,
+            serverFingerprint = binding.etSshFingerprint.text.toString(),
+            verifyCertFingerprint = binding.switchVerifyCertFingerprint.isChecked,
+            serverCertFingerprint = binding.etCertFingerprint.text.toString(),
+            alpn = binding.spinnerAlpn.text.toString(),
+            proxyAuthRequired = binding.switchAuthRequired.isChecked,
+            proxyAuthToken = binding.etAuthToken.text.toString(),
+            proxyAuthUser = binding.etAuthUser.text.toString(),
+            proxyAuthPass = binding.etAuthPass.text.toString()
+        )
+
+        viewModel.saveProfile(updatedProfile, isEdit)
     }
 
     private fun updateTunnelTypeVisibility() {
@@ -396,7 +380,6 @@ class ProfileEditActivity : BaseActivity() {
             val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, options)
             binding.spinnerAlpn.setAdapter(adapter)
             
-            // If current ALPN is not in valid options (e.g. switched from xhttp to xhttpc), reset it
             val currentAlpn = binding.spinnerAlpn.text.toString()
             if (!options.contains(currentAlpn)) {
                 binding.spinnerAlpn.setText(options[0], false)
@@ -405,7 +388,7 @@ class ProfileEditActivity : BaseActivity() {
 
         binding.switchDisableStatusCheck.visibility = if (isHttp) View.VISIBLE else View.GONE
 
-        val supportsProxyAuth = selected == Profile.TUNNEL_TYPE_H2 ||//token
+        val supportsProxyAuth = selected == Profile.TUNNEL_TYPE_H2 ||
                 selected == Profile.TUNNEL_TYPE_H2C ||
                 selected == Profile.TUNNEL_TYPE_GRPC ||
                 selected == Profile.TUNNEL_TYPE_GRPCC ||
@@ -414,7 +397,7 @@ class ProfileEditActivity : BaseActivity() {
                 selected == Profile.TUNNEL_TYPE_MASQUE||
                 selected == Profile.TUNNEL_TYPE_XHTTP ||
                 selected == Profile.TUNNEL_TYPE_XHTTPC ||
-                (selected == Profile.TUNNEL_TYPE_WS || // username:password
+                (selected == Profile.TUNNEL_TYPE_WS ||
                  selected == Profile.TUNNEL_TYPE_WSS ||
                  selected == Profile.TUNNEL_TYPE_HTTP)
 

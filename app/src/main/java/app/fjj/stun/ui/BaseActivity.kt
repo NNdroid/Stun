@@ -1,11 +1,8 @@
 package app.fjj.stun.ui
 
-import android.content.Context
 import androidx.appcompat.app.AppCompatActivity
-import app.fjj.stun.util.LocaleHelper
 
 abstract class BaseActivity : AppCompatActivity() {
-    override fun attachBaseContext(newBase: Context) {
-        super.attachBaseContext(LocaleHelper.wrapContext(newBase))
-    }
+    // AppCompatDelegate.setApplicationLocales handles context wrapping for us.
+    // Manual wrapping in attachBaseContext can conflict with modern per-app language settings.
 }
