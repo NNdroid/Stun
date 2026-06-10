@@ -87,11 +87,11 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
     ) { result ->
         if (result.contents != null) {
             try {
-                // 1. 先将扫到的 Base64 字符串解码还原为普通字符串 (JSON)
+                // 先将扫到的 Base64 字符串解码还原为普通字符串 (JSON)
                 val decodedBytes = Base64.decode(result.contents, Base64.DEFAULT)
                 val jsonString = String(decodedBytes, Charsets.UTF_8)
 
-                // 2. 将还原后的 JSON 字符串交给 Gson 解析
+                // 将还原后的 JSON 字符串交给 Gson 解析
                 val profile = Gson().fromJson(jsonString, Profile::class.java)
                 val profileName = profile.name ?: "Unknown"
 
@@ -189,7 +189,6 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
             testSelectedProfileLatency()
         }
 
-        // 🌟 监听枚举状态并精细化控制 UI
         StunRepository.vpnState.observe(this) { state ->
             binding.fabStartStop.clearAnimation() // 停止之前的动画
             when (state) {

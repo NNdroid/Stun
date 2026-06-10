@@ -5,6 +5,7 @@ import android.util.Base64
 import android.util.Log
 import com.google.crypto.tink.Aead
 import com.google.crypto.tink.KeyTemplates
+import com.google.crypto.tink.RegistryConfiguration
 import com.google.crypto.tink.aead.AeadConfig
 import com.google.crypto.tink.integration.android.AndroidKeysetManager
 import java.nio.charset.StandardCharsets
@@ -39,7 +40,7 @@ object KeystoreUtils {
                 .withMasterKeyUri(MASTER_KEY_URI)
                 .build()
 
-            aead = manager.keysetHandle.getPrimitive(Aead::class.java)
+            aead = manager.keysetHandle.getPrimitive(RegistryConfiguration.get(), Aead::class.java)
         } catch (e: Exception) {
             Log.e(TAG, "Keystore 关键初始化失败: ${e.message}")
             // 在极少数情况下（如 KeyStore 损坏），可能需要清除旧数据重建

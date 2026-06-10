@@ -74,6 +74,7 @@ class MyVpnService : VpnService() {
         if (currentState == VpnState.DISCONNECTED || currentState == VpnState.ERROR) {
             userRequestedStop = false
             log("Starting VPN Service...")
+            updateNotification(getString(app.fjj.stun.R.string.main_connecting))
             StunRepository.vpnState.postValue(VpnState.CONNECTING)
             thread(start = true, name = "VpnMainLoop") {
                 startVpnServiceLoop()
@@ -89,29 +90,37 @@ class MyVpnService : VpnService() {
 
                 val profile = ProfileManager.getSelectedProfile(this)
                 
-                // 1. Core Config
+                // Core Config
                 myssh.Myssh.loadGlobalConfigFromJson(VpnConfigBuilder.buildGlobalConfig(this, profile))
-                
-                // 2. Start SSH
+
+                myssh.Myssh.registerProtector { fd ->
+                    // 注意：Go 的 int32 在 Kotlin 中对应的是 Int，bool 对应 Boolean
+                    // 调用 VpnService 的 protect 方法
+                    val isProtected = this@MyVpnService.protect(fd)
+                    // log("already protect socket: $fd")
+                    isProtected
+                }
+
+                // Start SSH
                 val sshStatus = myssh.Myssh.startSshTProxy2(VpnConfigBuilder.buildMySshConfig(this, profile, SOCKS_PORT, DNS_PORT))
                 if (sshStatus != 0L) {
                     log("❌ Go SSH Core failed to start (Code: $sshStatus). Retrying...")
                     throw RuntimeException("SSH Core start failed")
                 }
 
-                // 3. Establish TUN
+                // Establish TUN
                 vpnInterface = createVpnInterface(profile)
                 val fd = vpnInterface?.fd ?: throw RuntimeException("TUN establish failed")
                 log("✅ TUN interface ready (FD: $fd)")
 
-                // 4. Start HEV Engine
+                // Start HEV Engine
                 startHevTunnelEngine(fd)
 
                 log("🚀 All services started. Tunnel is active.")
                 StunRepository.vpnState.postValue(VpnState.CONNECTED)
                 startTrafficMonitor()
 
-                // 5. Shizuku Optimizations
+                // Shizuku Optimizations
                 applyShizukuOptimizations()
 
                 // Block and wait for core
@@ -166,9 +175,9 @@ class MyVpnService : VpnService() {
             }
         }
         
-        if (filterMode != 1) {
-            try { builder.addDisallowedApplication(packageName) } catch (_: Exception) {}
-        }
+//        if (filterMode != 1) {
+//            try { builder.addDisallowedApplication(packageName) } catch (_: Exception) {}
+//        }
     }
 
     private fun applyShizukuOptimizations() {
@@ -201,7 +210,7 @@ class MyVpnService : VpnService() {
     private fun cleanupNativeResources() {
         try { myssh.Myssh.registerTrafficCallback(null) } catch (_: Exception) {}
         try { myssh.Myssh.registerSysInfoCallback(null) } catch (_: Exception) {}
-
+        try { myssh.Myssh.registerProtector(null) } catch (_: Exception) {}
         try { TTunnelService.TTunnelStopService() } catch (_: Exception) {}
         try {
             vpnInterface?.close()
@@ -274,10 +283,17 @@ class MyVpnService : VpnService() {
         refreshNotification()
     }
 
+    private var lastNotificationUpdateTime = 0L
     private suspend fun refreshNotification() {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastNotificationUpdateTime < 1000L) {
+            return
+        }
+        lastNotificationUpdateTime = currentTime
+
         val statusText = "↑ ${formatBytes(currentTxRate)}/s (${formatBytes(currentTxTotal)}) " +
-                         "↓ ${formatBytes(currentRxRate)}/s (${formatBytes(currentRxTotal)}) | " +
-                         "CPU: ${String.format(Locale.US, "%.1f", currentCpu)}% MEM: ${String.format(Locale.US, "%.1f", currentMem)}MB"
+                "↓ ${formatBytes(currentRxRate)}/s (${formatBytes(currentRxTotal)}) | " +
+                "CPU: ${String.format(Locale.US, "%.1f", currentCpu)}% MEM: ${String.format(Locale.US, "%.1f", currentMem)}MB"
 
         withContext(Dispatchers.Main) {
             updateNotification(statusText)
@@ -295,13 +311,15 @@ class MyVpnService : VpnService() {
 
     override fun onDestroy() {
         userRequestedStop = true
-        // Switch to IO dispatcher for cleanup to avoid UI freeze during destruction
-        // Use GlobalScope here because serviceScope might be cancelled immediately
-        @OptIn(DelicateCoroutinesApi::class)
-        GlobalScope.launch(Dispatchers.IO) {
-            cleanupNativeResources()
-        }
         serviceScope.cancel()
+
+        Thread {
+            cleanupNativeResources()
+        }.apply {
+            name = "VpnCleanupThread"
+            start()
+        }
+
         super.onDestroy()
     }
 

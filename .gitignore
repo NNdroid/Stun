@@ -33,3 +33,7 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# binary files
+app/src/main/assets/bin
+app/libs

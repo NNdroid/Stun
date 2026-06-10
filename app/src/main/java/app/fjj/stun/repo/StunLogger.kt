@@ -24,7 +24,7 @@ import androidx.core.graphics.toColorInt
 object StunLogger {
     private const val TAG = "StunLogger"
 
-    // --- 核心优化 1：有界队列 ---
+    // --- 有界队列 ---
     // 限制最大缓存 5000 条，防止在极端网络拥塞/疯狂刷日志时耗尽应用内存导致 OOM
     private val logQueue = LinkedBlockingQueue<String>(5000)
 
@@ -35,7 +35,7 @@ object StunLogger {
     private var currentFileSize = 0L
     private const val MAX_FILE_SIZE = 5 * 1024 * 1024L // 5MB
 
-    var isLogcatEnabled = false
+    var isLogcatEnabled = true
     var logListener: ((CharSequence) -> Unit)? = null
     private val TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
         .withZone(ZoneId.systemDefault())
@@ -48,7 +48,7 @@ object StunLogger {
     private val COLOR_ERROR = "#F44336".toColorInt() // 红色
 
     init {
-        // --- 核心优化 2：单一后台守护线程专门负责写盘 ---
+        // --- 单一后台守护线程专门负责写盘 ---
         thread(name = "StunLogger-Writer", isDaemon = true) {
             val buffer = mutableListOf<String>()
             while (true) {
@@ -73,7 +73,6 @@ object StunLogger {
     }
 
     fun init(context: Context) {
-        // 注意：如果你这边的路径获取方式不同，请替换回你的方法
         val path = StunRepository.getAppLogFilePath(context)
         Log.w(TAG, "🔧 [Self-check] Preparing to initialize log path: $path")
 
@@ -81,7 +80,7 @@ object StunLogger {
             val file = File(path)
             val parentDir = file.parentFile
 
-            // 1. 测试并创建父目录
+            // 测试并创建父目录
             if (parentDir != null && !parentDir.exists()) {
                 val isCreated = parentDir.mkdirs()
                 if (!isCreated && !parentDir.exists()) {
@@ -90,22 +89,22 @@ object StunLogger {
                 }
             }
 
-            // 2. 测试并创建文件
+            // 测试并创建文件
             if (!file.exists()) {
                 file.createNewFile()
             }
 
-            // 3. 校验读写权限
+            // 校验读写权限
             if (!file.canWrite()) {
                 Log.e(TAG, "❌ [Fatal Error] File exists, but system denied write permission!")
                 return
             }
 
-            // 4. 初始化状态
+            // 初始化状态
             logFile = file
             currentFileSize = file.length()
 
-            // 5. 启动时如果发现文件已经超大，立即触发一次滚动
+            // 启动时如果发现文件已经超大，立即触发一次滚动
             if (currentFileSize > MAX_FILE_SIZE) {
                 rotateLogFiles(file)
             }
@@ -133,7 +132,7 @@ object StunLogger {
         var msgContent = rawMsg
         var metaInfo = ""
 
-        // 1. 解析日志内容
+        // 解析日志内容
         if (rawMsg.startsWith("{")) {
             try {
                 val json = JSONObject(rawMsg)
@@ -173,11 +172,11 @@ object StunLogger {
 
         val stackTrace = if (tr != null) "\n" + Log.getStackTraceString(tr) else ""
 
-        // 2. 组装纯文本日志 (用于 Logcat 和写盘，保证文件干净)
+        // 组装纯文本日志 (用于 Logcat 和写盘，保证文件干净)
         // 使用 %-5s 保证级别占 5 个字符，完美对齐
         val plainLogStr = String.format("%s %-5s %s %s%s\n", timeStr, finalLevel, metaInfo, msgContent, stackTrace)
 
-        // 3. 投递给系统 Logcat
+        // 投递给系统 Logcat
         if (isLogcatEnabled) {
             when (finalLevel) {
                 "DEBUG" -> Log.d(tag, msgContent)
@@ -188,13 +187,12 @@ object StunLogger {
             }
         }
 
-        // 4. 写盘防 OOM 保护 (使用纯文本)
+        // 写盘防 OOM 保护 (使用纯文本)
         if (!logQueue.offer(plainLogStr)) {
             Log.w("LogSystem", "Log queue is full! Dropping log: $msgContent")
         }
 
-        // 5. 组装彩色文本并投递给 UI
-        // 注意：请将 logListener 的类型定义修改为 (CharSequence) -> Unit
+        // 组装彩色文本并投递给 UI
         logListener?.let { listener ->
             val color = when (finalLevel) {
                 "DEBUG" -> COLOR_DEBUG
@@ -235,7 +233,7 @@ object StunLogger {
                 rotateLogFiles(file)
             }
 
-            // --- 核心优化 3：批量 I/O ---
+            // --- 批量 I/O ---
             // 哪怕有 1000 条日志，这里也只执行一次打开、写入、关闭。大大降低 CPU 和闪存负担。
             FileOutputStream(file, true).use { fos ->
                 fos.write(bytes)
@@ -249,7 +247,7 @@ object StunLogger {
     }
 
     /**
-     * --- 核心优化 4：多级文件滚动 ---
+     * --- 多级文件滚动 ---
      * 维持 app.log -> old.1 -> old.2 的流转
      */
     private fun rotateLogFiles(currentFile: File) {
@@ -260,23 +258,23 @@ object StunLogger {
             val old1 = File(parent, "$fileName.old.1")
             val old2 = File(parent, "$fileName.old.2")
 
-            // 1. 删除最旧的 .old.2
+            // 删除最旧的 .old.2
             if (old2.exists()) {
                 old2.delete()
             }
 
-            // 2. 将 .old.1 重命名为 .old.2
+            // 将 .old.1 重命名为 .old.2
             if (old1.exists()) {
                 old1.renameTo(old2)
             }
 
-            // 3. 将当前 app.log 重命名为 .old.1
+            // 将当前 app.log 重命名为 .old.1
             currentFile.renameTo(old1)
 
-            // 4. 创建新的空白 app.log
+            // 创建新的空白 app.log
             currentFile.createNewFile()
 
-            // 5. 重置内存中的文件大小计数器
+            // 重置内存中的文件大小计数器
             currentFileSize = 0L
 
             Log.i(TAG, "Log rotation completed: app.log -> old.1 -> old.2")
