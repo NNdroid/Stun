@@ -24,12 +24,20 @@ class LogsActivity : BaseActivity() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
+        val initialFabMarginBottom = (binding.fabScrollBottom.layoutParams as android.view.ViewGroup.MarginLayoutParams).bottomMargin
+
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.updatePadding(left = systemBars.left, right = systemBars.right)
             binding.appBar.updatePadding(top = systemBars.top)
             
             binding.scrollView.updatePadding(bottom = systemBars.bottom)
+            
+            // Adjust FAB margin to avoid being covered by navigation bar
+            val params = binding.fabScrollBottom.layoutParams as android.view.ViewGroup.MarginLayoutParams
+            params.bottomMargin = initialFabMarginBottom + systemBars.bottom
+            binding.fabScrollBottom.layoutParams = params
+
             insets
         }
 

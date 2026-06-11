@@ -167,6 +167,7 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
 
             binding.rvProfiles.updatePadding(bottom = initialRvPadding + systemBars.bottom)
             binding.bottomContainer.updatePadding(bottom = systemBars.bottom)
+
             insets
         }
 

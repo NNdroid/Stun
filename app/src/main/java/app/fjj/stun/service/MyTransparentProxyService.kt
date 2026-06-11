@@ -353,7 +353,7 @@ class MyTransparentProxyService : Service() {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.notif_title))
             .setContentText(content)
-            .setSmallIcon(R.drawable.ic_fox_logo)
+            .setSmallIcon(R.drawable.ic_notification)
             .setOngoing(true)
             .build()
         startForeground(NOTIFICATION_ID, notification)

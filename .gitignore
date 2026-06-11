@@ -37,3 +37,4 @@ google-services.json
 # binary files
 app/src/main/assets/bin
 app/libs
+app/src/main/assets/adi-registration.properties

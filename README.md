@@ -1,6 +1,47 @@
 # Stun
 
+<div style="text-align: center;">
+  <img src="./logo.svg" alt="Stun Icon" width="128" />
+</div>
+
 Stun is a powerful and lightweight Android proxy client designed for efficiency and ease of use. It leverages TProxy and SSH technologies to provide a secure and flexible networking experience, complete with modern Material 3 design and Android 15 support.
+
+## 📸 Screenshots
+
+<div style="text-align: center;">
+  <img src="./screenshots/0_app.png" width="200" />
+  <img src="./screenshots/1_main.png" width="200" />
+  <img src="./screenshots/2_main.png" width="200" />
+</div>
+<div style="text-align: center;">
+  <img src="./screenshots/3_add_profile.png" width="200" />
+  <img src="./screenshots/4_add_profile.png" width="200" />
+  <img src="./screenshots/5_settings.png" width="200" />
+</div>
+<div style="text-align: center;">
+  <img src="./screenshots/6_settings.png" width="200" />
+  <img src="./screenshots/7_panel.png" width="200" />
+  <img src="./screenshots/8_about.png" width="200" />
+</div>
+
+## Installation
+
+You can download and install **Stun** using either of the following methods:
+
+### Method 1: Google Play Testing (Recommended)
+Join our testing program to install the app and receive automatic updates directly through the Google Play Store. You can opt into the test using either link below:
+
+* **Join on Web:** 👉 [Opt-in via your web browser](https://play.google.com/apps/testing/app.fjj.stun)
+* **Join on Android:** 👉 [Open directly in Google Play App](https://play.google.com/store/apps/details?id=app.fjj.stun)
+
+*(Note: Once you opt-in via the web link, you can use the Android link to download it directly to your device.)*
+
+### Method 2: GitHub Releases
+If you prefer not to use Google Play, you can download the latest compiled APK directly from our repository.
+
+* 👉 [Download from GitHub Releases](https://github.com/NNdroid/Stun/releases)
+
+*(Note: You may need to enable "Install from Unknown Sources" in your Android device settings to install the downloaded APK.)*
 
 ## 🚀 Features
 

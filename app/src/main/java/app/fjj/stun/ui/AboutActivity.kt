@@ -29,8 +29,16 @@ class AboutActivity : BaseActivity() {
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.updatePadding(left = systemBars.left, right = systemBars.right, bottom = systemBars.bottom)
+            v.updatePadding(left = systemBars.left, right = systemBars.right)
             binding.appBar.updatePadding(top = systemBars.top)
+            
+            // Add bottom padding to scroll view content or the scroll view itself
+            // so the last item isn't hidden behind the navigation bar
+            v.findViewById<android.widget.ScrollView>(app.fjj.stun.R.id.scroll_view)?.let {
+                it.updatePadding(bottom = systemBars.bottom)
+                it.clipToPadding = false
+            }
+
             insets
         }
 
@@ -53,8 +61,8 @@ class AboutActivity : BaseActivity() {
         }
 
         binding.btnPrivacy.setOnClickListener {
-            // TODO: Add privacy policy link if available
-            Toast.makeText(this, "Privacy Policy not available", Toast.LENGTH_SHORT).show()
+            val intent = Intent(Intent.ACTION_VIEW, "https://nndroid.github.io/Stun/privacy_policy.html".toUri())
+            startActivity(intent)
         }
 
         // Set version info

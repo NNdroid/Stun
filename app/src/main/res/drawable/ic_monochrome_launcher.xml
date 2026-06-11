@@ -1,0 +1,29 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <group
+        android:translateX="4"
+        android:translateY="4">
+        <group
+            android:pivotX="50"
+            android:pivotY="50"
+            android:scaleX="0.7"
+            android:scaleY="0.7">
+
+            <!-- Fox Silhouette -->
+            <path
+                android:fillColor="#FFFFFF"
+                android:pathData="M50,15 L85,40 L75,85 L50,98 L25,85 L15,40 Z" />
+            <path
+                android:fillColor="#FFFFFF"
+                android:pathData="M25,25 L5,2 L40,20 Z" />
+            <path
+                android:fillColor="#FFFFFF"
+                android:pathData="M75,25 L95,2 L60,20 Z" />
+        </group>
+    </group>
+
+</vector>

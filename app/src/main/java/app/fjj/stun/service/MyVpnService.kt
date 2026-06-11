@@ -239,7 +239,7 @@ class MyVpnService : VpnService() {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(app.fjj.stun.R.string.notif_title))
             .setContentText(contentText ?: getString(app.fjj.stun.R.string.notif_text))
-            .setSmallIcon(app.fjj.stun.R.drawable.ic_fox_logo)
+            .setSmallIcon(app.fjj.stun.R.drawable.ic_notification)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .build()
