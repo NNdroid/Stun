@@ -119,15 +119,38 @@ object SettingsManager {
     }
 
     fun updateGeoDataSync(context: Context) {
+        val tempGeositePath = "${getGeositeCachePath(context)}.tmp"
+        val tempGeoipPath = "${getGeoipCachePath(context)}.tmp"
+
         try {
-            downloadFile(getGeositeUrl(context), getGeositeCachePath(context))
-            downloadFile(getGeoipUrl(context), getGeoipCachePath(context))
-            val currentTime = System.currentTimeMillis() / 1000
-            saveLastUpdateTime(context, currentTime)
-            StunLogger.i("SettingsManager", "GeoData update completed successfully.")
+            // Download to temporary files first
+            downloadFile(getGeositeUrl(context), tempGeositePath)
+            downloadFile(getGeoipUrl(context), tempGeoipPath)
+
+            val tempGeositeFile = File(tempGeositePath)
+            val tempGeoipFile = File(tempGeoipPath)
+
+            // Validate: Both files must exist and have content
+            if (tempGeositeFile.exists() && tempGeositeFile.length() > 0 &&
+                tempGeoipFile.exists() && tempGeoipFile.length() > 0) {
+                
+                // Atomically (well, as close as possible) replace the old files
+                tempGeositeFile.renameTo(File(getGeositeCachePath(context)))
+                tempGeoipFile.renameTo(File(getGeoipCachePath(context)))
+
+                val currentTime = System.currentTimeMillis() / 1000
+                saveLastUpdateTime(context, currentTime)
+                StunLogger.i("SettingsManager", "GeoData update completed and replaced successfully.")
+            } else {
+                throw RuntimeException("Downloaded GeoData files are empty or missing")
+            }
         } catch (e: Exception) {
-            StunLogger.e("SettingsManager", "Update GeoData failed", e)
+            StunLogger.e("SettingsManager", "Update GeoData failed, keeping original files", e)
             throw e
+        } finally {
+            // Clean up temporary files if they still exist
+            File(tempGeositePath).delete()
+            File(tempGeoipPath).delete()
         }
     }
 
@@ -144,15 +167,11 @@ object SettingsManager {
 
     private fun downloadFile(urlStr: String, destPath: String) {
         if (urlStr.isBlank()) return
-        try {
-            val url = URL(urlStr)
-            url.openStream().use { input ->
-                File(destPath).outputStream().use { output ->
-                    input.copyTo(output)
-                }
+        val url = URL(urlStr)
+        url.openStream().use { input ->
+            File(destPath).outputStream().use { output ->
+                input.copyTo(output)
             }
-        } catch (e: Exception) {
-            StunLogger.e("SettingsManager", "Download file failed: $urlStr", e)
         }
     }
 }

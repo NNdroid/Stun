@@ -46,4 +46,8 @@ object ProfileManager {
     fun updateTrafficStats(context: Context, id: String, tx: Long, rx: Long) {
         AppDatabase.getDatabase(context).profileDao().updateTrafficStats(id, tx, rx)
     }
+
+    fun addTrafficStats(context: Context, id: String, deltaTx: Long, deltaRx: Long) {
+        AppDatabase.getDatabase(context).profileDao().addTrafficStats(id, deltaTx, deltaRx)
+    }
 }

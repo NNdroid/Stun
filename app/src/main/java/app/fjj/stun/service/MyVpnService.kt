@@ -33,6 +33,14 @@ class MyVpnService : VpnService() {
     private var currentRxTotal = 0L
     private var currentCpu = 0.0
     private var currentMem = 0.0
+    private var currentActiveConns = 0L
+    private var currentTotalConns = 0L
+    private var currentMemSys = 0.0
+    private var currentGoroutines = 0L
+    
+    private var lastSessionTx = 0L
+    private var lastSessionRx = 0L
+    
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     @Volatile private var userRequestedStop = false
@@ -102,6 +110,8 @@ class MyVpnService : VpnService() {
                 }
 
                 // Start SSH
+                lastSessionTx = 0L
+                lastSessionRx = 0L
                 val sshStatus = myssh.Myssh.startSshTProxy2(VpnConfigBuilder.buildMySshConfig(this, profile, SOCKS_PORT, DNS_PORT))
                 if (sshStatus != 0L) {
                     log("❌ Go SSH Core failed to start (Code: $sshStatus). Retrying...")
@@ -254,32 +264,46 @@ class MyVpnService : VpnService() {
     private fun startTrafficMonitor() {
         myssh.Myssh.registerTrafficCallback(TrafficCallback { txRate, rxRate, txTotal, rxTotal, activeConns, totalConns ->
             serviceScope.launch {
-                updateStats(txRate, rxRate, txTotal, rxTotal)
+                updateStats(txRate, rxRate, txTotal, rxTotal, activeConns, totalConns)
             }
         })
 
         myssh.Myssh.registerSysInfoCallback(SysInfoCallback { cpuPercent, memAllocMB, memSysMB, goroutines ->
             serviceScope.launch {
-                updateSysInfo(cpuPercent, memAllocMB)
+                updateSysInfo(cpuPercent, memAllocMB, memSysMB, goroutines)
             }
         })
     }
 
-    private suspend fun updateStats(txRate: Long, rxRate: Long, txTotal: Long, rxTotal: Long) {
+    private suspend fun updateStats(txRate: Long, rxRate: Long, txTotal: Long, rxTotal: Long, activeConns: Long, totalConns: Long) {
         currentTxRate = txRate
         currentRxRate = rxRate
+        
+        val deltaTx = if (txTotal >= lastSessionTx) txTotal - lastSessionTx else txTotal
+        val deltaRx = if (rxTotal >= lastSessionRx) rxTotal - lastSessionRx else rxTotal
+        
         currentTxTotal = txTotal
         currentRxTotal = rxTotal
+        currentActiveConns = activeConns
+        currentTotalConns = totalConns
+
+        lastSessionTx = txTotal
+        lastSessionRx = rxTotal
+
+        StunRepository.txRate.postValue(txRate)
+        StunRepository.rxRate.postValue(rxRate)
 
         SettingsManager.getSelectedProfileId(this)?.let { id ->
-            ProfileManager.updateTrafficStats(this, id, txTotal, rxTotal)
+            ProfileManager.addTrafficStats(this, id, deltaTx, deltaRx)
         }
         refreshNotification()
     }
 
-    private suspend fun updateSysInfo(cpu: Double, mem: Double) {
+    private suspend fun updateSysInfo(cpu: Double, mem: Double, memSys: Double, goroutines: Long) {
         currentCpu = cpu
         currentMem = mem
+        currentMemSys = memSys
+        currentGoroutines = goroutines
         refreshNotification()
     }
 
@@ -291,20 +315,14 @@ class MyVpnService : VpnService() {
         }
         lastNotificationUpdateTime = currentTime
 
-        val statusText = "↑ ${formatBytes(currentTxRate)}/s (${formatBytes(currentTxTotal)}) " +
-                "↓ ${formatBytes(currentRxRate)}/s (${formatBytes(currentRxTotal)}) | " +
-                "CPU: ${String.format(Locale.US, "%.1f", currentCpu)}% MEM: ${String.format(Locale.US, "%.1f", currentMem)}MB"
+        val statusText = "↑ ${app.fjj.stun.util.AppUtils.formatBytes(currentTxRate)}/s (${app.fjj.stun.util.AppUtils.formatBytes(currentTxTotal)}) " +
+                "↓ ${app.fjj.stun.util.AppUtils.formatBytes(currentRxRate)}/s (${app.fjj.stun.util.AppUtils.formatBytes(currentRxTotal)}) | " +
+                "Conns: $currentActiveConns/$currentTotalConns | " +
+                "CPU: ${String.format(Locale.US, "%.1f", currentCpu)}% MEM: ${String.format(Locale.US, "%.1f", currentMem)}MB/${String.format(Locale.US, "%.1f", currentMemSys)}MB G: $currentGoroutines"
 
         withContext(Dispatchers.Main) {
             updateNotification(statusText)
         }
-    }
-
-    private fun formatBytes(bytes: Long): String {
-        if (bytes <= 0) return "0 B"
-        val units = arrayOf("B", "KB", "MB", "GB", "TB")
-        val digitGroups = (log10(bytes.toDouble()) / log10(1024.0)).toInt().coerceIn(0, units.size - 1)
-        return String.format(Locale.US, "%.1f %s", bytes / 1024.0.pow(digitGroups.toDouble()), units[digitGroups])
     }
 
     private fun log(message: String) = StunRepository.appendLog(message)

@@ -36,12 +36,10 @@ class StunApp : Application() {
         StunLogger.init(context)
         val logPath = StunRepository.getTunnelLogFilePath(context)
         val logLevel = SettingsManager.getLogLevel(context)
-        // 实现接口
         val goLogReceiver = LogReceiver { level, tag, msg ->
             // 注意：Go 的 int 在 Java 中会变成 Long
             StunLogger.receiveGoLog(level.toInt(), tag, msg)
         }
-        // 注入并启动
         myssh.Myssh.setLogReceiver(goLogReceiver)
         myssh.Myssh.initLogger(logPath, logLevel)
     }
@@ -50,5 +48,25 @@ class StunApp : Application() {
         ExecUtils.binaryDeploy(context, "hev-socks5-tproxy")
         ExecUtils.scriptDeploy(context, "tproxy.sh")
         ExecUtils.scriptDeploy(context, "watchdog.sh")
+
+        val lastUpdate = SettingsManager.getLastUpdateTime(context)
+        val apkUpdateTime = try {
+            val info = context.packageManager.getPackageInfo(context.packageName, 0)
+            info.lastUpdateTime / 1000
+        } catch (e: Exception) {
+            0L
+        }
+
+        // Deploy assets if it's the first run or if the APK has been updated since the last deployment.
+        if (lastUpdate <= 0 || apkUpdateTime > lastUpdate) {
+            app.fjj.stun.repo.StunLogger.i("StunApp", "App updated or first run, redeploying assets...")
+            ExecUtils.copyAssetToCache(context, "rules-dat/geoip.dat", "geoip.dat")
+            ExecUtils.copyAssetToCache(context, "rules-dat/geosite.dat", "geosite.dat")
+            
+            // Update last update time only if it's an overwrite from APK update
+            if (lastUpdate > 0) {
+                SettingsManager.saveLastUpdateTime(context, apkUpdateTime)
+            }
+        }
     }
 }

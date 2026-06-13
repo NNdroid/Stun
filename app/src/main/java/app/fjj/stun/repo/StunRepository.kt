@@ -14,6 +14,8 @@ object StunRepository {
     val vpnState = MutableLiveData(VpnState.DISCONNECTED)
     val appLogs = MutableLiveData<CharSequence>("")
     val tunnelLogs = MutableLiveData("")
+    val txRate = MutableLiveData(0L)
+    val rxRate = MutableLiveData(0L)
 
     /**
      * 向指定日志源追加内容

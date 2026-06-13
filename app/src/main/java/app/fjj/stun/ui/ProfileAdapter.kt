@@ -17,6 +17,11 @@ class ProfileAdapter(
     private val onShareClick: (Profile) -> Unit
 ) : ListAdapter<Profile, ProfileAdapter.ProfileViewHolder>(ProfileDiffCallback()) {
 
+    companion object {
+        const val PAYLOAD_TRAFFIC = "payload_traffic"
+        const val PAYLOAD_DELAY = "payload_delay"
+    }
+
     private var allProfiles: List<Profile> = emptyList()
     private val delays = mutableMapOf<String, String>()
     private var currentQuery: String = ""
@@ -26,6 +31,29 @@ class ProfileAdapter(
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ProfileViewHolder {
         val binding = ItemProfileBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return ProfileViewHolder(binding)
+    }
+
+    override fun onBindViewHolder(holder: ProfileViewHolder, position: Int, payloads: MutableList<Any>) {
+        if (payloads.isEmpty()) {
+            super.onBindViewHolder(holder, position, payloads)
+        } else {
+            val profile = getItem(position)
+            for (payload in payloads) {
+                when (payload) {
+                    PAYLOAD_TRAFFIC -> {
+                        if (profile.totalTx > 0 || profile.totalRx > 0) {
+                            holder.binding.tvStats.visibility = View.VISIBLE
+                            holder.binding.tvStats.text = "↑ ${formatBytes(profile.totalTx)}  ↓ ${formatBytes(profile.totalRx)}"
+                        } else {
+                            holder.binding.tvStats.visibility = View.GONE
+                        }
+                    }
+                    PAYLOAD_DELAY -> {
+                        holder.binding.tvDelay.text = delays[profile.id] ?: ""
+                    }
+                }
+            }
+        }
     }
 
     override fun onBindViewHolder(holder: ProfileViewHolder, position: Int) {
@@ -100,7 +128,7 @@ class ProfileAdapter(
         delays[profileId] = delay
         val index = currentList.indexOfFirst { it.id == profileId }
         if (index != -1) {
-            notifyItemChanged(index)
+            notifyItemChanged(index, PAYLOAD_DELAY)
         }
     }
 
@@ -118,6 +146,14 @@ class ProfileAdapter(
 
         override fun areContentsTheSame(oldItem: Profile, newItem: Profile): Boolean {
             return oldItem == newItem
+        }
+
+        override fun getChangePayload(oldItem: Profile, newItem: Profile): Any? {
+            return if (oldItem.totalTx != newItem.totalTx || oldItem.totalRx != newItem.totalRx) {
+                PAYLOAD_TRAFFIC
+            } else {
+                super.getChangePayload(oldItem, newItem)
+            }
         }
     }
 }

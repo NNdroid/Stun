@@ -1,4 +1,5 @@
 import java.io.File
+import java.net.URI
 
 plugins {
     alias(libs.plugins.android.application)
@@ -15,7 +16,8 @@ fun fetchGitHash(): String {
 }
 
 val gitHash = fetchGitHash()
-val baseVersionName = "1.5"
+val baseVersionName = "1.6"
+val baseVersionCode = 7
 
 // Automate moving the TProxy executable to assets
 val copyTProxyBinaries = tasks.register("copyTProxyBinaries") {
@@ -99,7 +101,7 @@ android {
         applicationId = "app.fjj.stun"
         minSdk = 28
         targetSdk = 36
-        versionCode = 6
+        versionCode = baseVersionCode
         versionName = baseVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -176,8 +178,39 @@ tasks.configureEach {
 }
 
 // Ensure patches are applied before any build starts
+val downloadRulesDat = tasks.register("downloadRulesDat") {
+    val outputDir = file("src/main/assets/rules-dat")
+    val filesToDownload = mapOf(
+        "geoip.dat" to "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geoip.dat",
+        "geosite.dat" to "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geosite.dat"
+    )
+
+    doLast {
+        if (!outputDir.exists()) outputDir.mkdirs()
+        filesToDownload.forEach { (name, url) ->
+            val outputFile = File(outputDir, name)
+            if (!outputFile.exists()) {
+                println("Downloading $name from $url...")
+                try {
+                    URI(url).toURL().openStream().use { input ->
+                        outputFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    println("Successfully downloaded $name")
+                } catch (e: Exception) {
+                    println("Failed to download $name: ${e.message}")
+                }
+            } else {
+                println("$name already exists, skipping download.")
+            }
+        }
+    }
+}
+
 tasks.named("preBuild") {
     dependsOn(applyJniPatches)
+    dependsOn(downloadRulesDat)
 }
 
 dependencies {

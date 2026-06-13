@@ -54,7 +54,9 @@
             android:layout_height="wrap_content"
             android:minHeight="80dp"
             android:layout_gravity="bottom"
-            android:background="?android:attr/colorBackground">
+            android:background="?android:attr/colorBackground"
+            android:clickable="true"
+            android:focusable="true">
 
             <com.google.android.material.progressindicator.LinearProgressIndicator
                 android:id="@+id/progress_bar"
@@ -78,7 +80,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="24dp"
-                android:layout_marginEnd="16dp"
+                android:layout_marginEnd="8dp"
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:text="@string/status_disconnected"
@@ -86,9 +88,39 @@
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:contentDescription="@string/desc_connection_status"
                 app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toStartOf="@+id/fab_start_stop"
+                app:layout_constraintEnd_toStartOf="@+id/layout_traffic"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/bottom_divider" />
+
+            <LinearLayout
+                android:id="@+id/layout_traffic"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:orientation="vertical"
+                android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@+id/fab_start_stop"
+                app:layout_constraintTop_toBottomOf="@+id/bottom_divider">
+
+                <TextView
+                    android:id="@+id/tv_up_rate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-light"
+                    android:text="▲   0 B/s"
+                    android:textSize="10sp"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <TextView
+                    android:id="@+id/tv_down_rate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-light"
+                    android:text="▼   0 B/s"
+                    android:textSize="10sp"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+            </LinearLayout>
 
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/fab_start_stop"

@@ -17,7 +17,10 @@ import java.util.concurrent.TimeoutException
 
 object ExecUtils {
     /**
-     * Safe and non-blocking Root check
+     * 安全且非阻塞的 Root 权限检查。
+     * 使用超时机制防止在某些设备上因 su 请求无响应而导致应用永久挂起。
+     *
+     * @return 如果拥有 Root 权限则返回 true，否则返回 false
      */
     fun checkIsRootPermission(): Boolean {
         var process: Process? = null
@@ -58,6 +61,14 @@ object ExecUtils {
         }
     }
     private val rootCommandExecutor = Executors.newCachedThreadPool()
+
+    /**
+     * 在 Root Shell 环境下执行命令，并带有 90 秒超时控制。
+     * 该方法会捕获标准输出和错误输出并记录到日志。
+     *
+     * @param cmd 要执行的 Shell 命令
+     * @return 命令执行的退出码，超时或失败返回 -1
+     */
     fun executeRootCommand(cmd: String): Int {
         val tag = "[MySsh|${Thread.currentThread().name}]"
         StunLogger.d(tag, "[ROOT] $cmd")
@@ -127,25 +138,40 @@ object ExecUtils {
 //        }
 //    }
 
-    fun copyAssetToCache(context: Context, fileName: String): File? {
+    /**
+     * 将 Assets 中的文件拷贝到应用缓存目录。
+     *
+     * @param context 上下文
+     * @param assetPath Asset 中的文件路径（例如 "rules-dat/geoip.dat"）
+     * @param targetName 目标文件名。如果为 null，则在缓存中保留 assetPath 的目录结构；
+     *                   如果指定了文件名，则直接在 cacheDir 下创建该文件。
+     * @return 拷贝后的 File 对象，失败则返回 null
+     */
+    fun copyAssetToCache(context: Context, assetPath: String, targetName: String? = null): File? {
         val tag = "copyAssetToCache"
-        val targetFile = File(context.cacheDir, fileName)
+        val targetFile = File(context.cacheDir, targetName ?: assetPath)
         return try {
-            context.assets.open(fileName).use { input ->
+            // Ensure parent directories exist
+            targetFile.parentFile?.let { if (!it.exists()) it.mkdirs() }
+
+            context.assets.open(assetPath).use { input ->
                 FileOutputStream(targetFile).use { output -> input.copyTo(output) }
             }
-            targetFile.setExecutable(true, false)
+            targetFile.setExecutable(false, false)
             targetFile
         } catch (e: IOException) {
-            StunLogger.e(tag, "Asset extraction failed: $fileName", e)
+            StunLogger.e(tag, "Asset extraction failed: $assetPath", e)
             null
         }
     }
+
     /**
-     * Automatically deploy the architecture-specific binary file to the cache directory.
-     * @param context Context
-     * @param binName Binary file name, e.g., "tproxy_core"
-     * @return The deployed File object, or null if deployment fails.
+     * 根据设备当前 CPU 架构，自动部署对应的二进制可执行文件到缓存目录。
+     * 会按照 Build.SUPPORTED_ABIS 的优先级顺序在 assets/bin/ 目录下进行匹配。
+     *
+     * @param context 上下文
+     * @param binName 二进制文件名（例如 "hev-socks5-tproxy"）
+     * @return 部署后的 File 对象，失败则返回 null
      */
     @SuppressLint("SetWorldReadable", "SetWorldWritable")
     fun binaryDeploy(context: Context, binName: String): File? {

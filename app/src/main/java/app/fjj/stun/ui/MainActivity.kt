@@ -199,6 +199,7 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                     binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_play)
                     binding.tvStatus.text = getString(app.fjj.stun.R.string.main_disconnected)
                     binding.progressBar.visibility = android.view.View.GONE
+                    binding.layoutTraffic.visibility = android.view.View.GONE
                     
                     // Fade in animation
                     binding.fabStartStop.alpha = 0f
@@ -214,6 +215,7 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                     binding.fabStartStop.isEnabled = false // 禁用按钮，防止连点
                     binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_sync)
                     binding.progressBar.visibility = android.view.View.VISIBLE
+                    binding.layoutTraffic.visibility = android.view.View.GONE
                     
                     // 开始旋转 + 呼吸缩放动画
                     val rotate = android.view.animation.RotateAnimation(
@@ -250,6 +252,7 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                     binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_pause)
                     binding.tvStatus.text = getString(app.fjj.stun.R.string.main_connected)
                     binding.progressBar.visibility = android.view.View.GONE
+                    binding.layoutTraffic.visibility = android.view.View.VISIBLE
                     
                     // Success "Pop" animation
                     binding.fabStartStop.scaleX = 0.8f
@@ -267,6 +270,7 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                     binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_pause)
                     binding.tvStatus.text = getString(app.fjj.stun.R.string.main_reconnecting)
                     binding.progressBar.visibility = android.view.View.VISIBLE
+                    binding.layoutTraffic.visibility = android.view.View.VISIBLE
                 }
                 VpnState.ERROR -> {
                     isVpnRunning = false
@@ -274,11 +278,25 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                     binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_play)
                     binding.tvStatus.text = getString(app.fjj.stun.R.string.main_connection_failed)
                     binding.progressBar.visibility = android.view.View.GONE
+                    binding.layoutTraffic.visibility = android.view.View.GONE
                 }
                 null -> {
                     isVpnRunning = false
                     binding.progressBar.visibility = android.view.View.GONE
+                    binding.layoutTraffic.visibility = android.view.View.GONE
                 }
+            }
+        }
+
+        StunRepository.txRate.observe(this) { rate ->
+            if (isVpnRunning) {
+                binding.tvUpRate.text = "▲   ${AppUtils.formatBytes(rate)}/s"
+            }
+        }
+
+        StunRepository.rxRate.observe(this) { rate ->
+            if (isVpnRunning) {
+                binding.tvDownRate.text = "▼   ${AppUtils.formatBytes(rate)}/s"
             }
         }
 
@@ -374,6 +392,8 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
 
         binding.rvProfiles.layoutManager = LinearLayoutManager(this)
         binding.rvProfiles.adapter = adapter
+        // Disable change animations to prevent flickering during high-frequency traffic updates
+        (binding.rvProfiles.itemAnimator as? androidx.recyclerview.widget.SimpleItemAnimator)?.supportsChangeAnimations = false
     }
 
     private fun showShareDialog(profile: Profile) {
