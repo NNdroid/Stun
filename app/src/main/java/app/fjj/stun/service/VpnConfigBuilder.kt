@@ -56,6 +56,7 @@ object VpnConfigBuilder {
             put("server_certificate_finger_print", profile.serverCertFingerprint)
             put("dns_addr", ":${dnsPort}")
             put("udpgw_version", udpgwVersion)
+            
         }.toString()
     }
 

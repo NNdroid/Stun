@@ -176,4 +176,11 @@
     <string name="desc_alpn_select">Sélectionner les protocoles ALPN</string>
     <string name="desc_dns_override_toggle">Basculer le remplacement du DNS et du routage</string>
     <string name="desc_app_filter_toggle">Basculer le remplacement du filtrage d\'application</string>
+
+    <!-- VayDNS Config -->
+    <string name="vaydns_pubkey_hint">Clé publique VayDNS (Noise)</string>
+    <string name="vaydns_domain_hint">Domaine VayDNS</string>
+    <string name="vaydns_mode_hint">Mode VayDNS</string>
+    <string name="vaydns_query_type_hint">Type de requête VayDNS (txt, cname, etc.)</string>
+    <string name="vaydns_resolvers_hint">Résolveurs VayDNS (URLs séparées par des virgules)</string>
 </resources>

@@ -96,6 +96,8 @@ data class Profile(
     @SerializedName("keyPass")
     var keyPass: String = "",
 
+
+
     // Traffic statistics
     @SerializedName("totalTx")
     var totalTx: Long = 0,
@@ -118,6 +120,8 @@ data class Profile(
         const val TUNNEL_TYPE_MASQUE = "masque"
         const val TUNNEL_TYPE_XHTTP = "xhttp"
         const val TUNNEL_TYPE_XHTTPC = "xhttpc"
+
+
 
         const val AUTH_TYPE_PASSWORD = "password"
         const val AUTH_TYPE_PRIVATEKEY = "privatekey"

@@ -178,4 +178,18 @@
     <string name="desc_alpn_select">Select ALPN protocols</string>
     <string name="desc_dns_override_toggle">Toggle DNS and routing override</string>
     <string name="desc_app_filter_toggle">Toggle application filtering override</string>
+
+    <!-- VayDNS Config -->
+    <string name="vaydns_pubkey_hint">VayDNS Pubkey (Noise)</string>
+    <string name="vaydns_domain_hint">VayDNS Domain</string>
+    <string name="vaydns_mode_hint">VayDNS Mode</string>
+    <string name="vaydns_query_type_hint">VayDNS Query Type (txt, cname, etc.)</string>
+    <string name="vaydns_resolvers_hint">VayDNS Resolvers (Comma separated URLs)</string>
+
+    <!-- DNSTT Config -->
+    <string name="dnstt_pubkey_hint">DNSTT Pubkey</string>
+    <string name="dnstt_domain_hint">DNSTT Domain</string>
+    <string name="dnstt_mode_hint">DNSTT Mode</string>
+    <string name="dnstt_query_type_hint">DNSTT Query Type (txt, null, etc.)</string>
+    <string name="dnstt_resolvers_hint">DNSTT Resolvers (Comma separated URLs)</string>
 </resources>

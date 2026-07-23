@@ -5,11 +5,23 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [Profile::class], version = 5, exportSchema = false)
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
+
+@Database(entities = [Profile::class], version = 6, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun profileDao(): ProfileDao
 
     companion object {
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE profiles ADD COLUMN vaydnsPubkey TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE profiles ADD COLUMN vaydnsDomain TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE profiles ADD COLUMN vaydnsMode TEXT NOT NULL DEFAULT 'doh'")
+                db.execSQL("ALTER TABLE profiles ADD COLUMN vaydnsResolvers TEXT NOT NULL DEFAULT 'https://dns.google/dns-query,https://cloudflare-dns.com/dns-query'")
+                db.execSQL("ALTER TABLE profiles ADD COLUMN vaydnsQueryType TEXT NOT NULL DEFAULT 'txt'")
+            }
+        }
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
@@ -20,8 +32,8 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "stun_database"
                 )
+                .addMigrations(MIGRATION_5_6)
                 .fallbackToDestructiveMigration(true)
-                .allowMainThreadQueries() // For simplicity in this transition, though not best practice
                 .build()
                 INSTANCE = instance
                 instance

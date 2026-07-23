@@ -176,4 +176,11 @@
     <string name="desc_alpn_select">ALPN-Protokolle auswählen</string>
     <string name="desc_dns_override_toggle">DNS- und Routing-Überschreibung umschalten</string>
     <string name="desc_app_filter_toggle">App-Filter-Überschreibung umschalten</string>
+
+    <!-- VayDNS Config -->
+    <string name="vaydns_pubkey_hint">VayDNS Öffentlicher Schlüssel (Noise)</string>
+    <string name="vaydns_domain_hint">VayDNS Domäne</string>
+    <string name="vaydns_mode_hint">VayDNS Modus</string>
+    <string name="vaydns_query_type_hint">VayDNS Abfragetyp (txt, cname usw.)</string>
+    <string name="vaydns_resolvers_hint">VayDNS Resolver (Kommaseparierte URLs)</string>
 </resources>

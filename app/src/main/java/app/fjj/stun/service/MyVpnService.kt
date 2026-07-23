@@ -84,7 +84,7 @@ class MyVpnService : VpnService() {
             log("Starting VPN Service...")
             updateNotification(getString(app.fjj.stun.R.string.main_connecting))
             StunRepository.vpnState.postValue(VpnState.CONNECTING)
-            thread(start = true, name = "VpnMainLoop") {
+            serviceScope.launch {
                 startVpnServiceLoop()
             }
         }
@@ -203,7 +203,7 @@ class MyVpnService : VpnService() {
         try {
             FileOutputStream(confFile).use { it.write(VpnConfigBuilder.buildHevSocks5TunnelConfig(SOCKS_PORT).toByteArray()) }
             
-            thread(start = true, name = "HevEngineThread") {
+            serviceScope.launch {
                 try {
                     log("HEV engine starting...")
                     TTunnelService.TTunnelStartService(confFile.absolutePath, fd)
@@ -232,12 +232,21 @@ class MyVpnService : VpnService() {
 
     private fun stopVpnService() {
         serviceScope.launch {
+            saveFinalTrafficStats()
             cleanupNativeResources()
             withContext(Dispatchers.Main) {
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
         }
+    }
+
+    private fun saveFinalTrafficStats() {
+        SettingsManager.getSelectedProfileId(this)?.let { id ->
+            ProfileManager.addTrafficStats(this, id, currentTxTotal, currentRxTotal)
+        }
+        currentTxTotal = 0L
+        currentRxTotal = 0L
     }
 
     private fun updateNotification(contentText: String? = null) {
@@ -292,10 +301,9 @@ class MyVpnService : VpnService() {
 
         StunRepository.txRate.postValue(txRate)
         StunRepository.rxRate.postValue(rxRate)
+        StunRepository.txTotal.postValue(txTotal)
+        StunRepository.rxTotal.postValue(rxTotal)
 
-        SettingsManager.getSelectedProfileId(this)?.let { id ->
-            ProfileManager.addTrafficStats(this, id, deltaTx, deltaRx)
-        }
         refreshNotification()
     }
 
@@ -329,14 +337,16 @@ class MyVpnService : VpnService() {
 
     override fun onDestroy() {
         userRequestedStop = true
-        serviceScope.cancel()
 
-        Thread {
-            cleanupNativeResources()
-        }.apply {
-            name = "VpnCleanupThread"
-            start()
+        // Block to ensure critical cleanup completes before the process can be killed
+        runBlocking {
+            withContext(Dispatchers.IO) {
+                saveFinalTrafficStats()
+                cleanupNativeResources()
+            }
         }
+        
+        serviceScope.cancel()
 
         super.onDestroy()
     }

@@ -188,6 +188,8 @@
                     android:contentDescription="@string/desc_proxy_address_input" />
             </com.google.android.material.textfield.TextInputLayout>
 
+
+
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/layout_custom_host"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"

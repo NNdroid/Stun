@@ -176,4 +176,11 @@
     <string name="desc_alpn_select">选择 ALPN 协议</string>
     <string name="desc_dns_override_toggle">切换 DNS 和路由覆盖</string>
     <string name="desc_app_filter_toggle">切换应用过滤覆盖</string>
+
+    <!-- VayDNS Config -->
+    <string name="vaydns_pubkey_hint">VayDNS 公钥 (Noise)</string>
+    <string name="vaydns_domain_hint">VayDNS 域名</string>
+    <string name="vaydns_mode_hint">VayDNS 模式</string>
+    <string name="vaydns_query_type_hint">VayDNS 查询类型 (txt, cname 等)</string>
+    <string name="vaydns_resolvers_hint">VayDNS 解析器 (逗号分隔的 URL)</string>
 </resources>

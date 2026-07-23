@@ -45,6 +45,9 @@ import com.journeyapps.barcodescanner.ScanOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.isActive
+import androidx.activity.viewModels
 import rikka.shizuku.Shizuku
 import java.net.HttpURLConnection
 import java.net.InetSocketAddress
@@ -98,10 +101,10 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                 // 确保生成一个新的 ID
                 val newProfile = profile.copy(id = java.util.UUID.randomUUID().toString())
 
-                thread {
-                    ProfileManager.addProfile(this, newProfile)
-                    runOnUiThread {
-                        Toast.makeText(this, getString(app.fjj.stun.R.string.profile_added, profileName), Toast.LENGTH_SHORT).show()
+                lifecycleScope.launch(Dispatchers.IO) {
+                    ProfileManager.addProfile(this@MainActivity, newProfile)
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@MainActivity, getString(app.fjj.stun.R.string.profile_added, profileName), Toast.LENGTH_SHORT).show()
                     }
                 }
             } catch (e: Exception) {
@@ -171,9 +174,11 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
             insets
         }
 
+        val viewModel: app.fjj.stun.ui.viewmodel.MainViewModel by viewModels()
+        
         setupRecyclerView()
 
-        ProfileManager.getProfilesLiveData(this).observe(this) { profiles ->
+        viewModel.profilesLiveData.observe(this) { profiles ->
             val selectedId = SettingsManager.getSelectedProfileId(this)
             adapter.updateProfiles(profiles, selectedId)
         }
@@ -381,8 +386,8 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                 startActivity(intent)
             },
             onDeleteClick = { profile ->
-                thread {
-                    ProfileManager.deleteProfile(this, profile)
+                lifecycleScope.launch(Dispatchers.IO) {
+                    ProfileManager.deleteProfile(this@MainActivity, profile)
                 }
             },
             onShareClick = { profile ->
@@ -470,6 +475,10 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                 importLauncher.launch(arrayOf("application/json", "application/octet-stream", "*/*"))
                 return true
             }
+            app.fjj.stun.R.id.action_speed_test -> {
+                testAllProfilesLatency()
+                return true
+            }
         }
         return super.onOptionsItemSelected(item)
     }
@@ -506,12 +515,11 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
             return
         }
 
-        val selectedProfile = ProfileManager.getSelectedProfile(this)
         binding.tvStatus.text = getString(app.fjj.stun.R.string.main_testing_latency)
 
-        var result = "Timeout"
-        thread {
-
+        lifecycleScope.launch(Dispatchers.IO) {
+            val selectedProfile = ProfileManager.getSelectedProfile(this@MainActivity)
+            var result = "Timeout"
             try {
                 val start = System.nanoTime()
 
@@ -534,26 +542,31 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                 connection.useCaches = false
                 connection.requestMethod = "GET"
 
-                connection.connect()
+                if (!isActive) return@launch
+                
+                // We use runInterruptible so if the coroutine is cancelled, the thread is interrupted
+                kotlinx.coroutines.runInterruptible {
+                    connection.connect()
+                    val code = connection.responseCode
+                    val latency = (System.nanoTime() - start) / 1_000_000
 
-                val code = connection.responseCode
-
-                val latency = (System.nanoTime() - start) / 1_000_000
-
-                result = if (code in 200..399) {
-                    "$latency ms"
-                } else {
-                    "HTTP $code"
+                    result = if (code in 200..399) {
+                        "$latency ms"
+                    } else {
+                        "HTTP $code"
+                    }
+                    connection.disconnect()
                 }
 
-                connection.disconnect()
-
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 StunLogger.e("MainActivity", "Latency test failed", e)
                 result = e.message ?: "Unknown Error"
             }
 
-            runOnUiThread {
+            if (!isActive) return@launch
+
+            withContext(Dispatchers.Main) {
                 adapter.updateDelay(selectedProfile.id, result)
                 binding.tvStatus.text = if (isVpnRunning) {
                     getString(app.fjj.stun.R.string.main_connected) + " ($result)"
@@ -563,9 +576,48 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
             }
         }
     }
+    private fun testAllProfilesLatency() {
+        android.widget.Toast.makeText(this, "开始测试所有节点延迟...", android.widget.Toast.LENGTH_SHORT).show()
+        val profiles = adapter.getProfiles()
+        if (profiles.isEmpty()) return
 
-    private fun validateSelectedProfile(): Boolean {
-        val profile = ProfileManager.getSelectedProfile(this)
+        // Set all to testing
+        profiles.forEach { adapter.updateDelay(it.id, "Testing...") }
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val reqArray = org.json.JSONArray()
+                for (p in profiles) {
+                    val reqObj = org.json.JSONObject()
+                    reqObj.put("id", p.id)
+                    val configJsonStr = app.fjj.stun.service.VpnConfigBuilder.buildMySshConfig(this@MainActivity, p, 1080, 53)
+                    reqObj.put("config", org.json.JSONObject(configJsonStr))
+                    reqArray.put(reqObj)
+                }
+
+                // Call Go JNI 接口 (并发测试，等待结果)，附加目标网页和超时时间
+                val jsonResStr = myssh.Myssh.pingNodes(reqArray.toString(), "http://cp.cloudflare.com/generate_204", 8000L)
+                
+                val resArray = org.json.JSONArray(jsonResStr)
+                withContext(Dispatchers.Main) {
+                    for (i in 0 until resArray.length()) {
+                        val resObj = resArray.getJSONObject(i)
+                        val id = resObj.getString("id")
+                        val result = resObj.getString("result")
+                        adapter.updateDelay(id, result)
+                    }
+                    android.widget.Toast.makeText(this@MainActivity, "测速完成", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(this@MainActivity, "测速异常: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun validateSelectedProfile(profile: Profile): Boolean {
         if (profile.id.isEmpty()) {
             Toast.makeText(this, getString(app.fjj.stun.R.string.error_no_profile_selected), Toast.LENGTH_SHORT).show()
             return false
@@ -623,14 +675,20 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
             }
         } else {
             if (currentState == VpnState.CONNECTING) return
-            if (!validateSelectedProfile()) return
+            
+            lifecycleScope.launch {
+                val profile = kotlinx.coroutines.withContext(Dispatchers.IO) {
+                    ProfileManager.getSelectedProfile(this@MainActivity)
+                }
+                if (!validateSelectedProfile(profile)) return@launch
 
-            isStopping = false
-            applyShizukuKeepAlive()
-            if (mode == SettingsManager.SERVICE_MODE_TPROXY) {
-                startTProxyProcess()
-            } else {
-                startVpnProcess()
+                isStopping = false
+                applyShizukuKeepAlive()
+                if (mode == SettingsManager.SERVICE_MODE_TPROXY) {
+                    startTProxyProcess()
+                } else {
+                    startVpnProcess()
+                }
             }
         }
     }
@@ -670,41 +728,39 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
         }
     }
 
-    private fun <T> startServiceInBackground(serviceClass: Class<T>, actionStr: String) {
-        CoroutineScope(Dispatchers.IO).launch {
-            val intent = Intent(this@MainActivity, serviceClass)
-            intent.action = actionStr
-            startService(intent)
-        }
+    private fun launchServiceWithAction(serviceClass: Class<*>, actionStr: String) {
+        val intent = Intent(this, serviceClass)
+        intent.action = actionStr
+        startService(intent)
     }
 
-    private fun stopVpnService() = startServiceInBackground(MyVpnService::class.java, MyVpnService.ACTION_STOP)
-    private fun startVpnService() = startServiceInBackground(MyVpnService::class.java, MyVpnService.ACTION_START)
-    private fun stopTProxyService() = startServiceInBackground(MyTransparentProxyService::class.java, MyTransparentProxyService.ACTION_STOP)
-    private fun startTProxyService() = startServiceInBackground(MyTransparentProxyService::class.java, MyTransparentProxyService.ACTION_START)
+    private fun stopVpnService() = launchServiceWithAction(MyVpnService::class.java, MyVpnService.ACTION_STOP)
+    private fun startVpnService() = launchServiceWithAction(MyVpnService::class.java, MyVpnService.ACTION_START)
+    private fun stopTProxyService() = launchServiceWithAction(MyTransparentProxyService::class.java, MyTransparentProxyService.ACTION_STOP)
+    private fun startTProxyService() = launchServiceWithAction(MyTransparentProxyService::class.java, MyTransparentProxyService.ACTION_START)
 
     private fun exportProfilesToUri(uri: android.net.Uri) {
-        thread {
+        lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val profiles = ProfileManager.getProfiles(this)
+                val profiles = ProfileManager.getProfiles(this@MainActivity)
                 val json = Gson().toJson(profiles)
                 contentResolver.openOutputStream(uri)?.use { outputStream ->
                     outputStream.write(json.toByteArray())
                 }
-                runOnUiThread {
-                    Toast.makeText(this, getString(app.fjj.stun.R.string.export_success), Toast.LENGTH_SHORT).show()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, getString(app.fjj.stun.R.string.export_success), Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 StunLogger.e("MainActivity", "Export failed", e)
-                runOnUiThread {
-                    Toast.makeText(this, getString(app.fjj.stun.R.string.export_failed, e.message), Toast.LENGTH_SHORT).show()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, getString(app.fjj.stun.R.string.export_failed, e.message), Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
 
     private fun importProfilesFromUri(uri: android.net.Uri) {
-        thread {
+        lifecycleScope.launch(Dispatchers.IO) {
             try {
                 contentResolver.openInputStream(uri)?.use { inputStream ->
                     val json = inputStream.bufferedReader().use { it.readText() }
@@ -714,17 +770,17 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                     profiles.forEach { profile ->
                         // Ensure unique ID for imported profiles to avoid conflicts
                         val newProfile = profile.copy(id = java.util.UUID.randomUUID().toString())
-                        ProfileManager.addProfile(this, newProfile)
+                        ProfileManager.addProfile(this@MainActivity, newProfile)
                     }
                     
-                    runOnUiThread {
-                        Toast.makeText(this, getString(app.fjj.stun.R.string.import_success, profiles.size), Toast.LENGTH_SHORT).show()
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@MainActivity, getString(app.fjj.stun.R.string.import_success, profiles.size), Toast.LENGTH_SHORT).show()
                     }
                 }
             } catch (e: Exception) {
                 StunLogger.e("MainActivity", "Import failed", e)
-                runOnUiThread {
-                    Toast.makeText(this, getString(app.fjj.stun.R.string.import_failed, e.message), Toast.LENGTH_SHORT).show()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, getString(app.fjj.stun.R.string.import_failed, e.message), Toast.LENGTH_SHORT).show()
                 }
             }
         }

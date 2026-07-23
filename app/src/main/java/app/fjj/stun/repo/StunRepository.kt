@@ -16,6 +16,8 @@ object StunRepository {
     val tunnelLogs = MutableLiveData("")
     val txRate = MutableLiveData(0L)
     val rxRate = MutableLiveData(0L)
+    val txTotal = MutableLiveData(0L)
+    val rxTotal = MutableLiveData(0L)
 
     /**
      * 向指定日志源追加内容
