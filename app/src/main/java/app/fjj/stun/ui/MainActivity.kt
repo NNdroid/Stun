@@ -201,7 +201,12 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                 VpnState.DISCONNECTED -> {
                     isVpnRunning = false
                     binding.fabStartStop.isEnabled = true
-                    binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_play)
+                    binding.fabStartStop.setIconResource(app.fjj.stun.R.drawable.ic_play)
+                    binding.fabStartStop.text = getString(app.fjj.stun.R.string.connect)
+                    binding.fabStartStop.backgroundTintList = android.content.res.ColorStateList.valueOf(com.google.android.material.color.MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorPrimaryContainer))
+                    binding.fabStartStop.setTextColor(com.google.android.material.color.MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorOnPrimaryContainer))
+                    binding.fabStartStop.iconTint = android.content.res.ColorStateList.valueOf(com.google.android.material.color.MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorOnPrimaryContainer))
+                    binding.statusDot.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#F44336")) // Red
                     binding.tvStatus.text = getString(app.fjj.stun.R.string.main_disconnected)
                     binding.progressBar.visibility = android.view.View.GONE
                     binding.layoutTraffic.visibility = android.view.View.GONE
@@ -218,23 +223,22 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                 VpnState.CONNECTING -> {
                     isVpnRunning = false
                     binding.fabStartStop.isEnabled = false // 禁用按钮，防止连点
-                    binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_sync)
+                    binding.fabStartStop.setIconResource(app.fjj.stun.R.drawable.ic_sync)
+                    binding.fabStartStop.text = getString(app.fjj.stun.R.string.connect)
+                    binding.statusDot.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#FF9800")) // Orange
                     binding.progressBar.visibility = android.view.View.VISIBLE
                     binding.layoutTraffic.visibility = android.view.View.GONE
                     
-                    // 开始旋转 + 呼吸缩放动画
-                    val rotate = android.view.animation.RotateAnimation(
-                        0f, 360f,
-                        android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f,
-                        android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f
-                    ).apply {
-                        duration = 1000
+                    // 替换旋转，改为平滑的呼吸（缩放+透明度）动画，更契合 M3 的沉稳感
+                    val alpha = android.view.animation.AlphaAnimation(1f, 0.7f).apply {
+                        duration = 800
                         repeatCount = android.view.animation.Animation.INFINITE
-                        interpolator = android.view.animation.LinearInterpolator()
+                        repeatMode = android.view.animation.Animation.REVERSE
+                        interpolator = android.view.animation.AccelerateDecelerateInterpolator()
                     }
                     
                     val scale = android.view.animation.ScaleAnimation(
-                        1f, 1.1f, 1f, 1.1f,
+                        1f, 0.96f, 1f, 0.96f,
                         android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f,
                         android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f
                     ).apply {
@@ -245,7 +249,7 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                     }
 
                     val animSet = android.view.animation.AnimationSet(false)
-                    animSet.addAnimation(rotate)
+                    animSet.addAnimation(alpha)
                     animSet.addAnimation(scale)
                     binding.fabStartStop.startAnimation(animSet)
 
@@ -254,7 +258,12 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                 VpnState.CONNECTED -> {
                     isVpnRunning = true
                     binding.fabStartStop.isEnabled = true
-                    binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_pause)
+                    binding.fabStartStop.setIconResource(app.fjj.stun.R.drawable.ic_pause)
+                    binding.fabStartStop.text = getString(app.fjj.stun.R.string.disconnect)
+                    binding.fabStartStop.backgroundTintList = android.content.res.ColorStateList.valueOf(com.google.android.material.color.MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorSecondaryContainer))
+                    binding.fabStartStop.setTextColor(com.google.android.material.color.MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorOnSecondaryContainer))
+                    binding.fabStartStop.iconTint = android.content.res.ColorStateList.valueOf(com.google.android.material.color.MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorOnSecondaryContainer))
+                    binding.statusDot.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#4CAF50")) // Green
                     binding.tvStatus.text = getString(app.fjj.stun.R.string.main_connected)
                     binding.progressBar.visibility = android.view.View.GONE
                     binding.layoutTraffic.visibility = android.view.View.VISIBLE
@@ -272,7 +281,9 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                 VpnState.RECONNECTING -> {
                     isVpnRunning = false
                     binding.fabStartStop.isEnabled = true // 允许用户在重连时打断
-                    binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_pause)
+                    binding.fabStartStop.setIconResource(app.fjj.stun.R.drawable.ic_pause)
+                    binding.fabStartStop.text = getString(app.fjj.stun.R.string.disconnect)
+                    binding.statusDot.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#FF9800")) // Orange
                     binding.tvStatus.text = getString(app.fjj.stun.R.string.main_reconnecting)
                     binding.progressBar.visibility = android.view.View.VISIBLE
                     binding.layoutTraffic.visibility = android.view.View.VISIBLE
@@ -280,7 +291,12 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                 VpnState.ERROR -> {
                     isVpnRunning = false
                     binding.fabStartStop.isEnabled = true
-                    binding.fabStartStop.setImageResource(app.fjj.stun.R.drawable.ic_play)
+                    binding.fabStartStop.setIconResource(app.fjj.stun.R.drawable.ic_play)
+                    binding.fabStartStop.text = getString(app.fjj.stun.R.string.connect)
+                    binding.fabStartStop.backgroundTintList = android.content.res.ColorStateList.valueOf(com.google.android.material.color.MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorPrimaryContainer))
+                    binding.fabStartStop.setTextColor(com.google.android.material.color.MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorOnPrimaryContainer))
+                    binding.fabStartStop.iconTint = android.content.res.ColorStateList.valueOf(com.google.android.material.color.MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorOnPrimaryContainer))
+                    binding.statusDot.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#F44336")) // Red
                     binding.tvStatus.text = getString(app.fjj.stun.R.string.main_connection_failed)
                     binding.progressBar.visibility = android.view.View.GONE
                     binding.layoutTraffic.visibility = android.view.View.GONE
@@ -295,13 +311,13 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
 
         StunRepository.txRate.observe(this) { rate ->
             if (isVpnRunning) {
-                binding.tvUpRate.text = "▲   ${AppUtils.formatBytes(rate)}/s"
+                binding.tvUpRate.text = "▲ ${AppUtils.formatBytes(rate)}/s"
             }
         }
 
         StunRepository.rxRate.observe(this) { rate ->
             if (isVpnRunning) {
-                binding.tvDownRate.text = "▼   ${AppUtils.formatBytes(rate)}/s"
+                binding.tvDownRate.text = "▼ ${AppUtils.formatBytes(rate)}/s"
             }
         }
 
@@ -395,7 +411,14 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
             }
         )
 
-        binding.rvProfiles.layoutManager = LinearLayoutManager(this)
+        val displayMetrics = resources.displayMetrics
+        val dpWidth = displayMetrics.widthPixels / displayMetrics.density
+        if (dpWidth >= 600) {
+            val columns = (dpWidth / 360).toInt().coerceAtLeast(2)
+            binding.rvProfiles.layoutManager = androidx.recyclerview.widget.GridLayoutManager(this, columns)
+        } else {
+            binding.rvProfiles.layoutManager = LinearLayoutManager(this)
+        }
         binding.rvProfiles.adapter = adapter
         // Disable change animations to prevent flickering during high-frequency traffic updates
         (binding.rvProfiles.itemAnimator as? androidx.recyclerview.widget.SimpleItemAnimator)?.supportsChangeAnimations = false
@@ -606,12 +629,12 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                         val result = resObj.getString("result")
                         adapter.updateDelay(id, result)
                     }
-                    android.widget.Toast.makeText(this@MainActivity, "测速完成", android.widget.Toast.LENGTH_SHORT).show()
+                    android.widget.Toast.makeText(this@MainActivity, getString(app.fjj.stun.R.string.speed_test_completed), android.widget.Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
-                    android.widget.Toast.makeText(this@MainActivity, "测速异常: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                    android.widget.Toast.makeText(this@MainActivity, getString(app.fjj.stun.R.string.speed_test_error, e.message), android.widget.Toast.LENGTH_SHORT).show()
                 }
             }
         }

@@ -3,6 +3,7 @@
     <string name="action_add">Ajouter</string>
     <string name="action_filter">Filtrer</string>
     <string name="action_logs">Journaux</string>
+    <string name="action_speed_test">Test de vitesse</string>
     <string name="action_about">À propos</string>
     <string name="action_settings">Paramètres</string>
     <string name="about_source_code">Code source</string>
@@ -15,6 +16,8 @@
     <string name="status_disconnected">Déconnecté, appuyez pour démarrer</string>
     <string name="status_connected">Connecté</string>
     <string name="status_testing">Test de latence…</string>
+    <string name="speed_test_completed">Test de vitesse terminé</string>
+    <string name="speed_test_error">Erreur du test de vitesse : %1$s</string>
     <string name="connect">Connecter</string>
     <string name="disconnect">Déconnecter</string>
 

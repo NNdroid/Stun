@@ -22,6 +22,9 @@ class StunApp : Application() {
         // Modern way to set app-wide locale (AppCompat 1.6.0+)
         app.fjj.stun.util.LocaleHelper.applyLocale(this)
 
+        // Enable Material 3 Dynamic Colors globally
+        com.google.android.material.color.DynamicColors.applyToActivitiesIfAvailable(this)
+
         // Initialize StunLogger
         initLogger(this@StunApp)
         app.fjj.stun.util.KeystoreUtils.init(this@StunApp)

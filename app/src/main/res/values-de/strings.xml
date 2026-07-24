@@ -3,6 +3,7 @@
     <string name="action_add">Hinzufügen</string>
     <string name="action_filter">Filter</string>
     <string name="action_logs">Protokolle</string>
+    <string name="action_speed_test">Geschwindigkeitstest</string>
     <string name="action_about">Über</string>
     <string name="action_settings">Einstellungen</string>
     <string name="about_source_code">Quellcode</string>
@@ -15,6 +16,8 @@
     <string name="status_disconnected">Getrennt, zum Starten tippen</string>
     <string name="status_connected">Verbunden</string>
     <string name="status_testing">Latenz testen...</string>
+    <string name="speed_test_completed">Geschwindigkeitstest abgeschlossen</string>
+    <string name="speed_test_error">Geschwindigkeitstest-Fehler: %1$s</string>
     <string name="connect">Verbinden</string>
     <string name="disconnect">Trennen</string>
 

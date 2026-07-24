@@ -3,6 +3,7 @@
     <string name="action_add">添加</string>
     <string name="action_filter">过滤</string>
     <string name="action_logs">日志</string>
+    <string name="action_speed_test">测速</string>
     <string name="action_about">关于</string>
     <string name="action_settings">设置</string>
     <string name="about_source_code">源代码</string>
@@ -14,7 +15,9 @@
 
     <string name="status_disconnected">未连接，点击启动</string>
     <string name="status_connected">已连接</string>
-    <string name="status_testing">正在测试延迟…</string>
+    <string name="status_testing">测速中...</string>
+    <string name="speed_test_completed">测速完成</string>
+    <string name="speed_test_error">测速异常: %1$s</string>
     <string name="connect">连接</string>
     <string name="disconnect">断开</string>
 

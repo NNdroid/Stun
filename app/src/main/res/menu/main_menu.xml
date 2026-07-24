@@ -14,7 +14,7 @@
         app:actionViewClass="androidx.appcompat.widget.SearchView" />
     <item
         android:id="@+id/action_speed_test"
-        android:title="测速"
+        android:title="@string/action_speed_test"
         android:icon="@drawable/ic_speed"
         app:showAsAction="always" />
     <item

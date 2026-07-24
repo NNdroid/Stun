@@ -3,6 +3,7 @@
     <string name="action_add">追加</string>
     <string name="action_filter">フィルター</string>
     <string name="action_logs">ログ</string>
+    <string name="action_speed_test">速度テスト</string>
     <string name="about_source_code">ソースコード</string>
     <string name="about_license">オープンソースライセンス</string>
     <string name="about_feedback">フィードバック</string>
@@ -13,6 +14,8 @@
     <string name="status_disconnected">未接続、タップして開始</string>
     <string name="status_connected">接続済み</string>
     <string name="status_testing">遅延をテスト中...</string>
+    <string name="speed_test_completed">速度テスト完了</string>
+    <string name="speed_test_error">速度テストエラー: %1$s</string>
     <string name="connect">接続</string>
     <string name="disconnect">切断</string>
 
