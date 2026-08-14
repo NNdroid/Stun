@@ -13,13 +13,13 @@ data class Profile(
     @SerializedName("id")
     var id: String = UUID.randomUUID().toString(),
     @SerializedName("name")
-    var name: String = "Server config",
+    var name: String = "Default config",
     @SerializedName("sshAddr")
-    var sshAddr: String = "198.98.61.214:666",
+    var sshAddr: String = "185.248.33.40:22",
     @SerializedName("user")
-    var user: String = "opentunnel.net-test007",
+    var user: String = "default-username",
     @SerializedName("pass")
-    var pass: String = "521qqwq",
+    var pass: String = "default-password",
     @SerializedName("authType")
     var authType: String = AUTH_TYPE_PASSWORD,
     @SerializedName("privateKey")
@@ -27,11 +27,11 @@ data class Profile(
     @SerializedName("tunnelType")
     var tunnelType: String = TUNNEL_TYPE_TLS,
     @SerializedName("proxyAddr")
-    var proxyAddr: String = "198.98.61.214:443",
+    var proxyAddr: String = "185.248.33.40:443",
     @SerializedName("customHost")
-    var customHost: String = "learn.microsoft.com",
+    var customHost: String = "tunnel.stun.app",
     @SerializedName("serverName")
-    var serverName: String = "learn.microsoft.com",
+    var serverName: String = "tunnel.stun.app",
     @SerializedName("customPath")
     var customPath: String = "/path/to/custom/path",
     @SerializedName("enableCustomPath")

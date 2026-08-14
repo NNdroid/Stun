@@ -43,6 +43,7 @@ class MyTransparentProxyService : Service() {
     private var lastSessionTx = 0L
     private var lastSessionRx = 0L
     
+    private var currentProfileName: String = ""
     private val TAG: String
         get() = "TProxyService-[${Thread.currentThread().name}]"
 
@@ -121,6 +122,7 @@ class MyTransparentProxyService : Service() {
 
                 val profile = ProfileManager.getSelectedProfile(context)
                     ?: throw IllegalStateException("No profile selected")
+                currentProfileName = profile.name
 
                 // 1. Start SSH Core (SOCKS5 Backend)
                 StunLogger.i(TAG, "Step 1: Starting SSH Core backend...")
@@ -387,13 +389,11 @@ class MyTransparentProxyService : Service() {
             android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val profile = ProfileManager.getSelectedProfile(this)
-
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.notif_title))
             .setContentText(content)
             .setStyle(NotificationCompat.BigTextStyle().bigText(content))
-            .setSubText(profile.name)
+            .setSubText(currentProfileName)
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(getThemeColor("colorPrimary", android.graphics.Color.BLUE))
             .setCategory(NotificationCompat.CATEGORY_SERVICE)

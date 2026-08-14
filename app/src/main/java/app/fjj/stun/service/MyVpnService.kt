@@ -41,6 +41,7 @@ class MyVpnService : VpnService() {
     private var lastSessionTx = 0L
     private var lastSessionRx = 0L
     
+    private var currentProfileName: String = ""
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     @Volatile private var userRequestedStop = false
@@ -94,9 +95,10 @@ class MyVpnService : VpnService() {
         while (!userRequestedStop) {
             try {
                 log("--- Initializing tunnel environment ---")
-                updateNotification()
-
                 val profile = ProfileManager.getSelectedProfile(this)
+                currentProfileName = profile.name
+                
+                updateNotification()
                 
                 // Core Config
                 myssh.Myssh.loadGlobalConfigFromJson(VpnConfigBuilder.buildGlobalConfig(this, profile))
@@ -267,13 +269,11 @@ class MyVpnService : VpnService() {
             android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val profile = ProfileManager.getSelectedProfile(this)
-
         val notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(app.fjj.stun.R.string.notif_title))
             .setContentText(contentText ?: getString(app.fjj.stun.R.string.notif_text))
             .setStyle(NotificationCompat.BigTextStyle().bigText(contentText ?: getString(app.fjj.stun.R.string.notif_text)))
-            .setSubText(profile.name)
+            .setSubText(currentProfileName)
             .setSmallIcon(app.fjj.stun.R.drawable.ic_notification)
             .setColor(getThemeColor("colorPrimary", android.graphics.Color.BLUE))
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
