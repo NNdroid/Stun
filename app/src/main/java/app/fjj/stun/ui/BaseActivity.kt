@@ -1,8 +1,12 @@
 package app.fjj.stun.ui
 
+import android.os.Bundle
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 
 abstract class BaseActivity : AppCompatActivity() {
-    // AppCompatDelegate.setApplicationLocales handles context wrapping for us.
-    // Manual wrapping in attachBaseContext can conflict with modern per-app language settings.
+    override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
+        super.onCreate(savedInstanceState)
+    }
 }
