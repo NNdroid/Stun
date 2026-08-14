@@ -1,21 +1,21 @@
 package app.fjj.stun.ui
 
 import android.content.pm.ApplicationInfo
-import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.appcompat.widget.SearchView
-import androidx.fragment.app.DialogFragment
+import androidx.core.widget.doAfterTextChanged
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import app.fjj.stun.R
 import app.fjj.stun.databinding.FragmentAppFilterBinding
 import app.fjj.stun.databinding.ItemAppBinding
-import kotlin.concurrent.thread
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import kotlinx.coroutines.*
 
-class AppFilterDialogFragment : DialogFragment() {
+class AppFilterDialogFragment : BottomSheetDialogFragment() {
 
     interface OnAppFilterSelectedListener {
         fun onAppFilterSelected(selectedPackages: String)
@@ -29,23 +29,33 @@ class AppFilterDialogFragment : DialogFragment() {
     private val allApps = mutableListOf<AppInfo>()
     private var filteredApps = mutableListOf<AppInfo>()
     private val selectedPackages = mutableSetOf<String>()
+    
+    private var filterOnlySelected = false
+    private val job = SupervisorJob()
+    private val uiScope = CoroutineScope(Dispatchers.Main + job)
 
     data class AppInfo(
         val name: String,
         val packageName: String,
-        val icon: Drawable?
+        @Volatile var icon: Drawable? = null
     )
 
     companion object {
         fun newInstance(selectedPackages: String): AppFilterDialogFragment {
-            val fragment = AppFilterDialogFragment()
-            fragment.initialSelectedPackages = selectedPackages
-            return fragment
+            return AppFilterDialogFragment().apply {
+                initialSelectedPackages = selectedPackages
+            }
         }
     }
 
     fun setOnAppFilterSelectedListener(listener: OnAppFilterSelectedListener) {
         this.listener = listener
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // Use custom style for transparent container and dynamic colors
+        setStyle(STYLE_NORMAL, R.style.Theme_App_BottomSheetDialog)
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -56,130 +66,148 @@ class AppFilterDialogFragment : DialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.recyclerView.layoutManager = LinearLayoutManager(context)
         val adapter = AppAdapter()
-        binding.recyclerView.adapter = adapter
-
-        selectedPackages.addAll(initialSelectedPackages.split(",").map { it.trim() }.filter { it.isNotBlank() })
-
-        loadApps(adapter)
-
-        binding.searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean = false
-            override fun onQueryTextChange(newText: String?): Boolean {
-                filterApps(newText, adapter)
-                return true
-            }
-        })
-
-        binding.btnOk.setOnClickListener {
-            listener?.onAppFilterSelected(selectedPackages.joinToString(","))
-            dismiss()
+        binding.recyclerView.apply {
+            layoutManager = LinearLayoutManager(context)
+            this.adapter = adapter
+            setHasFixedSize(true)
         }
 
-        binding.btnCancel.setOnClickListener {
+        selectedPackages.addAll(initialSelectedPackages.split(",")
+            .map { it.trim() }
+            .filter { it.isNotBlank() })
+
+        updateCountDisplay()
+        loadApps(adapter)
+
+        binding.etSearch.doAfterTextChanged { text ->
+            applyFilters(text?.toString() ?: "", adapter)
+        }
+
+        binding.chipSelectAll.setOnClickListener {
+            if (selectedPackages.size == allApps.size) {
+                selectedPackages.clear()
+            } else {
+                allApps.forEach { selectedPackages.add(it.packageName) }
+            }
+            updateCountDisplay()
+            adapter.notifyDataSetChanged()
+        }
+
+        binding.chipFilterSelected.setOnCheckedChangeListener { _, isChecked ->
+            filterOnlySelected = isChecked
+            applyFilters(binding.etSearch.text?.toString() ?: "", adapter)
+        }
+
+        binding.btnDone.setOnClickListener {
+            listener?.onAppFilterSelected(selectedPackages.joinToString(","))
             dismiss()
         }
     }
 
     private fun loadApps(adapter: AppAdapter) {
-        thread {
-            val pm = requireContext().packageManager
-            val packages = pm.getInstalledApplications(0)
-                val apps = packages
-                    .filter { (it.flags and ApplicationInfo.FLAG_SYSTEM == 0) || (it.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0) || it.packageName == requireContext().packageName }
+        binding.loadingProgress.visibility = View.VISIBLE
+        uiScope.launch {
+            val apps = withContext(Dispatchers.IO) {
+                val pm = requireContext().packageManager
+                pm.getInstalledApplications(0)
+                    .filter { (it.flags and ApplicationInfo.FLAG_SYSTEM == 0) || 
+                             (it.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0) || 
+                             it.packageName == requireContext().packageName }
                     .map {
-                    AppInfo(
-                        name = it.loadLabel(pm).toString(),
-                        packageName = it.packageName,
-                        icon = null // Load icon lazily in adapter
-                    )
-                }.sortedBy { it.name.lowercase() }
-
-            activity?.runOnUiThread {
-                allApps.clear()
-                allApps.addAll(apps)
-                filteredApps.clear()
-                filteredApps.addAll(apps)
-                adapter.notifyDataSetChanged()
+                        AppInfo(
+                            name = it.loadLabel(pm).toString(),
+                            packageName = it.packageName
+                        )
+                    }.sortedBy { it.name.lowercase() }
             }
+
+            allApps.clear()
+            allApps.addAll(apps)
+            applyFilters(binding.etSearch.text?.toString() ?: "", adapter)
+            binding.loadingProgress.visibility = View.GONE
+            
+            // Re-sync Chip state if all apps are selected
+            updateChipLabels()
         }
     }
 
-    private fun filterApps(query: String?, adapter: AppAdapter) {
+    private fun applyFilters(query: String, adapter: AppAdapter) {
+        val lowerQuery = query.lowercase()
+        val newList = allApps.filter {
+            val matchesSearch = it.name.lowercase().contains(lowerQuery) || 
+                              it.packageName.lowercase().contains(lowerQuery)
+            val matchesSelectionFilter = if (filterOnlySelected) selectedPackages.contains(it.packageName) else true
+            matchesSearch && matchesSelectionFilter
+        }
+        
         filteredApps.clear()
-        if (query.isNullOrBlank()) {
-            filteredApps.addAll(allApps)
-        } else {
-            val lowerQuery = query.lowercase()
-            allApps.filter { it.name.lowercase().contains(lowerQuery) || it.packageName.lowercase().contains(lowerQuery) }
-                .forEach { filteredApps.add(it) }
-        }
+        filteredApps.addAll(newList)
         adapter.notifyDataSetChanged()
+        updateChipLabels()
     }
 
-    override fun onStart() {
-        super.onStart()
-        dialog?.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+    private fun updateCountDisplay() {
+        binding.tvCount.text = getString(R.string.selected_count, selectedPackages.size)
+    }
+    
+    private fun updateChipLabels() {
+        binding.chipSelectAll.text = if (selectedPackages.size == allApps.size && allApps.isNotEmpty()) {
+            getString(R.string.deselect_all)
+        } else {
+            getString(R.string.select_all)
+        }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
+        job.cancel()
         _binding = null
     }
 
     inner class AppAdapter : RecyclerView.Adapter<AppAdapter.ViewHolder>() {
-        inner class ViewHolder(val binding: ItemAppBinding) : RecyclerView.ViewHolder(binding.root)
+        inner class ViewHolder(val itemBinding: ItemAppBinding) : RecyclerView.ViewHolder(itemBinding.root)
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val binding = ItemAppBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-            return ViewHolder(binding)
+            val ib = ItemAppBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+            return ViewHolder(ib)
         }
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val app = filteredApps[position]
-            holder.binding.tvAppName.text = app.name
-            holder.binding.tvPackageName.text = app.packageName
-            
-            // Load icon lazily
-            if (app.icon == null) {
-                holder.binding.ivAppIcon.setImageDrawable(null)
-                thread {
-                    try {
-                        val pm = holder.itemView.context.packageManager
-                        val icon = pm.getApplicationIcon(app.packageName)
-                        val updatedApp = app.copy(icon = icon)
-                        
-                        // Update the cached app info if it's still in the list
-                        val indexInAll = allApps.indexOfFirst { it.packageName == app.packageName }
-                        if (indexInAll != -1) {
-                            allApps[indexInAll] = updatedApp
+            holder.itemBinding.apply {
+                tvAppName.text = app.name
+                tvPackageName.text = app.packageName
+                cbSelected.isChecked = selectedPackages.contains(app.packageName)
+                
+                // Lazy load icon
+                if (app.icon == null) {
+                    ivAppIcon.setImageDrawable(null)
+                    uiScope.launch {
+                        val icon = withContext(Dispatchers.IO) {
+                            try {
+                                holder.itemView.context.packageManager.getApplicationIcon(app.packageName)
+                            } catch (e: Exception) { null }
                         }
-                        
-                        holder.itemView.post {
-                            val currentPos = holder.bindingAdapterPosition
-                            if (currentPos != RecyclerView.NO_POSITION && filteredApps[currentPos].packageName == app.packageName) {
-                                filteredApps[currentPos] = updatedApp
-                                holder.binding.ivAppIcon.setImageDrawable(icon)
-                            }
+                        if (icon != null && filteredApps.getOrNull(holder.bindingAdapterPosition)?.packageName == app.packageName) {
+                            app.icon = icon
+                            ivAppIcon.setImageDrawable(icon)
                         }
-                    } catch (e: Exception) {
-                        // Ignore
                     }
-                }
-            } else {
-                holder.binding.ivAppIcon.setImageDrawable(app.icon)
-            }
-
-            holder.binding.cbSelected.isChecked = selectedPackages.contains(app.packageName)
-
-            holder.itemView.setOnClickListener {
-                if (selectedPackages.contains(app.packageName)) {
-                    selectedPackages.remove(app.packageName)
                 } else {
-                    selectedPackages.add(app.packageName)
+                    ivAppIcon.setImageDrawable(app.icon)
                 }
-                notifyItemChanged(position)
+
+                root.setOnClickListener {
+                    if (selectedPackages.contains(app.packageName)) {
+                        selectedPackages.remove(app.packageName)
+                    } else {
+                        selectedPackages.add(app.packageName)
+                    }
+                    cbSelected.isChecked = !cbSelected.isChecked
+                    updateCountDisplay()
+                    updateChipLabels()
+                }
             }
         }
 

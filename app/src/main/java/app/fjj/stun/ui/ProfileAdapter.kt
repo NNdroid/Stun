@@ -1,13 +1,17 @@
 package app.fjj.stun.ui
 
+import android.graphics.Color
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import app.fjj.stun.R
 import app.fjj.stun.databinding.ItemProfileBinding
 import app.fjj.stun.repo.Profile
+import androidx.core.graphics.toColorInt
 
 class ProfileAdapter(
     private var selectedProfileId: String?,
@@ -49,7 +53,9 @@ class ProfileAdapter(
                         }
                     }
                     PAYLOAD_DELAY -> {
-                        holder.binding.tvDelay.text = delays[profile.id] ?: ""
+                        val delay = delays[profile.id] ?: ""
+                        holder.binding.tvDelay.text = delay
+                        holder.binding.tvDelay.setTextColor(getDelayColor(holder.binding.root.context, delay))
                     }
                 }
             }
@@ -59,7 +65,11 @@ class ProfileAdapter(
     override fun onBindViewHolder(holder: ProfileViewHolder, position: Int) {
         val profile = getItem(position)
         holder.binding.apply {
+            val context = root.context
             tvName.text = profile.name
+            
+            // Avatar letter
+            tvAvatarLetter.text = (profile.name.takeIf { it.isNotBlank() }?.firstOrNull()?.toString() ?: "S").uppercase()
             
             // Build the specific proxy chain display
             val chain = if (profile.tunnelType == Profile.TUNNEL_TYPE_BASE) {
@@ -67,16 +77,62 @@ class ProfileAdapter(
             } else {
                 "${profile.proxyAddr} ➔ ${profile.sshAddr}"
             }
-            
             tvAddr.text = chain
+            
+            // User info display
+            tvUserInfo.text = context.getString(R.string.label_user, profile.user)
+            tvUserInfo.visibility = if (profile.user.isNotBlank()) View.VISIBLE else View.GONE
+            
+            // Protocol Type
             tvType.text = profile.tunnelType.uppercase()
             
-            val isSelected = profile.id == selectedProfileId
-            selectionIndicator.visibility = if (isSelected) View.VISIBLE else View.GONE
-            cardView.strokeWidth = if (isSelected) 2 else 0
-            cardView.strokeColor = holder.binding.root.context.getColor(app.fjj.stun.R.color.primary)
+            // SNI & Host Display Logic (Matches ProfileEditActivity)
+            val isServerNameSupported = profile.tunnelType in listOf(
+                Profile.TUNNEL_TYPE_TLS, Profile.TUNNEL_TYPE_WSS, Profile.TUNNEL_TYPE_H2, Profile.TUNNEL_TYPE_QUIC,
+                Profile.TUNNEL_TYPE_GRPC, Profile.TUNNEL_TYPE_H3, Profile.TUNNEL_TYPE_WT, Profile.TUNNEL_TYPE_MASQUE,
+                Profile.TUNNEL_TYPE_XHTTP
+            )
             
-            tvDelay.text = delays[profile.id] ?: ""
+            val isCustomHostSupported = profile.tunnelType != Profile.TUNNEL_TYPE_BASE && 
+                    profile.tunnelType != Profile.TUNNEL_TYPE_TLS && 
+                    profile.tunnelType != Profile.TUNNEL_TYPE_QUIC
+
+            if (isServerNameSupported && profile.serverName.isNotBlank()) {
+                tvSni.text = context.getString(R.string.label_sni, profile.serverName)
+                tvSni.visibility = View.VISIBLE
+            } else {
+                tvSni.visibility = View.GONE
+            }
+
+            if (isCustomHostSupported && profile.customHost.isNotBlank()) {
+                tvHost.text = context.getString(R.string.label_host, profile.customHost)
+                tvHost.visibility = View.VISIBLE
+            } else {
+                tvHost.visibility = View.GONE
+            }
+            
+            // DNS Badge
+            ivDnsBadge.visibility = if (profile.dnsOverride) View.VISIBLE else View.GONE
+            
+            val isSelected = profile.id == selectedProfileId
+            
+            // Safe color resolution using runtime lookup
+            val primaryColor = getThemeColor(context, "colorPrimary", Color.BLUE)
+            val surfaceLow = getThemeColor(context, "colorSurfaceContainerLow", Color.LTGRAY)
+            val surfaceHigh = getThemeColor(context, "colorSurfaceContainerHigh", Color.GRAY)
+
+            cardView.strokeWidth = if (isSelected) 3 else 0
+            cardView.strokeColor = primaryColor
+            
+            if (isSelected) {
+                cardView.setCardBackgroundColor(surfaceHigh)
+            } else {
+                cardView.setCardBackgroundColor(surfaceLow)
+            }
+            
+            val delay = delays[profile.id] ?: ""
+            tvDelay.text = delay
+            tvDelay.setTextColor(getDelayColor(context, delay))
 
             if (profile.totalTx > 0 || profile.totalRx > 0) {
                 tvStats.visibility = View.VISIBLE
@@ -86,10 +142,40 @@ class ProfileAdapter(
             }
 
             root.setOnClickListener { onProfileClick(profile) }
+            btnShare.setOnClickListener { onShareClick(profile) }
             btnEdit.setOnClickListener { onEditClick(profile) }
             btnDelete.setOnClickListener { onDeleteClick(profile) }
-            btnShare.setOnClickListener { onShareClick(profile) }
         }
+    }
+
+    private fun getThemeColor(context: android.content.Context, attrName: String, default: Int): Int {
+        val attrId = context.resources.getIdentifier(attrName, "attr", context.packageName).takeIf { it != 0 }
+            ?: context.resources.getIdentifier(attrName, "attr", "android").takeIf { it != 0 }
+            ?: return default
+            
+        val typedValue = TypedValue()
+        return if (context.theme.resolveAttribute(attrId, typedValue, true)) {
+            if (typedValue.resourceId != 0) {
+                androidx.core.content.ContextCompat.getColor(context, typedValue.resourceId)
+            } else {
+                typedValue.data
+            }
+        } else {
+            default
+        }
+    }
+
+    private fun getDelayColor(context: android.content.Context, delay: String): Int {
+        if (delay.isEmpty() || delay == "...") return Color.GRAY
+        if (delay.contains("ms")) {
+            val ms = delay.replace(" ms", "").toIntOrNull() ?: return Color.GRAY
+            return when {
+                ms < 200 -> getThemeColor(context, "colorPrimary", Color.GREEN)
+                ms < 500 -> getThemeColor(context, "colorTertiary", Color.YELLOW)
+                else -> getThemeColor(context, "colorError", Color.RED)
+            }
+        }
+        return getThemeColor(context, "colorError", Color.RED)
     }
 
     fun getProfiles() = allProfiles
@@ -101,10 +187,6 @@ class ProfileAdapter(
         
         applyFilterAndSubmit()
         
-        // If only the selection changed but the list content is the same, 
-        // ListAdapter might not re-bind. We might need to manually refresh visible items 
-        // or include isSelected in the DiffUtil (which requires a wrapper).
-        // For simplicity, if selection changed, we refresh the list.
         if (selectionChanged) {
             notifyDataSetChanged() 
         }

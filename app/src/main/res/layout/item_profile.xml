@@ -1,145 +1,241 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/card_view"
     style="?attr/materialCardViewElevatedStyle"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginHorizontal="16dp"
-    android:layout_marginVertical="8dp"
+    android:layout_marginHorizontal="12dp"
+    android:layout_marginVertical="3dp"
     app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-    app:cardCornerRadius="24dp"
-    app:cardElevation="2dp">
+    app:cardCornerRadius="16dp"
+    app:cardElevation="1dp"
+    app:strokeWidth="0dp">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:animateLayoutChanges="true"
-        android:padding="20dp">
+        android:padding="10dp">
 
-        <View
-            android:id="@+id/selection_indicator"
-            android:layout_width="6dp"
+        <!-- Leading Avatar (Compact) -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/avatar_container"
+            android:layout_width="40dp"
             android:layout_height="40dp"
-            android:background="?attr/colorPrimary"
-            android:visibility="gone"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="?attr/colorPrimaryContainer"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent"
+            android:importantForAccessibility="no">
 
+            <TextView
+                android:id="@+id/tv_avatar_letter"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:textColor="?attr/colorOnPrimaryContainer"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textStyle="bold"
+                android:importantForAccessibility="no"
+                tools:text="S" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Main Info -->
         <TextView
             android:id="@+id/tv_name"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
+            android:layout_marginStart="12dp"
             android:ellipsize="end"
             android:maxLines="1"
-            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textAppearance="?attr/textAppearanceTitleSmall"
             android:textStyle="bold"
-            app:layout_constraintEnd_toStartOf="@+id/btn_share"
-            app:layout_constraintStart_toEndOf="@id/selection_indicator"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintEnd_toStartOf="@+id/layout_actions"
+            app:layout_constraintStart_toEndOf="@id/avatar_container"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="Compact Node Name" />
 
         <TextView
             android:id="@+id/tv_addr"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textAppearance="?attr/textAppearanceBodyMedium"
-            android:textColor="?android:attr/textColorSecondary"
-            app:layout_constraintEnd_toStartOf="@+id/btn_share"
-            app:layout_constraintStart_toStartOf="@id/tv_name"
-            app:layout_constraintTop_toBottomOf="@id/tv_name" />
-
-        <com.google.android.material.chip.Chip
-            android:id="@+id/tv_type"
-            style="@style/Widget.Material3.Chip.Suggestion"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:padding="0dp"
-            android:text="ssh"
-            android:textSize="10sp"
-            app:chipCornerRadius="8dp"
-            app:layout_constraintStart_toStartOf="@id/tv_name"
-            app:layout_constraintTop_toBottomOf="@id/tv_addr" />
-
-        <TextView
-            android:id="@+id/tv_delay"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:ellipsize="middle"
+            android:maxLines="1"
             android:textAppearance="?attr/textAppearanceLabelSmall"
-            android:textColor="@android:color/holo_green_dark"
-            app:layout_constraintBottom_toBottomOf="@id/tv_type"
-            app:layout_constraintStart_toEndOf="@id/tv_type"
-            app:layout_constraintTop_toTopOf="@id/tv_type" />
+            android:textColor="?android:attr/textColorSecondary"
+            app:layout_constraintEnd_toEndOf="@id/tv_name"
+            app:layout_constraintStart_toStartOf="@id/tv_name"
+            app:layout_constraintTop_toBottomOf="@id/tv_name"
+            tools:text="1.2.3.4:22222" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_share"
-            style="?attr/borderlessButtonStyle"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:insetLeft="0dp"
-            android:insetTop="0dp"
-            android:insetRight="0dp"
-            android:insetBottom="0dp"
-            android:padding="0dp"
-            android:contentDescription="@string/desc_share_profile"
-            app:icon="@drawable/ic_share"
-            app:iconGravity="textStart"
-            app:iconPadding="0dp"
-            app:iconSize="24dp"
-            app:layout_constraintEnd_toStartOf="@+id/btn_edit"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_edit"
-            style="?attr/borderlessButtonStyle"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:insetLeft="0dp"
-            android:insetTop="0dp"
-            android:insetRight="0dp"
-            android:insetBottom="0dp"
-            android:padding="0dp"
-            android:contentDescription="@string/desc_edit_profile_action"
-            app:icon="@drawable/ic_edit"
-            app:iconGravity="textStart"
-            app:iconPadding="0dp"
-            app:iconSize="24dp"
-            app:layout_constraintEnd_toStartOf="@+id/btn_delete"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_delete"
-            style="?attr/borderlessButtonStyle"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:insetLeft="0dp"
-            android:insetTop="0dp"
-            android:insetRight="0dp"
-            android:insetBottom="0dp"
-            android:padding="0dp"
-            android:contentDescription="@string/desc_delete_profile"
-            app:icon="@drawable/ic_delete"
-            app:iconGravity="textStart"
-            app:iconPadding="0dp"
-            app:iconSize="24dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
+        <!-- User Info -->
         <TextView
-            android:id="@+id/tv_stats"
+            android:id="@+id/tv_user_info"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:gravity="center"
             android:textAppearance="?attr/textAppearanceLabelSmall"
-            android:textColor="?android:attr/textColorSecondary"
-            app:layout_constraintEnd_toEndOf="@id/btn_delete"
-            app:layout_constraintStart_toStartOf="@id/btn_share"
-            app:layout_constraintTop_toBottomOf="@id/btn_share" />
+            android:textColor="?attr/colorPrimary"
+            android:textSize="10sp"
+            android:alpha="0.7"
+            app:layout_constraintStart_toStartOf="@id/tv_name"
+            app:layout_constraintEnd_toEndOf="@id/tv_name"
+            app:layout_constraintTop_toBottomOf="@id/tv_addr"
+            tools:text="User: root" />
+
+        <!-- Action Buttons (Compact size) -->
+        <LinearLayout
+            android:id="@+id/layout_actions"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <ImageButton
+                android:id="@+id/btn_share"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/desc_share_profile"
+                android:padding="9dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_share"
+                app:tint="?attr/colorOnSurfaceVariant" />
+
+            <ImageButton
+                android:id="@+id/btn_edit"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/desc_edit_profile_action"
+                android:padding="9dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_edit"
+                app:tint="?attr/colorOnSurfaceVariant" />
+
+            <ImageButton
+                android:id="@+id/btn_delete"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/desc_delete_profile"
+                android:padding="9dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_delete"
+                app:tint="?attr/colorOnSurfaceVariant" />
+        </LinearLayout>
+
+        <!-- Dynamic Badges -->
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chip_group_params"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            app:chipSpacingHorizontal="4dp"
+            app:chipSpacingVertical="0dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="@id/tv_name"
+            app:layout_constraintTop_toBottomOf="@id/tv_user_info">
+
+            <TextView
+                android:id="@+id/tv_type"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_badge_type"
+                android:paddingHorizontal="5dp"
+                android:paddingVertical="1dp"
+                android:textAllCaps="true"
+                android:textSize="9sp"
+                android:textAppearance="?attr/textAppearanceLabelSmall"
+                android:textColor="?attr/colorOnTertiaryContainer"
+                android:textStyle="bold"
+                tools:text="SSH" />
+
+            <TextView
+                android:id="@+id/tv_sni"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_badge_type"
+                android:backgroundTint="?attr/colorSecondaryContainer"
+                android:paddingHorizontal="5dp"
+                android:paddingVertical="1dp"
+                android:textSize="9sp"
+                android:textAppearance="?attr/textAppearanceLabelSmall"
+                android:textColor="?attr/colorOnSecondaryContainer"
+                android:visibility="gone"
+                tools:text="SNI: m.me"
+                tools:visibility="visible" />
+
+            <TextView
+                android:id="@+id/tv_host"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_badge_type"
+                android:backgroundTint="?attr/colorTertiaryContainer"
+                android:paddingHorizontal="5dp"
+                android:paddingVertical="1dp"
+                android:textSize="9sp"
+                android:textAppearance="?attr/textAppearanceLabelSmall"
+                android:textColor="?attr/colorOnTertiaryContainer"
+                android:visibility="gone"
+                tools:text="Host: google.com"
+                tools:visibility="visible" />
+
+            <ImageView
+                android:id="@+id/iv_dns_badge"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:layout_gravity="center_vertical"
+                android:src="@drawable/ic_lock"
+                app:tint="?attr/colorTertiary"
+                android:visibility="gone"
+                android:contentDescription="@string/desc_dns_override_toggle"
+                tools:visibility="visible" />
+
+        </com.google.android.material.chip.ChipGroup>
+
+        <!-- Stats and Delay -->
+        <LinearLayout
+            android:id="@+id/layout_stats_row"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:gravity="center_vertical"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="@id/tv_name"
+            app:layout_constraintTop_toBottomOf="@id/chip_group_params"
+            android:importantForAccessibility="yes">
+
+            <TextView
+                android:id="@+id/tv_delay"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="10sp"
+                android:textAppearance="?attr/textAppearanceLabelSmall"
+                android:textStyle="bold"
+                tools:text="50 ms"
+                tools:textColor="#4CAF50"
+                android:contentDescription="@string/desc_connection_status" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:importantForAccessibility="no" />
+
+            <TextView
+                android:id="@+id/tv_stats"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="10sp"
+                android:textAppearance="?attr/textAppearanceLabelSmall"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:alpha="0.5"
+                tools:text="↑ 1.2 MB  ↓ 5.4 MB" />
+        </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </com.google.android.material.card.MaterialCardView>

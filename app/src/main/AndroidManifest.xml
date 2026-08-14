@@ -25,6 +25,7 @@
 
         <activity
             android:name=".ui.MainActivity"
+            android:theme="@style/Theme.App.Starting"
             android:exported="true" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -36,24 +37,6 @@
         <activity
             android:name=".ui.ProfileEditActivity"
             android:label="@string/edit_profile"
-            android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
-
-        <activity
-            android:name=".ui.SettingsActivity"
-            android:label="@string/action_settings"
-            android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
-
-        <activity
-            android:name=".ui.LogsActivity"
-            android:label="@string/app_logs"
-            android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
-
-        <activity
-            android:name=".ui.AboutActivity"
-            android:label="@string/action_about"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
 

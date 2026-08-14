@@ -2,5 +2,5 @@
 plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.ksp) apply false
-    id("com.android.legacy-kapt") version "9.2.1" apply false
+    id("com.android.legacy-kapt") version "9.3.1" apply false
 }

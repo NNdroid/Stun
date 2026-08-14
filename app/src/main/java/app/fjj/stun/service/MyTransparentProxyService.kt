@@ -350,7 +350,14 @@ class MyTransparentProxyService : Service() {
         refreshNotification()
     }
 
+    private var lastNotificationUpdateTime = 0L
     private suspend fun refreshNotification() {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastNotificationUpdateTime < 1000L) {
+            return
+        }
+        lastNotificationUpdateTime = currentTime
+
         val statusText = "↑ ${app.fjj.stun.util.AppUtils.formatBytes(currentTxRate)}/s (${app.fjj.stun.util.AppUtils.formatBytes(currentTxTotal)}) " +
                          "↓ ${app.fjj.stun.util.AppUtils.formatBytes(currentRxRate)}/s (${app.fjj.stun.util.AppUtils.formatBytes(currentRxTotal)}) | " +
                          "Conns: $currentActiveConns/$currentTotalConns | " +
@@ -368,13 +375,52 @@ class MyTransparentProxyService : Service() {
     }
 
     private fun updateNotification(content: String) {
+        val stopIntent = Intent(this, MyTransparentProxyService::class.java).apply { action = ACTION_STOP }
+        val stopPendingIntent = android.app.PendingIntent.getService(
+            this, 0, stopIntent,
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val mainIntent = Intent(this, app.fjj.stun.ui.MainActivity::class.java)
+        val mainPendingIntent = android.app.PendingIntent.getActivity(
+            this, 0, mainIntent,
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val profile = ProfileManager.getSelectedProfile(this)
+
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.notif_title))
             .setContentText(content)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(content))
+            .setSubText(profile.name)
             .setSmallIcon(R.drawable.ic_notification)
+            .setColor(getThemeColor("colorPrimary", android.graphics.Color.BLUE))
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setContentIntent(mainPendingIntent)
+            .addAction(R.drawable.ic_pause, getString(R.string.disconnect), stopPendingIntent)
             .build()
         startForeground(NOTIFICATION_ID, notification)
+    }
+
+    private fun getThemeColor(attrName: String, default: Int): Int {
+        val attrId = resources.getIdentifier(attrName, "attr", packageName).takeIf { it != 0 }
+            ?: resources.getIdentifier(attrName, "attr", "android").takeIf { it != 0 }
+            ?: return default
+            
+        val typedValue = android.util.TypedValue()
+        return if (theme.resolveAttribute(attrId, typedValue, true)) {
+            if (typedValue.resourceId != 0) {
+                androidx.core.content.ContextCompat.getColor(this, typedValue.resourceId)
+            } else {
+                typedValue.data
+            }
+        } else {
+            default
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

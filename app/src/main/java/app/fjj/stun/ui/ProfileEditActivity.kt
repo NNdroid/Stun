@@ -15,6 +15,7 @@ import app.fjj.stun.ui.viewmodel.ProfileEditViewModel
 import androidx.activity.viewModels
 import app.fjj.stun.util.KeystoreUtils
 import androidx.core.view.isVisible
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 class ProfileEditActivity : BaseActivity() {
 
@@ -34,6 +35,14 @@ class ProfileEditActivity : BaseActivity() {
         binding = ActivityProfileEditBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        setupThemeAndNavigation()
+        setupListeners()
+        observeViewModel()
+        
+        viewModel.loadProfile(profileId)
+    }
+
+    private fun setupThemeAndNavigation() {
         filterModes = arrayOf(
             getString(app.fjj.stun.R.string.filter_disallow_mode),
             getString(app.fjj.stun.R.string.filter_allow_mode)
@@ -46,73 +55,38 @@ class ProfileEditActivity : BaseActivity() {
         val isEdit = profileId != null
         supportActionBar?.title = if (isEdit) getString(app.fjj.stun.R.string.edit_profile) else getString(app.fjj.stun.R.string.add_profile)
 
-        val initialPaddingBottom = binding.btnSave.parent.let { (it as View).paddingBottom }
-
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
-            
-            v.updatePadding(left = systemBars.left, right = systemBars.right)
-            binding.appBar.updatePadding(top = systemBars.top)
-            
+            v.updatePadding(left = systemBars.left, right = systemBars.right, top = systemBars.top)
             binding.btnSave.parent.let { 
-                (it as View).updatePadding(bottom = initialPaddingBottom + systemBars.bottom + ime.bottom)
+                (it as View).updatePadding(bottom = systemBars.bottom + ime.bottom + 16)
             }
             insets
         }
+    }
 
-        binding.spinnerTunnelType.setOnItemClickListener { _, _, _, _ ->
-            updateTunnelTypeVisibility()
-        }
+    private fun setupListeners() {
+        // Dropdown changes
+        binding.spinnerTunnelType.setOnItemClickListener { _, _, _, _ -> updateUIBasedOnSettings() }
+        binding.spinnerAuthType.setOnItemClickListener { _, _, position, _ -> updateAuthTypeVisibility(authTypes[position]) }
+        binding.spinnerAlpn.setOnItemClickListener { _, _, _, _ -> /* Update logic if needed */ }
 
-        binding.spinnerAuthType.setOnItemClickListener { _, _, position, _ ->
-            updateAuthTypeVisibility(authTypes[position])
-        }
+        // Switch changes
+        binding.switchDnsOverride.setOnCheckedChangeListener { _, isChecked -> binding.layoutDnsOverride.isVisible = isChecked }
+        binding.switchAuthRequired.setOnCheckedChangeListener { _, _ -> updateProxyAuthVisibility() }
+        binding.switchAppFilterOverride.setOnCheckedChangeListener { _, isChecked -> binding.layoutAppFilterOverride.isVisible = isChecked }
+        binding.switchVerifySshFingerprint.setOnCheckedChangeListener { _, isChecked -> binding.layoutSshFingerprint.isVisible = isChecked }
+        binding.switchVerifyCertFingerprint.setOnCheckedChangeListener { _, isChecked -> binding.layoutCertFingerprint.isVisible = isChecked }
+        binding.switchEnableCustomPath.setOnCheckedChangeListener { _, _ -> updateUIBasedOnSettings() }
 
-        binding.switchDnsOverride.setOnCheckedChangeListener { _, isChecked ->
-            binding.layoutDnsOverride.visibility = if (isChecked) View.VISIBLE else View.GONE
-        }
+        // Real-time Validation & Error Clearing
+        binding.etSshAddr.doAfterTextChanged { binding.layoutSshAddr.error = null }
+        binding.etProxyAddr.doAfterTextChanged { binding.layoutProxyAddr.error = null }
+        binding.etPrivateKey.doAfterTextChanged { binding.layoutPrivateKey.error = null }
+        binding.etPass.doAfterTextChanged { binding.layoutPass.error = null }
 
-        binding.switchAuthRequired.setOnCheckedChangeListener { _, _ ->
-            updateProxyAuthTokenVisibility()
-        }
-
-        binding.switchAppFilterOverride.setOnCheckedChangeListener { _, isChecked ->
-            binding.layoutAppFilterOverride.visibility = if (isChecked) View.VISIBLE else View.GONE
-        }
-
-        binding.switchVerifySshFingerprint.setOnCheckedChangeListener { _, isChecked ->
-            binding.layoutSshFingerprint.visibility = if (isChecked) View.VISIBLE else View.GONE
-        }
-
-        binding.switchVerifyCertFingerprint.setOnCheckedChangeListener { _, isChecked ->
-            binding.layoutCertFingerprint.visibility = if (isChecked) View.VISIBLE else View.GONE
-        }
-
-        binding.switchEnableCustomPath.setOnCheckedChangeListener { _, _ ->
-            updateTunnelTypeVisibility()
-        }
-
-        binding.etSshAddr.doAfterTextChanged { text ->
-            validateAddress(text.toString(), binding.layoutSshAddr)
-        }
-
-        binding.etProxyAddr.doAfterTextChanged { text ->
-            validateAddress(text.toString(), binding.layoutProxyAddr)
-        }
-
-        binding.etPrivateKey.doAfterTextChanged { text ->
-            validatePrivateKey(text.toString())
-        }
-
-        binding.etPass.doAfterTextChanged { text ->
-            validatePassword(text.toString())
-        }
-
-        binding.etCustomPath.doAfterTextChanged { text ->
-            validatePath(text.toString())
-        }
-
+        // App Filter Dialog
         binding.etFilterApps.setOnClickListener {
             val fragment = AppFilterDialogFragment.newInstance(binding.etFilterApps.text.toString())
             fragment.setOnAppFilterSelectedListener(object : AppFilterDialogFragment.OnAppFilterSelectedListener {
@@ -122,72 +96,14 @@ class ProfileEditActivity : BaseActivity() {
             })
             fragment.show(supportFragmentManager, "AppFilterDialog")
         }
-        binding.etFilterApps.isFocusable = false
-        binding.etFilterApps.isClickable = true
 
-        binding.btnSave.setOnClickListener {
-            saveProfile(isEdit)
-        }
+        binding.btnSave.setOnClickListener { validateAndSave() }
+    }
 
+    private fun observeViewModel() {
         viewModel.profile.observe(this) { profile ->
             currentProfile = profile
-            
-            binding.etName.setText(profile.name)
-            binding.etSshAddr.setText(profile.sshAddr)
-            binding.etUser.setText(profile.user)
-            
-            binding.spinnerAuthType.setText(if (profile.authType == Profile.AUTH_TYPE_PRIVATEKEY) getString(app.fjj.stun.R.string.auth_key) else getString(app.fjj.stun.R.string.auth_password), false)
-            updateAuthTypeVisibility(profile.authType)
-            binding.etPass.setText("")
-            binding.etPrivateKey.setText(profile.privateKey)
-            binding.etKeyPass.setText("")
-
-            binding.spinnerTunnelType.setText(profile.tunnelType, false)
-            updateTunnelTypeVisibility()
-
-            binding.etHttpPayload.setText(profile.httpPayload)
-            binding.switchDisableStatusCheck.isChecked = profile.disableStatusCheck
-            binding.etProxyAddr.setText(profile.proxyAddr)
-            binding.etCustomHost.setText(profile.customHost)
-            binding.etServerName.setText(profile.serverName)
-            binding.switchEnableCustomPath.isChecked = profile.enableCustomPath
-            binding.etCustomPath.setText(profile.customPath)
-
-            binding.switchAuthRequired.isChecked = profile.proxyAuthRequired
-            binding.etAuthToken.setText(profile.proxyAuthToken)
-            binding.etAuthUser.setText(profile.proxyAuthUser)
-            binding.etAuthPass.setText(profile.proxyAuthPass)
-
-            // SSH Fingerprint
-            binding.switchVerifySshFingerprint.isChecked = profile.verifyFingerprint
-            binding.layoutSshFingerprint.visibility = if (profile.verifyFingerprint) View.VISIBLE else View.GONE
-            binding.etSshFingerprint.setText(profile.serverFingerprint)
-
-            // Certificate Fingerprint
-            binding.switchVerifyCertFingerprint.isChecked = profile.verifyCertFingerprint
-            binding.layoutCertFingerprint.visibility = if (profile.verifyCertFingerprint) View.VISIBLE else View.GONE
-            binding.etCertFingerprint.setText(profile.serverCertFingerprint)
-
-            binding.spinnerAlpn.setText(profile.alpn, false)
-
-            // DNS and Routing Overrides
-            binding.switchDnsOverride.isChecked = profile.dnsOverride
-            binding.layoutDnsOverride.visibility = if (profile.dnsOverride) View.VISIBLE else View.GONE
-            binding.etRemoteDns.setText(profile.remoteDns)
-            binding.etLocalDns.setText(profile.localDns)
-            binding.spinnerUdpgwVersion.setText(profile.udpgwVersion, false)
-            binding.etUdpgwAddr.setText(profile.udpgwAddr)
-            binding.etGeositeDirect.setText(profile.geositeDirect)
-            binding.etGeoipDirect.setText(profile.geoipDirect)
-
-            // App Filtering Overrides
-            binding.switchAppFilterOverride.isChecked = profile.appFilterOverride
-            binding.layoutAppFilterOverride.visibility = if (profile.appFilterOverride) View.VISIBLE else View.GONE
-            binding.spinnerFilterMode.setText(if (profile.filterMode == 1) getString(app.fjj.stun.R.string.filter_allow_mode) else getString(app.fjj.stun.R.string.filter_disallow_mode), false)
-            binding.etFilterApps.setText(profile.filterApps)
-
-            // Initialize adapters AFTER setting values to ensure full dropdown lists
-            setupAdapters()
+            bindProfileToUI(profile)
         }
 
         viewModel.saveResult.observe(this) { success ->
@@ -196,109 +112,198 @@ class ProfileEditActivity : BaseActivity() {
                 finish()
             }
         }
+    }
 
-        viewModel.loadProfile(profileId)
+    private fun bindProfileToUI(profile: Profile) {
+        binding.apply {
+            etName.setText(profile.name)
+            etSshAddr.setText(profile.sshAddr)
+            etUser.setText(profile.user)
+            
+            spinnerAuthType.setText(if (profile.authType == Profile.AUTH_TYPE_PRIVATEKEY) 
+                getString(app.fjj.stun.R.string.auth_key) else getString(app.fjj.stun.R.string.auth_password), false)
+            updateAuthTypeVisibility(profile.authType)
+            
+            etPrivateKey.setText(profile.privateKey)
+            etKeyPass.setText("") // Clear for security
+
+            spinnerTunnelType.setText(profile.tunnelType, false)
+            etHttpPayload.setText(profile.httpPayload)
+            switchDisableStatusCheck.isChecked = profile.disableStatusCheck
+            etProxyAddr.setText(profile.proxyAddr)
+            etCustomHost.setText(profile.customHost)
+            etServerName.setText(profile.serverName)
+            switchEnableCustomPath.isChecked = profile.enableCustomPath
+            etCustomPath.setText(profile.customPath)
+
+            switchAuthRequired.isChecked = profile.proxyAuthRequired
+            etAuthToken.setText(profile.proxyAuthToken)
+            etAuthUser.setText(profile.proxyAuthUser)
+            etAuthPass.setText(profile.proxyAuthPass)
+
+            switchVerifySshFingerprint.isChecked = profile.verifyFingerprint
+            layoutSshFingerprint.isVisible = profile.verifyFingerprint
+            etSshFingerprint.setText(profile.serverFingerprint)
+
+            switchVerifyCertFingerprint.isChecked = profile.verifyCertFingerprint
+            layoutCertFingerprint.isVisible = profile.verifyCertFingerprint
+            etCertFingerprint.setText(profile.serverCertFingerprint)
+
+            spinnerAlpn.setText(profile.alpn, false)
+
+            switchDnsOverride.isChecked = profile.dnsOverride
+            layoutDnsOverride.isVisible = profile.dnsOverride
+            etRemoteDns.setText(profile.remoteDns)
+            etLocalDns.setText(profile.localDns)
+            spinnerUdpgwVersion.setText(profile.udpgwVersion, false)
+            etUdpgwAddr.setText(profile.udpgwAddr)
+            etGeositeDirect.setText(profile.geositeDirect)
+            etGeoipDirect.setText(profile.geoipDirect)
+
+            switchAppFilterOverride.isChecked = profile.appFilterOverride
+            layoutAppFilterOverride.isVisible = profile.appFilterOverride
+            spinnerFilterMode.setText(if (profile.filterMode == 1) 
+                getString(app.fjj.stun.R.string.filter_allow_mode) else getString(app.fjj.stun.R.string.filter_disallow_mode), false)
+            etFilterApps.setText(profile.filterApps)
+
+            updateUIBasedOnSettings()
+            setupAdapters()
+        }
     }
 
     private fun setupAdapters() {
-        val tunnelTypes = Profile.getAllTunnelTypes()
-        binding.spinnerTunnelType.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, tunnelTypes))
-
-        val authAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, authTypes.map {
-            if (it == Profile.AUTH_TYPE_PASSWORD) getString(app.fjj.stun.R.string.auth_password) else getString(app.fjj.stun.R.string.auth_key)
-        })
-        binding.spinnerAuthType.setAdapter(authAdapter)
-
-        binding.spinnerFilterMode.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, filterModes))
-
-        binding.spinnerUdpgwVersion.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, udpgwVersions))
-
-        binding.spinnerAlpn.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, alpnOptionsH3))
+        binding.apply {
+            spinnerTunnelType.setAdapter(ArrayAdapter(this@ProfileEditActivity, android.R.layout.simple_dropdown_item_1line, Profile.getAllTunnelTypes()))
+            spinnerAuthType.setAdapter(ArrayAdapter(this@ProfileEditActivity, android.R.layout.simple_dropdown_item_1line, authTypes.map {
+                if (it == Profile.AUTH_TYPE_PASSWORD) getString(app.fjj.stun.R.string.auth_password) else getString(app.fjj.stun.R.string.auth_key)
+            }))
+            spinnerFilterMode.setAdapter(ArrayAdapter(this@ProfileEditActivity, android.R.layout.simple_dropdown_item_1line, filterModes))
+            spinnerUdpgwVersion.setAdapter(ArrayAdapter(this@ProfileEditActivity, android.R.layout.simple_dropdown_item_1line, udpgwVersions))
+            
+            val isXhttp = spinnerTunnelType.text.toString() == Profile.TUNNEL_TYPE_XHTTP
+            spinnerAlpn.setAdapter(ArrayAdapter(this@ProfileEditActivity, android.R.layout.simple_dropdown_item_1line, if (isXhttp) alpnOptionsH3 else alpnOptionsNoH3))
+        }
     }
 
-    private fun saveProfile(isEdit: Boolean) {
-        val authTypeString = binding.spinnerAuthType.text.toString()
-        val authType = if (authTypeString == getString(app.fjj.stun.R.string.auth_key)) Profile.AUTH_TYPE_PRIVATEKEY else Profile.AUTH_TYPE_PASSWORD
+    private fun updateUIBasedOnSettings() {
+        val selected = binding.spinnerTunnelType.text.toString()
+        val isHttp = selected == Profile.TUNNEL_TYPE_HTTP
+        val isBase = selected == Profile.TUNNEL_TYPE_BASE
+        val isMasque = selected == Profile.TUNNEL_TYPE_MASQUE
+
+        val isCustomPathSupported = selected in listOf(
+            Profile.TUNNEL_TYPE_WS, Profile.TUNNEL_TYPE_WSS, Profile.TUNNEL_TYPE_H2, Profile.TUNNEL_TYPE_H2C,
+            Profile.TUNNEL_TYPE_GRPC, Profile.TUNNEL_TYPE_GRPCC, Profile.TUNNEL_TYPE_H3, Profile.TUNNEL_TYPE_WT,
+            Profile.TUNNEL_TYPE_XHTTP, Profile.TUNNEL_TYPE_XHTTPC
+        )
         
-        val sshAddr = binding.etSshAddr.text.toString()
-        validateAddress(sshAddr, binding.layoutSshAddr)
-        if (binding.layoutSshAddr.error != null) {
-            Toast.makeText(this, binding.layoutSshAddr.error, Toast.LENGTH_SHORT).show()
-            return
-        }
+        val isServerNameSupported = selected in listOf(
+            Profile.TUNNEL_TYPE_TLS, Profile.TUNNEL_TYPE_WSS, Profile.TUNNEL_TYPE_H2, Profile.TUNNEL_TYPE_QUIC,
+            Profile.TUNNEL_TYPE_GRPC, Profile.TUNNEL_TYPE_H3, Profile.TUNNEL_TYPE_WT, Profile.TUNNEL_TYPE_MASQUE,
+            Profile.TUNNEL_TYPE_XHTTP
+        )
 
-        if (binding.layoutProxyAddr.isVisible) {
-            val proxyAddr = binding.etProxyAddr.text.toString()
-            validateAddress(proxyAddr, binding.layoutProxyAddr)
-            if (binding.layoutProxyAddr.error != null) {
-                Toast.makeText(this, binding.layoutProxyAddr.error, Toast.LENGTH_SHORT).show()
-                return
-            }
-        }
+        binding.apply {
+            layoutHttpPayload.isVisible = isHttp
+            layoutProxyAddr.isVisible = !isBase
+            layoutCustomHost.isVisible = !isBase && selected != Profile.TUNNEL_TYPE_TLS && selected != Profile.TUNNEL_TYPE_QUIC
+            layoutServerName.isVisible = isServerNameSupported
+            
+            switchEnableCustomPath.isVisible = isMasque
+            layoutCustomPath.isVisible = (isMasque && switchEnableCustomPath.isChecked) || isCustomPathSupported
+            
+            val isXhttp = selected == Profile.TUNNEL_TYPE_XHTTP || selected == Profile.TUNNEL_TYPE_XHTTPC
+            layoutAlpn.isVisible = isXhttp
+            
+            switchDisableStatusCheck.isVisible = isHttp
+            switchAuthRequired.isVisible = isHttp || selected in listOf(
+                Profile.TUNNEL_TYPE_WS, Profile.TUNNEL_TYPE_WSS, Profile.TUNNEL_TYPE_H2, Profile.TUNNEL_TYPE_H2C,
+                Profile.TUNNEL_TYPE_GRPC, Profile.TUNNEL_TYPE_GRPCC, Profile.TUNNEL_TYPE_H3, Profile.TUNNEL_TYPE_WT,
+                Profile.TUNNEL_TYPE_MASQUE, Profile.TUNNEL_TYPE_XHTTP, Profile.TUNNEL_TYPE_XHTTPC
+            )
 
-        if (authType == Profile.AUTH_TYPE_PRIVATEKEY) {
-            val privateKey = binding.etPrivateKey.text.toString()
-            validatePrivateKey(privateKey)
-            if (binding.layoutPrivateKey.error != null) {
-                Toast.makeText(this, binding.layoutPrivateKey.error, Toast.LENGTH_SHORT).show()
-                return
-            }
-        } else {
-            val password = binding.etPass.text.toString()
-            validatePassword(password)
-            if (binding.layoutPass.error != null) {
-                Toast.makeText(this, binding.layoutPass.error, Toast.LENGTH_SHORT).show()
-                return
-            }
+            updateProxyAuthVisibility()
+            
+            switchVerifyCertFingerprint.isVisible = isServerNameSupported
+            layoutCertFingerprint.isVisible = isServerNameSupported && switchVerifyCertFingerprint.isChecked
         }
+    }
+
+    private fun updateProxyAuthVisibility() {
+        val selected = binding.spinnerTunnelType.text.toString()
+        val isEnabled = binding.switchAuthRequired.isVisible && binding.switchAuthRequired.isChecked
         
-        val customPath = binding.etCustomPath.text.toString()
-        validatePath(customPath)
-        if (binding.layoutCustomPath.error != null) {
-            Toast.makeText(this, binding.layoutCustomPath.error, Toast.LENGTH_SHORT).show()
-            return
+        val isTokenMode = selected in listOf(
+            Profile.TUNNEL_TYPE_H2, Profile.TUNNEL_TYPE_H2C, Profile.TUNNEL_TYPE_GRPC, Profile.TUNNEL_TYPE_GRPCC,
+            Profile.TUNNEL_TYPE_H3, Profile.TUNNEL_TYPE_WT, Profile.TUNNEL_TYPE_MASQUE, Profile.TUNNEL_TYPE_XHTTP, Profile.TUNNEL_TYPE_XHTTPC
+        )
+        val isUserPassMode = selected in listOf(Profile.TUNNEL_TYPE_WS, Profile.TUNNEL_TYPE_WSS, Profile.TUNNEL_TYPE_HTTP)
+
+        binding.layoutAuthToken.isVisible = isEnabled && isTokenMode
+        binding.layoutAuthUser.isVisible = isEnabled && isUserPassMode
+        binding.layoutAuthPass.isVisible = isEnabled && isUserPassMode
+    }
+
+    private fun updateAuthTypeVisibility(authType: String) {
+        val isKey = authType == Profile.AUTH_TYPE_PRIVATEKEY
+        binding.apply {
+            layoutPass.isVisible = !isKey
+            layoutPrivateKey.isVisible = isKey
+            layoutKeyPass.isVisible = isKey
         }
+    }
 
-        if (authType == Profile.AUTH_TYPE_PRIVATEKEY) {
+    private fun validateAndSave() {
+        val isKeyAuth = binding.spinnerAuthType.text.toString() == getString(app.fjj.stun.R.string.auth_key)
+        
+        // 1. Validate Address
+        if (!validateAddress(binding.etSshAddr.text.toString(), binding.layoutSshAddr)) return
+        if (binding.layoutProxyAddr.isVisible && !validateAddress(binding.etProxyAddr.text.toString(), binding.layoutProxyAddr)) return
+
+        // 2. Validate Auth
+        if (isKeyAuth) {
             val privateKey = binding.etPrivateKey.text.toString()
-            val inputKeyPass = binding.etKeyPass.text.toString()
-            val actualKeyPass = inputKeyPass.ifEmpty { KeystoreUtils.decrypt(currentProfile.keyPass) }
-
+            if (privateKey.isBlank()) {
+                binding.layoutPrivateKey.error = getString(app.fjj.stun.R.string.error_field_required)
+                return
+            }
+            if (!privateKey.contains("BEGIN") || !privateKey.contains("PRIVATE KEY")) {
+                binding.layoutPrivateKey.error = getString(app.fjj.stun.R.string.error_invalid_private_key)
+                return
+            }
+            
+            // Check Encryption
             val checkResult = myssh.Myssh.checkIfKeyEncrypted(privateKey)
-            when (checkResult) {
-                1L -> {
-                    if (actualKeyPass.isEmpty()) {
-                        binding.layoutKeyPass.error = getString(app.fjj.stun.R.string.error_field_required)
-                        Toast.makeText(this, getString(app.fjj.stun.R.string.error_key_password_required), Toast.LENGTH_SHORT).show()
-                        return
-                    }
-                    try {
-                        val validatePassphraseResult = myssh.Myssh.validatePassphrase(privateKey, actualKeyPass)
-                        if (!validatePassphraseResult) {
-                            binding.layoutKeyPass.error = getString(app.fjj.stun.R.string.error_invalid_key_password)
-                            Toast.makeText(this, getString(app.fjj.stun.R.string.error_invalid_key_password), Toast.LENGTH_SHORT).show()
-                            return
-                        }
-                    } catch (e: Exception) {
-                        binding.layoutKeyPass.error = getString(app.fjj.stun.R.string.error_invalid_key_password)
-                        Toast.makeText(this, getString(app.fjj.stun.R.string.error_invalid_key_password), Toast.LENGTH_SHORT).show()
-                        return
-                    }
-                }
-                2L -> {
-                    binding.layoutPrivateKey.error = getString(app.fjj.stun.R.string.error_invalid_private_key)
-                    Toast.makeText(this, getString(app.fjj.stun.R.string.error_invalid_private_key), Toast.LENGTH_SHORT).show()
+            if (checkResult == 1L) {
+                val inputPass = binding.etKeyPass.text.toString()
+                val actualPass = inputPass.ifEmpty { KeystoreUtils.decrypt(currentProfile.keyPass) }
+                if (actualPass.isEmpty() || !myssh.Myssh.validatePassphrase(privateKey, actualPass)) {
+                    binding.layoutKeyPass.error = getString(app.fjj.stun.R.string.error_invalid_key_password)
                     return
                 }
+            } else if (checkResult == 2L) {
+                binding.layoutPrivateKey.error = getString(app.fjj.stun.R.string.error_invalid_private_key)
+                return
             }
-            binding.layoutKeyPass.error = null
+        } else if (binding.etPass.text.toString().isBlank() && currentProfile.pass.isEmpty()) {
+            binding.layoutPass.error = getString(app.fjj.stun.R.string.error_field_required)
+            return
         }
 
+        // 3. Validate Path
+        val path = binding.etCustomPath.text.toString()
+        if (binding.layoutCustomPath.isVisible && path.isNotBlank() && !path.startsWith("/")) {
+            binding.layoutCustomPath.error = getString(app.fjj.stun.R.string.error_invalid_path)
+            return
+        }
+
+        // 4. Save
+        val isEdit = profileId != null
         val updatedProfile = currentProfile.copy(
-            name = binding.etName.text.toString(),
+            name = binding.etName.text.toString().ifBlank { "New Node" },
             sshAddr = binding.etSshAddr.text.toString(),
             user = binding.etUser.text.toString(),
-            authType = authType,
+            authType = if (isKeyAuth) Profile.AUTH_TYPE_PRIVATEKEY else Profile.AUTH_TYPE_PASSWORD,
             pass = binding.etPass.text.toString().ifEmpty { currentProfile.pass },
             privateKey = binding.etPrivateKey.text.toString(),
             keyPass = if (binding.etKeyPass.text.toString().isNotEmpty()) KeystoreUtils.encrypt(binding.etKeyPass.text.toString()) else currentProfile.keyPass,
@@ -334,203 +339,36 @@ class ProfileEditActivity : BaseActivity() {
         viewModel.saveProfile(updatedProfile, isEdit)
     }
 
-    private fun updateTunnelTypeVisibility() {
-        val selected = binding.spinnerTunnelType.text.toString()
-        val isHttp = selected == Profile.TUNNEL_TYPE_HTTP
-        val isBase = selected == Profile.TUNNEL_TYPE_BASE
-        val isMasque = selected == Profile.TUNNEL_TYPE_MASQUE
-
-        val isCustomPathSupported = selected == Profile.TUNNEL_TYPE_WS || selected == Profile.TUNNEL_TYPE_WSS ||
-                selected == Profile.TUNNEL_TYPE_H2 || selected == Profile.TUNNEL_TYPE_H2C ||
-                selected == Profile.TUNNEL_TYPE_GRPC || selected == Profile.TUNNEL_TYPE_GRPCC ||
-                selected == Profile.TUNNEL_TYPE_H3 || selected == Profile.TUNNEL_TYPE_WT ||
-                selected == Profile.TUNNEL_TYPE_XHTTP || selected == Profile.TUNNEL_TYPE_XHTTPC
-        
-        val isServerNameSupported = selected == Profile.TUNNEL_TYPE_WSS ||
-                selected == Profile.TUNNEL_TYPE_TLS ||
-                selected == Profile.TUNNEL_TYPE_QUIC ||
-                selected == Profile.TUNNEL_TYPE_H2 ||
-                selected == Profile.TUNNEL_TYPE_GRPC ||
-                selected == Profile.TUNNEL_TYPE_H3 ||
-                selected == Profile.TUNNEL_TYPE_WT ||
-                selected == Profile.TUNNEL_TYPE_MASQUE ||
-                selected == Profile.TUNNEL_TYPE_XHTTP
-
-        val isCustomHostSupported = !isBase && selected != Profile.TUNNEL_TYPE_TLS && selected != Profile.TUNNEL_TYPE_QUIC
-
-        binding.layoutHttpPayload.visibility = if (isHttp) View.VISIBLE else View.GONE
-        binding.layoutProxyAddr.visibility = if (isBase) View.GONE else View.VISIBLE
-        binding.layoutCustomHost.visibility = if (isCustomHostSupported) View.VISIBLE else View.GONE
-        binding.layoutServerName.visibility = if (isServerNameSupported) View.VISIBLE else View.GONE
-        
-        binding.switchEnableCustomPath.visibility = if (isMasque) View.VISIBLE else View.GONE
-        
-        if (!isMasque && !binding.switchEnableCustomPath.isChecked) {
-            binding.switchEnableCustomPath.isChecked = true
-        }
-        val showCustomPath = (isMasque && binding.switchEnableCustomPath.isChecked) || isCustomPathSupported
-        binding.layoutCustomPath.visibility = if (showCustomPath) View.VISIBLE else View.GONE
-
-        val isXhttp = selected == Profile.TUNNEL_TYPE_XHTTP
-        val isXhttpc = selected == Profile.TUNNEL_TYPE_XHTTPC
-        binding.layoutAlpn.visibility = if (isXhttp || isXhttpc) View.VISIBLE else View.GONE
-        
-        if (isXhttp || isXhttpc) {
-            val options = if (isXhttp) alpnOptionsH3 else alpnOptionsNoH3
-            val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, options)
-            binding.spinnerAlpn.setAdapter(adapter)
-            
-            val currentAlpn = binding.spinnerAlpn.text.toString()
-            if (!options.contains(currentAlpn)) {
-                binding.spinnerAlpn.setText(options[0], false)
-            }
-        }
-
-        binding.switchDisableStatusCheck.visibility = if (isHttp) View.VISIBLE else View.GONE
-
-        val supportsProxyAuth = selected == Profile.TUNNEL_TYPE_H2 ||
-                selected == Profile.TUNNEL_TYPE_H2C ||
-                selected == Profile.TUNNEL_TYPE_GRPC ||
-                selected == Profile.TUNNEL_TYPE_GRPCC ||
-                selected == Profile.TUNNEL_TYPE_H3 ||
-                selected == Profile.TUNNEL_TYPE_WT ||
-                selected == Profile.TUNNEL_TYPE_MASQUE||
-                selected == Profile.TUNNEL_TYPE_XHTTP ||
-                selected == Profile.TUNNEL_TYPE_XHTTPC ||
-                (selected == Profile.TUNNEL_TYPE_WS ||
-                 selected == Profile.TUNNEL_TYPE_WSS ||
-                 selected == Profile.TUNNEL_TYPE_HTTP)
-
-        binding.switchAuthRequired.visibility = if (supportsProxyAuth) View.VISIBLE else View.GONE
-        updateProxyAuthTokenVisibility()
-        updateCertFingerprintVisibility()
-    }
-
-    private fun updateCertFingerprintVisibility() {
-        val selected = binding.spinnerTunnelType.text.toString()
-        val supportsCertFingerprint = selected in listOf(
-            Profile.TUNNEL_TYPE_TLS,
-            Profile.TUNNEL_TYPE_WSS,
-            Profile.TUNNEL_TYPE_H2,
-            Profile.TUNNEL_TYPE_QUIC,
-            Profile.TUNNEL_TYPE_GRPC,
-            Profile.TUNNEL_TYPE_H3,
-            Profile.TUNNEL_TYPE_WT,
-            Profile.TUNNEL_TYPE_MASQUE,
-            Profile.TUNNEL_TYPE_XHTTP
-        )
-
-        binding.switchVerifyCertFingerprint.visibility = if (supportsCertFingerprint) View.VISIBLE else View.GONE
-        if (!supportsCertFingerprint) {
-            binding.layoutCertFingerprint.visibility = View.GONE
-        } else {
-            binding.layoutCertFingerprint.visibility = if (binding.switchVerifyCertFingerprint.isChecked) View.VISIBLE else View.GONE
-        }
-    }
-
-    private fun updateProxyAuthTokenVisibility() {
-        val selected = binding.spinnerTunnelType.text.toString()
-        val isAuthEnabled = binding.switchAuthRequired.isVisible && binding.switchAuthRequired.isChecked
-        
-        val isTokenMode = selected in listOf(
-            Profile.TUNNEL_TYPE_H2, Profile.TUNNEL_TYPE_H2C, 
-            Profile.TUNNEL_TYPE_GRPC, Profile.TUNNEL_TYPE_GRPCC,
-            Profile.TUNNEL_TYPE_H3, Profile.TUNNEL_TYPE_WT, Profile.TUNNEL_TYPE_MASQUE,
-            Profile.TUNNEL_TYPE_XHTTP, Profile.TUNNEL_TYPE_XHTTPC
-        )
-        val isUserPassMode = selected in listOf(
-            Profile.TUNNEL_TYPE_WS, Profile.TUNNEL_TYPE_WSS, Profile.TUNNEL_TYPE_HTTP
-        )
-
-        binding.layoutAuthToken.visibility = if (isAuthEnabled && isTokenMode) View.VISIBLE else View.GONE
-        binding.layoutAuthUser.visibility = if (isAuthEnabled && isUserPassMode) View.VISIBLE else View.GONE
-        binding.layoutAuthPass.visibility = if (isAuthEnabled && isUserPassMode) View.VISIBLE else View.GONE
-    }
-
-    private fun validateAddress(content: String, layout: com.google.android.material.textfield.TextInputLayout) {
+    private fun validateAddress(content: String, layout: com.google.android.material.textfield.TextInputLayout): Boolean {
         if (content.isBlank()) {
             layout.error = getString(app.fjj.stun.R.string.error_field_required)
-            return
+            return false
         }
-
-        val ipv6Match = Regex("""^\[([0-9a-fA-F:]+)\]:(\d+)$""").find(content)
-        if (ipv6Match != null) {
-            val port = ipv6Match.groupValues[2].toIntOrNull()
-            if (port == null || port !in 1..65535) {
-                layout.error = getString(app.fjj.stun.R.string.error_invalid_port)
-            } else {
-                layout.error = null
-            }
-            return
-        }
-
-        val genericMatch = Regex("""^([^:]+):(\d+)$""").find(content)
-        if (genericMatch != null) {
-            val host = genericMatch.groupValues[1]
-            val port = genericMatch.groupValues[2].toIntOrNull()
-            
-            if (port == null || port !in 1..65535) {
-                layout.error = getString(app.fjj.stun.R.string.error_invalid_port)
-                return
-            }
-
-            val ipPattern = Regex("""^(\d{1,3}\.){3}\d{1,3}$""")
-            val domainPattern = Regex("""^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$""")
-            
-            if (ipPattern.matches(host) || domainPattern.matches(host) || host == "localhost") {
-                layout.error = null
-            } else {
-                layout.error = getString(app.fjj.stun.R.string.error_invalid_address)
-            }
-            return
-        }
-
-        layout.error = getString(app.fjj.stun.R.string.error_invalid_address)
-    }
-
-    private fun validatePrivateKey(content: String) {
-        if (content.isBlank()) {
-            binding.layoutPrivateKey.error = getString(app.fjj.stun.R.string.error_field_required)
-        } else if (!content.contains("BEGIN") || !content.contains("PRIVATE KEY")) {
-            binding.layoutPrivateKey.error = getString(app.fjj.stun.R.string.error_invalid_private_key)
-        } else {
-            binding.layoutPrivateKey.error = null
-        }
-    }
-
-    private fun validatePassword(content: String) {
-        if (content.isBlank() && currentProfile.pass.isEmpty()) {
-            binding.layoutPass.error = getString(app.fjj.stun.R.string.error_field_required)
-        } else {
-            binding.layoutPass.error = null
-        }
-    }
-
-    private fun validatePath(content: String) {
-        if (content.isNotBlank() && !content.startsWith("/")) {
-            binding.layoutCustomPath.error = getString(app.fjj.stun.R.string.error_invalid_path)
-        } else {
-            binding.layoutCustomPath.error = null
-        }
-    }
-
-    private fun updateAuthTypeVisibility(authType: String) {
-        val isKey = authType == Profile.AUTH_TYPE_PRIVATEKEY
-        binding.layoutPass.visibility = if (isKey) View.GONE else View.VISIBLE
-        binding.layoutPrivateKey.visibility = if (isKey) View.VISIBLE else View.GONE
-        binding.layoutKeyPass.visibility = if (isKey) View.VISIBLE else View.GONE
+        // IPv6
+        if (content.startsWith("[") && Regex("""^\[([0-9a-fA-F:]+)\]:(\d+)$""").matches(content)) return true
+        // IPv4 / Domain
+        if (Regex("""^([^:]+):(\d+)$""").matches(content)) return true
         
-        if (isKey) {
-            validatePrivateKey(binding.etPrivateKey.text.toString())
-            binding.layoutPass.error = null
-        } else {
-            validatePassword(binding.etPass.text.toString())
-            binding.layoutPrivateKey.error = null
-        }
+        layout.error = getString(app.fjj.stun.R.string.error_invalid_address)
+        return false
     }
 
     override fun onSupportNavigateUp(): Boolean {
-        finish()
+        if (hasUnsavedChanges()) {
+            MaterialAlertDialogBuilder(this)
+                .setTitle(app.fjj.stun.R.string.unsaved_changes_title)
+                .setMessage(app.fjj.stun.R.string.unsaved_changes_msg)
+                .setPositiveButton(app.fjj.stun.R.string.ok) { _, _ -> finish() }
+                .setNegativeButton(app.fjj.stun.R.string.cancel, null)
+                .show()
+        } else {
+            finish()
+        }
         return true
+    }
+
+    private fun hasUnsavedChanges(): Boolean {
+        // Simplified check: only check name for now, or compare entire profile
+        return binding.etName.text.toString() != currentProfile.name
     }
 }

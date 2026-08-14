@@ -6,21 +6,17 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-fun fetchGitHash(): String {
-    return try {
-        val process = ProcessBuilder("git", "rev-parse", "--short=7", "HEAD").start()
-        process.inputStream.bufferedReader().readText().trim()
-    } catch (_: Exception) {
-        "unknown"
-    }
-}
+val gitHash = providers.exec {
+    commandLine("git", "rev-parse", "--short=7", "HEAD")
+    isIgnoreExitValue = true
+}.standardOutput.asText.map { it.trim() }.getOrElse("unknown")
 
-val gitHash = fetchGitHash()
-val baseVersionName = "1.6"
-val baseVersionCode = 7
+val baseVersionName = "1.7"
+val baseVersionCode = 8
 
 // Automate moving the TProxy executable to assets
 val copyTProxyBinaries = tasks.register("copyTProxyBinaries") {
+    description = ""
     val buildDirectory = project.layout.buildDirectory
     val projectDirectory = project.layout.projectDirectory
 
@@ -56,6 +52,7 @@ val copyTProxyBinaries = tasks.register("copyTProxyBinaries") {
 // Task to automatically patch JNI submodules (Config Cache Safe)
 // ========================================================
 val applyJniPatches = tasks.register("applyJniPatches") {
+    description = ""
     val jniDirectory = project.layout.projectDirectory.dir("jni")
 
     doLast {
@@ -179,6 +176,7 @@ tasks.configureEach {
 
 // Ensure patches are applied before any build starts
 val downloadRulesDat = tasks.register("downloadRulesDat") {
+    description = ""
     val outputDir = file("src/main/assets/rules-dat")
     val filesToDownload = mapOf(
         "geoip.dat" to "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geoip.dat",
@@ -245,6 +243,7 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.fragment.ktx)
+    implementation(libs.androidx.splashscreen)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.gson)

@@ -255,18 +255,57 @@ class MyVpnService : VpnService() {
             NotificationChannel(CHANNEL_ID, getString(app.fjj.stun.R.string.service_mode_vpn), NotificationManager.IMPORTANCE_LOW)
         )
 
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+        val stopIntent = Intent(this, MyVpnService::class.java).apply { action = ACTION_STOP }
+        val stopPendingIntent = android.app.PendingIntent.getService(
+            this, 0, stopIntent,
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val mainIntent = Intent(this, app.fjj.stun.ui.MainActivity::class.java)
+        val mainPendingIntent = android.app.PendingIntent.getActivity(
+            this, 0, mainIntent,
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val profile = ProfileManager.getSelectedProfile(this)
+
+        val notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(app.fjj.stun.R.string.notif_title))
             .setContentText(contentText ?: getString(app.fjj.stun.R.string.notif_text))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(contentText ?: getString(app.fjj.stun.R.string.notif_text)))
+            .setSubText(profile.name)
             .setSmallIcon(app.fjj.stun.R.drawable.ic_notification)
+            .setColor(getThemeColor("colorPrimary", android.graphics.Color.BLUE))
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .build()
+            .setContentIntent(mainPendingIntent)
+            .addAction(app.fjj.stun.R.drawable.ic_pause, getString(app.fjj.stun.R.string.disconnect), stopPendingIntent)
+
+        val notification = notificationBuilder.build()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(NOTIFICATION_ID, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
             startForeground(NOTIFICATION_ID, notification)
+        }
+    }
+
+    private fun getThemeColor(attrName: String, default: Int): Int {
+        val attrId = resources.getIdentifier(attrName, "attr", packageName).takeIf { it != 0 }
+            ?: resources.getIdentifier(attrName, "attr", "android").takeIf { it != 0 }
+            ?: return default
+            
+        val typedValue = android.util.TypedValue()
+        return if (theme.resolveAttribute(attrId, typedValue, true)) {
+            if (typedValue.resourceId != 0) {
+                androidx.core.content.ContextCompat.getColor(this, typedValue.resourceId)
+            } else {
+                typedValue.data
+            }
+        } else {
+            default
         }
     }
 
