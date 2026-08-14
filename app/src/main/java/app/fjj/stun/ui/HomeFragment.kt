@@ -379,7 +379,12 @@ class HomeFragment : Fragment() {
             onDeleteClick = { profile ->
                 lifecycleScope.launch(Dispatchers.IO) { ProfileManager.deleteProfile(requireContext(), profile) }
             },
-            onShareClick = { profile -> showShareDialog(profile) }
+            onShareClick = { profile -> showShareDialog(profile) },
+            onOrderChanged = { newList ->
+                lifecycleScope.launch(Dispatchers.IO) {
+                    ProfileManager.updateProfileIndices(requireContext(), newList)
+                }
+            }
         )
 
         val dpWidth = resources.displayMetrics.widthPixels / resources.displayMetrics.density
@@ -390,6 +395,35 @@ class HomeFragment : Fragment() {
         }
         binding.rvProfiles.adapter = adapter
         (binding.rvProfiles.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
+
+        setupItemTouchHelper()
+    }
+
+    private fun setupItemTouchHelper() {
+        val itemTouchHelper = androidx.recyclerview.widget.ItemTouchHelper(object : androidx.recyclerview.widget.ItemTouchHelper.SimpleCallback(
+            androidx.recyclerview.widget.ItemTouchHelper.UP or androidx.recyclerview.widget.ItemTouchHelper.DOWN or
+                    androidx.recyclerview.widget.ItemTouchHelper.LEFT or androidx.recyclerview.widget.ItemTouchHelper.RIGHT, 0
+        ) {
+            override fun onMove(
+                recyclerView: androidx.recyclerview.widget.RecyclerView,
+                viewHolder: androidx.recyclerview.widget.RecyclerView.ViewHolder,
+                target: androidx.recyclerview.widget.RecyclerView.ViewHolder
+            ): Boolean {
+                adapter.onItemMove(viewHolder.bindingAdapterPosition, target.bindingAdapterPosition)
+                return true
+            }
+
+            override fun onSwiped(viewHolder: androidx.recyclerview.widget.RecyclerView.ViewHolder, direction: Int) {}
+
+            override fun clearView(recyclerView: androidx.recyclerview.widget.RecyclerView, viewHolder: androidx.recyclerview.widget.RecyclerView.ViewHolder) {
+                super.clearView(recyclerView, viewHolder)
+                adapter.onDragFinished()
+            }
+
+            override fun isItemViewSwipeEnabled(): Boolean = false
+            override fun isLongPressDragEnabled(): Boolean = true
+        })
+        itemTouchHelper.attachToRecyclerView(binding.rvProfiles)
     }
 
     private fun showShareDialog(profile: Profile) {

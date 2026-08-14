@@ -18,7 +18,8 @@ class ProfileAdapter(
     private val onProfileClick: (Profile) -> Unit,
     private val onEditClick: (Profile) -> Unit,
     private val onDeleteClick: (Profile) -> Unit,
-    private val onShareClick: (Profile) -> Unit
+    private val onShareClick: (Profile) -> Unit,
+    private val onOrderChanged: (List<Profile>) -> Unit
 ) : ListAdapter<Profile, ProfileAdapter.ProfileViewHolder>(ProfileDiffCallback()) {
 
     companion object {
@@ -195,6 +196,20 @@ class ProfileAdapter(
     fun filter(query: String) {
         currentQuery = query
         applyFilterAndSubmit()
+    }
+
+    fun onItemMove(fromPosition: Int, toPosition: Int) {
+        if (currentQuery.isNotEmpty()) return // Disable reorder during search
+
+        val list = currentList.toMutableList()
+        java.util.Collections.swap(list, fromPosition, toPosition)
+        submitList(list)
+    }
+
+    fun onDragFinished() {
+        if (currentQuery.isEmpty()) {
+            onOrderChanged(currentList)
+        }
     }
 
     private fun applyFilterAndSubmit() {

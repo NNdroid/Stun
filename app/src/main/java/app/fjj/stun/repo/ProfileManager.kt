@@ -50,4 +50,14 @@ object ProfileManager {
     fun addTrafficStats(context: Context, id: String, deltaTx: Long, deltaRx: Long) {
         AppDatabase.getDatabase(context).profileDao().addTrafficStats(id, deltaTx, deltaRx)
     }
+
+    fun updateProfileIndices(context: Context, profiles: List<Profile>) {
+        val dao = AppDatabase.getDatabase(context).profileDao()
+        profiles.forEachIndexed { index, profile ->
+            if (profile.sortIndex != index) {
+                profile.sortIndex = index
+                dao.update(profile)
+            }
+        }
+    }
 }

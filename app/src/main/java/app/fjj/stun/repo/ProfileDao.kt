@@ -5,10 +5,10 @@ import androidx.room.*
 
 @Dao
 interface ProfileDao {
-    @Query("SELECT * FROM profiles")
+    @Query("SELECT * FROM profiles ORDER BY sortIndex ASC, id ASC")
     fun getAll(): LiveData<List<Profile>>
 
-    @Query("SELECT * FROM profiles")
+    @Query("SELECT * FROM profiles ORDER BY sortIndex ASC, id ASC")
     fun getAllStatic(): List<Profile>
 
     @Query("SELECT * FROM profiles WHERE id = :id")

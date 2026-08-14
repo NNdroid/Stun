@@ -102,7 +102,10 @@ data class Profile(
     @SerializedName("totalTx")
     var totalTx: Long = 0,
     @SerializedName("totalRx")
-    var totalRx: Long = 0
+    var totalRx: Long = 0,
+
+    @SerializedName("sortIndex")
+    var sortIndex: Int = 0
 ) {
     companion object {
         const val TUNNEL_TYPE_BASE = "base"
