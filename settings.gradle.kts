@@ -30,4 +30,6 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Stun"
+include(":core")
 include(":app")
+include(":tv")

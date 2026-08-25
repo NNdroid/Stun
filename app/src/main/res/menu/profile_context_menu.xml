@@ -5,6 +5,10 @@
         android:icon="@drawable/ic_share"
         android:title="@string/desc_share_profile" />
     <item
+        android:id="@+id/action_push_to_tv"
+        android:icon="@drawable/ic_sync"
+        android:title="@string/action_push_to_tv" />
+    <item
         android:id="@+id/action_edit"
         android:icon="@drawable/ic_edit"
         android:title="@string/desc_edit_profile_action" />

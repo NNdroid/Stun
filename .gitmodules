@@ -1,9 +1,9 @@
-[submodule "app/jni/myssh"]
-	path = app/jni/myssh
+[submodule "core/jni/myssh"]
+	path = core/jni/myssh
 	url = https://github.com/NNdroid/myssh
-[submodule "app/jni/hev-socks5-tunnel"]
-	path = app/jni/hev-socks5-tunnel
+[submodule "core/jni/hev-socks5-tunnel"]
+	path = core/jni/hev-socks5-tunnel
 	url = https://github.com/heiher/hev-socks5-tunnel
-[submodule "app/jni/hev-socks5-tproxy"]
-	path = app/jni/hev-socks5-tproxy
+[submodule "core/jni/hev-socks5-tproxy"]
+	path = core/jni/hev-socks5-tproxy
 	url = https://github.com/heiher/hev-socks5-tproxy

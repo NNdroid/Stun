@@ -9,9 +9,11 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import app.fjj.stun.R
+import app.fjj.stun.core.R as CoreR
 import app.fjj.stun.databinding.ItemProfileBinding
 import app.fjj.stun.repo.Profile
 import androidx.core.graphics.toColorInt
+import kotlin.math.pow
 
 class ProfileAdapter(
     private var selectedProfileId: String?,
@@ -19,6 +21,7 @@ class ProfileAdapter(
     private val onEditClick: (Profile) -> Unit,
     private val onDeleteClick: (Profile) -> Unit,
     private val onShareClick: (Profile) -> Unit,
+    private val onPushToTvClick: (Profile) -> Unit,
     private val onOrderChanged: (List<Profile>) -> Unit
 ) : ListAdapter<Profile, ProfileAdapter.ProfileViewHolder>(ProfileDiffCallback()) {
 
@@ -73,19 +76,26 @@ class ProfileAdapter(
             tvAvatarLetter.text = (profile.name.takeIf { it.isNotBlank() }?.firstOrNull()?.toString() ?: "S").uppercase()
             
             // Build the specific proxy chain display
-            val chain = if (profile.tunnelType == Profile.TUNNEL_TYPE_BASE) {
-                profile.sshAddr
-            } else {
-                "${profile.proxyAddr} ➔ ${profile.sshAddr}"
+            val chain = when (profile.tunnelType) {
+                Profile.TUNNEL_TYPE_BASE -> profile.sshAddr
+                Profile.TUNNEL_TYPE_DNS -> {
+                    val servers = profile.dnsTunnelServers.ifBlank { profile.proxyAddr }
+                    "DNS ($servers) ➔ ${profile.sshAddr}"
+                }
+                else -> "${profile.proxyAddr} ➔ ${profile.sshAddr}"
             }
             tvAddr.text = chain
             
             // User info display
-            tvUserInfo.text = context.getString(R.string.label_user, profile.user)
+            tvUserInfo.text = context.getString(CoreR.string.label_user, profile.user)
             tvUserInfo.visibility = if (profile.user.isNotBlank()) View.VISIBLE else View.GONE
             
             // Protocol Type
-            tvType.text = profile.tunnelType.uppercase()
+            tvType.text = if (profile.tunnelType == Profile.TUNNEL_TYPE_DNS) {
+                "DNS (${profile.dnsTunnelType.uppercase()})"
+            } else {
+                profile.tunnelType.uppercase()
+            }
             
             // SNI & Host Display Logic (Matches ProfileEditActivity)
             val isServerNameSupported = profile.tunnelType in listOf(
@@ -96,17 +106,28 @@ class ProfileAdapter(
             
             val isCustomHostSupported = profile.tunnelType != Profile.TUNNEL_TYPE_BASE && 
                     profile.tunnelType != Profile.TUNNEL_TYPE_TLS && 
-                    profile.tunnelType != Profile.TUNNEL_TYPE_QUIC
+                    profile.tunnelType != Profile.TUNNEL_TYPE_QUIC &&
+                    profile.tunnelType != Profile.TUNNEL_TYPE_DNS &&
+                    profile.tunnelType != Profile.TUNNEL_TYPE_KCP &&
+                    profile.tunnelType != Profile.TUNNEL_TYPE_UDP_CUSTOM
 
             if (isServerNameSupported && profile.serverName.isNotBlank()) {
-                tvSni.text = context.getString(R.string.label_sni, profile.serverName)
+                tvSni.text = context.getString(CoreR.string.label_sni, profile.serverName)
                 tvSni.visibility = View.VISIBLE
             } else {
                 tvSni.visibility = View.GONE
             }
 
-            if (isCustomHostSupported && profile.customHost.isNotBlank()) {
-                tvHost.text = context.getString(R.string.label_host, profile.customHost)
+            if (profile.tunnelType == Profile.TUNNEL_TYPE_DNS) {
+                val domain = profile.dnsTunnelDomain.ifBlank { profile.customHost }
+                if (domain.isNotBlank()) {
+                    tvHost.text = context.getString(CoreR.string.label_domain, domain)
+                    tvHost.visibility = View.VISIBLE
+                } else {
+                    tvHost.visibility = View.GONE
+                }
+            } else if (isCustomHostSupported && profile.customHost.isNotBlank()) {
+                tvHost.text = context.getString(CoreR.string.label_host, profile.customHost)
                 tvHost.visibility = View.VISIBLE
             } else {
                 tvHost.visibility = View.GONE
@@ -144,6 +165,10 @@ class ProfileAdapter(
 
             root.setOnClickListener { onProfileClick(profile) }
             btnShare.setOnClickListener { onShareClick(profile) }
+            btnShare.setOnLongClickListener { 
+                onPushToTvClick(profile)
+                true
+            }
             btnEdit.setOnClickListener { onEditClick(profile) }
             btnDelete.setOnClickListener { onDeleteClick(profile) }
         }
@@ -233,7 +258,7 @@ class ProfileAdapter(
         if (bytes <= 0) return "0 B"
         val units = arrayOf("B", "KB", "MB", "GB", "TB")
         val digitGroups = (kotlin.math.log10(bytes.toDouble()) / kotlin.math.log10(1024.0)).toInt().coerceIn(0, units.size - 1)
-        return String.format(java.util.Locale.US, "%.1f %s", bytes / Math.pow(1024.0, digitGroups.toDouble()), units[digitGroups])
+        return String.format(java.util.Locale.US, "%.1f %s", bytes / 1024.0.pow(digitGroups.toDouble()), units[digitGroups])
     }
 
     class ProfileDiffCallback : DiffUtil.ItemCallback<Profile>() {

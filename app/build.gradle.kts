@@ -11,8 +11,8 @@ val gitHash = providers.exec {
     isIgnoreExitValue = true
 }.standardOutput.asText.map { it.trim() }.getOrElse("unknown")
 
-val baseVersionName = "1.8"
-val baseVersionCode = 9
+val baseVersionName = "1.9"
+val baseVersionCode = 10
 
 // Automate moving the TProxy executable to assets
 val copyTProxyBinaries = tasks.register("copyTProxyBinaries") {
@@ -23,16 +23,17 @@ val copyTProxyBinaries = tasks.register("copyTProxyBinaries") {
     doLast {
         val abis = listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
         val buildDir = buildDirectory.get().asFile
-        val cxxDir = File(buildDir, "intermediates/cxx")
+        // Note: CXX intermediates now come from :core
+        val coreBuildDir = File(projectDirectory.asFile.parentFile, "core/build/intermediates/cxx")
 
-        if (!cxxDir.exists()) {
-            println("CXX intermediates directory not found: ${cxxDir.path}")
+        if (!coreBuildDir.exists()) {
+            println("CXX intermediates directory not found: ${coreBuildDir.path}")
             return@doLast
         }
 
         abis.forEach { abi ->
             var found = false
-            cxxDir.walkBottomUp().forEach { file ->
+            coreBuildDir.walkBottomUp().forEach { file ->
                 if (file.isFile && file.name == "hev-socks5-tproxy" && file.parentFile.name == abi) {
                     val destDir = projectDirectory.dir("src/main/assets/bin/$abi").asFile
                     destDir.mkdirs()
@@ -48,48 +49,6 @@ val copyTProxyBinaries = tasks.register("copyTProxyBinaries") {
     }
 }
 
-// ========================================================
-// Task to automatically patch JNI submodules (Config Cache Safe)
-// ========================================================
-val applyJniPatches = tasks.register("applyJniPatches") {
-    description = ""
-    val jniDirectory = project.layout.projectDirectory.dir("jni")
-
-    doLast {
-        val jniDir = jniDirectory.asFile
-        val patchesDir = File(jniDir, "patches")
-
-        if (!patchesDir.exists()) {
-            return@doLast
-        }
-
-        println("=== Starting JNI Submodule Patching ===")
-
-        patchesDir.listFiles { _, name -> name.endsWith(".patch") }?.forEach { patchFile ->
-            val submoduleName = patchFile.name.replace(".patch", "")
-            val submoduleDir = File(jniDir, submoduleName)
-
-            if (submoduleDir.exists()) {
-                println("📦 Processing: $submoduleName")
-                try {
-                    val process = ProcessBuilder("git", "apply", "--ignore-whitespace", "--reject", patchFile.absolutePath)
-                        .directory(submoduleDir)
-                        .start()
-
-                    process.waitFor()
-
-                    println("✅ $submoduleName patch applied or already present")
-                } catch (e: Exception) {
-                    println("⚠️ Skipping $submoduleName: ${e.message}")
-                }
-            } else {
-                println("❌ Submodule directory not found: ${submoduleDir.absolutePath}")
-            }
-        }
-        println("=== JNI Patching Complete ===")
-    }
-}
-
 android {
     namespace = "app.fjj.stun"
     compileSdk = 37
@@ -102,10 +61,6 @@ android {
         versionName = baseVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        
-        ndk {
-            abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86"))
-        }
     }
 
     packaging {
@@ -141,22 +96,14 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    externalNativeBuild {
-        ndkBuild {
-            path = file("jni/Android.mk")
-        }
-    }
-
     buildFeatures {
         viewBinding = true
         buildConfig = true
-        aidl = true
     }
 
-    sourceSets {
-        getByName("main") {
-            jniLibs.directories.add("src/main/jniLibs")
-        }
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
     }
 }
 
@@ -169,12 +116,9 @@ tasks.configureEach {
     if (name.startsWith("merge") && name.endsWith("Assets")) {
         dependsOn(copyTProxyBinaries)
     }
-    if (name.contains("externalNativeBuild", ignoreCase = true)) {
-        finalizedBy(copyTProxyBinaries)
-    }
 }
 
-// Ensure patches are applied before any build starts
+// Ensure rules are downloaded before build
 val downloadRulesDat = tasks.register("downloadRulesDat") {
     description = ""
     val outputDir = file("src/main/assets/rules-dat")
@@ -207,35 +151,23 @@ val downloadRulesDat = tasks.register("downloadRulesDat") {
 }
 
 tasks.named("preBuild") {
-    dependsOn(applyJniPatches)
     dependsOn(downloadRulesDat)
 }
 
 dependencies {
-    // 通用依赖：加载所有既不含 .debug 也不含 .release 的 aar/jar
-    implementation(fileTree("libs") {
+    implementation(project(":core"))
+    
+    // Include local AARs from :core as they are compileOnly there
+    implementation(fileTree("../core/libs") {
         include("*.aar", "*.jar")
         exclude("*.debug.aar", "*.release.aar", "*.debug-sources.jar", "*.release-sources.jar")
     })
-    // Debug 特有依赖
-    debugImplementation(fileTree("libs") {
+    debugImplementation(fileTree("../core/libs") {
         include("*.debug-sources.jar", "*.debug.aar")
     })
-    // Release 特有依赖
-    releaseImplementation(fileTree("libs") {
+    releaseImplementation(fileTree("../core/libs") {
         include("*.release-sources.jar", "*.release.aar")
     })
-
-    debugImplementation(libs.debugoverlay)
-    // Optional extensions
-    debugImplementation(libs.debugoverlay.okhttp)
-    debugImplementation(libs.debugoverlay.timber)
-
-    implementation(libs.libsu.core)
-    implementation(libs.libsu.service)
-
-    implementation(libs.rikka.shizuku.api)
-    implementation(libs.rikka.shizuku.provider)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
@@ -248,12 +180,16 @@ dependencies {
     implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.gson)
     implementation(libs.zxing.android.embedded)
-    implementation(libs.tink.android)
-
-    implementation(libs.androidx.work.runtime.ktx)
+    
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+    
+    implementation(libs.androidx.work.runtime.ktx)
+
+    debugImplementation(libs.debugoverlay)
+    debugImplementation(libs.debugoverlay.okhttp)
+    debugImplementation(libs.debugoverlay.timber)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

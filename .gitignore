@@ -36,6 +36,18 @@ google-services.json
 
 # binary files
 app/src/main/assets/bin
-app/libs
 app/src/main/assets/adi-registration.properties
 app/src/main/assets/rules-dat
+
+core/libs
+
+tv/src/main/assets/bin
+tv/src/main/assets/adi-registration.properties
+tv/src/main/assets/rules-dat
+
+tv/release
+tv/debug
+app/release
+app/debug
+
+.artifacts/

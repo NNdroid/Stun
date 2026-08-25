@@ -23,6 +23,7 @@
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
+        android:id="@+id/scroll_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
@@ -45,6 +46,8 @@
                 android:layout_marginBottom="8dp"
                 android:text="@string/unified_config"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
+                android:textAllCaps="true"
+                android:alpha="0.7"
                 android:textColor="?attr/colorPrimary"
                 android:textStyle="bold" />
 
@@ -130,6 +133,14 @@
                             android:inputType="text"
                             android:contentDescription="@string/desc_local_dns_input" />
                     </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switch_show_notification_speed"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="@string/show_notification_speed"
+                        android:textAppearance="?attr/textAppearanceBodyLarge" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -142,6 +153,8 @@
                 android:layout_marginBottom="8dp"
                 android:text="@string/udpgw_version"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
+                android:textAllCaps="true"
+                android:alpha="0.7"
                 android:textColor="?attr/colorPrimary"
                 android:textStyle="bold" />
 
@@ -196,6 +209,8 @@
                 android:layout_marginBottom="8dp"
                 android:text="@string/geo_data_config"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
+                android:textAllCaps="true"
+                android:alpha="0.7"
                 android:textColor="?attr/colorPrimary"
                 android:textStyle="bold" />
 
@@ -287,6 +302,8 @@
                 android:layout_marginBottom="8dp"
                 android:text="@string/direct_routing"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
+                android:textAllCaps="true"
+                android:alpha="0.7"
                 android:textColor="?attr/colorPrimary"
                 android:textStyle="bold" />
 
@@ -342,6 +359,8 @@
                 android:layout_marginBottom="8dp"
                 android:text="@string/app_filtering"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
+                android:textAllCaps="true"
+                android:alpha="0.7"
                 android:textColor="?attr/colorPrimary"
                 android:textStyle="bold" />
 

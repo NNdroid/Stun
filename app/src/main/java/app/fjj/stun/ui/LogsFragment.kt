@@ -15,6 +15,7 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import app.fjj.stun.R
+import app.fjj.stun.core.R as CoreR
 import app.fjj.stun.databinding.ActivityLogsBinding
 import app.fjj.stun.repo.StunRepository
 
@@ -46,7 +47,7 @@ class LogsFragment : Fragment() {
                     val fullLogs = StunRepository.appLogs.value?.toString() ?: ""
                     val clip = ClipData.newPlainText("Stun Logs", fullLogs)
                     clipboard.setPrimaryClip(clip)
-                    Toast.makeText(requireContext(), getString(R.string.copy_success), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), getString(CoreR.string.copy_success), Toast.LENGTH_SHORT).show()
                     true
                 }
                 R.id.action_clear -> {

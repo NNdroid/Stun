@@ -10,6 +10,7 @@ import androidx.core.widget.doAfterTextChanged
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import app.fjj.stun.R
+import app.fjj.stun.core.R as CoreR
 import app.fjj.stun.databinding.FragmentAppFilterBinding
 import app.fjj.stun.databinding.ItemAppBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
@@ -148,14 +149,14 @@ class AppFilterDialogFragment : BottomSheetDialogFragment() {
     }
 
     private fun updateCountDisplay() {
-        binding.tvCount.text = getString(R.string.selected_count, selectedPackages.size)
+        binding.tvCount.text = getString(CoreR.string.selected_count, selectedPackages.size)
     }
     
     private fun updateChipLabels() {
         binding.chipSelectAll.text = if (selectedPackages.size == allApps.size && allApps.isNotEmpty()) {
-            getString(R.string.deselect_all)
+            getString(CoreR.string.deselect_all)
         } else {
-            getString(R.string.select_all)
+            getString(CoreR.string.select_all)
         }
     }
 

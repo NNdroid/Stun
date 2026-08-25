@@ -1,5 +1,5 @@
 [versions]
-agp = "9.2.1"
+agp = "9.3.2"
 coreKtx = "1.19.0"
 debugoverlay = "2.7.0"
 gson = "2.14.0"
@@ -15,12 +15,14 @@ zxing = "4.3.0"
 tink = "1.23.0"
 libsu = "6.0.0"
 shizuku = "13.1.5"
-ksp = "2.3.2"
+ksp = "2.3.6"
 workKtx = "2.11.2"
 lifecycle = "2.11.0"
 activityKtx = "1.13.0"
 fragmentKtx = "1.9.0"
 splashscreen = "1.0.1"
+leanback = "1.2.0-alpha04"
+ktor = "3.1.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -49,9 +51,18 @@ androidx-lifecycle-livedata-ktx = { group = "androidx.lifecycle", name = "lifecy
 androidx-activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "activityKtx" }
 androidx-fragment-ktx = { group = "androidx.fragment", name = "fragment-ktx", version.ref = "fragmentKtx" }
 androidx-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashscreen" }
+androidx-leanback = { group = "androidx.leanback", name = "leanback", version.ref = "leanback" }
+ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
+ktor-server-cio = { module = "io.ktor:ktor-server-cio", version.ref = "ktor" }
+ktor-server-content-negotiation = { module = "io.ktor:ktor-server-content-negotiation", version.ref = "ktor" }
+ktor-serialization-gson = { module = "io.ktor:ktor-serialization-gson", version.ref = "ktor" }
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 legacy-kapt = { id = "com.android.legacy-kapt", version.ref = "agp" }
 

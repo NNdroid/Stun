@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Stun.TV" parent="Theme.Material3.Dark.NoActionBar">
+        <!-- Brand Colors -->
+        <item name="colorPrimary">@color/md_theme_light_primary</item>
+        <item name="colorOnPrimary">@color/md_theme_light_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/md_theme_light_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/md_theme_light_onPrimaryContainer</item>
+
+        <!-- Surface Colors -->
+        <item name="android:colorBackground">#0F0F0F</item>
+        <item name="colorSurface">#151515</item>
+        <item name="colorSurfaceVariant">#222222</item>
+
+        <!-- Typography -->
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+</resources>

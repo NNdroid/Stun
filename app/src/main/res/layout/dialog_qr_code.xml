@@ -56,14 +56,36 @@
 
     </com.google.android.material.card.MaterialCardView>
 
+    <TextView
+        android:id="@+id/tv_share_pin"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:gravity="center"
+        android:textIsSelectable="true"
+        android:textAppearance="?attr/textAppearanceHeadlineMedium"
+        android:textColor="?attr/colorPrimary"
+        android:textStyle="bold"
+        android:letterSpacing="0.2"
+        tools:text="123456" />
+
     <!-- Bottom Hint -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="8dp"
         android:text="@string/scan_prompt"
         android:textAppearance="?attr/textAppearanceLabelLarge"
         android:textColor="?attr/colorOnSurfaceVariant"
         android:alpha="0.6" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_push_to_tv"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="@string/action_push_to_tv"
+        app:icon="@drawable/ic_sync" />
 
 </LinearLayout>

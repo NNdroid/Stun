@@ -4,6 +4,8 @@ import android.os.Bundle
 import android.view.MenuItem
 import androidx.activity.OnBackPressedCallback
 import androidx.core.view.GravityCompat
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -23,6 +25,10 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            app.fjj.stun.repo.ProfileManager.migratePlaintextProfiles(this@MainActivity)
+        }
 
         binding.navView.setNavigationItemSelectedListener(this)
         setupHeader()
@@ -70,10 +76,11 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
     }
 
     private fun navigateTo(fragment: Fragment, itemId: Int) {
+        if (isFinishing || isDestroyed) return
         val currentFragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
         if (currentFragment?.javaClass == fragment.javaClass) return
 
-        supportFragmentManager.commit {
+        supportFragmentManager.commit(allowStateLoss = true) {
             setCustomAnimations(
                 android.R.anim.fade_in,
                 android.R.anim.fade_out

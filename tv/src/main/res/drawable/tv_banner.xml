@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+
+    <!-- Card Background (Dark Slate / Deep Navy) -->
+    <path
+        android:fillColor="#131927"
+        android:pathData="M0,0 h320 v180 h-320 z" />
+
+    <!-- Ambient Glow Circles -->
+    <path
+        android:fillColor="#1E293B"
+        android:pathData="M0,0 L180,0 L120,180 L0,180 Z" />
+
+    <!-- Subtle Orange Radial Accent (Left) -->
+    <path
+        android:fillColor="#1A2A1A05"
+        android:pathData="M80,90 m-70,0 a70,70 0 1,0 140,0 a70,70 0 1,0 -140,0" />
+
+    <!-- Card Border Highlight -->
+    <path
+        android:strokeColor="#2A374E"
+        android:strokeWidth="1.5"
+        android:pathData="M1,1 h318 v178 h-318 z" />
+
+    <!-- ==================== Fox Mascot Logo (Left) ==================== -->
+    <group
+        android:translateX="18"
+        android:translateY="20"
+        android:scaleX="1.3"
+        android:scaleY="1.3">
+
+        <!-- Glowing Backdrop behind Fox -->
+        <path
+            android:fillColor="#1AFB8C00"
+            android:pathData="M54,54 m-42,0 a42,42 0 1,0 84,0 a42,42 0 1,0 -84,0" />
+
+        <!-- Ears - Left (Rounded Peak) -->
+        <path
+            android:fillColor="#D84315"
+            android:pathData="M40,35 C32,20 20,30 25,50 L50,45 Z" />
+
+        <!-- Ears - Right (Rounded Peak) -->
+        <path
+            android:fillColor="#FF9800"
+            android:pathData="M68,35 C76,20 88,30 83,50 L58,45 Z" />
+
+        <!-- Main Head Body - Rounded (Orange) -->
+        <path
+            android:fillColor="#FB8C00"
+            android:pathData="M54,35 C28,35 15,52 15,72 C15,92 35,102 54,102 C73,102 93,92 93,72 C93,52 80,35 54,35 Z" />
+
+        <!-- Head Shading (Left Half) -->
+        <path
+            android:fillColor="#E64A19"
+            android:pathData="M54,35 C28,35 15,52 15,72 C15,92 35,102 54,102 L54,35 Z" />
+
+        <!-- Puffy White Cheeks/Muzzle -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M54,102 C38,102 28,95 28,80 C28,70 42,65 54,78 C66,65 80,70 80,80 C80,95 70,102 54,102 Z" />
+
+        <!-- Large Round Cute Eyes - Left -->
+        <path
+            android:fillColor="#212121"
+            android:pathData="M43,68 A5,5 0 1,1 42.9,68 Z" />
+
+        <!-- Large Round Cute Eyes - Right -->
+        <path
+            android:fillColor="#212121"
+            android:pathData="M65,68 A5,5 0 1,1 64.9,68 Z" />
+
+        <!-- Eye Highlights (Glints) -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M44.5,66 A1.5,1.5 0 1,1 44.4,66 Z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M66.5,66 A1.5,1.5 0 1,1 66.4,66 Z" />
+
+        <!-- Small Rounded Nose -->
+        <path
+            android:fillColor="#212121"
+            android:pathData="M54,82 A2,1.5 0 1,1 53.9,82 Z" />
+    </group>
+
+    <!-- ==================== STUN Typography (Right) ==================== -->
+    <group
+        android:translateX="148"
+        android:translateY="48">
+
+        <!-- 'S' -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M22,7 C14,7 8,12 8,19 C8,28 20,30 28,34 C37,38 41,43 41,50 C41,60 30,66 20,66 C10,66 4,60 3,53 L12,50 C13,55 16,58 20,58 C25,58 32,55 32,50 C32,42 21,39 13,35 C5,31 0,26 0,19 C0,9 9,1 22,1 C32,1 39,7 40,14 L31,16 C30,11 26,7 22,7 Z" />
+
+        <!-- 'T' -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M48,2 L76,2 L76,10 L66,10 L66,65 L58,65 L58,10 L48,10 Z" />
+
+        <!-- 'U' -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M84,2 L93,2 L93,44 C93,56 100,61 108,61 C116,61 123,56 123,44 L123,2 L132,2 L132,44 C132,61 120,67 108,67 C96,67 84,61 84,44 Z" />
+
+        <!-- 'N' -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M140,2 L149,2 L166,48 L166,2 L174,2 L174,65 L165,65 L149,19 L149,65 L140,65 Z" />
+    </group>
+
+    <!-- ==================== TV EDITION Badge ==================== -->
+    <group
+        android:translateX="150"
+        android:translateY="122">
+
+        <!-- Badge Background Pill -->
+        <path
+            android:fillColor="#FB8C00"
+            android:pathData="M6,0 H68 A6,6 0 0 1 74,6 V18 A6,6 0 0 1 68,24 H6 A6,6 0 0 1 0,18 V6 A6,6 0 0 1 6,0 Z" />
+
+        <!-- 'T' in TV -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M16,6 L28,6 L28,9 L23.5,9 L23.5,18 L20.5,18 L20.5,9 L16,9 Z" />
+
+        <!-- 'V' in TV -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M31,6 L34.5,6 L38,15 L41.5,6 L45,6 L40,18 L36,18 Z" />
+
+        <!-- Vertical Separator Line -->
+        <path
+            android:strokeColor="#FFE0B2"
+            android:strokeWidth="1"
+            android:pathData="M50,6 L50,18" />
+
+        <!-- Proxy Dot / Icon -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M59,12 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="1"
+            android:pathData="M59,12 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0" />
+    </group>
+
+</vector>

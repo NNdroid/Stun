@@ -12,6 +12,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import app.fjj.stun.R
+import app.fjj.stun.core.R as CoreR
 import app.fjj.stun.databinding.ActivityAboutBinding
 import app.fjj.stun.repo.StunLogger
 import app.fjj.stun.util.AppUtils
@@ -67,14 +68,14 @@ class AboutFragment : Fragment() {
 
         val appVersion = AppUtils.getAppVersion(requireContext())
         val libVersion = AppUtils.getLibVersion()
-        binding.tvVersionInfo.text = getString(R.string.about_version_format, appVersion, libVersion)
+        binding.tvVersionInfo.text = getString(CoreR.string.about_version_format, appVersion, libVersion)
         binding.tvPackageName.text = requireContext().packageName
     }
 
     private fun showLicenseDialog() {
         val builder = AlertDialog.Builder(requireContext())
-        builder.setTitle(R.string.about_license)
-        builder.setMessage("Loading...")
+        builder.setTitle(CoreR.string.about_license)
+        builder.setMessage(getString(CoreR.string.loading))
         val dialog = builder.create()
         dialog.show()
 
@@ -92,7 +93,7 @@ class AboutFragment : Fragment() {
                     if (cacheFile.exists()) {
                         dialog.setMessage(cacheFile.readText())
                     } else {
-                        dialog.setMessage("Failed to load license: ${e.message}")
+                        dialog.setMessage(getString(CoreR.string.error_license_load, e.message ?: "Unknown"))
                     }
                 }
             }

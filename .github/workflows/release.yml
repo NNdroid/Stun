@@ -1,0 +1,175 @@
+name: Android Release Build
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      build_aab:
+        description: '是否生成 App Bundle (AAB)'
+        required: true
+        type: boolean
+        default: false
+      build_apk:
+        description: '是否生成 APK'
+        required: true
+        type: boolean
+        default: true
+      sign_release:
+        description: '是否对 Release 进行签名'
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build & Sign Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code with Submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache-dependency-path: 'core/jni/myssh/go.sum'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Set up Android NDK & gomobile
+        run: |
+          # 自动获取 Ubuntu Runner 中已安装的 Android NDK 路径
+          export ANDROID_NDK_HOME=$(find $ANDROID_HOME/ndk -maxdepth 1 -mindepth 1 | sort -V | tail -n 1)
+          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
+          echo "Using Android NDK: $ANDROID_NDK_HOME"
+          
+          # 安装 gomobile 和 gobind
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          go install golang.org/x/mobile/cmd/gobind@latest
+          gomobile init
+
+      - name: Build myssh AAR from core/jni/myssh
+        working-directory: core/jni/myssh
+        run: |
+          mkdir -p ../../libs
+          VERSION="v1.0.$(date +%Y%m%d)"
+          
+          echo "📦 Compiling myssh.release.aar..."
+          LDFLAGS="-s -w -X 'myssh.Version=$VERSION' -X 'myssh.DebugStr=false'"
+          gomobile bind -v -target=android -androidapi 28 -ldflags="$LDFLAGS" -trimpath -o "../../libs/myssh.release.aar" .
+          
+          echo "📦 Compiling myssh.debug.aar..."
+          LDFLAGS="-X 'myssh.Version=$VERSION' -X 'myssh.DebugStr=true'"
+          gomobile bind -v -target=android -androidapi 28 -ldflags="$LDFLAGS" -o "../../libs/myssh.debug.aar" .
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Cache NDK build outputs
+        uses: actions/cache@v4
+        with:
+          path: |
+            core/build/intermediates/cxx
+            core/.cxx
+          key: ndk-${{ runner.os }}-${{ hashFiles('core/jni/**') }}
+          restore-keys: |
+            ndk-${{ runner.os }}-
+
+      - name: Set Build Options
+        id: options
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "build_aab=${{ github.event.inputs.build_aab }}" >> $GITHUB_OUTPUT
+            echo "build_apk=${{ github.event.inputs.build_apk }}" >> $GITHUB_OUTPUT
+            echo "sign=${{ github.event.inputs.sign_release }}" >> $GITHUB_OUTPUT
+          else
+            # 自动触发时（Release）使用默认值
+            echo "build_aab=false" >> $GITHUB_OUTPUT
+            echo "build_apk=true" >> $GITHUB_OUTPUT
+            echo "sign=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Decode Keystore
+        if: steps.options.outputs.sign == 'true'
+        id: decode_keystore
+        uses: timheuer/base64-to-file@v1.2
+        with:
+          fileName: 'keystore.jks'
+          encodedString: ${{ secrets.KEYSTORE_BASE64 }}
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build and Sign APK & AAB
+        env:
+          KEYSTORE_FILE: ${{ steps.decode_keystore.outputs.filePath }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          TASKS=""
+          if [ "${{ steps.options.outputs.build_apk }}" == "true" ]; then
+            TASKS="$TASKS :app:assembleRelease :tv:assembleRelease :app:assembleDebug :tv:assembleDebug"
+          fi
+          if [ "${{ steps.options.outputs.build_aab }}" == "true" ]; then
+            TASKS="$TASKS :app:bundleRelease"
+          fi
+          
+          if [ -z "$TASKS" ]; then
+            echo "⚠️ No build tasks selected. Skipping Gradle build."
+            exit 0
+          fi
+
+          PARAMS=""
+          if [ "${{ steps.options.outputs.sign }}" == "true" ]; then
+            PARAMS="-Pandroid.injected.signing.store.file=$KEYSTORE_FILE \
+                    -Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD \
+                    -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
+                    -Pandroid.injected.signing.key.password=$KEY_PASSWORD"
+          fi
+
+          ./gradlew $TASKS $PARAMS
+
+      - name: Upload Artifacts (Action Run)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Stun-Build-Artifacts
+          path: |
+            app/build/outputs/apk/**/*.apk
+            app/build/outputs/bundle/**/*.aab
+            tv/build/outputs/apk/**/*.apk
+            core/libs/*.aar
+          if-no-files-found: warn
+
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/bundle/release/*.aab
+            tv/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/debug/*.apk
+            tv/build/outputs/apk/debug/*.apk
+            core/libs/myssh.release.aar
+            core/libs/myssh.debug.aar
+          fail_on_unmatched_files: false
