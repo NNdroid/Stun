@@ -385,8 +385,8 @@
       <span style="font-size:1.4rem">📂</span>
       <span id="t-file-drop-title" style="font-size:0.85rem;font-weight:700;color:var(--text)">点击选择或拖放配置文件到此处导入</span>
       <span id="t-file-drop-desc" style="font-size:0.72rem;color:var(--text-muted)">支持 .json, .txt, .bak 或加密备份文件</span>
-      <input type="file" id="file-import-input" accept=".json,.txt,.bak,text/*" style="display:none" onclick="event.stopPropagation()" onchange="handleFileSelect(this)">
     </div>
+    <input type="file" id="file-import-input" accept=".json,.txt,.bak,.conf,.yaml,.yml,application/json,text/plain,application/octet-stream,*/*" style="display:none" onchange="handleFileSelect(this)">
 
     <div style="display:flex;align-items:center;gap:10px;margin:2px 0">
       <div style="flex:1;height:1px;background:var(--border)"></div>

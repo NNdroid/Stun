@@ -11,8 +11,8 @@ val gitHash = providers.exec {
     isIgnoreExitValue = true
 }.standardOutput.asText.map { it.trim() }.getOrElse("unknown")
 
-val baseVersionName = "1.9"
-val baseVersionCode = 10
+val baseVersionName = "1.10"
+val baseVersionCode = 11
 
 // Automate moving the TProxy executable to assets
 val copyTProxyBinaries = tasks.register("copyTProxyBinaries") {

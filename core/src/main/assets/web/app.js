@@ -217,7 +217,15 @@ const I18N = {
     vpn_connected: '✓ 已连接 (点击断开)',
     vpn_disconnected: '未连接 (点击连接)',
     vpn_connecting: '⚡ 连接中...',
-    lines_unit: ' 行'
+    lines_unit: ' 行',
+    toast_read_file_failed: '✕ 读取文件失败',
+    badge_encrypted_detected: '🔒 检测到加密数据 (需输入PIN)',
+    badge_plain_detected: '✓ 已载入明文配置 ({count} 个节点)',
+    err_empty_content: '✕ 导入内容不能为空',
+    err_pin_required: '✕ 检测到加密分享码/备份，请输入6位PIN码',
+    err_invalid_pin: '✕ PIN 码错误或解密失败',
+    err_invalid_format: '✕ 未能识别有效的节点配置格式',
+
   },
   'zh-TW': {
     page_title: '🦊 Stun · Web 控制台',
@@ -412,7 +420,15 @@ const I18N = {
     vpn_connected: '✓ 已連線 (點擊中斷)',
     vpn_disconnected: '未連線 (點擊連線)',
     vpn_connecting: '⚡ 連線中...',
-    lines_unit: ' 行'
+    lines_unit: ' 行',
+    toast_read_file_failed: '✕ 讀取檔案失敗',
+    badge_encrypted_detected: '🔒 檢測到加密數據 (需輸入PIN)',
+    badge_plain_detected: '✓ 已載入明文設定 ({count} 個節點)',
+    err_empty_content: '✕ 匯入內容不能為空',
+    err_pin_required: '✕ 檢測到加密分享碼/備份，請輸入6位PIN碼',
+    err_invalid_pin: '✕ PIN 碼錯誤或解密失敗',
+    err_invalid_format: '✕ 未能識別有效的節點設定格式',
+
   },
   'en': {
     page_title: '🦊 Stun · Web Console',
@@ -607,7 +623,15 @@ const I18N = {
     vpn_connected: '✓ Connected (Tap to disconnect)',
     vpn_disconnected: 'Disconnected (Tap to connect)',
     vpn_connecting: '⚡ Connecting...',
-    lines_unit: ' lines'
+    lines_unit: ' lines',
+    toast_read_file_failed: '✕ Failed to read file',
+    badge_encrypted_detected: '🔒 Encrypted payload detected (PIN required)',
+    badge_plain_detected: '✓ Plain config loaded ({count} node(s))',
+    err_empty_content: '✕ Import content cannot be empty',
+    err_pin_required: '✕ Encrypted payload detected, please enter 6-digit PIN',
+    err_invalid_pin: '✕ Invalid PIN code or decryption failed',
+    err_invalid_format: '✕ Unrecognized node configuration format',
+
   },
   'ja': {
     page_title: '🦊 Stun · Web コンソール',
@@ -802,7 +826,15 @@ const I18N = {
     vpn_connected: '✓ 接続中 (タップで切断)',
     vpn_disconnected: '未接続 (タップで接続)',
     vpn_connecting: '⚡ 接続中...',
-    lines_unit: ' 行'
+    lines_unit: ' 行',
+    toast_read_file_failed: '✕ ファイルの読み込みに失敗しました',
+    badge_encrypted_detected: '🔒 暗号化データを検出（PINが必要）',
+    badge_plain_detected: '✓ 平文設定を読み込みました（{count} 個のノード）',
+    err_empty_content: '✕ インポート内容を入力してください',
+    err_pin_required: '✕ 暗号化データを検出しました。6桁のPINを入力してください',
+    err_invalid_pin: '✕ PINコードが正しくないか復号に失敗しました',
+    err_invalid_format: '✕ 有効なノード設定フォーマットを認識できませんでした',
+
   },
   'de': {
     page_title: '🦊 Stun · Web-Konsole',
@@ -997,7 +1029,15 @@ const I18N = {
     vpn_connected: '✓ Verbunden (Tippen zum Trennen)',
     vpn_disconnected: 'Getrennt (Tippen zum Verbinden)',
     vpn_connecting: '⚡ Verbinde...',
-    lines_unit: ' Zeilen'
+    lines_unit: ' Zeilen',
+    toast_read_file_failed: '✕ Fehler beim Lesen der Datei',
+    badge_encrypted_detected: '🔒 Verschlüsselte Daten erkannt (PIN erforderlich)',
+    badge_plain_detected: '✓ Klartext-Konfiguration geladen ({count} Knoten)',
+    err_empty_content: '✕ Import-Inhalt darf nicht leer sein',
+    err_pin_required: '✕ Verschlüsselte Daten erkannt. Bitte 6-stellige PIN eingeben',
+    err_invalid_pin: '✕ Ungültige PIN oder Entschlüsselung fehlgeschlagen',
+    err_invalid_format: '✕ Ungültiges Knotenkonfigurationsformat',
+
   },
   'fr': {
     page_title: '🦊 Stun · Console Web',
@@ -1192,7 +1232,15 @@ const I18N = {
     vpn_connected: '✓ Connecté (Appuyer pour déconnecter)',
     vpn_disconnected: 'Déconnecté (Appuyer pour connecter)',
     vpn_connecting: '⚡ Connexion...',
-    lines_unit: ' lignes'
+    lines_unit: ' lignes',
+    toast_read_file_failed: '✕ Échec de la lecture du fichier',
+    badge_encrypted_detected: '🔒 Données chiffrées détectées (PIN requis)',
+    badge_plain_detected: '✓ Configuration en texte clair chargée ({count} nœud(s))',
+    err_empty_content: '✕ Le contenu de l\'importation ne peut pas être vide',
+    err_pin_required: '✕ Données chiffrées détectées, veuillez saisir le code PIN à 6 chiffres',
+    err_invalid_pin: '✕ Code PIN invalide ou échec du déchiffrement',
+    err_invalid_format: '✕ Format de configuration de nœud non reconnu',
+
   }
 };
 
@@ -2125,12 +2173,20 @@ async function submitEditProfile() {
   }
 }
 
+let loadedFilePayload = '';
+
 // ── 导入 Modal 逻辑 (支持文件直接选择与拖放) ──
 function openAddModal() {
+  loadedFilePayload = '';
   document.getElementById('add-modal').classList.add('active');
   document.getElementById('profile-json-input').value = '';
   document.getElementById('input-import-pin').value = '';
-  document.getElementById('pin-detected-badge').style.display = 'none';
+  const badge = document.getElementById('pin-detected-badge');
+  if (badge) {
+    badge.style.display = 'none';
+    badge.style.color = 'var(--primary)';
+    badge.textContent = t('pin_detected_badge');
+  }
   const dropTitle = document.getElementById('t-file-drop-title');
   if (dropTitle) dropTitle.textContent = t('file_drop_title');
   const fileInput = document.getElementById('file-import-input');
@@ -2138,6 +2194,9 @@ function openAddModal() {
 }
 function closeAddModal() {
   document.getElementById('add-modal').classList.remove('active');
+  loadedFilePayload = '';
+  const fileInput = document.getElementById('file-import-input');
+  if (fileInput) fileInput.value = '';
 }
 
 function onFileDragOver(e) {
@@ -2166,16 +2225,19 @@ function onFileDrop(e) {
 function handleFileSelect(input) {
   const files = input.files;
   if (files && files.length > 0) {
-    readFileContent(files[0]);
+    readFileContent(files[0], input);
   }
-  input.value = '';
 }
 
-function readFileContent(file) {
+function readFileContent(file, inputElement) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = function(e) {
-    const content = (e.target && e.target.result) ? e.target.result : '';
+    let content = (e.target && e.target.result) ? e.target.result : '';
+    if (content.charCodeAt(0) === 0xFEFF) {
+      content = content.slice(1);
+    }
+    loadedFilePayload = content;
     const textarea = document.getElementById('profile-json-input');
     if (textarea) textarea.value = content;
 
@@ -2186,34 +2248,55 @@ function readFileContent(file) {
 
     checkPayloadEncryption();
     showToast(t('file_loaded_toast', {name: file.name}));
+    if (inputElement) inputElement.value = '';
   };
   reader.onerror = function() {
-    showToast('✕ 读取文件失败');
+    showToast(t('toast_read_file_failed'));
+    if (inputElement) inputElement.value = '';
   };
-  reader.readAsText(file);
+  reader.readAsText(file, 'UTF-8');
 }
 
 function checkPayloadEncryption() {
-  const text = document.getElementById('profile-json-input').value.trim();
+  const text = (document.getElementById('profile-json-input')?.value || loadedFilePayload || '').trim();
   const badge = document.getElementById('pin-detected-badge');
   const pinInput = document.getElementById('input-import-pin');
+  if (!badge) return;
+
+  if (!text) {
+    badge.style.display = 'none';
+    return;
+  }
+
   try {
     const clean = text.replace(/[\r\n\s]/g, '');
     const decoded = atob(clean);
     const json = JSON.parse(decoded);
     if (json.v && json.s && json.i && json.c) {
       badge.style.display = 'inline';
+      badge.style.color = 'var(--primary)';
+      badge.textContent = t('badge_encrypted_detected');
       if (pinInput && !pinInput.value) {
         pinInput.focus();
       }
       return;
     }
   } catch (_) {}
+
+  try {
+    const parsed = JSON.parse(text);
+    const count = Array.isArray(parsed) ? parsed.length : (parsed.profiles && Array.isArray(parsed.profiles)) ? parsed.profiles.length : 1;
+    badge.style.display = 'inline';
+    badge.style.color = '#4caf50';
+    badge.textContent = t('badge_plain_detected', {count});
+    return;
+  } catch (_) {}
+
   badge.style.display = 'none';
 }
 
 async function submitImportProfile() {
-  const text = document.getElementById('profile-json-input').value.trim();
+  const text = (document.getElementById('profile-json-input')?.value || loadedFilePayload || '').trim();
   if (!text) return showToast(t('import_empty_error'));
   const pin = document.getElementById('input-import-pin').value.trim();
 
@@ -2242,7 +2325,9 @@ async function submitImportProfile() {
       loadProfiles();
       fetchStatus();
     } else {
-      showToast(data.message || data.error || t('import_failed'));
+      const errKey = data.error ? ('err_' + data.error) : '';
+      const localizedErr = (errKey && I18N[currentLang] && I18N[currentLang][errKey]) ? t(errKey) : '';
+      showToast(localizedErr || data.message || t('import_failed'));
     }
   } catch (e) {
     showToast(t('import_failed'));

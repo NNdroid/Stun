@@ -11,8 +11,8 @@ val gitHash = providers.exec {
     isIgnoreExitValue = true
 }.standardOutput.asText.map { it.trim() }.getOrElse("unknown")
 
-val baseVersionName = "1.9"
-val baseVersionCode = 10
+val baseVersionName = "1.10"
+val baseVersionCode = 10011
 
 // Automate moving the TProxy executable to assets
 val copyTProxyBinaries = tasks.register("copyTProxyBinaries") {
@@ -53,7 +53,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "app.fjj.stun.tv"
+        applicationId = "app.fjj.stun"
         minSdk = 28
         targetSdk = 35
         versionCode = baseVersionCode
