@@ -4,147 +4,325 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0F0F0F">
+    android:background="@color/tv_bg_main">
 
-    <!-- Left Side: App Branding & Status -->
+    <!-- Left Side: App Branding & Status Dashboard -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/leftPanel"
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:background="#151515"
-        android:padding="48dp"
+        android:background="@color/tv_bg_left_panel"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="24dp"
+        android:paddingBottom="16dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintWidth_percent="0.38">
 
-        <ImageView
-            android:id="@+id/ivLogo"
-            android:layout_width="100dp"
-            android:layout_height="100dp"
-            android:src="@drawable/ic_fox_logo"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <TextView
-            android:id="@+id/tvAppName"
-            android:layout_width="wrap_content"
+        <!-- 1. Horizontal Header: Logo + App Name + Status + Public IP -->
+        <LinearLayout
+            android:id="@+id/headerLayout"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/app_name"
-            android:textColor="#FFFFFF"
-            android:textSize="40sp"
-            android:textStyle="bold"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/ivLogo" />
+            app:layout_constraintTop_toTopOf="parent">
 
-        <TextView
-            android:id="@+id/tvVpnStatus"
-            android:layout_width="wrap_content"
+            <ImageView
+                android:id="@+id/ivLogo"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_fox_logo" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tvAppName"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/app_name"
+                        android:textColor="@color/tv_text_primary"
+                        android:textSize="22sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvVpnStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:text="@string/status_disconnected"
+                        android:textColor="?attr/tvErrorColor"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvPublicIp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:alpha="0.9"
+                    android:ellipsize="end"
+                    android:fontFamily="monospace"
+                    android:maxLines="1"
+                    android:text=""
+                    android:textColor="?attr/tvPublicIpColor"
+                    android:textSize="11.5sp"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/tvEngineError"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text=""
+                    android:textColor="?attr/tvErrorColor"
+                    android:textSize="11.5sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- 2. Selected Node & Real-time Traffic Info Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardDashboardInfo"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/status_disconnected"
-            android:textColor="#FF5252"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tvAppName" />
+            android:layout_marginTop="14dp"
+            app:cardBackgroundColor="@color/tv_card_bg"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/tv_card_stroke"
+            app:strokeWidth="1dp"
+            app:layout_constraintTop_toBottomOf="@id/headerLayout"
+            app:layout_constraintStart_toStartOf="parent">
 
-        <TextView
-            android:id="@+id/tvEngineError"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:layout_marginEnd="8dp"
-            android:text=""
-            android:textColor="#FF6B6B"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:visibility="gone"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tvVpnStatus" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="10dp">
 
+                <!-- Current Selected Node Row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/tv_node_indicator"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/tvSelectedNodeTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="@string/tv_select_node_hint"
+                        android:textColor="@color/tv_text_primary"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Real-time Traffic Speed & Total Row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tvTraffic"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="monospace"
+                        tools:text="↑ 0 B/s  ↓ 0 B/s"
+                        android:textColor="?attr/tvTrafficColor"
+                        android:textSize="12.5sp" />
+
+                    <TextView
+                        android:id="@+id/tvTrafficTotal"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        tools:text="Σ 0 B"
+                        android:textColor="?attr/tvTrafficTotalColor"
+                        android:textSize="11.5sp" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 3. Primary Action: Connect / Disconnect Button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnConnect"
             style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="match_parent"
-            android:layout_height="72dp"
-            android:layout_marginTop="56dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="12dp"
             android:text="@string/connect"
-            android:textSize="24sp"
-            app:cornerRadius="16dp"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            app:cornerRadius="12dp"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tvVpnStatus"
+            app:layout_constraintTop_toBottomOf="@id/cardDashboardInfo"
             android:nextFocusRight="@id/rvProfiles"
             android:nextFocusDown="@id/btnTestLatency"
             android:focusable="true"
             android:focusedByDefault="true" />
 
-        <TextView
-            android:id="@+id/tvTraffic"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:layout_marginEnd="8dp"
-            android:text="↑ 0 B/s  ↓ 0 B/s"
-            android:textColor="#8FD0FF"
-            android:textSize="16sp"
-            android:fontFamily="monospace"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/btnConnect" />
-
+        <!-- 4. Secondary Action: Speed Test Button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnTestLatency"
             style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginTop="16dp"
+            android:layout_height="40dp"
+            android:layout_marginTop="8dp"
             android:text="@string/action_speed_test"
-            android:textSize="18sp"
-            app:cornerRadius="14dp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tvTraffic"
-            android:nextFocusUp="@id/btnConnect"
-            android:nextFocusDown="@id/btnToggleSync" />
-
-        <TextView
-            android:id="@+id/tvWebConsole"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:alpha="0.0"
-            android:drawablePadding="6dp"
-            android:text="—"
-            android:textColor="#58a6ff"
-            android:textSize="13sp"
-            android:fontFamily="monospace"
-            app:layout_constraintBottom_toTopOf="@+id/tvSyncStatus"
-            app:layout_constraintStart_toStartOf="parent"
-            android:layout_marginBottom="4dp" />
-
-        <TextView
-            android:id="@+id/tvSyncStatus"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:alpha="0.5"
-            android:text="@string/tv_sync_server_on"
-            android:textColor="#B0B0B0"
             android:textSize="14sp"
-            app:layout_constraintBottom_toTopOf="@+id/btnToggleSync"
-            app:layout_constraintStart_toStartOf="parent" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnToggleSync"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/tv_stop_sync"
-            android:textColor="#606060"
-            android:textSize="12sp"
-            app:layout_constraintBottom_toBottomOf="parent"
+            app:cornerRadius="10dp"
             app:layout_constraintStart_toStartOf="parent"
-            android:nextFocusUp="@id/btnTestLatency"
+            app:layout_constraintTop_toBottomOf="@id/btnConnect"
+            android:nextFocusUp="@id/btnConnect"
+            android:nextFocusDown="@id/btnToggleSync"
             android:nextFocusRight="@id/rvProfiles" />
+
+        <!-- 5. Web Console & QR Code Compact Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardWebConsole"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:clickable="false"
+            android:focusable="false"
+            app:cardBackgroundColor="@color/tv_card_bg"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/tv_card_stroke"
+            app:strokeWidth="1dp"
+            app:layout_constraintTop_toBottomOf="@id/btnTestLatency"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="8dp">
+
+                <!-- Rounded White Container for high-contrast QR code -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="52dp"
+                    android:layout_height="52dp"
+                    app:cardBackgroundColor="#FFFFFF"
+                    app:cardCornerRadius="6dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
+
+                    <ImageView
+                        android:id="@+id/ivWebQrCode"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:padding="2dp"
+                        android:scaleType="fitCenter" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvWebQrTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/web_console_qr_title"
+                        android:textColor="@color/tv_text_primary"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvWebConsole"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:ellipsize="middle"
+                        android:fontFamily="monospace"
+                        android:maxLines="1"
+                        tools:text="http://192.168.1.100:5858"
+                        android:textColor="?attr/tvPublicIpColor"
+                        android:textSize="10.5sp" />
+
+                    <TextView
+                        android:id="@+id/tvWebQrHint"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="1dp"
+                        android:alpha="0.7"
+                        android:text="@string/web_console_qr_hint"
+                        android:textColor="@color/tv_text_secondary"
+                        android:textSize="9.5sp" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 6. Bottom Sync Server Status -->
+        <LinearLayout
+            android:id="@+id/bottomSyncLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            app:layout_constraintTop_toBottomOf="@id/cardWebConsole"
+            app:layout_constraintStart_toStartOf="parent">
+
+            <TextView
+                android:id="@+id/tvSyncStatus"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:alpha="0.5"
+                android:text="@string/tv_sync_server_on"
+                android:textColor="@color/tv_text_secondary"
+                android:textSize="10.5sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnToggleSync"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/tv_stop_sync"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="10.5sp"
+                android:nextFocusUp="@id/btnTestLatency"
+                android:nextFocusRight="@id/rvProfiles" />
+        </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -164,7 +342,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/tv_nodes_received"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/tv_text_primary"
             android:textSize="24sp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -181,6 +359,147 @@
             android:nextFocusLeft="@id/btnConnect"
             tools:listitem="@layout/item_profile_tv" />
 
+        <!-- Empty State Container -->
+        <LinearLayout
+            android:id="@+id/layoutTvEmpty"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="32dp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tvListHeader">
+
+            <ImageView
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:alpha="0.3"
+                android:src="@drawable/ic_fox_logo"
+                app:tint="@color/tv_text_primary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/main_empty_profiles"
+                android:textColor="@color/tv_text_primary"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:alpha="0.6"
+                android:gravity="center"
+                android:text="@string/tv_picker_title"
+                android:textColor="@color/tv_text_secondary"
+                android:textSize="15sp" />
+        </LinearLayout>
+
     </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- Modal Dim Overlay for Sidebar -->
+    <View
+        android:id="@+id/sidebarDimOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#80000000"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true" />
+
+    <!-- Right-side Options Sidebar (TV-Native style) -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/profileOptionsSidebar"
+        android:layout_width="320dp"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        app:cardBackgroundColor="@color/tv_bg_left_panel"
+        app:cardCornerRadius="0dp"
+        app:cardElevation="16dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:visibility="visible">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="32dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/tv_profile_options_title"
+                android:textColor="@color/tv_text_primary"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvOptionProfileName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:alpha="0.7"
+                tools:text="Node Name"
+                android:textColor="@color/tv_text_secondary"
+                android:textSize="14sp" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="24dp"
+                android:alpha="0.1"
+                android:background="@color/tv_text_primary" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnOptionPing"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:layout_marginTop="32dp"
+                android:gravity="start|center_vertical"
+                android:text="@string/action_speed_test"
+                android:textSize="16sp"
+                app:cornerRadius="12dp"
+                app:icon="@drawable/ic_speed"
+                app:iconPadding="16dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnOptionDelete"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:layout_marginTop="16dp"
+                android:gravity="start|center_vertical"
+                android:text="@string/delete"
+                android:textColor="?attr/tvErrorColor"
+                android:textSize="16sp"
+                app:cornerRadius="12dp"
+                app:icon="@drawable/ic_delete"
+                app:iconPadding="16dp"
+                app:iconTint="?attr/tvErrorColor"
+                app:strokeColor="?attr/tvErrorColor" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:alpha="0.4"
+                android:gravity="center"
+                android:text="@string/tv_sheet_close_hint"
+                android:textColor="@color/tv_text_secondary"
+                android:textSize="11sp" />
+
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

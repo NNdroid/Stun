@@ -111,11 +111,14 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:hint="@string/remote_dns">
+                        android:hint="@string/remote_dns"
+                        app:endIconMode="clear_text">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_remote_dns_server"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
                             android:inputType="text"
                             android:contentDescription="@string/desc_remote_dns_input" />
                     </com.google.android.material.textfield.TextInputLayout>
@@ -125,11 +128,14 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:hint="@string/local_dns">
+                        android:hint="@string/local_dns"
+                        app:endIconMode="clear_text">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_local_dns_server"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
                             android:inputType="text"
                             android:contentDescription="@string/desc_local_dns_input" />
                     </com.google.android.material.textfield.TextInputLayout>
@@ -189,11 +195,14 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:hint="@string/udpgw_addr">
+                        android:hint="@string/udpgw_addr"
+                        app:endIconMode="clear_text">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_udpgw_addr"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
                             android:inputType="text"
                             android:contentDescription="@string/desc_udpgw_addr_input" />
                     </com.google.android.material.textfield.TextInputLayout>
@@ -232,11 +241,14 @@
                         style="?attr/textInputOutlinedStyle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/geosite_url">
+                        android:hint="@string/geosite_url"
+                        app:endIconMode="clear_text">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_geosite_url"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
                             android:inputType="textUri" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -245,11 +257,14 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:hint="@string/geoip_url">
+                        android:hint="@string/geoip_url"
+                        app:endIconMode="clear_text">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_geoip_url"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
                             android:inputType="textUri" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -258,18 +273,21 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:hint="@string/update_interval">
+                        android:hint="@string/update_interval"
+                        app:endIconMode="clear_text">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_update_interval"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
                             android:inputType="number" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="16dp"
                         android:gravity="center_vertical"
                         android:orientation="horizontal">
 
@@ -278,29 +296,29 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="@string/last_updated"
-                            android:textAppearance="?attr/textAppearanceLabelMedium" />
+                            android:text="@string/loading_geodata_status"
+                            android:textAppearance="?attr/textAppearanceBodySmall"
+                            android:textColor="?attr/colorOnSurfaceVariant" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btn_update_now"
-                            style="?attr/materialButtonOutlinedStyle"
+                            style="?attr/materialButtonTonalStyle"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/update_now"
-                            app:icon="@drawable/ic_sync"
-                            app:iconSize="16dp" />
+                            android:text="@string/update_geodata_now"
+                            app:icon="@drawable/ic_sync" />
                     </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Section: Routing -->
+            <!-- Section: Custom Direct Routing -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="24dp"
                 android:layout_marginBottom="8dp"
-                android:text="@string/direct_routing"
+                android:text="@string/custom_direct_routing"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 android:textAllCaps="true"
                 android:alpha="0.7"
@@ -325,11 +343,14 @@
                         style="?attr/textInputOutlinedStyle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/geosite_direct">
+                        android:hint="@string/geosite_direct"
+                        app:endIconMode="clear_text">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_geosite_direct"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
                             android:inputType="text"
                             android:contentDescription="@string/desc_geosite_direct_input" />
                     </com.google.android.material.textfield.TextInputLayout>
@@ -339,11 +360,14 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:hint="@string/geoip_direct">
+                        android:hint="@string/geoip_direct"
+                        app:endIconMode="clear_text">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_geoip_direct"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:imeOptions="actionDone"
+                            android:singleLine="true"
                             android:inputType="text"
                             android:contentDescription="@string/desc_geoip_direct_input" />
                     </com.google.android.material.textfield.TextInputLayout>

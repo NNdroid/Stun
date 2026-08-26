@@ -16,15 +16,14 @@ val baseVersionCode = 10
 
 // Automate moving the TProxy executable to assets
 val copyTProxyBinaries = tasks.register("copyTProxyBinaries") {
-    description = ""
-    val buildDirectory = project.layout.buildDirectory
-    val projectDirectory = project.layout.projectDirectory
+    description = "Copies hev-socks5-tproxy from core build intermediates to tv assets"
+    val tvProjDir = project.projectDir
+    val rootDirBase = project.rootDir
 
     doLast {
         val abis = listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
-        val buildDir = buildDirectory.get().asFile
         // Note: CXX intermediates now come from :core
-        val coreBuildDir = File(projectDirectory.asFile.parentFile, "core/build/intermediates/cxx")
+        val coreBuildDir = File(rootDirBase, "core/build/intermediates/cxx")
 
         if (!coreBuildDir.exists()) {
             println("CXX intermediates directory not found: ${coreBuildDir.path}")
@@ -35,7 +34,7 @@ val copyTProxyBinaries = tasks.register("copyTProxyBinaries") {
             var found = false
             coreBuildDir.walkBottomUp().forEach { file ->
                 if (file.isFile && file.name == "hev-socks5-tproxy" && file.parentFile.name == abi) {
-                    val destDir = projectDirectory.dir("src/main/assets/bin/$abi").asFile
+                    val destDir = File(tvProjDir, "src/main/assets/bin/$abi")
                     destDir.mkdirs()
                     file.copyTo(File(destDir, "hev-socks5-tproxy"), overwrite = true)
                     println("Copied $abi binary to assets from: ${file.path}")
@@ -56,7 +55,7 @@ android {
     defaultConfig {
         applicationId = "app.fjj.stun.tv"
         minSdk = 28
-        targetSdk = 36
+        targetSdk = 35
         versionCode = baseVersionCode
         versionName = baseVersionName
 
@@ -115,19 +114,6 @@ kotlin {
 tasks.configureEach {
     if (name.startsWith("merge") && name.endsWith("Assets")) {
         dependsOn(copyTProxyBinaries)
-        dependsOn("copySharedScripts")
-    }
-}
-
-// Task to copy shared scripts from app module
-val copySharedScripts = tasks.register("copySharedScripts") {
-    doLast {
-        val srcDir = File(project.rootDir, "app/src/main/assets/scripts")
-        val destDir = File(project.projectDir, "src/main/assets/scripts")
-        if (srcDir.exists()) {
-            srcDir.copyRecursively(destDir, overwrite = true)
-            println("Copied scripts from app to tv assets")
-        }
     }
 }
 

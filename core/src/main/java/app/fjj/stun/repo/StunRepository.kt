@@ -24,26 +24,23 @@ object StunRepository {
     val proxy: myssh.SshTProxy = myssh.Myssh.newSshTProxy()
 
     /**
-     * 向指定日志源追加内容
+     * 向 App 日志源追加内容
      */
-    private fun append(builder: SpannableStringBuilder, liveData: MutableLiveData<CharSequence>, text: CharSequence) {
-        synchronized(builder) {
-            builder.append(text)
-            if (builder.length > MAX_LOG_SIZE) {
-                // When exceeding limit, remove the first 10% of logs to avoid frequent deletions
+    fun appendAppLog(text: CharSequence) {
+        synchronized(appLogBuilder) {
+            appLogBuilder.append(text)
+            if (appLogBuilder.length > MAX_LOG_SIZE) {
                 val removeCount = MAX_LOG_SIZE / 10
-                val firstLineEnd = builder.indexOf("\n", removeCount)
+                val firstLineEnd = appLogBuilder.indexOf("\n", removeCount)
                 if (firstLineEnd != -1) {
-                    builder.delete(0, firstLineEnd + 1)
+                    appLogBuilder.delete(0, firstLineEnd + 1)
                 } else {
-                    builder.delete(0, removeCount)
+                    appLogBuilder.delete(0, removeCount)
                 }
             }
-            liveData.postValue(SpannableStringBuilder(builder)) // Send a copy to avoid mutation issues
+            appLogs.postValue(SpannableStringBuilder(appLogBuilder))
         }
     }
-
-    fun appendAppLog(text: CharSequence) = append(appLogBuilder, appLogs, text)
 
     /**
      * 兼容旧接口，底层 StunLogger 仍会通过此方法间接触发 appendAppLog

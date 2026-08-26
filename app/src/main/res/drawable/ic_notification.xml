@@ -1,17 +1,39 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="100"
-    android:viewportHeight="100">
+    android:viewportWidth="108"
+    android:viewportHeight="108">
 
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M50,15 L85,40 L75,85 L50,98 L25,85 L15,40 Z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M25,25 L5,2 L40,20 Z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M75,25 L95,2 L60,20 Z" />
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.85"
+        android:scaleY="0.85">
 
+        <!-- Ears - Left -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M40,35 C32,20 20,30 25,50 L50,45 Z" />
+
+        <!-- Ears - Right -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M68,35 C76,20 88,30 83,50 L58,45 Z" />
+
+        <!-- Main Head with Cutout Eyes & Nose via evenOdd -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M54,35 C28,35 15,52 15,72 C15,92 35,102 54,102 C73,102 93,92 93,72 C93,52 80,35 54,35 Z
+                             M43,63 A5,5 0 1,0 43,73 A5,5 0 1,0 43,63 Z
+                             M65,63 A5,5 0 1,0 65,73 A5,5 0 1,0 65,63 Z
+                             M54,80 A2.5,2 0 1,0 54,84 A2.5,2 0 1,0 54,80 Z" />
+
+        <!-- Cheeks / Muzzle accent line for depth -->
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="1.5"
+            android:pathData="M38,78 Q46,74 54,80 Q62,74 70,78" />
+
+    </group>
 </vector>

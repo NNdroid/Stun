@@ -227,7 +227,65 @@ class HomeFragment : Fragment() {
         }
     }
 
+    private var lastCheckedClipboard: String? = null
+
+    override fun onResume() {
+        super.onResume()
+        checkClipboardForImport()
+    }
+
+    private fun checkClipboardForImport() {
+        try {
+            val ctx = context ?: return
+            val clipboard = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager ?: return
+            if (!clipboard.hasPrimaryClip()) return
+            val clipData = clipboard.primaryClip ?: return
+            if (clipData.itemCount == 0) return
+            val text = clipData.getItemAt(0).text?.toString()?.trim() ?: return
+
+            if (text.isBlank() || text == lastCheckedClipboard) return
+            lastCheckedClipboard = text
+
+            val isEncrypted = ShareCryptoUtils.isEncryptedPayload(text)
+            val isJson = (text.startsWith("{") && text.endsWith("}") && text.contains("\"sshAddr\""))
+            val isBase64 = try {
+                val decoded = String(Base64.decode(text, Base64.DEFAULT), Charsets.UTF_8)
+                decoded.startsWith("{") && decoded.endsWith("}") && (decoded.contains("\"sshAddr\"") || decoded.contains("\"tunnelType\""))
+            } catch (_: Exception) {
+                false
+            }
+
+            if (isEncrypted || isJson || isBase64) {
+                Snackbar.make(binding.root, getString(CoreR.string.action_import) + "?", Snackbar.LENGTH_LONG)
+                    .setAction(getString(CoreR.string.action_import)) {
+                        if (isEncrypted) {
+                            showPinInputDialog(text)
+                        } else if (isJson) {
+                            importProfileFromJsonString(text)
+                        } else if (isBase64) {
+                            importProfileFromJsonBase64(text)
+                        }
+                    }
+                    .setAnchorView(binding.bottomContainer)
+                    .show()
+            }
+        } catch (_: Exception) {}
+    }
+
     private fun setupListeners() {
+        binding.btnEmptyScanQr?.setOnClickListener {
+            barcodeLauncher.launch(ScanOptions().apply {
+                setPrompt(getString(CoreR.string.scan_prompt))
+                setBeepEnabled(true)
+                setOrientationLocked(false)
+            })
+        }
+
+        binding.btnEmptyAddProfile?.setOnClickListener {
+            val intent = Intent(requireContext(), ProfileEditActivity::class.java)
+            startActivity(intent)
+        }
+
         binding.fabStartStop.setOnClickListener {
             handleStartStop()
         }

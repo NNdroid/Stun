@@ -26,6 +26,8 @@ class SettingsFragment : Fragment() {
     private val binding get() = _binding!!
     private val viewModel: SettingsViewModel by viewModels()
     
+    private var globalFocusChangeListener: android.view.ViewTreeObserver.OnGlobalFocusChangeListener? = null
+
     private val logLevels = arrayOf("DEBUG", "INFO", "WARN", "ERROR")
     private val udpgwVersions = arrayOf("tun2proxy", "badvpn")
     private lateinit var serviceModes: Array<String>
@@ -65,24 +67,60 @@ class SettingsFragment : Fragment() {
             (requireActivity() as MainActivity).navigateToHome()
         }
 
-        val bottomBarHeight = (72 * resources.displayMetrics.density).toInt()
+        val bottomBarHeight = (88 * resources.displayMetrics.density).toInt()
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             
             v.updatePadding(left = systemBars.left, right = systemBars.right)
-            binding.appBar.updatePadding(top = systemBars.top)
+            _binding?.appBar?.updatePadding(top = systemBars.top)
             
-            // Bottom bar parent (FrameLayout)
-            binding.btnSave.parent.let { 
-                (it as View).updatePadding(bottom = systemBars.bottom) 
+            val bottomInset = maxOf(systemBars.bottom, ime.bottom)
+            
+            _binding?.btnSave?.parent?.let { 
+                (it as View).updatePadding(bottom = bottomInset) 
             }
             
-            // NestedScrollView padding to allow scrolling above the fixed bottom bar
-            binding.scrollView.updatePadding(bottom = systemBars.bottom + bottomBarHeight)
+            _binding?.scrollView?.updatePadding(bottom = bottomInset + bottomBarHeight)
+            
+            if (ime.bottom > 0) {
+                v.postDelayed({
+                    activity?.currentFocus?.let { scrollToFocusedView(it) }
+                }, 100)
+            }
             
             insets
         }
+
+        ViewCompat.setWindowInsetsAnimationCallback(
+            binding.root,
+            object : androidx.core.view.WindowInsetsAnimationCompat.Callback(DISPATCH_MODE_STOP) {
+                override fun onEnd(animation: androidx.core.view.WindowInsetsAnimationCompat) {
+                    super.onEnd(animation)
+                    val insets = ViewCompat.getRootWindowInsets(binding.root)
+                    val ime = insets?.getInsets(WindowInsetsCompat.Type.ime())
+                    if (ime != null && ime.bottom > 0) {
+                        activity?.currentFocus?.let { scrollToFocusedView(it) }
+                    }
+                }
+
+                override fun onProgress(
+                    insets: WindowInsetsCompat,
+                    runningAnimations: MutableList<androidx.core.view.WindowInsetsAnimationCompat>
+                ): WindowInsetsCompat {
+                    return insets
+                }
+            }
+        )
+
+        globalFocusChangeListener = android.view.ViewTreeObserver.OnGlobalFocusChangeListener { _, newFocus ->
+            val scroll = _binding?.scrollView ?: return@OnGlobalFocusChangeListener
+            if (newFocus != null && isDescendantOf(newFocus, scroll)) {
+                scrollToFocusedView(newFocus)
+            }
+        }
+        binding.scrollView.viewTreeObserver.addOnGlobalFocusChangeListener(globalFocusChangeListener)
 
         binding.etFilterApps.setOnClickListener {
             val fragment = AppFilterDialogFragment.newInstance(binding.etFilterApps.text.toString())
@@ -206,7 +244,62 @@ class SettingsFragment : Fragment() {
         (requireActivity() as MainActivity).navigateToHome()
     }
 
+    private fun scrollToFocusedView(view: View) {
+        val scroll = _binding?.scrollView ?: return
+        scroll.post {
+            if (!isAdded || activity == null || _binding == null) return@post
+            
+            var target: View = view
+            var p = view.parent
+            while (p is View && p !== scroll) {
+                if (p is com.google.android.material.textfield.TextInputLayout) {
+                    target = p
+                    break
+                }
+                p = p.parent
+            }
+
+            val rect = android.graphics.Rect()
+            target.getDrawingRect(rect)
+            try {
+                scroll.offsetDescendantRectToMyCoords(target, rect)
+                
+                val density = resources.displayMetrics.density
+                val bottomPadding = scroll.paddingBottom
+                val visibleHeight = scroll.height - bottomPadding
+                
+                if (visibleHeight <= 0) return@post
+                
+                val targetTop = rect.top
+                val targetBottom = rect.bottom
+                val margin = (20 * density).toInt()
+                
+                val idealScrollY = maxOf(0, (targetBottom + margin) - visibleHeight)
+                val finalScrollY = if (targetTop - margin < idealScrollY) {
+                    maxOf(0, targetTop - margin)
+                } else {
+                    idealScrollY
+                }
+                
+                scroll.smoothScrollTo(0, finalScrollY)
+            } catch (_: Exception) {}
+        }
+    }
+
+    private fun isDescendantOf(child: View, parent: View): Boolean {
+        var p = child.parent
+        while (p != null) {
+            if (p === parent) return true
+            p = p.parent
+        }
+        return false
+    }
+
     override fun onDestroyView() {
+        globalFocusChangeListener?.let {
+            _binding?.scrollView?.viewTreeObserver?.removeOnGlobalFocusChangeListener(it)
+        }
+        globalFocusChangeListener = null
         super.onDestroyView()
         _binding = null
     }

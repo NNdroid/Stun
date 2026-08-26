@@ -72,11 +72,14 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:hint="@string/profile_name"
+                        app:endIconMode="clear_text"
                         app:startIconDrawable="@drawable/ic_edit">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_name"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
                             android:inputType="text" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -87,11 +90,14 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
                         android:hint="@string/ssh_address"
+                        app:endIconMode="clear_text"
                         app:startIconDrawable="@drawable/ic_info">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_ssh_addr"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
                             android:inputType="text" />
                     </com.google.android.material.textfield.TextInputLayout>
                 </LinearLayout>
@@ -144,11 +150,14 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
                         android:hint="@string/username"
+                        app:endIconMode="clear_text"
                         app:startIconDrawable="@drawable/ic_person">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_user"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
                             android:inputType="text" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -165,6 +174,8 @@
                             android:id="@+id/et_pass"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
                             android:inputType="textPassword" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -200,6 +211,8 @@
                             android:id="@+id/et_key_pass"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
                             android:inputType="textPassword" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -314,11 +327,14 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:hint="@string/proxy_address">
+                        android:hint="@string/proxy_address"
+                        app:endIconMode="clear_text">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_proxy_addr"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
                             android:inputType="text" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -328,11 +344,14 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:hint="@string/custom_host">
+                        android:hint="@string/custom_host"
+                        app:endIconMode="clear_text">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_custom_host"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
                             android:inputType="text" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -343,11 +362,14 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
                         android:hint="@string/server_name"
-                        android:visibility="gone">
+                        android:visibility="gone"
+                        app:endIconMode="clear_text">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_server_name"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
                             android:inputType="text" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -514,11 +536,14 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="12dp"
                             android:hint="@string/udp_custom_psk"
-                            app:passwordToggleEnabled="true">
+                            app:endIconMode="password_toggle"
+                            app:startIconDrawable="@drawable/ic_lock">
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/et_udp_custom_psk"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
+                                android:imeOptions="actionNext"
+                                android:singleLine="true"
                                 android:inputType="textPassword" />
                         </com.google.android.material.textfield.TextInputLayout>
 
@@ -528,11 +553,17 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="12dp"
-                            android:hint="@string/udp_custom_magic">
+                            android:hint="@string/udp_custom_magic"
+                            app:endIconMode="clear_text"
+                            app:helperText="Default: UDPC (Max 4 chars)"
+                            app:startIconDrawable="@drawable/ic_code">
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/et_udp_custom_magic"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
+                                android:imeOptions="actionNext"
+                                android:singleLine="true"
+                                android:maxLength="4"
                                 android:inputType="text" />
                         </com.google.android.material.textfield.TextInputLayout>
                     </LinearLayout>

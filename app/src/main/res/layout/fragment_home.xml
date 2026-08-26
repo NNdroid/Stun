@@ -67,9 +67,35 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:alpha="0.4"
+                android:alpha="0.6"
                 android:text="@string/main_empty_profiles"
                 android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_empty_scan_qr"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/scan_qr"
+                    app:icon="@drawable/ic_qr_code"
+                    app:cornerRadius="16dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_empty_add_profile"
+                    style="?attr/materialButtonTonalStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:text="@string/add_profile"
+                    app:icon="@drawable/ic_add"
+                    app:cornerRadius="16dp" />
+            </LinearLayout>
         </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
@@ -185,7 +211,7 @@
                     android:id="@+id/tv_up_rate"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="▲ 0 B/s"
+                    tools:text="▲ 0 B/s"
                     android:textAppearance="?attr/textAppearanceLabelSmall"
                     android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -193,7 +219,7 @@
                     android:id="@+id/tv_down_rate"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="▼ 0 B/s"
+                    tools:text="▼ 0 B/s"
                     android:textAppearance="?attr/textAppearanceLabelSmall"
                     android:textColor="?attr/colorOnSurfaceVariant" />
             </LinearLayout>

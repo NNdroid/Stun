@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark Theme Status Colors (Brighter for better visibility on dark) -->
+    <color name="status_connected">#81C784</color> <!-- Light Green -->
+    <color name="status_disconnected">#E57373</color> <!-- Light Red -->
+    <color name="status_connecting">#FFB74D</color> <!-- Light Orange -->
+</resources>

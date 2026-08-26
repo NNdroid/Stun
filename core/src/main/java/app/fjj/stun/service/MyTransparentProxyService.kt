@@ -1,4 +1,4 @@
-﻿package app.fjj.stun.service
+package app.fjj.stun.service
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -48,6 +48,38 @@ class MyTransparentProxyService : Service() {
     private var currentProfileName: String = ""
     private val TAG: String
         get() = "TProxyService-[${Thread.currentThread().name}]"
+
+    private var wakeLock: android.os.PowerManager.WakeLock? = null
+    private var wifiLock: android.net.wifi.WifiManager.WifiLock? = null
+
+    private fun acquireLocks() {
+        try {
+            if (wakeLock == null) {
+                val pm = getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
+                wakeLock = pm?.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "Stun::TProxyWakeLock")
+                wakeLock?.acquire(24 * 60 * 60 * 1000L)
+            }
+            if (wifiLock == null) {
+                val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
+                @Suppress("DEPRECATION")
+                wifiLock = wm?.createWifiLock(android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF, "Stun::TProxyWifiLock")
+                wifiLock?.acquire()
+            }
+        } catch (e: Exception) {
+            StunLogger.w(TAG, "Failed to acquire locks: ${e.message}")
+        }
+    }
+
+    private fun releaseLocks() {
+        try {
+            if (wakeLock?.isHeld == true) wakeLock?.release()
+            wakeLock = null
+            if (wifiLock?.isHeld == true) wifiLock?.release()
+            wifiLock = null
+        } catch (e: Exception) {
+            StunLogger.w(TAG, "Failed to release locks: ${e.message}")
+        }
+    }
 
     companion object {
         // Actions
@@ -101,6 +133,7 @@ class MyTransparentProxyService : Service() {
         StunRepository.registerEngineCallback()
         StunRepository.vpnState.postValue(VpnState.CONNECTING)
         updateNotification(getString(R.string.main_connecting))
+        acquireLocks()
 
         mainJob = serviceScope.launch {
             if (!withContext(Dispatchers.IO) { ExecUtils.checkIsRootPermission() }) {
@@ -203,6 +236,7 @@ class MyTransparentProxyService : Service() {
 
         mainJob?.cancel()
         coreJob?.cancel()
+        releaseLocks()
 
         @OptIn(DelicateCoroutinesApi::class)
         GlobalScope.launch(Dispatchers.IO + NonCancellable) {
@@ -309,8 +343,8 @@ class MyTransparentProxyService : Service() {
         if (currentTime - lastNotificationUpdateTime < 1000L) return
         lastNotificationUpdateTime = currentTime
 
-        val statusText = "↑ ${app.fjj.stun.util.AppUtils.formatBytes(currentTxRate)}/s (${app.fjj.stun.util.AppUtils.formatBytes(currentTxTotal)}) " +
-                         "↓ ${app.fjj.stun.util.AppUtils.formatBytes(currentRxRate)}/s (${app.fjj.stun.util.AppUtils.formatBytes(currentRxTotal)}) | " +
+        val statusText = "↑ ${app.fjj.stun.util.AppUtils.formatSpeed(currentTxRate)} (${app.fjj.stun.util.AppUtils.formatBytes(currentTxTotal)}) " +
+                         "↓ ${app.fjj.stun.util.AppUtils.formatSpeed(currentRxRate)} (${app.fjj.stun.util.AppUtils.formatBytes(currentRxTotal)}) | " +
                          "Conns: $currentActiveConns/$currentTotalConns | " +
                          "CPU: ${String.format(Locale.US, "%.1f", currentCpu)}% MEM: ${String.format(Locale.US, "%.1f", currentMem)}MB/${String.format(Locale.US, "%.1f", currentMemSys)}MB G: $currentGoroutines"
 

@@ -126,6 +126,9 @@ class ProfileAdapter(
                 } else {
                     tvHost.visibility = View.GONE
                 }
+            } else if (profile.tunnelType == Profile.TUNNEL_TYPE_UDP_CUSTOM) {
+                tvHost.text = "Magic: ${profile.udpCustomMagic.ifBlank { "UDPC" }}"
+                tvHost.visibility = View.VISIBLE
             } else if (isCustomHostSupported && profile.customHost.isNotBlank()) {
                 tvHost.text = context.getString(CoreR.string.label_host, profile.customHost)
                 tvHost.visibility = View.VISIBLE

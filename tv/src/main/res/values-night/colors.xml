@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- TV Dark Theme Colors -->
+    <color name="tv_bg_main">#0B0F14</color>
+    <color name="tv_bg_left_panel">#131820</color>
+    <color name="tv_card_bg">#1A202A</color>
+    <color name="tv_card_inner_bg">#222B38</color>
+    <color name="tv_card_stroke">#263242</color>
+    <color name="tv_text_primary">#FFFFFF</color>
+    <color name="tv_text_secondary">#8B949E</color>
+    <color name="tv_card_focused_bg">#2A241C</color>
+    <color name="tv_card_selected_focused_bg">#382A1C</color>
+    <color name="tv_focus_border">#FFB77B</color>
+
+    <!-- Specific Dashboard Elements (Dark Mode - Brighter Colors) -->
+    <color name="tv_color_traffic">#8FD0FF</color> <!-- Light Blue -->
+    <color name="tv_color_traffic_total">#80B0D0</color>
+    <color name="tv_color_public_ip">#A5D8FF</color>
+    <color name="tv_color_error">#FF6B6B</color> <!-- Light Red -->
+
+    <!-- Badge Text Colors (Night) -->
+    <color name="tv_color_badge_sub_text">#9ECBFF</color>
+    <color name="tv_color_focus_hint">#FFB77B</color>
+</resources>

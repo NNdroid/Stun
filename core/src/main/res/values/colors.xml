@@ -68,8 +68,8 @@
     <color name="md_theme_dark_surfaceContainerHigh">#2F2825</color>
     <color name="md_theme_dark_surfaceContainerHighest">#3A332F</color>
 
-    <!-- Status Colors -->
-    <color name="status_connected">#4CAF50</color>
-    <color name="status_disconnected">#F44336</color>
-    <color name="status_connecting">#FF9800</color>
+    <!-- Status Colors (Light Theme - Darker for contrast) -->
+    <color name="status_connected">#2E7D32</color> <!-- Dark Green -->
+    <color name="status_disconnected">#C62828</color> <!-- Dark Red -->
+    <color name="status_connecting">#EF6C00</color> <!-- Dark Orange -->
 </resources>

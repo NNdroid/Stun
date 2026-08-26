@@ -225,7 +225,7 @@
     <string name="encrypt_backup_title">バックアップを暗号化</string>
     <string name="decrypt_backup_title">バックアップを復号</string>
     <string name="share_pin_format">PIN: %1$s</string>
-    <string name="web_console_url_format">🌐  http://%1$s:%2$d/?token=%3$s</string>
+    <string name="web_console_url_format">http://%1:%2/?token=%3</string>
 
     <!-- VayDNS Config -->
     <string name="vaydns_pubkey_hint">VayDNS 公開鍵 (Noise)</string>
@@ -317,4 +317,29 @@
     <string name="udp_custom_psk">UDP Custom PSK (事前共有鍵)</string>
     <string name="udp_custom_magic">Magic 文字列 (デフォルト: UDPC)</string>
     <string name="udp_custom_psk_hint">サーバーの PSK を入力 (未設定の場合は空欄)</string>
+    <string name="search">検索</string>
+    <string name="share">共有</string>
+    <string name="scan_qr">QRコードをスキャン</string>
+    <string name="custom_direct_routing">カスタム直接ルーティング</string>
+    <string name="update_geodata_now">今すぐ更新</string>
+    <string name="loading_geodata_status">前回の更新：未実行</string>
+    <string name="delete">削除</string>
+    <string name="dialog_delete_title">ノードを削除</string>
+    <string name="dialog_delete_message">ノード「%s」を削除してもよろしいですか？</string>
+    <string name="toast_deleted">ノードを削除しました</string>
+    <string name="web_console_qr_title">Web管理コンソール</string>
+    <string name="web_console_qr_hint">QRコードをスキャンまたはブラウザでURLを開く</string>
+    <string name="dialog_qr_title">Web管理コンソール</string>
+    <string name="tv_profile_focus_hint">[OK] ノード切替  ·  [メニュー/長押] 速度測定・削除</string>
+    <string name="auth_password_badge">パスワード</string>
+    <string name="auth_private_key_badge">秘密鍵</string>
+    <string name="tv_profile_selected_badge">✓ 使用中</string>
+    <string name="traffic_up_format">↑ %1$s/s</string>
+    <string name="tv_traffic_format">↑ %1$s/s  ↓ %2$s/s</string>
+    <string name="tv_traffic_total_format">Σ %1$s</string>
+    <string name="error_prefix">エラー: %1$s</string>
+    <string name="info_protocol_negotiation_format">プロトコルネゴシエーション: %1$s -> %2$s</string>
+    <string name="label_domain">ドメイン</string>
+    <string name="latency_format">%1$d ms</string>
+    <string name="traffic_down_format">↓ %1$s/s</string>
 </resources>

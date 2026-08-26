@@ -1,16 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <style name="Theme.Stun.TV" parent="Theme.Material3.Dark.NoActionBar">
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.Stun.TV" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Brand Colors -->
         <item name="colorPrimary">@color/md_theme_light_primary</item>
         <item name="colorOnPrimary">@color/md_theme_light_onPrimary</item>
         <item name="colorPrimaryContainer">@color/md_theme_light_primaryContainer</item>
         <item name="colorOnPrimaryContainer">@color/md_theme_light_onPrimaryContainer</item>
+        <item name="colorSecondary">@color/md_theme_light_secondary</item>
+        <item name="colorOnSecondary">@color/md_theme_light_onSecondary</item>
+        <item name="colorSecondaryContainer">@color/md_theme_light_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/md_theme_light_onSecondaryContainer</item>
+        <item name="colorTertiary">@color/md_theme_light_tertiary</item>
+        <item name="colorOnTertiary">@color/md_theme_light_onTertiary</item>
+        <item name="colorTertiaryContainer">@color/md_theme_light_tertiaryContainer</item>
+        <item name="colorOnTertiaryContainer">@color/md_theme_light_onTertiaryContainer</item>
+        <item name="colorError">@color/md_theme_light_error</item>
+        <item name="colorOnError">@color/md_theme_light_onError</item>
+        <item name="colorErrorContainer">@color/md_theme_light_errorContainer</item>
+        <item name="colorOnErrorContainer">@color/md_theme_light_onErrorContainer</item>
 
-        <!-- Surface Colors -->
-        <item name="android:colorBackground">#0F0F0F</item>
-        <item name="colorSurface">#151515</item>
-        <item name="colorSurfaceVariant">#222222</item>
+        <!-- Surface Colors (Light) -->
+        <item name="android:colorBackground">@color/tv_bg_main</item>
+        <item name="colorSurface">@color/tv_card_bg</item>
+        <item name="colorSurfaceVariant">@color/tv_card_inner_bg</item>
+        <item name="colorOutline">@color/tv_card_stroke</item>
+        <item name="colorOnSurface">@color/tv_text_primary</item>
+        <item name="colorOnSurfaceVariant">@color/tv_text_secondary</item>
+
+        <!-- Custom Dashboard Attributes -->
+        <item name="tvTrafficColor">@color/tv_color_traffic</item>
+        <item name="tvTrafficTotalColor">@color/tv_color_traffic_total</item>
+        <item name="tvPublicIpColor">@color/tv_color_public_ip</item>
+        <item name="tvErrorColor">@color/tv_color_error</item>
+        <item name="tvBadgeSubText">@color/tv_color_badge_sub_text</item>
+        <item name="tvFocusHintText">@color/tv_color_focus_hint</item>
 
         <!-- Typography -->
         <item name="android:fontFamily">sans-serif-medium</item>

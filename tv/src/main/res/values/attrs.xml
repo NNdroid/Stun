@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Custom Dashboard Attributes for Better Contrast -->
+    <attr name="tvTrafficColor" format="color" />
+    <attr name="tvTrafficTotalColor" format="color" />
+    <attr name="tvPublicIpColor" format="color" />
+    <attr name="tvErrorColor" format="color" />
+    <attr name="tvBadgeSubText" format="color" />
+    <attr name="tvFocusHintText" format="color" />
+</resources>

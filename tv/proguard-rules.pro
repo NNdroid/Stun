@@ -1,20 +1,28 @@
-# Ktor & Netty/CIO Management APIs not on Android
--dontwarn java.lang.management.**
--dontwarn javax.management.**
--dontwarn io.ktor.**
--dontwarn org.slf4j.**
+# ─── 1. Stack Trace & Obfuscation Mapping ───
+-renamesourcefileattribute SourceFile
+-keepattributes SourceFile,LineNumberTable
 
-# Ktor Server & Client & Engine Reflection Keep Rules (Fixes KTOR-7298 / "Array has more than one element")
--keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
+# ─── 2. ZXing & QR Generator ───
+-keep class com.google.zxing.** { *; }
+-keep class com.journeyapps.barcodescanner.** { *; }
+-dontwarn com.google.zxing.**
 
--keep class io.ktor.** { *; }
--keep interface io.ktor.** { *; }
--keep class * implements io.ktor.server.engine.ApplicationEngineFactory { *; }
--keep class * implements io.ktor.server.application.Plugin { *; }
+# ─── 3. ViewBinding & AndroidX Leanback / Material ───
+-keep class app.fjj.stun.tv.databinding.** { *; }
+-keep class androidx.leanback.** { *; }
+-keep class com.google.android.material.** { *; }
 
-# Keep TV App and Models
--keep class app.fjj.stun.tv.** { *; }
--keep class app.fjj.stun.remote.** { *; }
--keep class app.fjj.stun.repo.** { *; }
--keep class com.google.gson.** { *; }
--keep class com.google.crypto.tink.** { *; }
+# ─── 4. JNI & Logging ───
+-keep class hev.htproxy.** { *; }
+-keep class myssh.** { *; }
+-keep class app.fjj.stun.repo.StunLogger { *; }
+
+# ─── 5. Strip Android Log in Release Build ───
+-assumenosideeffects class android.util.Log {
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+    public static int w(...);
+    public static int e(...);
+}
+

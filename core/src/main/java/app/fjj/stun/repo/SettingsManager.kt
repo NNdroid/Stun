@@ -28,6 +28,16 @@ object SettingsManager {
     private const val KEY_LANGUAGE = "language"
     private const val KEY_SHOW_NOTIFICATION_SPEED = "show_notification_speed"
 
+    // Web Console Authentication Modes
+    const val WEB_AUTH_MODE_RANDOM = 0     // 每次启动随机生成 (Random on Start)
+    const val WEB_AUTH_MODE_PERMANENT = 1  // 永久固定生成一次 (Permanent Token)
+    const val WEB_AUTH_MODE_CUSTOM = 2     // 自定义密码 (Custom Token)
+    const val WEB_AUTH_MODE_DISABLED = 3   // 关闭认证 (局域网免Token访问)
+
+    private const val KEY_WEB_AUTH_MODE = "web_auth_mode"
+    private const val KEY_WEB_PERMANENT_TOKEN = "web_permanent_token"
+    private const val KEY_WEB_CUSTOM_TOKEN = "web_custom_token"
+
     const val SERVICE_MODE_VPN = 0
     const val SERVICE_MODE_TPROXY = 1
 
@@ -97,6 +107,22 @@ object SettingsManager {
 
     fun getShowNotificationSpeed(context: Context): Boolean = getPrefs(context).getBoolean(KEY_SHOW_NOTIFICATION_SPEED, true)
     fun saveShowNotificationSpeed(context: Context, enabled: Boolean) = getPrefs(context).edit { putBoolean(KEY_SHOW_NOTIFICATION_SPEED, enabled) }
+
+    fun getWebAuthMode(context: Context): Int = getPrefs(context).getInt(KEY_WEB_AUTH_MODE, WEB_AUTH_MODE_RANDOM)
+    fun saveWebAuthMode(context: Context, mode: Int) = getPrefs(context).edit { putInt(KEY_WEB_AUTH_MODE, mode) }
+
+    fun getWebPermanentToken(context: Context): String {
+        var token = getPrefs(context).getString(KEY_WEB_PERMANENT_TOKEN, "") ?: ""
+        if (token.isBlank()) {
+            val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+            token = (1..8).map { chars.random() }.joinToString("")
+            getPrefs(context).edit { putString(KEY_WEB_PERMANENT_TOKEN, token) }
+        }
+        return token
+    }
+
+    fun getWebCustomToken(context: Context): String = getPrefs(context).getString(KEY_WEB_CUSTOM_TOKEN, "") ?: ""
+    fun saveWebCustomToken(context: Context, token: String) = getPrefs(context).edit { putString(KEY_WEB_CUSTOM_TOKEN, token) }
 
     fun getGeositeCachePath(context: Context): String = File(context.cacheDir, "geosite.dat").absolutePath
     fun getGeoipCachePath(context: Context): String = File(context.cacheDir, "geoip.dat").absolutePath

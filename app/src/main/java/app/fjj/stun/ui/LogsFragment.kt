@@ -11,6 +11,7 @@ import android.widget.Toast
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
+import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -50,6 +51,20 @@ class LogsFragment : Fragment() {
                     Toast.makeText(requireContext(), getString(CoreR.string.copy_success), Toast.LENGTH_SHORT).show()
                     true
                 }
+                R.id.action_share -> {
+                    val fullLogs = StunRepository.appLogs.value?.toString() ?: ""
+                    if (fullLogs.isNotBlank()) {
+                        val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(android.content.Intent.EXTRA_SUBJECT, "Stun Diagnostic Logs")
+                            putExtra(android.content.Intent.EXTRA_TEXT, fullLogs)
+                        }
+                        startActivity(android.content.Intent.createChooser(shareIntent, getString(CoreR.string.share)))
+                    } else {
+                        Toast.makeText(requireContext(), getString(CoreR.string.clear_logs), Toast.LENGTH_SHORT).show()
+                    }
+                    true
+                }
                 R.id.action_clear -> {
                     StunRepository.clearLogs()
                     true
@@ -59,6 +74,7 @@ class LogsFragment : Fragment() {
         }
 
         setupRecyclerView()
+        setupFilters()
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -79,6 +95,28 @@ class LogsFragment : Fragment() {
         }
 
         updateLogs(StunRepository.appLogs.value?.toString() ?: "")
+    }
+
+    private var currentFilterLevel = "ALL"
+    private var currentSearchQuery = ""
+    private var cachedFullLogs = ""
+
+    private fun setupFilters() {
+        binding.chipGroupLogLevel.setOnCheckedStateChangeListener { _, checkedIds ->
+            currentFilterLevel = when (checkedIds.firstOrNull()) {
+                R.id.chip_debug -> "DEBUG"
+                R.id.chip_info -> "INFO"
+                R.id.chip_warn -> "WARN"
+                R.id.chip_error -> "ERROR"
+                else -> "ALL"
+            }
+            applyFiltersAndDisplay()
+        }
+
+        binding.etSearchLogs.doAfterTextChanged { text ->
+            currentSearchQuery = text?.toString()?.trim() ?: ""
+            applyFiltersAndDisplay()
+        }
     }
 
     private fun setupRecyclerView() {
@@ -106,15 +144,38 @@ class LogsFragment : Fragment() {
     }
 
     private fun updateLogs(fullText: String) {
-        if (fullText.isEmpty()) {
+        cachedFullLogs = fullText
+        applyFiltersAndDisplay()
+    }
+
+    private fun applyFiltersAndDisplay() {
+        if (cachedFullLogs.isEmpty()) {
             logAdapter.submitList(emptyList())
             return
         }
 
-        val lines = fullText.lines().filter { it.isNotBlank() }
         val wasAtBottom = !userIsScrolling
-        
-        logAdapter.submitList(lines) {
+        val filteredLines = cachedFullLogs.lines().filter { line ->
+            if (line.isBlank()) return@filter false
+
+            val matchesLevel = when (currentFilterLevel) {
+                "DEBUG" -> line.contains("DEBUG", ignoreCase = true)
+                "INFO" -> line.contains("INFO", ignoreCase = true)
+                "WARN" -> line.contains("WARN", ignoreCase = true) || line.contains("⚠️")
+                "ERROR" -> line.contains("ERROR", ignoreCase = true) || line.contains("❌")
+                else -> true
+            }
+
+            val matchesSearch = if (currentSearchQuery.isEmpty()) {
+                true
+            } else {
+                line.contains(currentSearchQuery, ignoreCase = true)
+            }
+
+            matchesLevel && matchesSearch
+        }
+
+        logAdapter.submitList(filteredLines) {
             if (wasAtBottom) {
                 scrollToBottom()
             }

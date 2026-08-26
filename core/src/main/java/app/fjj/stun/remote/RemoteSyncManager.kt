@@ -226,20 +226,28 @@ object RemoteSyncManager {
             override fun onServiceFound(service: NsdServiceInfo) {
                 if (isStopped.get()) return
                 if (service.serviceType.contains("stun_sync") || service.serviceName.contains(SERVICE_NAME_PREFIX)) {
-                    manager.resolveService(service, object : NsdManager.ResolveListener {
+                    val resolveListener = object : NsdManager.ResolveListener {
                         override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
                             StunLogger.w(TAG, "Resolve failed for ${serviceInfo.serviceName}: $errorCode")
                         }
 
                         override fun onServiceResolved(serviceInfo: NsdServiceInfo) {
                             if (isStopped.get()) return
-                            val host = serviceInfo.host?.hostAddress ?: return
+                            
+                            val hostAddress = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                                serviceInfo.hostAddresses.firstOrNull { it is java.net.Inet4Address }?.hostAddress
+                                    ?: serviceInfo.hostAddresses.firstOrNull()?.hostAddress
+                            } else {
+                                @Suppress("DEPRECATION")
+                                serviceInfo.host?.hostAddress
+                            } ?: return
+
                             val port = serviceInfo.port
-                            val key = "$host:$port"
+                            val key = "$hostAddress:$port"
                             val model = serviceInfo.serviceName.removePrefix("$SERVICE_NAME_PREFIX-").replace("_", " ")
                             val device = RemoteDeviceInfo(
                                 name = serviceInfo.serviceName,
-                                host = host,
+                                host = hostAddress,
                                 port = port,
                                 model = model.ifBlank { "Android TV" }
                             )
@@ -248,7 +256,15 @@ object RemoteSyncManager {
                                 onDevicesUpdated(deviceMap.values.toList())
                             }
                         }
-                    })
+                    }
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        @Suppress("DEPRECATION")
+                        manager.resolveService(service, { it.run() }, resolveListener)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        manager.resolveService(service, resolveListener)
+                    }
                 }
             }
 

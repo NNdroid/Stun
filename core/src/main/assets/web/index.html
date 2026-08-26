@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title id="t-page-title">🦊 Stun · Web 控制台</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- 顶栏 Header -->
+<header>
+  <div class="brand-group">
+    <span class="brand-logo">🦊</span>
+    <span class="brand-title">Stun</span>
+    <span class="brand-badge">
+      <span class="pulse-dot"></span>
+      <span id="tv-device-name">Stun Client</span>
+    </span>
+  </div>
+  <div class="header-actions">
+    <button id="theme-btn" class="theme-toggle-btn" onclick="toggleTheme()" title="切换亮暗主题">🌙</button>
+    <select id="lang-select" class="lang-select" onchange="changeLang(this.value)">
+      <option value="zh-CN">🇨🇳 简体中文</option>
+      <option value="zh-TW">🇭🇰 繁體中文</option>
+      <option value="en">🇺🇸 English</option>
+      <option value="ja">🇯🇵 日本語</option>
+      <option value="de">🇩🇪 Deutsch</option>
+      <option value="fr">🇫🇷 Français</option>
+    </select>
+    <div id="vpn-pill" class="vpn-pill disconnected" onclick="toggleVpn()">
+      <span id="vpn-text">未连接</span>
+    </div>
+  </div>
+</header>
+
+<!-- 导航 Tabs (5大核心页签) -->
+<nav class="tabs">
+  <div id="t-tab-overview" class="tab-btn active" onclick="switchTab('overview')">📊 概览看板</div>
+  <div id="t-tab-profiles" class="tab-btn" onclick="switchTab('profiles')">🚀 节点管理</div>
+  <div id="t-tab-conntrack" class="tab-btn" onclick="switchTab('conntrack')">🔍 连接跟踪</div>
+  <div id="t-tab-settings" class="tab-btn" onclick="switchTab('settings')">⚙️ 系统设置</div>
+  <div id="t-tab-logs" class="tab-btn" onclick="switchTab('logs')">📜 实时日志</div>
+</nav>
+
+<!-- 主工作区 -->
+<main>
+  <!-- 1. 概览看板 -->
+  <section id="tab-overview" class="tab-content active">
+    <div class="overview-grid">
+      <div class="stat-box">
+        <span id="t-stat-selected" class="stat-label">🎯 当前选中节点</span>
+        <span id="stat-selected-node" class="stat-value primary" style="font-size:1.15rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">未选择</span>
+      </div>
+      <div class="stat-box">
+        <span id="t-stat-speed" class="stat-label">⚡ 实时速率 (↑ / ↓)</span>
+        <span id="stat-speed" class="stat-value accent">0 B/s / 0 B/s</span>
+      </div>
+      <div class="stat-box">
+        <span id="t-stat-total" class="stat-label">Σ 累计传输总量</span>
+        <span id="stat-total" class="stat-value">0 B</span>
+      </div>
+      <div class="stat-box">
+        <span id="t-stat-filter" class="stat-label">🔀 应用分流状态</span>
+        <span id="stat-filter" class="stat-value" style="font-size:1.1rem">未配置</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span id="t-quick-profiles" class="card-title">🚀 快捷节点列表</span>
+        <div style="display:flex;gap:8px">
+          <button id="t-btn-quick-test-latency" class="btn btn-sm" onclick="testAllProfilesLatency()">⚡ 测速全部</button>
+          <button id="t-btn-manage-all" class="btn btn-sm btn-primary" onclick="switchTab('profiles')">管理全部</button>
+        </div>
+      </div>
+      <div id="quick-profiles" class="profile-grid">
+        <div style="color:var(--text-muted);font-size:0.85rem">...</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. 节点管理 -->
+  <section id="tab-profiles" class="tab-content">
+    <div class="card">
+      <div class="card-header">
+        <span id="t-profiles-title" class="card-title">🚀 已保存节点</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button id="t-btn-test-latency-all" class="btn btn-sm" onclick="testAllProfilesLatency()">⚡ 测速全部</button>
+          <button id="t-btn-export-backup" class="btn btn-sm" onclick="openExportModal()">📦 导出加密备份</button>
+          <button id="t-btn-add-profile" class="btn btn-sm btn-primary" onclick="openAddModal()">➕ 导入 / 添加节点</button>
+        </div>
+      </div>
+      <div id="profiles-list" class="profile-grid"></div>
+    </div>
+  </section>
+
+  <!-- 3. 连接跟踪 -->
+  <section id="tab-conntrack" class="tab-content">
+    <div class="overview-grid">
+      <div class="stat-box">
+        <span id="t-stat-active-conns" class="stat-label">🔌 当前活跃连接数</span>
+        <span id="stat-active-conns" class="stat-value primary">0</span>
+      </div>
+      <div class="stat-box">
+        <span id="t-stat-total-conns" class="stat-label">📊 累计建立连接总数</span>
+        <span id="stat-total-conns" class="stat-value">0</span>
+      </div>
+      <div class="stat-box">
+        <span id="t-stat-route-hit-rate" class="stat-label">🎯 路由缓存命中率</span>
+        <span id="stat-route-hit-rate" class="stat-value success">0.0%</span>
+      </div>
+    </div>
+
+    <!-- 活跃连接列表 -->
+    <div class="card">
+      <div class="card-header">
+        <span id="t-conntrack-title" class="card-title">🔍 实时活跃连接跟踪</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input id="conns-search" class="app-search" style="max-width:240px;padding:6px 12px;font-size:0.8rem" type="text" placeholder="搜索连接目标..." oninput="onConnsSearchChange()">
+          <button id="t-btn-refresh-conns" class="btn btn-sm" onclick="loadConntrack()">🔄 刷新</button>
+        </div>
+      </div>
+      <div class="conns-table-wrapper">
+        <table class="conns-table">
+          <thead>
+            <tr>
+              <th id="th-target">目标地址 (Target)</th>
+              <th id="th-proxy">出站路由 (Outbound)</th>
+              <th id="th-traffic">传输流量 (↑ / ↓)</th>
+              <th id="th-duration">持续时间</th>
+            </tr>
+          </thead>
+          <tbody id="conns-table-body">
+            <tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px">加载中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 分页控制栏 (25条/页) -->
+      <div id="conns-pagination" class="pagination-bar">
+        <span id="conns-page-info" style="font-size:0.82rem;color:var(--text-muted);font-family:var(--font-mono)">第 1 / 1 页 (共 0 条)</span>
+        <div style="display:flex;gap:6px">
+          <button id="t-btn-page-first" class="btn btn-sm" onclick="gotoConnsPage(1)">⏮ 首页</button>
+          <button id="t-btn-page-prev" class="btn btn-sm" onclick="prevConnsPage()">◀ 上一页</button>
+          <button id="t-btn-page-next" class="btn btn-sm" onclick="nextConnsPage()">下一页 ▶</button>
+          <button id="t-btn-page-last" class="btn btn-sm" onclick="gotoConnsLastPage()">末页 ⏭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 域名实时流量排行 -->
+    <div class="card">
+      <div class="card-header">
+        <span id="t-domain-ranking-title" class="card-title">🌐 域名实时流量榜 (Top Domains)</span>
+      </div>
+      <div id="domain-ranking-list" style="display:flex;flex-direction:column;gap:8px">
+        <div style="color:var(--text-muted);font-size:0.85rem;padding:8px">...</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. 全局系统设置 (包含应用分流) -->
+  <section id="tab-settings" class="tab-content">
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:-6px">
+      <button id="t-btn-save-all-settings" class="btn btn-primary" onclick="saveAllSettings()">💾 保存全部设置</button>
+    </div>
+
+    <!-- 1. 工作模式与网络核心 -->
+    <div class="card">
+      <div class="card-header">
+        <span id="t-settings-core-title" class="card-title">🚀 工作模式与网络核心</span>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label id="t-label-service-mode" class="form-label">工作模式 (Service Mode)：</label>
+          <select id="select-service-mode" class="select-input">
+            <option value="0" id="opt-mode-vpn">VPN 模式 (标准虚拟网卡)</option>
+            <option value="1" id="opt-mode-tproxy">透明代理模式 (TProxy 模式)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label id="t-label-log-level" class="form-label">日志等级 (Log Level)：</label>
+          <select id="select-log-level" class="select-input">
+            <option value="DEBUG" id="opt-log-debug">DEBUG (详细调试)</option>
+            <option value="INFO" id="opt-log-info">INFO (常规运行 - 推荐)</option>
+            <option value="WARN" id="opt-log-warn">WARN (警告提示)</option>
+            <option value="ERROR" id="opt-log-error">ERROR (仅错误)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label id="t-label-remote-dns" class="form-label">远程 DNS (Remote DNS)：</label>
+          <input id="input-remote-dns" class="text-input" type="text" placeholder="doh://8.8.8.8/dns-query">
+        </div>
+        <div class="form-group">
+          <label id="t-label-local-dns" class="form-label">本地直连 DNS (Local DNS)：</label>
+          <input id="input-local-dns" class="text-input" type="text" placeholder="doh://223.5.5.5/dns-query">
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. UDP 网关设置 (UDPGW) -->
+    <div class="card">
+      <div class="card-header">
+        <span id="t-settings-udpgw-title" class="card-title">📡 UDP 网关设置 (UDPGW)</span>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label id="t-label-udpgw-version" class="form-label">UDP 网关引擎：</label>
+          <select id="select-udpgw-version" class="select-input">
+            <option value="tun2proxy" id="opt-udpgw-tun2proxy">tun2proxy (高性能 Rust 模块 - 默认)</option>
+            <option value="badvpn" id="opt-udpgw-badvpn">badvpn (传统兼容模式)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label id="t-label-udpgw-addr" class="form-label">UDP 网关地址：</label>
+          <input id="input-udpgw-addr" class="text-input" type="text" placeholder="127.0.0.1:7300">
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. 地理数据与直连分流规则 (GeoData & Direct Routing) -->
+    <div class="card">
+      <div class="card-header">
+        <span id="t-settings-geodata-title" class="card-title">🌐 地理数据与直连分流 (GeoData & Direct Routing)</span>
+        <button id="t-btn-update-geodata" class="btn btn-sm" onclick="updateGeoDataNow()">🔄 立即更新 Geo 规则库</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label id="t-label-geosite-direct" class="form-label">GeoSite 直连域名标签：</label>
+          <input id="input-geosite-direct" class="text-input" type="text" placeholder="cn,apple,steam">
+        </div>
+        <div class="form-group">
+          <label id="t-label-geoip-direct" class="form-label">GeoIP 直连 IP 标签：</label>
+          <input id="input-geoip-direct" class="text-input" type="text" placeholder="cn,private">
+        </div>
+        <div class="form-group">
+          <label id="t-label-geosite-url" class="form-label">GeoSite 规则库下载地址：</label>
+          <input id="input-geosite-url" class="text-input" type="text" placeholder="https://cdn.jsdelivr.net/.../geosite.dat">
+        </div>
+        <div class="form-group">
+          <label id="t-label-geoip-url" class="form-label">GeoIP 规则库下载地址：</label>
+          <input id="input-geoip-url" class="text-input" type="text" placeholder="https://cdn.jsdelivr.net/.../geoip.dat">
+        </div>
+        <div class="form-group">
+          <label id="t-label-update-interval" class="form-label">规则库自动更新周期 (秒)：</label>
+          <input id="input-update-interval" class="text-input" type="number" placeholder="86400">
+        </div>
+        <div class="form-group">
+          <label id="t-label-last-update" class="form-label">上次更新时间：</label>
+          <span id="display-last-update" class="stat-value accent" style="font-size:0.95rem;padding:8px 0">从未更新</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. 全局应用分流 (App Split Tunneling) -->
+    <div class="card">
+      <div class="card-header">
+        <span id="t-filter-title" class="card-title">🔀 全局已安装应用分流</span>
+        <button id="t-btn-save-filter" class="btn btn-sm btn-primary" onclick="saveAppFilter()">💾 仅保存应用分流</button>
+      </div>
+
+      <div class="filter-mode-box">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="radio" name="filterMode" value="0" id="mode-disallow" checked>
+          <span id="t-mode-disallow">🚫 <b>黑名单模式</b> (仅绕过勾选的应用)</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="radio" name="filterMode" value="1" id="mode-allow">
+          <span id="t-mode-allow">🚀 <b>白名单模式</b> (仅代理勾选的应用)</span>
+        </label>
+      </div>
+
+      <div style="display:flex;gap:12px">
+        <input id="app-search" class="app-search" type="text" placeholder="搜索应用名称或包名..." oninput="filterAppList()">
+        <button id="t-btn-select-all" class="btn btn-sm" onclick="toggleSelectAllApps()">全选 / 全不选</button>
+      </div>
+
+      <div id="app-list-container" class="app-list">
+        <div style="color:var(--text-muted);font-size:0.85rem;padding:12px">...</div>
+      </div>
+    </div>
+
+    <!-- 5. 系统通知设置 -->
+    <div class="card">
+      <div class="card-header">
+        <span id="t-settings-system-title" class="card-title">🔔 系统与状态通知</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0">
+        <label id="t-label-show-speed" style="font-size:0.88rem;font-weight:700;cursor:pointer" for="switch-show-speed">在系统通知栏中显示实时网速</label>
+        <input type="checkbox" id="switch-show-speed" style="width:18px;height:18px;cursor:pointer">
+      </div>
+    </div>
+
+    <!-- 6. 认证安全设置 -->
+    <div class="card">
+      <div class="card-header">
+        <span id="t-settings-title" class="card-title">🛡️ Web 控制台访问安全与 Token 认证</span>
+      </div>
+
+      <div class="setting-box">
+        <label class="setting-option">
+          <input type="radio" name="authMode" value="0" id="auth-mode-0" onchange="onAuthModeChange(0)">
+          <div>
+            <div id="t-auth-mode-0-title"><b>🎲 每次重启随机生成 (Random on Start)</b></div>
+            <div id="t-auth-mode-0-desc" class="setting-desc">最高安全性。每次重启都会生成全新的 8 位随机 Token。</div>
+          </div>
+        </label>
+
+        <label class="setting-option">
+          <input type="radio" name="authMode" value="1" id="auth-mode-1" onchange="onAuthModeChange(1)">
+          <div>
+            <div id="t-auth-mode-1-title"><b>🔒 固定生成一次 / 永久保持 (Fixed Once / Permanent)</b></div>
+            <div id="t-auth-mode-1-desc" class="setting-desc">生成后永久固定保存，适合加入手机/PC浏览器书签或桌面快捷方式，无需频繁扫码。</div>
+          </div>
+        </label>
+
+        <label class="setting-option">
+          <input type="radio" name="authMode" value="2" id="auth-mode-2" onchange="onAuthModeChange(2)">
+          <div>
+            <div id="t-auth-mode-2-title"><b>✏️ 自定义 Token 访问密码 (Custom Token)</b></div>
+            <div id="t-auth-mode-2-desc" class="setting-desc">自行设定个性化访问口令（例如：foxvpn, 888888），方便记忆与多设备直接访问。</div>
+          </div>
+        </label>
+
+        <label class="setting-option">
+          <input type="radio" name="authMode" value="3" id="auth-mode-3" onchange="onAuthModeChange(3)">
+          <div>
+            <div id="t-auth-mode-3-title"><b>🌐 关闭认证 (免 Token 局域网直连)</b></div>
+            <div id="t-auth-mode-3-desc" class="setting-desc">同 Wi-Fi 局域网内设备可直接输入 IP 与端口打开控制台，无需携带 ?token= 参数。</div>
+          </div>
+        </label>
+      </div>
+
+      <!-- 自定义 Token 输入框 -->
+      <div id="custom-token-group" style="display:none;flex-direction:column;gap:8px">
+        <label id="t-custom-token-label" style="font-size:0.85rem;font-weight:700">自定义访问密码 (Custom Token)：</label>
+        <input id="input-custom-token" class="text-input" type="text" placeholder="输入自定义 Token 口令，如 123456 或 mysecret" oninput="updateAccessUrlPreview()">
+      </div>
+
+      <!-- 当前生效访问地址 -->
+      <div class="setting-box" style="gap:8px">
+        <span id="t-current-url-label" class="stat-label">🔗 当前生效访问完整地址 (Live Access URL)</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <input id="display-access-url" class="text-input" type="text" readonly style="font-size:0.85rem;color:var(--accent);font-weight:700">
+          <button id="t-btn-copy-url" class="btn btn-sm" onclick="copyAccessUrl()">📋 复制链接</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. 实时日志 -->
+  <section id="tab-logs" class="tab-content">
+    <div class="card" style="padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="display:flex;gap:8px">
+          <button id="btn-autoscroll" class="btn btn-sm btn-primary" onclick="toggleAutoScroll()">⬇ 自动滚动: 开</button>
+          <button id="t-btn-copy-logs" class="btn btn-sm" onclick="copyLogs()">📋 复制日志</button>
+          <button id="t-btn-clear-logs" class="btn btn-sm btn-danger" onclick="clearLogs()">🗑 清屏</button>
+        </div>
+        <span id="log-count" style="font-size:0.78rem;font-family:var(--font-mono);color:var(--text-muted)">0</span>
+      </div>
+      <div id="log-box"></div>
+    </div>
+  </section>
+</main>
+
+<!-- 页脚 Footer -->
+<footer>
+  <div class="footer-content">
+    <span>© 2026 <a href="https://github.com/NNdroid" target="_blank" rel="noopener noreferrer" class="footer-link">@NNdroid</a> · <a href="https://github.com/NNdroid/Stun" target="_blank" rel="noopener noreferrer" class="footer-link">Stun</a></span>
+  </div>
+</footer>
+
+<!-- 导入节点弹窗 -->
+<div id="add-modal" class="modal-overlay">
+  <div class="modal">
+    <div class="card-header">
+      <span id="t-modal-add-title" class="card-title">➕ 导入 / 添加节点</span>
+      <button class="btn btn-sm" onclick="closeAddModal()">✕</button>
+    </div>
+    
+    <!-- 文件直接导入 / 拖放区 -->
+    <div id="file-drop-zone" class="file-drop-zone" onclick="document.getElementById('file-import-input').click()" ondragover="onFileDragOver(event)" ondragleave="onFileDragLeave(event)" ondrop="onFileDrop(event)">
+      <span style="font-size:1.4rem">📂</span>
+      <span id="t-file-drop-title" style="font-size:0.85rem;font-weight:700;color:var(--text)">点击选择或拖放配置文件到此处导入</span>
+      <span id="t-file-drop-desc" style="font-size:0.72rem;color:var(--text-muted)">支持 .json, .txt, .bak 或加密备份文件</span>
+      <input type="file" id="file-import-input" accept=".json,.txt,.bak,text/*" style="display:none" onclick="event.stopPropagation()" onchange="handleFileSelect(this)">
+    </div>
+
+    <div style="display:flex;align-items:center;gap:10px;margin:2px 0">
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+      <span id="t-or-paste-text" style="font-size:0.72rem;color:var(--text-dim);font-weight:700">或者直接粘贴文本</span>
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+    </div>
+
+    <textarea id="profile-json-input" class="code-input" placeholder="粘贴手机端加密分享码、备份文本或JSON节点配置..." oninput="checkPayloadEncryption()" ondragover="onFileDragOver(event)" ondrop="onFileDrop(event)"></textarea>
+    
+    <div id="pin-input-group" style="display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <label id="t-import-pin-label" style="font-size:0.82rem;font-weight:700">🔒 6位解密 PIN 码：</label>
+        <span id="pin-detected-badge" style="display:none;font-size:0.72rem;color:var(--primary);font-weight:700">✓ 检测到加密数据</span>
+      </div>
+      <input id="input-import-pin" class="text-input" type="text" maxlength="6" placeholder="若为加密分享码/备份，请输入6位数字PIN码（明文配置可留空）">
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:4px">
+      <button id="t-btn-cancel" class="btn" onclick="closeAddModal()">取消</button>
+      <button id="t-btn-import-now" class="btn btn-primary" onclick="submitImportProfile()">导入</button>
+    </div>
+  </div>
+</div>
+
+<!-- 导出加密备份弹窗 -->
+<div id="export-modal" class="modal-overlay">
+  <div class="modal">
+    <div class="card-header">
+      <span id="t-modal-export-title" class="card-title">📦 导出节点加密备份</span>
+      <button class="btn btn-sm" onclick="closeExportModal()">✕</button>
+    </div>
+    
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <label id="t-export-pin-label" style="font-size:0.82rem;font-weight:700">设定 6 位加密保护 PIN 码：</label>
+      <div style="display:flex;gap:10px">
+        <input id="input-export-pin" class="text-input" type="text" maxlength="6" placeholder="输入6位数字PIN码">
+        <button id="t-btn-gen-pin" class="btn btn-sm" onclick="generateRandomExportPin()">🎲 随机生成</button>
+      </div>
+    </div>
+
+    <div id="export-result-group" style="display:none;flex-direction:column;gap:6px">
+      <label id="t-export-result-label" style="font-size:0.82rem;font-weight:700">加密备份数据（Base64）：</label>
+      <textarea id="export-payload-output" class="code-input" readonly style="height:100px;font-size:0.78rem"></textarea>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:4px">
+      <button id="t-btn-export-cancel" class="btn" onclick="closeExportModal()">关闭</button>
+      <button id="t-btn-export-exec" class="btn btn-primary" onclick="submitExportProfiles()">立即生成加密备份</button>
+      <button id="t-btn-export-copy" class="btn btn-primary" style="display:none" onclick="copyExportPayload()">📋 复制备份</button>
+    </div>
+  </div>
+</div>
+
+<!-- ✏️ 编辑节点弹窗 (Edit Node Modal - 与手机版逻辑 100% 对齐) -->
+<div id="edit-modal" class="modal-overlay">
+  <div class="modal" style="max-width:720px;max-height:90vh;overflow-y:auto">
+    <div class="card-header" style="position:sticky;top:0;background:var(--bg-card);z-index:10;margin-top:-6px;padding-top:6px">
+      <span id="t-modal-edit-title" class="card-title">✏️ 编辑节点配置</span>
+      <button class="btn btn-sm" onclick="closeEditModal()">✕</button>
+    </div>
+
+    <input type="hidden" id="edit-profile-id">
+
+    <!-- 1. SSH 基础连接信息 -->
+    <div class="form-grid">
+      <div class="form-group">
+        <label id="t-label-edit-name" class="form-label">节点名称：</label>
+        <input id="edit-node-name" class="text-input" type="text">
+      </div>
+      <div class="form-group">
+        <label id="t-label-edit-ssh-addr" class="form-label">SSH 服务器地址：</label>
+        <input id="edit-node-ssh-addr" class="text-input" type="text" placeholder="IP:Port">
+      </div>
+      <div class="form-group">
+        <label id="t-label-edit-auth-type" class="form-label">SSH 认证方式：</label>
+        <select id="edit-node-auth-type" class="select-input" onchange="onEditAuthTypeChange()">
+          <option value="password" id="opt-auth-password">密码认证 (Password)</option>
+          <option value="privatekey" id="opt-auth-key">私钥认证 (Private Key)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label id="t-label-edit-user" class="form-label">SSH 用户名：</label>
+        <input id="edit-node-user" class="text-input" type="text">
+      </div>
+      <div class="form-group" id="edit-group-pass">
+        <label id="t-label-edit-pass" class="form-label">SSH 密码：</label>
+        <input id="edit-node-pass" class="text-input" type="password">
+      </div>
+      <div class="form-group" id="edit-group-key-pass" style="display:none">
+        <label id="t-label-edit-key-pass" class="form-label">私钥口令 (Key Passphrase)：</label>
+        <input id="edit-node-key-pass" class="text-input" type="password">
+      </div>
+    </div>
+
+    <!-- 私钥文本框 -->
+    <div id="edit-group-private-key" class="form-group" style="display:none;margin-top:6px">
+      <label id="t-label-edit-private-key" class="form-label">私钥内容 (OpenSSH / RSA / Ed25519)：</label>
+      <textarea id="edit-node-private-key" class="code-input" style="height:90px;font-size:0.78rem" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----..."></textarea>
+    </div>
+
+    <!-- 2. 传输协议选择 -->
+    <div class="form-group" style="margin-top:10px">
+      <label id="t-label-edit-tunnel-type" class="form-label" style="font-size:0.92rem;font-weight:800;color:var(--accent)">传输协议 (Tunnel Type)：</label>
+      <select id="edit-node-tunnel-type" class="select-input" onchange="updateEditModalTunnelFields()">
+        <option value="tls">TLS (标准 TLS 加密隧道)</option>
+        <option value="ws">WS (WebSocket 明文)</option>
+        <option value="wss">WSS (WebSocket over TLS)</option>
+        <option value="h2">H2 (HTTP/2 over TLS)</option>
+        <option value="h2c">H2C (HTTP/2 Cleartext)</option>
+        <option value="http">HTTP (HTTP 代理隧道)</option>
+        <option value="base">BASE (直连 TCP 纯净隧道)</option>
+        <option value="quic">QUIC (QUIC 快速数据报)</option>
+        <option value="grpc">gRPC (gRPC over TLS)</option>
+        <option value="grpcc">gRPCC (gRPC Cleartext)</option>
+        <option value="h3">H3 (HTTP/3 over QUIC)</option>
+        <option value="wt">WebTransport</option>
+        <option value="masque">MASQUE (HTTP/3 IP 代理)</option>
+        <option value="xhttp">XHTTP (流式多路复用 HTTP)</option>
+        <option value="xhttpc">XHTTPC (XHTTP Cleartext)</option>
+        <option value="dns">DNS Tunnel (SSH-over-DNS)</option>
+        <option value="kcp">KCP (SSH-over-KCP 抗丢包)</option>
+        <option value="udp_custom">UDP Custom (自定义混淆 UDP 隧道)</option>
+      </select>
+    </div>
+
+    <!-- 3. 动态协议专属配置字段 -->
+    <div id="edit-dynamic-tunnel-fields" class="form-grid" style="margin-top:8px">
+      <!-- 代理地址 Proxy Addr -->
+      <div class="form-group" id="edit-group-proxy-addr">
+        <label id="t-label-edit-proxy-addr" class="form-label">代理目标地址 (Proxy Addr)：</label>
+        <input id="edit-node-proxy-addr" class="text-input" type="text" placeholder="IP:Port">
+      </div>
+
+      <!-- 伪装域名 Custom Host -->
+      <div class="form-group" id="edit-group-custom-host">
+        <label id="t-label-edit-custom-host" class="form-label">伪装域名 (Custom Host)：</label>
+        <input id="edit-node-custom-host" class="text-input" type="text">
+      </div>
+
+      <!-- SNI 域名 Server Name -->
+      <div class="form-group" id="edit-group-server-name">
+        <label id="t-label-edit-server-name" class="form-label">SNI 域名 (Server Name)：</label>
+        <input id="edit-node-server-name" class="text-input" type="text">
+      </div>
+
+      <!-- 自定义路径 Custom Path -->
+      <div class="form-group" id="edit-group-custom-path">
+        <label id="t-label-edit-custom-path" class="form-label">自定义路径 (Custom Path)：</label>
+        <input id="edit-node-custom-path" class="text-input" type="text" placeholder="/path">
+      </div>
+
+      <!-- ALPN 协商 -->
+      <div class="form-group" id="edit-group-alpn" style="display:none">
+        <label id="t-label-edit-alpn" class="form-label">ALPN 协商 (ALPN)：</label>
+        <select id="edit-node-alpn" class="select-input">
+          <option value="h3">h3</option>
+          <option value="h2">h2</option>
+          <option value="http/1.1">http/1.1</option>
+          <option value="h2,http/1.1">h2,http/1.1</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- HTTP Payload 专区 -->
+    <div id="edit-group-http-payload-container" style="display:none;flex-direction:column;gap:8px;margin-top:8px">
+      <div class="form-group">
+        <label id="t-label-edit-http-payload" class="form-label">HTTP Payload (自定义请求头模版)：</label>
+        <textarea id="edit-node-http-payload" class="code-input" style="height:70px;font-size:0.78rem" placeholder="CONNECT [host_port] HTTP/1.1\r\nHost: [host]\r\n\r\n"></textarea>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <label id="t-label-edit-disable-status-check" style="font-size:0.85rem;cursor:pointer" for="edit-node-disable-status-check">禁用 HTTP 200 响应状态码严格检查</label>
+        <input type="checkbox" id="edit-node-disable-status-check" style="width:16px;height:16px;cursor:pointer">
+      </div>
+    </div>
+
+    <!-- 证书指纹校验 Row -->
+    <div id="edit-group-cert-fingerprint-row" style="display:none;flex-direction:column;gap:8px;margin-top:8px;padding:8px 0">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <label id="t-label-edit-verify-cert" style="font-size:0.85rem;font-weight:700;cursor:pointer" for="edit-node-verify-cert">🔒 校验服务器证书 SHA-256 指纹</label>
+        <input type="checkbox" id="edit-node-verify-cert" style="width:16px;height:16px;cursor:pointer" onchange="toggleCertFingerprintInput()">
+      </div>
+      <div class="form-group" id="edit-group-cert-fingerprint" style="display:none">
+        <label id="t-label-edit-cert-fp" class="form-label">证书 SHA-256 指纹 (Hex)：</label>
+        <input id="edit-node-cert-fingerprint" class="text-input" type="text" placeholder="AA:BB:CC:DD...">
+      </div>
+    </div>
+
+    <!-- 上游代理认证 Proxy Auth Row -->
+    <div id="edit-group-proxy-auth-container" style="display:none;flex-direction:column;gap:8px;margin-top:8px;padding:8px 0">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <label id="t-label-edit-proxy-auth" style="font-size:0.85rem;font-weight:700;cursor:pointer" for="edit-node-proxy-auth">🔑 启用上游代理身份验证 (Proxy Auth)</label>
+        <input type="checkbox" id="edit-node-proxy-auth" style="width:16px;height:16px;cursor:pointer" onchange="toggleProxyAuthInputs()">
+      </div>
+      <!-- Token 认证 -->
+      <div class="form-group" id="edit-group-auth-token" style="display:none">
+        <label id="t-label-edit-auth-token" class="form-label">Proxy Auth Token：</label>
+        <input id="edit-node-auth-token" class="text-input" type="text">
+      </div>
+      <!-- 用户名 / 密码 认证 -->
+      <div class="form-grid" id="edit-group-auth-userpass" style="display:none">
+        <div class="form-group">
+          <label id="t-label-edit-auth-user" class="form-label">Proxy 用户名：</label>
+          <input id="edit-node-auth-user" class="text-input" type="text">
+        </div>
+        <div class="form-group">
+          <label id="t-label-edit-auth-pass" class="form-label">Proxy 密码：</label>
+          <input id="edit-node-auth-pass" class="text-input" type="password">
+        </div>
+      </div>
+    </div>
+
+    <!-- DNS 专属配置容器 -->
+    <div id="edit-group-dns-container" class="form-grid" style="display:none;margin-top:8px">
+      <div class="form-group">
+        <label id="t-label-edit-dns-servers" class="form-label">DNS 服务器 (多个逗号分隔)：</label>
+        <input id="edit-node-dns-servers" class="text-input" type="text" placeholder="1.1.1.1,8.8.8.8">
+      </div>
+      <div class="form-group">
+        <label id="t-label-edit-dns-domain" class="form-label">DNS 域名 (Tunnel Domain)：</label>
+        <input id="edit-node-dns-domain" class="text-input" type="text" placeholder="tunnel.example.com">
+      </div>
+      <div class="form-group">
+        <label id="t-label-edit-dns-type" class="form-label">DNS 记录类型 (Record Type)：</label>
+        <select id="edit-node-dns-type" class="select-input">
+          <option value="txt">TXT (推荐)</option>
+          <option value="a">A</option>
+          <option value="aaaa">AAAA</option>
+          <option value="cname">CNAME</option>
+          <option value="null">NULL</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- KCP 专属配置容器 -->
+    <div id="edit-group-kcp-container" class="form-grid" style="display:none;margin-top:8px">
+      <div class="form-group">
+        <label id="t-label-edit-kcp-pass" class="form-label">KCP 密码 (Password)：</label>
+        <input id="edit-node-kcp-pass" class="text-input" type="password">
+      </div>
+      <div class="form-group">
+        <label id="t-label-edit-kcp-crypt" class="form-label">KCP 加密方式：</label>
+        <select id="edit-node-kcp-crypt" class="select-input">
+          <option value="aes">aes</option>
+          <option value="aes-128">aes-128</option>
+          <option value="aes-192">aes-192</option>
+          <option value="salsa20">salsa20</option>
+          <option value="blowfish">blowfish</option>
+          <option value="twofish">twofish</option>
+          <option value="cast5">cast5</option>
+          <option value="3des">3des</option>
+          <option value="tea">tea</option>
+          <option value="xtea">xtea</option>
+          <option value="none">none</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label id="t-label-edit-kcp-data-shards" class="form-label">Data Shards (数据分片)：</label>
+        <input id="edit-node-kcp-data-shards" class="text-input" type="number" placeholder="10">
+      </div>
+      <div class="form-group">
+        <label id="t-label-edit-kcp-parity-shards" class="form-label">Parity Shards (校验分片)：</label>
+        <input id="edit-node-kcp-parity-shards" class="text-input" type="number" placeholder="3">
+      </div>
+      <div style="grid-column:span 2;display:flex;align-items:center;justify-content:space-between">
+        <label id="t-label-edit-kcp-nodelay" style="font-size:0.85rem;cursor:pointer" for="edit-node-kcp-nodelay">启用 KCP NoDelay 极速低延迟模式</label>
+        <input type="checkbox" id="edit-node-kcp-nodelay" style="width:16px;height:16px;cursor:pointer">
+      </div>
+    </div>
+
+    <!-- UDP Custom 专属配置容器 -->
+    <div id="edit-group-udp-custom-container" class="form-grid" style="display:none;margin-top:8px">
+      <div class="form-group">
+        <label id="t-label-edit-udp-custom-psk" class="form-label">UDP Custom PSK 密码：</label>
+        <input id="edit-node-udp-custom-psk" class="text-input" type="password">
+      </div>
+      <div class="form-group">
+        <label id="t-label-edit-udp-custom-magic" class="form-label">Magic 识别码 (十六进制)：</label>
+        <input id="edit-node-udp-custom-magic" class="text-input" type="text" placeholder="12345678">
+      </div>
+    </div>
+
+    <!-- 4. 独立 DNS 与直连分流 (dnsOverride) -->
+    <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:10px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <label id="t-label-edit-dns-override" style="font-size:0.88rem;font-weight:700;cursor:pointer" for="edit-node-dns-override">🌐 为此节点启用独立 DNS 与直连分流规则</label>
+        <input type="checkbox" id="edit-node-dns-override" style="width:18px;height:18px;cursor:pointer" onchange="toggleNodeDnsOverrideGroup()">
+      </div>
+
+      <div id="node-dns-override-group" class="form-grid" style="display:none">
+        <div class="form-group">
+          <label id="t-label-edit-remote-dns" class="form-label">节点专用远程 DNS：</label>
+          <input id="edit-node-remote-dns" class="text-input" type="text" placeholder="doh://8.8.8.8/dns-query">
+        </div>
+        <div class="form-group">
+          <label id="t-label-edit-local-dns" class="form-label">节点专用本地 DNS：</label>
+          <input id="edit-node-local-dns" class="text-input" type="text" placeholder="doh://223.5.5.5/dns-query">
+        </div>
+        <div class="form-group">
+          <label id="t-label-edit-udpgw-version" class="form-label">节点专用 UDPGW 引擎：</label>
+          <select id="edit-node-udpgw-version" class="select-input">
+            <option value="tun2proxy">tun2proxy</option>
+            <option value="badvpn">badvpn</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label id="t-label-edit-udpgw-addr" class="form-label">节点专用 UDPGW 地址：</label>
+          <input id="edit-node-udpgw-addr" class="text-input" type="text" placeholder="127.0.0.1:7300">
+        </div>
+        <div class="form-group">
+          <label id="t-label-edit-geosite-direct" class="form-label">GeoSite 直连标签：</label>
+          <input id="edit-node-geosite-direct" class="text-input" type="text" placeholder="cn,apple,steam">
+        </div>
+        <div class="form-group">
+          <label id="t-label-edit-geoip-direct" class="form-label">GeoIP 直连标签：</label>
+          <input id="edit-node-geoip-direct" class="text-input" type="text" placeholder="cn,private">
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. 独立应用分流 (appFilterOverride) -->
+    <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:10px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <label id="t-label-edit-app-override" style="font-size:0.88rem;font-weight:700;cursor:pointer" for="edit-node-app-override">🔀 为此节点启用独立应用分流规则</label>
+        <input type="checkbox" id="edit-node-app-override" style="width:18px;height:18px;cursor:pointer" onchange="toggleNodeAppOverrideGroup()">
+      </div>
+
+      <div id="node-app-override-group" style="display:none;flex-direction:column;gap:10px">
+        <div class="filter-mode-box">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="radio" name="nodeFilterMode" value="0" id="mode-node-disallow" checked>
+            <span id="t-node-mode-disallow">🚫 <b>黑名单模式</b> (仅绕过勾选的应用)</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="radio" name="nodeFilterMode" value="1" id="mode-node-allow">
+            <span id="t-node-mode-allow">🚀 <b>白名单模式</b> (仅代理勾选的应用)</span>
+          </label>
+        </div>
+
+        <div style="display:flex;gap:12px">
+          <input id="node-app-search" class="app-search" type="text" placeholder="搜索应用名称或包名..." oninput="filterNodeAppList()">
+          <button id="t-btn-node-select-all" class="btn btn-sm" onclick="toggleSelectAllNodeApps()">全选 / 全不选</button>
+        </div>
+
+        <div id="node-app-list-container" class="app-list" style="max-height:240px">
+          <div style="color:var(--text-muted);font-size:0.85rem;padding:12px">...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部操作按钮 -->
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px;position:sticky;bottom:0;background:var(--bg-card);padding:10px 0 2px">
+      <button id="t-btn-edit-cancel" class="btn" onclick="closeEditModal()">取消</button>
+      <button id="t-btn-save-node-edit" class="btn btn-primary" onclick="submitEditProfile()">💾 保存节点配置</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast 浮层提示容器 -->
+<div id="toast-box"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

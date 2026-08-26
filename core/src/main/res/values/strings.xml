@@ -168,7 +168,7 @@
     <string name="encrypt_backup_title">Encrypt Backup</string>
     <string name="decrypt_backup_title">Decrypt Backup</string>
     <string name="share_pin_format">PIN: %1$s</string>
-    <string name="web_console_url_format">🌐  http://%1$s:%2$d/?token=%3$s</string>
+    <string name="web_console_url_format">http://%1:%2/?token=%3</string>
     <string name="traffic_up_format">▲ %1$s/s</string>
     <string name="traffic_down_format">▼ %1$s/s</string>
     <string name="tv_traffic_format">↑ %1$s  ↓ %2$s</string>
@@ -247,6 +247,10 @@
 
     <!-- TV Specific -->
     <string name="tv_nodes_received">Nodes Received</string>
+    <string name="tv_profile_options_title">Node Options</string>
+    <string name="tv_sheet_close_hint">Press BACK to close</string>
+    <string name="tv_node_options_subtitle">Node Options for %1$s</string>
+    <string name="tv_node_indicator">"🎯 "</string>
     <string name="tv_sync_server_on">Sync Server: ON (Visible as %1$s)</string>
     <string name="tv_sync_server_off">Sync Server: OFF</string>
     <string name="tv_stop_sync">Stop Sync Server</string>
@@ -324,4 +328,21 @@
     <string name="udp_custom_psk">UDP Custom PSK (Pre-shared Key)</string>
     <string name="udp_custom_magic">Magic String (Default: UDPC)</string>
     <string name="udp_custom_psk_hint">Enter server authentication key (leave empty if none)</string>
+    <string name="search">Search</string>
+    <string name="share">Share</string>
+    <string name="scan_qr">Scan QR Code</string>
+    <string name="custom_direct_routing">Custom Direct Routing</string>
+    <string name="update_geodata_now">Update Now</string>
+    <string name="loading_geodata_status">Last update: Never</string>
+    <string name="delete">Delete</string>
+    <string name="dialog_delete_title">Delete Node</string>
+    <string name="dialog_delete_message">Are you sure you want to delete node \"%s\"?</string>
+    <string name="toast_deleted">Node deleted</string>
+    <string name="web_console_qr_title">Web Console</string>
+    <string name="web_console_qr_hint">Scan QR code or open URL in browser</string>
+    <string name="dialog_qr_title">Web Management Console</string>
+    <string name="tv_profile_focus_hint">[OK] Switch Node  ·  [Menu/Long-press] Test &amp; Delete</string>
+    <string name="auth_password_badge">Password</string>
+    <string name="auth_private_key_badge">Private Key</string>
+    <string name="tv_profile_selected_badge">✓ Active</string>
 </resources>

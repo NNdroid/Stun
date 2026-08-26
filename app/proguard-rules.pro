@@ -1,30 +1,27 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# ─── 1. Stack Trace & Obfuscation Mapping ───
+-renamesourcefileattribute SourceFile
+-keepattributes SourceFile,LineNumberTable
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# ─── 2. ZXing & Barcode Scanner ───
+-keep class com.google.zxing.** { *; }
+-keep class com.journeyapps.barcodescanner.** { *; }
+-dontwarn com.google.zxing.**
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# ─── 3. Shizuku API ───
+-keep class rikka.shizuku.** { *; }
+-keep interface rikka.shizuku.** { *; }
+-dontwarn rikka.shizuku.**
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# ─── 4. ViewBinding & Material Components ───
+-keep class app.fjj.stun.databinding.** { *; }
+-keep class com.google.android.material.** { *; }
 
--keep class hev.htproxy.* { *; }
+# ─── 5. JNI & Logging ───
+-keep class hev.htproxy.** { *; }
 -keep class myssh.** { *; }
 -keep class app.fjj.stun.repo.StunLogger { *; }
 
-# 移除 android.util.Log 的所有日志
+# ─── 6. Strip Android Log in Release Build ───
 -assumenosideeffects class android.util.Log {
     public static int v(...);
     public static int d(...);

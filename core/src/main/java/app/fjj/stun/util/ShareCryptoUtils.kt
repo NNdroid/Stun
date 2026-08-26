@@ -53,7 +53,8 @@ object ShareCryptoUtils {
     // Decrypts the Base64 payload using the PIN
     fun decrypt(encryptedPayload: String, pin: String): String? {
         try {
-            val jsonString = String(Base64.decode(encryptedPayload, Base64.DEFAULT), Charsets.UTF_8)
+            val clean = encryptedPayload.trim().removePrefix("\uFEFF").replace("\r", "").replace("\n", "").replace(" ", "")
+            val jsonString = String(Base64.decode(clean, Base64.DEFAULT), Charsets.UTF_8)
             val json = JSONObject(jsonString)
             
             if (json.optInt("v", 1) != 1) return null
@@ -76,7 +77,8 @@ object ShareCryptoUtils {
 
     fun isEncryptedPayload(payload: String): Boolean {
         try {
-            val jsonString = String(Base64.decode(payload, Base64.DEFAULT), Charsets.UTF_8)
+            val clean = payload.trim().removePrefix("\uFEFF").replace("\r", "").replace("\n", "").replace(" ", "")
+            val jsonString = String(Base64.decode(clean, Base64.DEFAULT), Charsets.UTF_8)
             val json = JSONObject(jsonString)
             return json.has("v") && json.has("s") && json.has("i") && json.has("c")
         } catch (e: Exception) {

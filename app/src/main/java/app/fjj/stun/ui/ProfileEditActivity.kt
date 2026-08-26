@@ -32,6 +32,7 @@ class ProfileEditActivity : BaseActivity() {
     private var profileId: String? = null
     private var currentProfile: Profile = Profile()
     private lateinit var filterModes: Array<String>
+    private var globalFocusChangeListener: android.view.ViewTreeObserver.OnGlobalFocusChangeListener? = null
     private val authTypes = arrayOf(Profile.AUTH_TYPE_PASSWORD, Profile.AUTH_TYPE_PRIVATEKEY)
     private val udpgwVersions = arrayOf("tun2proxy", "badvpn")
     private val alpnOptionsH3 = arrayOf("h3", "h2", "http/1.1", "h3,h2,http/1.1", "h3,h2", "h2,http/1.1")
@@ -64,25 +65,107 @@ class ProfileEditActivity : BaseActivity() {
         val isEdit = profileId != null
         supportActionBar?.title = if (isEdit) getString(CoreR.string.edit_profile) else getString(CoreR.string.add_profile)
 
-        val bottomBarHeight = (72 * resources.displayMetrics.density).toInt() // Approx height of bottom bar including padding
+        val bottomBarHeight = (88 * resources.displayMetrics.density).toInt()
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             
             v.updatePadding(left = systemBars.left, right = systemBars.right, top = systemBars.top)
             
-            // Fixed bottom bar: only add navigation bar padding, NOT IME padding 
-            // when adjustResize is active, otherwise it doubles up.
+            val bottomInset = maxOf(systemBars.bottom, ime.bottom)
             val bottomBarParent = binding.btnSave.parent as View
-            bottomBarParent.updatePadding(bottom = systemBars.bottom)
+            bottomBarParent.updatePadding(bottom = bottomInset)
             
-            // Since we use adjustResize, the window height is already reduced.
-            // We just need to make sure the NestedScrollView has enough padding at the bottom 
-            // to scroll the focused element above the Save button.
-            binding.scrollView.updatePadding(bottom = systemBars.bottom + bottomBarHeight)
+            binding.scrollView.updatePadding(bottom = bottomInset + bottomBarHeight)
+            
+            if (ime.bottom > 0) {
+                binding.root.postDelayed({
+                    currentFocus?.let { scrollToFocusedView(it) }
+                }, 100)
+            }
             
             insets
         }
+
+        ViewCompat.setWindowInsetsAnimationCallback(
+            binding.root,
+            object : androidx.core.view.WindowInsetsAnimationCompat.Callback(DISPATCH_MODE_STOP) {
+                override fun onEnd(animation: androidx.core.view.WindowInsetsAnimationCompat) {
+                    super.onEnd(animation)
+                    val insets = ViewCompat.getRootWindowInsets(binding.root)
+                    val ime = insets?.getInsets(WindowInsetsCompat.Type.ime())
+                    if (ime != null && ime.bottom > 0) {
+                        currentFocus?.let { scrollToFocusedView(it) }
+                    }
+                }
+
+                override fun onProgress(
+                    insets: WindowInsetsCompat,
+                    runningAnimations: MutableList<androidx.core.view.WindowInsetsAnimationCompat>
+                ): WindowInsetsCompat {
+                    return insets
+                }
+            }
+        )
+
+        globalFocusChangeListener = android.view.ViewTreeObserver.OnGlobalFocusChangeListener { _, newFocus ->
+            if (newFocus != null && isDescendantOf(newFocus, binding.scrollView)) {
+                scrollToFocusedView(newFocus)
+            }
+        }
+        binding.scrollView.viewTreeObserver.addOnGlobalFocusChangeListener(globalFocusChangeListener)
+    }
+
+    private fun scrollToFocusedView(view: View) {
+        if (isFinishing || isDestroyed) return
+        binding.scrollView.post {
+            if (isFinishing || isDestroyed) return@post
+            
+            var target: View = view
+            var p = view.parent
+            while (p is View && p !== binding.scrollView) {
+                if (p is com.google.android.material.textfield.TextInputLayout) {
+                    target = p
+                    break
+                }
+                p = p.parent
+            }
+
+            val rect = android.graphics.Rect()
+            target.getDrawingRect(rect)
+            try {
+                binding.scrollView.offsetDescendantRectToMyCoords(target, rect)
+                
+                val density = resources.displayMetrics.density
+                val bottomPadding = binding.scrollView.paddingBottom
+                val visibleHeight = binding.scrollView.height - bottomPadding
+                
+                if (visibleHeight <= 0) return@post
+                
+                val targetTop = rect.top
+                val targetBottom = rect.bottom
+                val margin = (20 * density).toInt()
+                
+                val idealScrollY = maxOf(0, (targetBottom + margin) - visibleHeight)
+                val finalScrollY = if (targetTop - margin < idealScrollY) {
+                    maxOf(0, targetTop - margin)
+                } else {
+                    idealScrollY
+                }
+                
+                binding.scrollView.smoothScrollTo(0, finalScrollY)
+            } catch (_: Exception) {}
+        }
+    }
+
+    private fun isDescendantOf(child: View, parent: View): Boolean {
+        var p = child.parent
+        while (p != null) {
+            if (p === parent) return true
+            p = p.parent
+        }
+        return false
     }
 
     private fun setupListeners() {
@@ -230,6 +313,8 @@ class ProfileEditActivity : BaseActivity() {
         binding.etDnsTunnelDomain.doAfterTextChanged { binding.layoutDnsTunnelDomain.error = null }
         binding.etPrivateKey.doAfterTextChanged { binding.layoutPrivateKey.error = null }
         binding.etPass.doAfterTextChanged { binding.layoutPass.error = null }
+        binding.etUdpCustomPsk.doAfterTextChanged { binding.layoutUdpCustomPsk.error = null }
+        binding.etUdpCustomMagic.doAfterTextChanged { binding.layoutUdpCustomMagic.error = null }
 
         // App Filter Dialog
         binding.etFilterApps.setOnClickListener {
@@ -554,6 +639,14 @@ class ProfileEditActivity : BaseActivity() {
         return false
     }
 
+    override fun onDestroy() {
+        globalFocusChangeListener?.let {
+            binding.scrollView.viewTreeObserver.removeOnGlobalFocusChangeListener(it)
+        }
+        globalFocusChangeListener = null
+        super.onDestroy()
+    }
+
     override fun onSupportNavigateUp(): Boolean {
         if (hasUnsavedChanges()) {
             MaterialAlertDialogBuilder(this)
@@ -681,5 +774,21 @@ class ProfileEditActivity : BaseActivity() {
         val clip = ClipData.newPlainText(label, text)
         clipboard?.setPrimaryClip(clip)
         Toast.makeText(this, getString(CoreR.string.copied_to_clipboard), Toast.LENGTH_SHORT).show()
+    }
+
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent?): Boolean {
+        if (ev?.action == android.view.MotionEvent.ACTION_DOWN) {
+            val v = currentFocus
+            if (v is android.widget.EditText) {
+                val outRect = android.graphics.Rect()
+                v.getGlobalVisibleRect(outRect)
+                if (!outRect.contains(ev.rawX.toInt(), ev.rawY.toInt())) {
+                    val imm = getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+                    imm?.hideSoftInputFromWindow(v.windowToken, 0)
+                    v.clearFocus()
+                }
+            }
+        }
+        return super.dispatchTouchEvent(ev)
     }
 }

@@ -225,7 +225,7 @@
     <string name="encrypt_backup_title">加密備份</string>
     <string name="decrypt_backup_title">解密備份</string>
     <string name="share_pin_format">PIN 碼: %1$s</string>
-    <string name="web_console_url_format">🌐  http://%1$s:%2$d/?token=%3$s</string>
+    <string name="web_console_url_format">http://%1:%2/?token=%3</string>
 
     <!-- VayDNS Config -->
     <string name="vaydns_pubkey_hint">VayDNS 公鑰 (Noise)</string>
@@ -316,5 +316,30 @@
     <string name="kcp_nodelay">啟用 KCP 極速模式 (NoDelay 與極速重傳)</string>
     <string name="udp_custom_psk">UDP Custom 預先共用金鑰 (PSK)</string>
     <string name="udp_custom_magic">Magic 標識魔數 (預設: UDPC)</string>
-    <string name="udp_custom_psk_hint">輸入伺服端預先共用認證金鑰 (無密碼留空)</string>
+    <string name="udp_custom_psk_hint">輸入伺服端預先共用認證密鑰 (無密碼留空)</string>
+    <string name="search">搜尋</string>
+    <string name="share">分享</string>
+    <string name="scan_qr">掃碼匯入</string>
+    <string name="custom_direct_routing">自訂直連分流</string>
+    <string name="update_geodata_now">立即更新</string>
+    <string name="loading_geodata_status">上次更新：從未</string>
+    <string name="delete">刪除</string>
+    <string name="dialog_delete_title">刪除節點</string>
+    <string name="dialog_delete_message">確定要刪除節點 \"%s\" 嗎？</string>
+    <string name="toast_deleted">節點已刪除</string>
+    <string name="web_console_qr_title">Web 控制台</string>
+    <string name="web_console_qr_hint">手機掃碼或瀏覽器訪問以管理節點</string>
+    <string name="dialog_qr_title">Web 管理控制台</string>
+    <string name="tv_profile_focus_hint">[OK] 切換節點  ·  [選單/長按] 測速與刪除</string>
+    <string name="auth_password_badge">密碼</string>
+    <string name="auth_private_key_badge">私鑰</string>
+    <string name="tv_profile_selected_badge">✓ 當前使用</string>
+    <string name="label_domain">網域名稱</string>
+    <string name="latency_format">%1$d ms</string>
+    <string name="traffic_down_format">↓ %1$s/s</string>
+    <string name="traffic_up_format">↑ %1$s/s</string>
+    <string name="tv_traffic_format">↑ %1$s/s  ↓ %2$s/s</string>
+    <string name="tv_traffic_total_format">Σ %1$s</string>
+    <string name="error_prefix">錯誤: %1$s</string>
+    <string name="info_protocol_negotiation_format">協議協商: %1$s -> %2$s</string>
 </resources>
