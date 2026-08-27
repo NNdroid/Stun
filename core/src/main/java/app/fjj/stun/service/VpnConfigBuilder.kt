@@ -66,6 +66,8 @@ object VpnConfigBuilder {
                 put("dns_tunnel_domain", domain)
                 put("dns_tunnel_servers", JSONArray(serversList))
                 put("dns_tunnel_type", qtype)
+                put("dns_tunnel_public_key", profile.noisePublicKey)
+                put("noise_public_key", profile.noisePublicKey)
             }
             if (profile.tunnelType == Profile.TUNNEL_TYPE_KCP) {
                 put("kcp_password", profile.kcpPassword)
@@ -77,6 +79,8 @@ object VpnConfigBuilder {
             if (profile.tunnelType == Profile.TUNNEL_TYPE_UDP_CUSTOM) {
                 put("udp_custom_psk", profile.udpCustomPsk)
                 put("udp_custom_magic", profile.udpCustomMagic)
+                put("udp_custom_public_key", profile.noisePublicKey)
+                put("noise_public_key", profile.noisePublicKey)
             }
         }.toString()
     }

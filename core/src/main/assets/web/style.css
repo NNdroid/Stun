@@ -381,3 +381,95 @@ textarea.code-input:focus{border-color:var(--primary)}
 @media (max-width:380px){
   .brand-title{display:none}
 }
+
+
+/* ── 现代节点编辑弹窗 & 卡片流式排版 ── */
+.edit-section{
+  background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:16px 18px;display:flex;flex-direction:column;gap:12px;transition:all .2s;
+}
+.edit-section:hover{border-color:var(--border-hover)}
+.edit-section-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding-bottom:8px;border-bottom:1px solid var(--border);
+}
+.edit-section-title{
+  font-size:0.92rem;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px;
+}
+.section-badge{
+  font-size:0.68rem;padding:2px 8px;border-radius:var(--radius-full);
+  background:var(--bg-card);color:var(--accent);font-weight:700;border:1px solid var(--border);
+  letter-spacing:.02em;
+}
+
+/* 现代化美化 Toggle Switch */
+.switch-row{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:8px 12px;background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius-md);cursor:pointer;transition:all .2s;
+}
+.switch-row:hover{border-color:var(--border-hover);background:var(--bg-card-hover)}
+.switch-label{
+  font-size:0.85rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px;
+  user-select:none;cursor:pointer;flex:1;
+}
+
+.toggle-switch{
+  position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;
+}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{
+  position:absolute;cursor:pointer;inset:0;background:var(--border-hover);
+  border-radius:24px;transition:.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.toggle-slider:before{
+  position:absolute;content:"";height:18px;width:18px;left:3px;bottom:3px;
+  background:#FFFFFF;border-radius:50%;transition:.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:0 2px 5px rgba(0,0,0,0.3);
+}
+input:checked + .toggle-slider{
+  background:linear-gradient(135deg, var(--primary) 0%, #FF7700 100%);
+  box-shadow:0 0 10px var(--primary-glow);
+}
+input:checked + .toggle-slider:before{
+  transform:translateX(20px);
+}
+
+/* 协议专属子卡片 */
+.dynamic-subcard{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);
+  padding:14px;display:flex;flex-direction:column;gap:10px;animation:fade-in .2s ease-out;
+}
+@keyframes fade-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+
+/* 输入框与按钮组优化 */
+.input-with-actions{
+  display:flex;gap:8px;align-items:flex-end;
+}
+.input-with-actions .text-input{flex:1}
+.action-btn-group{
+  display:flex;gap:6px;flex-shrink:0;
+}
+
+/* 按钮微动效与渐变光泽 */
+.btn-primary{
+  background:linear-gradient(135deg, #FF9F43 0%, #FF7700 100%);
+  color:#FFFFFF;border:none;box-shadow:0 4px 14px rgba(255, 119, 0, 0.35);
+}
+.btn-primary:hover{
+  background:linear-gradient(135deg, #FFA958 0%, #FF851A 100%);
+  box-shadow:0 6px 20px rgba(255, 119, 0, 0.5);transform:translateY(-1px);
+}
+.btn-primary:active{transform:translateY(1px)}
+
+.btn-secondary{
+  background:var(--bg-card);color:var(--text);border:1px solid var(--border);
+}
+.btn-secondary:hover{
+  background:var(--bg-card-hover);border-color:var(--border-hover);color:var(--primary);
+}
+
+.modal{
+  border-radius:20px;
+  box-shadow:0 25px 60px -10px rgba(0,0,0,0.6);
+}

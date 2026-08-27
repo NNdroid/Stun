@@ -5,21 +5,44 @@ on:
     types: [published]
   workflow_dispatch:
     inputs:
+      build_module:
+        description: '🏗️ 选择构建模块'
+        required: true
+        type: choice
+        options:
+          - 'both'
+          - 'app'
+          - 'tv'
+        default: 'both'
+      build_variant:
+        description: '🚀 构建类型 (Variant)'
+        required: true
+        type: choice
+        options:
+          - 'release'
+          - 'debug'
+          - 'both'
+        default: 'release'
       build_aab:
-        description: '是否生成 App Bundle (AAB)'
+        description: '📦 生成 App Bundle (AAB)'
         required: true
         type: boolean
         default: false
-      build_apk:
-        description: '是否生成 APK'
-        required: true
-        type: boolean
-        default: true
       sign_release:
-        description: '是否对 Release 进行签名'
+        description: '✍️ 对 Release 进行签名'
         required: true
         type: boolean
         default: true
+      clean_build:
+        description: '🧹 执行 Clean 构建'
+        required: true
+        type: boolean
+        default: false
+      custom_tag:
+        description: '🏷️ 产物命名称后缀 (可选)'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: write
@@ -98,14 +121,20 @@ jobs:
         id: options
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "build_module=${{ github.event.inputs.build_module }}" >> $GITHUB_OUTPUT
+            echo "build_variant=${{ github.event.inputs.build_variant }}" >> $GITHUB_OUTPUT
             echo "build_aab=${{ github.event.inputs.build_aab }}" >> $GITHUB_OUTPUT
-            echo "build_apk=${{ github.event.inputs.build_apk }}" >> $GITHUB_OUTPUT
             echo "sign=${{ github.event.inputs.sign_release }}" >> $GITHUB_OUTPUT
+            echo "clean=${{ github.event.inputs.clean_build }}" >> $GITHUB_OUTPUT
+            echo "tag=${{ github.event.inputs.custom_tag }}" >> $GITHUB_OUTPUT
           else
-            # 自动触发时（Release）使用默认值
+            # 自动触发时（Release 发布）
+            echo "build_module=both" >> $GITHUB_OUTPUT
+            echo "build_variant=both" >> $GITHUB_OUTPUT
             echo "build_aab=false" >> $GITHUB_OUTPUT
-            echo "build_apk=true" >> $GITHUB_OUTPUT
             echo "sign=true" >> $GITHUB_OUTPUT
+            echo "clean=false" >> $GITHUB_OUTPUT
+            echo "tag=" >> $GITHUB_OUTPUT
           fi
 
       - name: Decode Keystore
@@ -126,18 +155,41 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
+          MODULES=""
+          if [ "${{ steps.options.outputs.build_module }}" == "app" ]; then
+            MODULES="app"
+          elif [ "${{ steps.options.outputs.build_module }}" == "tv" ]; then
+            MODULES="tv"
+          else
+            MODULES="app tv"
+          fi
+
           TASKS=""
-          if [ "${{ steps.options.outputs.build_apk }}" == "true" ]; then
-            TASKS="$TASKS :app:assembleRelease :tv:assembleRelease :app:assembleDebug :tv:assembleDebug"
+          if [ "${{ steps.options.outputs.clean }}" == "true" ]; then
+            TASKS="clean"
           fi
-          if [ "${{ steps.options.outputs.build_aab }}" == "true" ]; then
-            TASKS="$TASKS :app:bundleRelease"
-          fi
+
+          VARIANT="${{ steps.options.outputs.build_variant }}"
           
-          if [ -z "$TASKS" ]; then
+          for mod in $MODULES; do
+            # Build APKs
+            if [ "$VARIANT" == "release" ] || [ "$VARIANT" == "both" ]; then
+              TASKS="$TASKS :$mod:assembleRelease"
+              if [ "${{ steps.options.outputs.build_aab }}" == "true" ]; then
+                TASKS="$TASKS :$mod:bundleRelease"
+              fi
+            fi
+            if [ "$VARIANT" == "debug" ] || [ "$VARIANT" == "both" ]; then
+              TASKS="$TASKS :$mod:assembleDebug"
+            fi
+          done
+          
+          if [ -z "$TASKS" ] || [ "$TASKS" == "clean" ]; then
             echo "⚠️ No build tasks selected. Skipping Gradle build."
             exit 0
           fi
+
+          echo "🚀 Running tasks: $TASKS"
 
           PARAMS=""
           if [ "${{ steps.options.outputs.sign }}" == "true" ]; then
@@ -149,14 +201,30 @@ jobs:
 
           ./gradlew $TASKS $PARAMS
 
+      - name: Generate Build Summary
+        if: always()
+        run: |
+          echo "## 🚀 Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Module:** ${{ steps.options.outputs.build_module }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Variant:** ${{ steps.options.outputs.build_variant }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Sign:** ${{ steps.options.outputs.sign }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Clean Build:** ${{ steps.options.outputs.clean }}" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ steps.options.outputs.tag }}" ]; then
+            echo "- **Custom Tag:** ${{ steps.options.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Artifacts generated:" >> $GITHUB_STEP_SUMMARY
+          find . -name "*.apk" -o -name "*.aab" | grep "/build/outputs/" | sed 's/.*\//- /' >> $GITHUB_STEP_SUMMARY
+
       - name: Upload Artifacts (Action Run)
         uses: actions/upload-artifact@v4
         with:
-          name: Stun-Build-Artifacts
+          name: Stun-Build-${{ steps.options.outputs.tag || 'Artifacts' }}
           path: |
             app/build/outputs/apk/**/*.apk
             app/build/outputs/bundle/**/*.aab
             tv/build/outputs/apk/**/*.apk
+            tv/build/outputs/bundle/**/*.aab
             core/libs/*.aar
           if-no-files-found: warn
 
@@ -168,6 +236,7 @@ jobs:
             app/build/outputs/apk/release/*.apk
             app/build/outputs/bundle/release/*.aab
             tv/build/outputs/apk/release/*.apk
+            tv/build/outputs/bundle/release/*.aab
             app/build/outputs/apk/debug/*.apk
             tv/build/outputs/apk/debug/*.apk
             core/libs/myssh.release.aar

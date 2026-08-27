@@ -25,6 +25,95 @@ let settingsTokens = {
 
 const I18N = {
   'zh-CN': {
+    edit_sec_1_title: "🖥️ 基础连接与 SSH 认证",
+    edit_sec_2_title: "🚀 传输协议与专属配置",
+    edit_sec_3_title: "🛡️ 安全加密与指纹校验",
+    edit_sec_4_title: "🌐 节点独立分流与规则覆盖",
+    edit_name_placeholder: "例如：东京高速节点",
+    edit_ssh_addr_placeholder: "IP:Port 或 域名:端口",
+    edit_user_placeholder: "例如：root",
+    edit_pass_placeholder: "留空则保持原密码不变",
+    edit_key_pass_placeholder: "无口令可留空",
+    edit_proxy_addr_placeholder: "IP:Port 或 域名:端口",
+    edit_custom_host_placeholder: "例如：cloudflare.com",
+    edit_server_name_placeholder: "TLS 握手 SNI 域名",
+    edit_custom_path_placeholder: "/path/to/stream",
+    edit_udp_psk_placeholder: "预共享密钥",
+    edit_noise_pk_placeholder: "Base64 或 Hex 格式公钥",
+    edit_ssh_fp_placeholder: "SHA256:... 或 MD5:...",
+    edit_cert_fp_placeholder: "AA:BB:CC:DD...",
+    edit_auth_token_placeholder: "例如：Token_Secret_888",
+    btn_fetch_ssh_fp_title: "一键查询服务器 SSH 主机公钥指纹并填入",
+    btn_details_ssh_title: "查询 SSH 主机密钥详情",
+    btn_fetch_cert_fp_title: "一键查询服务器 TLS 证书指纹并填入",
+    btn_details_cert_title: "查询 TLS 证书详细信息",
+
+    info_target_address: "目标地址",
+    info_server_banner: "服务端 Banner",
+    info_public_key_type: "公钥算法类型",
+    info_handshake_latency: "握手耗时",
+    info_sha256_fingerprint: "SHA-256 指纹",
+    info_md5_fingerprint: "MD5 指纹",
+    info_sha1_fingerprint: "SHA-1 指纹",
+    info_sni: "SNI 域名",
+    info_subject: "主题 (Subject)",
+    info_issuer: "颁发者 (Issuer)",
+    info_sans: "备用名称 (SANs)",
+    info_cert_validity: "证书有效期",
+    info_cert_expired: "❌ 已过期",
+    info_days_remaining: "✓ 剩余 {days} 天",
+    info_signature_alg: "签名算法",
+    info_public_key_alg: "公钥算法",
+    info_tls_version: "TLS 版本",
+    info_alpn_negotiation: "ALPN 协商",
+    info_duration_ms: "耗时 {ms} ms",
+
+    opt_tunnel_tls: "TLS (标准 TLS 加密隧道)",
+    opt_tunnel_ws: "WS (WebSocket 明文)",
+    opt_tunnel_wss: "WSS (WebSocket over TLS)",
+    opt_tunnel_h2: "H2 (HTTP/2 over TLS)",
+    opt_tunnel_h2c: "H2C (HTTP/2 Cleartext)",
+    opt_tunnel_http: "HTTP (HTTP 代理隧道)",
+    opt_tunnel_base: "BASE (直连 TCP 纯净隧道)",
+    opt_tunnel_quic: "QUIC (QUIC 快速数据报)",
+    opt_tunnel_grpc: "gRPC (gRPC over TLS)",
+    opt_tunnel_grpcc: "gRPCC (gRPC Cleartext)",
+    opt_tunnel_h3: "H3 (HTTP/3 over QUIC)",
+    opt_tunnel_wt: "WebTransport",
+    opt_tunnel_masque: "MASQUE (HTTP/3 IP 代理)",
+    opt_tunnel_xhttp: "XHTTP (流式多路复用 HTTP)",
+    opt_tunnel_xhttpc: "XHTTPC (XHTTP Cleartext)",
+    opt_tunnel_dns: "DNS Tunnel (SSH-over-DNS)",
+    opt_tunnel_kcp: "KCP (SSH-over-KCP 抗丢包)",
+    opt_tunnel_udpc: "UDP Custom (自定义混淆 UDP 隧道)",
+    opt_alpn_h3_h2: "h3,h2 (H3 优先 / 自动回退)",
+    opt_alpn_h2_h3: "h2,h3 (H2 优先 / 自动回退)",
+    opt_alpn_h3: "h3 (仅 HTTP/3)",
+    opt_alpn_h2: "h2 (仅 HTTP/2)",
+    opt_dns_txt: "TXT (推荐)",
+    details_modal_title: "ℹ️ 详细信息",
+    btn_details_copy: "📋 复制详情",
+    btn_details_apply: "✓ 应用指纹",
+    btn_details_close: "关闭",
+    label_edit_noise_public_key: "Noise 服务端公钥 (可选，Curve25519 Hex/Base64)：",
+
+    label_edit_verify_ssh_fp: '🔑 校验 SSH 主机公钥指纹 (Verify Host Key)',
+    label_edit_ssh_fp: 'SSH 公钥指纹 (SHA256 / MD5)：',
+    btn_fetch_fp: '🔍 获取指纹',
+    btn_details: 'ℹ️ 详情',
+    btn_details_copy: '📋 复制详情',
+    btn_details_apply: '✓ 应用指纹',
+    btn_details_close: '关闭',
+    ssh_details_title: 'ℹ️ SSH 服务器主机公钥详情',
+    tls_details_title: 'ℹ️ TLS 服务器证书详细信息',
+    toast_ssh_fp_success: '✓ 成功获取 SSH 主机指纹！',
+    toast_cert_fp_success: '✓ 成功获取 TLS 证书指纹！',
+    toast_missing_ssh_addr: '✕ 请先填写 SSH 服务器地址',
+    toast_missing_proxy_addr: '✕ 请先填写代理目标地址或 SSH 地址',
+    toast_fetch_failed: '✕ 获取信息失败: {msg}',
+    toast_details_copied: '✓ 详细信息已复制到剪贴板！',
+    toast_fp_applied: '✓ 已应用指纹到配置并开启校验！',
+
     page_title: '🦊 Stun · Web 控制台',
     theme_toggle_title: '切换亮暗主题',
     toast_vpn_connecting: '正在连接 VPN...',
@@ -228,6 +317,95 @@ const I18N = {
 
   },
   'zh-TW': {
+    edit_sec_1_title: "🖥️ 基礎連線與 SSH 認證",
+    edit_sec_2_title: "🚀 傳輸協議與專屬配置",
+    edit_sec_3_title: "🛡️ 安全加密與指紋校驗",
+    edit_sec_4_title: "🌐 節點獨立分流與規則覆蓋",
+    edit_name_placeholder: "例如：東京高速節點",
+    edit_ssh_addr_placeholder: "IP:Port 或 網域名稱:連接埠",
+    edit_user_placeholder: "例如：root",
+    edit_pass_placeholder: "留空則保持原密碼不變",
+    edit_key_pass_placeholder: "無口令可留空",
+    edit_proxy_addr_placeholder: "IP:Port 或 網域名稱:連接埠",
+    edit_custom_host_placeholder: "例如：cloudflare.com",
+    edit_server_name_placeholder: "TLS 交握 SNI 網域名稱",
+    edit_custom_path_placeholder: "/path/to/stream",
+    edit_udp_psk_placeholder: "預先共用金鑰",
+    edit_noise_pk_placeholder: "Base64 或 Hex 格式公鑰",
+    edit_ssh_fp_placeholder: "SHA256:... 或 MD5:...",
+    edit_cert_fp_placeholder: "AA:BB:CC:DD...",
+    edit_auth_token_placeholder: "例如：Token_Secret_888",
+    btn_fetch_ssh_fp_title: "一鍵查詢伺服器 SSH 主機公鑰指紋並填入",
+    btn_details_ssh_title: "查詢 SSH 主機密鑰詳情",
+    btn_fetch_cert_fp_title: "一鍵查詢伺服器 TLS 憑證指紋並填入",
+    btn_details_cert_title: "查詢 TLS 憑證詳細資訊",
+
+    info_target_address: "目標位址",
+    info_server_banner: "伺服端 Banner",
+    info_public_key_type: "公鑰演算法類型",
+    info_handshake_latency: "交握耗時",
+    info_sha256_fingerprint: "SHA-256 指紋",
+    info_md5_fingerprint: "MD5 指紋",
+    info_sha1_fingerprint: "SHA-1 指紋",
+    info_sni: "SNI 網域名稱",
+    info_subject: "主體 (Subject)",
+    info_issuer: "發行者 (Issuer)",
+    info_sans: "主體備用名稱 (SANs)",
+    info_cert_validity: "憑證有效期限",
+    info_cert_expired: "❌ 已過期",
+    info_days_remaining: "✓ 剩餘 {days} 天",
+    info_signature_alg: "簽章演算法",
+    info_public_key_alg: "公鑰演算法",
+    info_tls_version: "TLS 版本",
+    info_alpn_negotiation: "ALPN 協商",
+    info_duration_ms: "耗時 {ms} ms",
+
+    opt_tunnel_tls: "TLS (標準 TLS 加密隧道)",
+    opt_tunnel_ws: "WS (WebSocket 明文)",
+    opt_tunnel_wss: "WSS (WebSocket over TLS)",
+    opt_tunnel_h2: "H2 (HTTP/2 over TLS)",
+    opt_tunnel_h2c: "H2C (HTTP/2 Cleartext)",
+    opt_tunnel_http: "HTTP (HTTP 代理隧道)",
+    opt_tunnel_base: "BASE (直連 TCP 純淨隧道)",
+    opt_tunnel_quic: "QUIC (QUIC 快速數據報)",
+    opt_tunnel_grpc: "gRPC (gRPC over TLS)",
+    opt_tunnel_grpcc: "gRPCC (gRPC Cleartext)",
+    opt_tunnel_h3: "H3 (HTTP/3 over QUIC)",
+    opt_tunnel_wt: "WebTransport",
+    opt_tunnel_masque: "MASQUE (HTTP/3 IP 代理)",
+    opt_tunnel_xhttp: "XHTTP (流式多路複用 HTTP)",
+    opt_tunnel_xhttpc: "XHTTPC (XHTTP Cleartext)",
+    opt_tunnel_dns: "DNS Tunnel (SSH-over-DNS)",
+    opt_tunnel_kcp: "KCP (SSH-over-KCP 抗丟包)",
+    opt_tunnel_udpc: "UDP Custom (自定義混淆 UDP 隧道)",
+    opt_alpn_h3_h2: "h3,h2 (H3 優先 / 自動回退)",
+    opt_alpn_h2_h3: "h2,h3 (H2 優先 / 自動回退)",
+    opt_alpn_h3: "h3 (僅 HTTP/3)",
+    opt_alpn_h2: "h2 (僅 HTTP/2)",
+    opt_dns_txt: "TXT (推薦)",
+    details_modal_title: "ℹ️ 詳細資訊",
+    btn_details_copy: "📋 複製詳情",
+    btn_details_apply: "✓ 應用指紋",
+    btn_details_close: "關閉",
+    label_edit_noise_public_key: "Noise 伺服器公鑰 (可選，Curve25519 Hex/Base64)：",
+
+    label_edit_verify_ssh_fp: '🔑 校驗 SSH 主機公鑰指紋 (Verify Host Key)',
+    label_edit_ssh_fp: 'SSH 公鑰指紋 (SHA256 / MD5)：',
+    btn_fetch_fp: '🔍 獲取指紋',
+    btn_details: 'ℹ️ 詳情',
+    btn_details_copy: '📋 複製詳情',
+    btn_details_apply: '✓ 應用指紋',
+    btn_details_close: '關閉',
+    ssh_details_title: 'ℹ️ SSH 伺服器主機公鑰詳情',
+    tls_details_title: 'ℹ️ TLS 伺服器證書詳細資訊',
+    toast_ssh_fp_success: '✓ 成功獲取 SSH 主機指紋！',
+    toast_cert_fp_success: '✓ 成功獲取 TLS 證書指紋！',
+    toast_missing_ssh_addr: '✕ 請先填寫 SSH 伺服器位址',
+    toast_missing_proxy_addr: '✕ 請先填寫代理目標位址或 SSH 位址',
+    toast_fetch_failed: '✕ 獲取資訊失敗: {msg}',
+    toast_details_copied: '✓ 詳細資訊已複製到剪貼簿！',
+    toast_fp_applied: '✓ 已應用指紋到配置並開啟校驗！',
+
     page_title: '🦊 Stun · Web 控制台',
     theme_toggle_title: '切換亮暗主題',
     toast_vpn_connecting: '正在連線 VPN...',
@@ -431,6 +609,95 @@ const I18N = {
 
   },
   'en': {
+    edit_sec_1_title: "🖥️ Basic Connection & SSH Auth",
+    edit_sec_2_title: "🚀 Transport Protocol & Parameters",
+    edit_sec_3_title: "🛡️ Security & Fingerprint Verification",
+    edit_sec_4_title: "🌐 Routing & App Filter Overrides",
+    edit_name_placeholder: "e.g. Tokyo Fast Node",
+    edit_ssh_addr_placeholder: "IP:Port or Domain:Port",
+    edit_user_placeholder: "e.g. root",
+    edit_pass_placeholder: "Leave empty to keep existing password",
+    edit_key_pass_placeholder: "Leave empty if unencrypted",
+    edit_proxy_addr_placeholder: "IP:Port or Domain:Port",
+    edit_custom_host_placeholder: "e.g. cloudflare.com",
+    edit_server_name_placeholder: "TLS Handshake SNI Domain",
+    edit_custom_path_placeholder: "/path/to/stream",
+    edit_udp_psk_placeholder: "Pre-Shared Key",
+    edit_noise_pk_placeholder: "Base64 or Hex public key",
+    edit_ssh_fp_placeholder: "SHA256:... or MD5:...",
+    edit_cert_fp_placeholder: "AA:BB:CC:DD...",
+    edit_auth_token_placeholder: "e.g. Token_Secret_888",
+    btn_fetch_ssh_fp_title: "Query SSH host key fingerprint and auto-fill",
+    btn_details_ssh_title: "View detailed SSH host key information",
+    btn_fetch_cert_fp_title: "Query TLS cert fingerprint and auto-fill",
+    btn_details_cert_title: "View detailed TLS certificate information",
+
+    info_target_address: "Target Address",
+    info_server_banner: "Server Banner",
+    info_public_key_type: "Public Key Type",
+    info_handshake_latency: "Handshake Latency",
+    info_sha256_fingerprint: "SHA-256 Fingerprint",
+    info_md5_fingerprint: "MD5 Fingerprint",
+    info_sha1_fingerprint: "SHA-1 Fingerprint",
+    info_sni: "SNI Domain",
+    info_subject: "Subject",
+    info_issuer: "Issuer",
+    info_sans: "SANs (Alt Names)",
+    info_cert_validity: "Certificate Validity",
+    info_cert_expired: "❌ Expired",
+    info_days_remaining: "✓ {days} days remaining",
+    info_signature_alg: "Signature Algorithm",
+    info_public_key_alg: "Public Key Algorithm",
+    info_tls_version: "TLS Version",
+    info_alpn_negotiation: "ALPN Protocol",
+    info_duration_ms: "Duration: {ms} ms",
+
+    opt_tunnel_tls: "TLS (Standard TLS Encrypted Tunnel)",
+    opt_tunnel_ws: "WS (WebSocket Plaintext)",
+    opt_tunnel_wss: "WSS (WebSocket over TLS)",
+    opt_tunnel_h2: "H2 (HTTP/2 over TLS)",
+    opt_tunnel_h2c: "H2C (HTTP/2 Cleartext)",
+    opt_tunnel_http: "HTTP (HTTP Proxy Tunnel)",
+    opt_tunnel_base: "BASE (Direct TCP Pure Tunnel)",
+    opt_tunnel_quic: "QUIC (QUIC Datagram Tunnel)",
+    opt_tunnel_grpc: "gRPC (gRPC over TLS)",
+    opt_tunnel_grpcc: "gRPCC (gRPC Cleartext)",
+    opt_tunnel_h3: "H3 (HTTP/3 over QUIC)",
+    opt_tunnel_wt: "WebTransport",
+    opt_tunnel_masque: "MASQUE (HTTP/3 IP Proxy)",
+    opt_tunnel_xhttp: "XHTTP (Streaming Multiplexed HTTP)",
+    opt_tunnel_xhttpc: "XHTTPC (XHTTP Cleartext)",
+    opt_tunnel_dns: "DNS Tunnel (SSH-over-DNS)",
+    opt_tunnel_kcp: "KCP (SSH-over-KCP Anti-Packet Loss)",
+    opt_tunnel_udpc: "UDP Custom (Custom Obfuscated UDP Tunnel)",
+    opt_alpn_h3_h2: "h3,h2 (H3 Preferred / Auto Fallback)",
+    opt_alpn_h2_h3: "h2,h3 (H2 Preferred / Auto Fallback)",
+    opt_alpn_h3: "h3 (HTTP/3 Only)",
+    opt_alpn_h2: "h2 (HTTP/2 Only)",
+    opt_dns_txt: "TXT (Recommended)",
+    details_modal_title: "ℹ️ Detailed Information",
+    btn_details_copy: "📋 Copy Details",
+    btn_details_apply: "✓ Apply Fingerprint",
+    btn_details_close: "Close",
+    label_edit_noise_public_key: "Noise Server Public Key (Optional, Curve25519 Hex/Base64):",
+
+    label_edit_verify_ssh_fp: '🔑 Verify SSH Host Key Fingerprint',
+    label_edit_ssh_fp: 'SSH Host Key Fingerprint (SHA256 / MD5):',
+    btn_fetch_fp: '🔍 Fetch Fingerprint',
+    btn_details: 'ℹ️ Details',
+    btn_details_copy: '📋 Copy Details',
+    btn_details_apply: '✓ Apply Fingerprint',
+    btn_details_close: 'Close',
+    ssh_details_title: 'ℹ️ SSH Server Host Key Details',
+    tls_details_title: 'ℹ️ TLS Server Certificate Details',
+    toast_ssh_fp_success: '✓ SSH host fingerprint fetched successfully!',
+    toast_cert_fp_success: '✓ TLS certificate fingerprint fetched successfully!',
+    toast_missing_ssh_addr: '✕ Please provide SSH Server Address first',
+    toast_missing_proxy_addr: '✕ Please provide Proxy Target Address or SSH Address first',
+    toast_fetch_failed: '✕ Failed to fetch info: {msg}',
+    toast_details_copied: '✓ Details copied to clipboard!',
+    toast_fp_applied: '✓ Fingerprint applied and verification enabled!',
+
     page_title: '🦊 Stun · Web Console',
     theme_toggle_title: 'Toggle Theme',
     toast_vpn_connecting: 'Connecting to VPN...',
@@ -634,6 +901,95 @@ const I18N = {
 
   },
   'ja': {
+    edit_sec_1_title: "🖥️ 基本接続 & SSH 認証",
+    edit_sec_2_title: "🚀 トランスポート & プロトコル設定",
+    edit_sec_3_title: "🛡️ セキュリティ & フィンガープリント検証",
+    edit_sec_4_title: "🌐 ルーティング & アプリ分離オーバーライド",
+    edit_name_placeholder: "例: 東京高速ノード",
+    edit_ssh_addr_placeholder: "IP:ポート または ドメイン:ポート",
+    edit_user_placeholder: "例: root",
+    edit_pass_placeholder: "変更しない場合は空のまま",
+    edit_key_pass_placeholder: "パスフレーズがない場合は空欄",
+    edit_proxy_addr_placeholder: "IP:ポート または ドメイン:ポート",
+    edit_custom_host_placeholder: "例: cloudflare.com",
+    edit_server_name_placeholder: "TLS SNI ドメイン名",
+    edit_custom_path_placeholder: "/path/to/stream",
+    edit_udp_psk_placeholder: "事前共有キー (PSK)",
+    edit_noise_pk_placeholder: "Base64 または Hex 形式の公開鍵",
+    edit_ssh_fp_placeholder: "SHA256:... または MD5:...",
+    edit_cert_fp_placeholder: "AA:BB:CC:DD...",
+    edit_auth_token_placeholder: "例: Token_Secret_888",
+    btn_fetch_ssh_fp_title: "SSH ホスト鍵フィンガープリントを取得して自動入力",
+    btn_details_ssh_title: "SSH ホスト鍵の詳細情報を表示",
+    btn_fetch_cert_fp_title: "TLS 証明書フィンガープリントを取得して自動入力",
+    btn_details_cert_title: "TLS 証明書の詳細情報を表示",
+
+    info_target_address: "ターゲットアドレス",
+    info_server_banner: "サーバー Banner",
+    info_public_key_type: "公開鍵アルゴリズム",
+    info_handshake_latency: "ハンドシェイク所要時間",
+    info_sha256_fingerprint: "SHA-256 フィンガープリント",
+    info_md5_fingerprint: "MD5 フィンガープリント",
+    info_sha1_fingerprint: "SHA-1 フィンガープリント",
+    info_sni: "SNI ドメイン",
+    info_subject: "サブジェクト (Subject)",
+    info_issuer: "発行者 (Issuer)",
+    info_sans: "サブジェクト別名 (SANs)",
+    info_cert_validity: "証明書の有効性",
+    info_cert_expired: "❌ 期限切れ",
+    info_days_remaining: "✓ 残り {days} 日",
+    info_signature_alg: "署名アルゴリズム",
+    info_public_key_alg: "公開鍵アルゴリズム",
+    info_tls_version: "TLS バージョン",
+    info_alpn_negotiation: "ALPN ネゴシエーション",
+    info_duration_ms: "所要時間: {ms} ms",
+
+    opt_tunnel_tls: "TLS (標準 TLS 暗号化トンネル)",
+    opt_tunnel_ws: "WS (WebSocket 平文)",
+    opt_tunnel_wss: "WSS (WebSocket over TLS)",
+    opt_tunnel_h2: "H2 (HTTP/2 over TLS)",
+    opt_tunnel_h2c: "H2C (HTTP/2 Cleartext)",
+    opt_tunnel_http: "HTTP (HTTP プロキシトンネル)",
+    opt_tunnel_base: "BASE (直接 TCP トンネル)",
+    opt_tunnel_quic: "QUIC (QUIC データグラム)",
+    opt_tunnel_grpc: "gRPC (gRPC over TLS)",
+    opt_tunnel_grpcc: "gRPCC (gRPC Cleartext)",
+    opt_tunnel_h3: "H3 (HTTP/3 over QUIC)",
+    opt_tunnel_wt: "WebTransport",
+    opt_tunnel_masque: "MASQUE (HTTP/3 IP プロキシ)",
+    opt_tunnel_xhttp: "XHTTP (ストリーミング多重化 HTTP)",
+    opt_tunnel_xhttpc: "XHTTPC (XHTTP Cleartext)",
+    opt_tunnel_dns: "DNS Tunnel (SSH-over-DNS)",
+    opt_tunnel_kcp: "KCP (SSH-over-KCP パケットロス防止)",
+    opt_tunnel_udpc: "UDP Custom (カスタム難読化 UDP トンネル)",
+    opt_alpn_h3_h2: "h3,h2 (H3 優先 / 自動フォールバック)",
+    opt_alpn_h2_h3: "h2,h3 (H2 優先 / 自動フォールバック)",
+    opt_alpn_h3: "h3 (HTTP/3 のみ)",
+    opt_alpn_h2: "h2 (HTTP/2 のみ)",
+    opt_dns_txt: "TXT (推奨)",
+    details_modal_title: "ℹ️ 詳細情報",
+    btn_details_copy: "📋 コピー",
+    btn_details_apply: "✓ 適用",
+    btn_details_close: "閉じる",
+    label_edit_noise_public_key: "Noise サーバー公開鍵 (任意、Curve25519 Hex/Base64):",
+
+    label_edit_verify_ssh_fp: '🔑 SSH ホスト公開鍵フィンガープリントを検証',
+    label_edit_ssh_fp: 'SSH 公開鍵フィンガープリント (SHA256 / MD5):',
+    btn_fetch_fp: '🔍 取得',
+    btn_details: 'ℹ️ 詳細',
+    btn_details_copy: '📋 コピー',
+    btn_details_apply: '✓ 適用',
+    btn_details_close: '閉じる',
+    ssh_details_title: 'ℹ️ SSH ホスト鍵の詳細情報',
+    tls_details_title: 'ℹ️ TLS 証明書の詳細情報',
+    toast_ssh_fp_success: '✓ SSH ホスト鍵を取得しました！',
+    toast_cert_fp_success: '✓ TLS 証明書フィンガープリントを取得しました！',
+    toast_missing_ssh_addr: '✕ SSH サーバーアドレスを入力してください',
+    toast_missing_proxy_addr: '✕ プロキシアドレスまたは SSH アドレスを入力してください',
+    toast_fetch_failed: '✕ 取得に失敗しました: {msg}',
+    toast_details_copied: '✓ 詳細情報をクリップボードにコピーしました！',
+    toast_fp_applied: '✓ フィンガープリントを適用し検証を有効化しました！',
+
     page_title: '🦊 Stun · Web コンソール',
     theme_toggle_title: 'テーマ切り替え',
     toast_vpn_connecting: 'VPNに接続中...',
@@ -837,6 +1193,95 @@ const I18N = {
 
   },
   'de': {
+    edit_sec_1_title: "🖥️ Grundverbindung & SSH-Authentifizierung",
+    edit_sec_2_title: "🚀 Transportprotokoll & Parameter",
+    edit_sec_3_title: "🛡️ Sicherheit & Fingerabdruckprüfung",
+    edit_sec_4_title: "🌐 Routing- & App-Filter-Überschreibungen",
+    edit_name_placeholder: "z.B. Tokio Highspeed-Knoten",
+    edit_ssh_addr_placeholder: "IP:Port oder Domain:Port",
+    edit_user_placeholder: "z.B. root",
+    edit_pass_placeholder: "Leer lassen für unverändertes Passwort",
+    edit_key_pass_placeholder: "Leer lassen wenn unverschlüsselt",
+    edit_proxy_addr_placeholder: "IP:Port oder Domain:Port",
+    edit_custom_host_placeholder: "z.B. cloudflare.com",
+    edit_server_name_placeholder: "TLS-Handshake SNI-Domain",
+    edit_custom_path_placeholder: "/pfad/zum/stream",
+    edit_udp_psk_placeholder: "Vorinstallierter Schlüssel (PSK)",
+    edit_noise_pk_placeholder: "Base64 oder Hex Öffentlicher Schlüssel",
+    edit_ssh_fp_placeholder: "SHA256:... oder MD5:...",
+    edit_cert_fp_placeholder: "AA:BB:CC:DD...",
+    edit_auth_token_placeholder: "z.B. Token_Secret_888",
+    btn_fetch_ssh_fp_title: "SSH-Fingerabdruck abrufen und automatisch eintragen",
+    btn_details_ssh_title: "Detaillierte SSH-Hostschlüssel-Informationen anzeigen",
+    btn_fetch_cert_fp_title: "TLS-Zertifikatsfingerabdruck abrufen und eintragen",
+    btn_details_cert_title: "Detaillierte TLS-Zertifikatsinformationen anzeigen",
+
+    info_target_address: "Zieladresse",
+    info_server_banner: "Server-Banner",
+    info_public_key_type: "Öffentlicher Schlüsseltyp",
+    info_handshake_latency: "Handshake-Latenz",
+    info_sha256_fingerprint: "SHA-256-Fingerabdruck",
+    info_md5_fingerprint: "MD5-Fingerabdruck",
+    info_sha1_fingerprint: "SHA-1-Fingerabdruck",
+    info_sni: "SNI-Domain",
+    info_subject: "Betreff (Subject)",
+    info_issuer: "Aussteller (Issuer)",
+    info_sans: "Alternative Namen (SANs)",
+    info_cert_validity: "Zertifikatsgültigkeit",
+    info_cert_expired: "❌ Abgelaufen",
+    info_days_remaining: "✓ {days} Tage verbleibend",
+    info_signature_alg: "Signaturalgorithmus",
+    info_public_key_alg: "Schlüsselalgorithmus",
+    info_tls_version: "TLS-Version",
+    info_alpn_negotiation: "ALPN-Aushandlung",
+    info_duration_ms: "Dauer: {ms} ms",
+
+    opt_tunnel_tls: "TLS (Standard-TLS-Verschlüsselungstunnel)",
+    opt_tunnel_ws: "WS (WebSocket-Klartext)",
+    opt_tunnel_wss: "WSS (WebSocket über TLS)",
+    opt_tunnel_h2: "H2 (HTTP/2 über TLS)",
+    opt_tunnel_h2c: "H2C (HTTP/2 Klartext)",
+    opt_tunnel_http: "HTTP (HTTP-Proxy-Tunnel)",
+    opt_tunnel_base: "BASE (Direkter TCP-Tunnel)",
+    opt_tunnel_quic: "QUIC (QUIC-Datagramm)",
+    opt_tunnel_grpc: "gRPC (gRPC über TLS)",
+    opt_tunnel_grpcc: "gRPCC (gRPC Klartext)",
+    opt_tunnel_h3: "H3 (HTTP/3 über QUIC)",
+    opt_tunnel_wt: "WebTransport",
+    opt_tunnel_masque: "MASQUE (HTTP/3 IP-Proxy)",
+    opt_tunnel_xhttp: "XHTTP (Streaming-gemultiplextes HTTP)",
+    opt_tunnel_xhttpc: "XHTTPC (XHTTP Klartext)",
+    opt_tunnel_dns: "DNS Tunnel (SSH-über-DNS)",
+    opt_tunnel_kcp: "KCP (SSH-über-KCP Paketverlustschutz)",
+    opt_tunnel_udpc: "UDP Custom (Benutzerdefinierter verschleierter UDP-Tunnel)",
+    opt_alpn_h3_h2: "h3,h2 (H3 bevorzugt / Automatischer Fallback)",
+    opt_alpn_h2_h3: "h2,h3 (H2 bevorzugt / Automatischer Fallback)",
+    opt_alpn_h3: "h3 (Nur HTTP/3)",
+    opt_alpn_h2: "h2 (Nur HTTP/2)",
+    opt_dns_txt: "TXT (Empfohlen)",
+    details_modal_title: "ℹ️ Detaillierte Informationen",
+    btn_details_copy: "📋 Kopieren",
+    btn_details_apply: "✓ Anwenden",
+    btn_details_close: "Schließen",
+    label_edit_noise_public_key: "Noise-Server-Öffentlicher-Schlüssel (Optional, Curve25519 Hex/Base64):",
+
+    label_edit_verify_ssh_fp: '🔑 SSH-Hostschlüssel-Fingerabdruck verifizieren',
+    label_edit_ssh_fp: 'SSH-Fingerabdruck (SHA256 / MD5):',
+    btn_fetch_fp: '🔍 Abrufen',
+    btn_details: 'ℹ️ Details',
+    btn_details_copy: '📋 Kopieren',
+    btn_details_apply: '✓ Anwenden',
+    btn_details_close: 'Schließen',
+    ssh_details_title: 'ℹ️ SSH-Server-Hostschlüssel-Details',
+    tls_details_title: 'ℹ️ TLS-Serverzertifikat-Details',
+    toast_ssh_fp_success: '✓ SSH-Host-Fingerabdruck erfolgreich abgerufen!',
+    toast_cert_fp_success: '✓ TLS-Zertifikat-Fingerabdruck erfolgreich abgerufen!',
+    toast_missing_ssh_addr: '✕ Bitte geben Sie zuerst die SSH-Serveradresse an',
+    toast_missing_proxy_addr: '✕ Bitte geben Sie zuerst die Proxy- oder SSH-Adresse an',
+    toast_fetch_failed: '✕ Abruf fehlgeschlagen: {msg}',
+    toast_details_copied: '✓ Details in die Zwischenablage kopiert!',
+    toast_fp_applied: '✓ Fingerabdruck angewendet und Prüfung aktiviert!',
+
     page_title: '🦊 Stun · Web-Konsole',
     theme_toggle_title: 'Thema wechseln',
     toast_vpn_connecting: 'Verbindung zu VPN wird hergestellt...',
@@ -1040,6 +1485,95 @@ const I18N = {
 
   },
   'fr': {
+    edit_sec_1_title: "🖥️ Connexion de base & Authentification SSH",
+    edit_sec_2_title: "🚀 Protocole de transport & Paramètres",
+    edit_sec_3_title: "🛡️ Sécurité & Vérification d'empreinte",
+    edit_sec_4_title: "🌐 Routage & Remplacement de filtre d'app",
+    edit_name_placeholder: "Ex: Nœud haut débit Tokyo",
+    edit_ssh_addr_placeholder: "IP:Port ou Domaine:Port",
+    edit_user_placeholder: "Ex: root",
+    edit_pass_placeholder: "Laisser vide pour conserver le mot de passe",
+    edit_key_pass_placeholder: "Laisser vide si non chiffré",
+    edit_proxy_addr_placeholder: "IP:Port ou Domaine:Port",
+    edit_custom_host_placeholder: "Ex: cloudflare.com",
+    edit_server_name_placeholder: "Domaine SNI TLS",
+    edit_custom_path_placeholder: "/chemin/du/flux",
+    edit_udp_psk_placeholder: "Clé pré-partagée (PSK)",
+    edit_noise_pk_placeholder: "Clé publique Base64 ou Hex",
+    edit_ssh_fp_placeholder: "SHA256:... ou MD5:...",
+    edit_cert_fp_placeholder: "AA:BB:CC:DD...",
+    edit_auth_token_placeholder: "Ex: Token_Secret_888",
+    btn_fetch_ssh_fp_title: "Récupérer et renseigner automatiquement l'empreinte SSH",
+    btn_details_ssh_title: "Afficher les détails de la clé d'hôte SSH",
+    btn_fetch_cert_fp_title: "Récupérer et renseigner l'empreinte du certificat TLS",
+    btn_details_cert_title: "Afficher les détails du certificat TLS",
+
+    info_target_address: "Adresse cible",
+    info_server_banner: "Bannière du serveur",
+    info_public_key_type: "Type de clé publique",
+    info_handshake_latency: "Latence de négociation",
+    info_sha256_fingerprint: "Empreinte SHA-256",
+    info_md5_fingerprint: "Empreinte MD5",
+    info_sha1_fingerprint: "Empreinte SHA-1",
+    info_sni: "Domaine SNI",
+    info_subject: "Sujet (Subject)",
+    info_issuer: "Émetteur (Issuer)",
+    info_sans: "Noms alternatifs (SANs)",
+    info_cert_validity: "Validité du certificat",
+    info_cert_expired: "❌ Expiré",
+    info_days_remaining: "✓ {days} jours restants",
+    info_signature_alg: "Algorithme de signature",
+    info_public_key_alg: "Algorithme de clé publique",
+    info_tls_version: "Version TLS",
+    info_alpn_negotiation: "Négociation ALPN",
+    info_duration_ms: "Durée: {ms} ms",
+
+    opt_tunnel_tls: "TLS (Tunnel chiffré TLS standard)",
+    opt_tunnel_ws: "WS (WebSocket en texte clair)",
+    opt_tunnel_wss: "WSS (WebSocket sur TLS)",
+    opt_tunnel_h2: "H2 (HTTP/2 sur TLS)",
+    opt_tunnel_h2c: "H2C (HTTP/2 Texte clair)",
+    opt_tunnel_http: "HTTP (Tunnel proxy HTTP)",
+    opt_tunnel_base: "BASE (Tunnel TCP direct épuré)",
+    opt_tunnel_quic: "QUIC (Datagramme QUIC)",
+    opt_tunnel_grpc: "gRPC (gRPC sur TLS)",
+    opt_tunnel_grpcc: "gRPCC (gRPC Texte clair)",
+    opt_tunnel_h3: "H3 (HTTP/3 sur QUIC)",
+    opt_tunnel_wt: "WebTransport",
+    opt_tunnel_masque: "MASQUE (Proxy IP HTTP/3)",
+    opt_tunnel_xhttp: "XHTTP (HTTP multiplexé en continu)",
+    opt_tunnel_xhttpc: "XHTTPC (XHTTP Texte clair)",
+    opt_tunnel_dns: "DNS Tunnel (SSH-sur-DNS)",
+    opt_tunnel_kcp: "KCP (SSH-sur-KCP anti-perte de paquets)",
+    opt_tunnel_udpc: "UDP Custom (Tunnel UDP personnalisé et obfusqué)",
+    opt_alpn_h3_h2: "h3,h2 (H3 préféré / Repli automatique)",
+    opt_alpn_h2_h3: "h2,h3 (H2 préféré / Repli automatique)",
+    opt_alpn_h3: "h3 (HTTP/3 uniquement)",
+    opt_alpn_h2: "h2 (HTTP/2 uniquement)",
+    opt_dns_txt: "TXT (Recommandé)",
+    details_modal_title: "ℹ️ Informations détaillées",
+    btn_details_copy: "📋 Copier",
+    btn_details_apply: "✓ Appliquer",
+    btn_details_close: "Fermer",
+    label_edit_noise_public_key: "Clé publique du serveur Noise (Optionnelle, Curve25519 Hex/Base64):",
+
+    label_edit_verify_ssh_fp: "🔑 Vérifier l'empreinte de clé d'hôte SSH",
+    label_edit_ssh_fp: 'Empreinte de clé SSH (SHA256 / MD5):',
+    btn_fetch_fp: '🔍 Récupérer',
+    btn_details: 'ℹ️ Détails',
+    btn_details_copy: '📋 Copier',
+    btn_details_apply: '✓ Appliquer',
+    btn_details_close: 'Fermer',
+    ssh_details_title: "ℹ️ Détails de la clé d'hôte du serveur SSH",
+    tls_details_title: 'ℹ️ Détails du certificat de serveur TLS',
+    toast_ssh_fp_success: "✓ Empreinte d'hôte SSH récupérée avec succès!",
+    toast_cert_fp_success: "✓ Empreinte du certificat TLS récupérée avec succès!",
+    toast_missing_ssh_addr: "✕ Veuillez d'abord fournir l'adresse du serveur SSH",
+    toast_missing_proxy_addr: "✕ Veuillez d'abord fournir l'adresse du proxy ou SSH",
+    toast_fetch_failed: '✕ Échec de la récupération: {msg}',
+    toast_details_copied: "✓ Détails copiés dans le presse-papiers!",
+    toast_fp_applied: "✓ Empreinte appliquée et vérification activée!",
+
     page_title: '🦊 Stun · Console Web',
     theme_toggle_title: 'Changer de thème',
     toast_vpn_connecting: 'Connexion au VPN...',
@@ -1047,10 +1581,10 @@ const I18N = {
     toast_switched_node: '✓ Basculé sur le nœud "{name}"',
     toast_deleted_node: '✓ Nœud "{name}" supprimé',
     toast_enter_pin: '✕ Veuillez entrer le code PIN',
-    toast_export_failed: '✕ Échec de l\'exportation, veuillez réessayer',
+    toast_export_failed: "✕ Échec de l\'exportation, veuillez réessayer",
     toast_logs_cleared: '✓ Journaux de console effacés',
     toast_profile_updated: '✓ Configuration du nœud "{name}" enregistrée !',
-    toast_profile_update_failed: '✕ Échec de l\'enregistrement du nœud.',
+    toast_profile_update_failed: "✕ Échec de l\'enregistrement du nœud.",
     file_loaded_toast: '✓ Fichier "{name}" chargé avec succès',
     btn_test_latency_all: '⚡ Tester toutes les latences',
     btn_ping: '⚡ Ping',
@@ -1123,10 +1657,10 @@ const I18N = {
     modal_edit_title: '✏️ Modifier la configuration du nœud',
     label_edit_name: 'Nom du nœud :',
     label_edit_ssh_addr: 'Adresse du serveur SSH :',
-    label_edit_auth_type: 'Type d\'authentification SSH :',
+    label_edit_auth_type: "Type d\'authentification SSH :",
     opt_auth_password: 'Authentification par mot de passe',
     opt_auth_key: 'Authentification par clé privée',
-    label_edit_user: 'Nom d\'utilisateur SSH :',
+    label_edit_user: "Nom d\'utilisateur SSH :",
     label_edit_pass: 'Mot de passe SSH :',
     label_edit_key_pass: 'Phrase secrète de la clé :',
     label_edit_private_key: 'Clé privée (OpenSSH / RSA / Ed25519) :',
@@ -1138,15 +1672,15 @@ const I18N = {
     label_edit_alpn: 'Négociation ALPN (ALPN) :',
     label_edit_http_payload: 'HTTP Payload (Modèle de requête) :',
     label_edit_disable_status_check: 'Désactiver la vérification stricte du code HTTP 200',
-    label_edit_verify_cert: '🔒 Vérifier l\'empreinte SHA-256 du certificat',
+    label_edit_verify_cert: "🔒 Vérifier l\'empreinte SHA-256 du certificat",
     label_edit_cert_fp: 'Empreinte SHA-256 du certificat :',
-    label_edit_proxy_auth: '🔑 Activer l\'authentification proxy',
+    label_edit_proxy_auth: "🔑 Activer l\'authentification proxy",
     label_edit_auth_token: 'Token Auth Proxy :',
-    label_edit_auth_user: 'Nom d\'utilisateur Proxy :',
+    label_edit_auth_user: "Nom d\'utilisateur Proxy :",
     label_edit_auth_pass: 'Mot de passe Proxy :',
     label_edit_dns_servers: 'Serveurs DNS (séparés par des virgules) :',
     label_edit_dns_domain: 'Domaine DNS (Tunnel Domain) :',
-    label_edit_dns_type: 'Type d\'enregistrement DNS :',
+    label_edit_dns_type: "Type d\'enregistrement DNS :",
     label_edit_kcp_pass: 'Mot de passe KCP :',
     label_edit_kcp_crypt: 'Chiffrement KCP :',
     label_edit_kcp_data_shards: 'Data Shards (Fragments de données) :',
@@ -1161,7 +1695,7 @@ const I18N = {
     label_edit_udpgw_addr: 'Adresse UDPGW dédiée :',
     label_edit_geosite_direct: 'Balises directes GeoSite :',
     label_edit_geoip_direct: 'Balises directes GeoIP :',
-    label_edit_app_override: '🔀 Activer le tunneling d\'application dédié pour ce nœud',
+    label_edit_app_override: "🔀 Activer le tunneling d\'application dédié pour ce nœud",
     node_mode_disallow: '🚫 <b>Mode Contournement</b> (Contourner les applications sélectionnées)',
     node_mode_allow: '🚀 <b>Mode Proxy</b> (Uniquement pour les applications sélectionnées)',
     btn_save_node_edit: '💾 Enregistrer le nœud',
@@ -1220,7 +1754,7 @@ const I18N = {
     custom_token_label: 'Token personnalisé :',
     custom_token_placeholder: 'Entrez un mot de passe (ex. 123456)',
     current_url_label: '🔗 URL d\'accès Web active',
-    btn_copy_url: '📋 Copier l\'URL',
+    btn_copy_url: "📋 Copier l\'URL",
     url_copied: '✓ URL copiée dans le presse-papiers !',
     settings_save_success: '✓ Tous les paramètres ont été enregistrés !',
     settings_save_failed: '✕ Échec de l\'enregistrement.',
@@ -1439,6 +1973,102 @@ function applyI18n() {
   document.getElementById('btn-autoscroll').textContent = autoScroll ? t('btn_autoscroll_on') : t('btn_autoscroll_off');
   document.getElementById('t-btn-copy-logs').textContent = t('btn_copy_logs');
   document.getElementById('t-btn-clear-logs').textContent = t('btn_clear_logs');
+
+  // Tunnel & Security & Diagnostic Elements
+  const elemTitle = document.getElementById('t-page-title');
+  if (elemTitle) elemTitle.textContent = t('page_title');
+  const elemVerifySshFp = document.getElementById('t-label-edit-verify-ssh-fp');
+  if (elemVerifySshFp) elemVerifySshFp.textContent = t('label_edit_verify_ssh_fp');
+  const elemEditSshFp = document.getElementById('t-label-edit-ssh-fp');
+  if (elemEditSshFp) elemEditSshFp.textContent = t('label_edit_ssh_fp');
+  const btnFetchSshFp = document.getElementById('t-btn-fetch-ssh-fp');
+  if (btnFetchSshFp) btnFetchSshFp.textContent = t('btn_fetch_fp');
+  const btnDetailsSsh = document.getElementById('t-btn-details-ssh');
+  if (btnDetailsSsh) btnDetailsSsh.textContent = t('btn_details');
+
+  const btnFetchCertFp = document.getElementById('t-btn-fetch-cert-fp');
+  if (btnFetchCertFp) btnFetchCertFp.textContent = t('btn_fetch_fp');
+  const btnDetailsCert = document.getElementById('t-btn-details-cert');
+  if (btnDetailsCert) btnDetailsCert.textContent = t('btn_details');
+
+  const elemNoisePk = document.getElementById('t-label-edit-noise-public-key');
+  if (elemNoisePk) elemNoisePk.textContent = t('label_edit_noise_public_key');
+
+  const modalDetailsTitle = document.getElementById('details-modal-title');
+  if (modalDetailsTitle) modalDetailsTitle.textContent = t('details_modal_title');
+  const btnDetailsCopy = document.getElementById('t-btn-details-copy');
+  if (btnDetailsCopy) btnDetailsCopy.textContent = t('btn_details_copy');
+  const btnDetailsApply = document.getElementById('t-btn-details-apply');
+  if (btnDetailsApply) btnDetailsApply.textContent = t('btn_details_apply');
+  const btnDetailsClose = document.getElementById('t-btn-details-close');
+  if (btnDetailsClose) btnDetailsClose.textContent = t('btn_details_close');
+
+  // Option text translations
+  const optionIds = [
+    'opt-tunnel-tls', 'opt-tunnel-ws', 'opt-tunnel-wss', 'opt-tunnel-h2', 'opt-tunnel-h2c',
+    'opt-tunnel-http', 'opt-tunnel-base', 'opt-tunnel-quic', 'opt-tunnel-grpc', 'opt-tunnel-grpcc',
+    'opt-tunnel-h3', 'opt-tunnel-wt', 'opt-tunnel-masque', 'opt-tunnel-xhttp', 'opt-tunnel-xhttpc',
+    'opt-tunnel-dns', 'opt-tunnel-kcp', 'opt-tunnel-udpc',
+    'opt-alpn-h3-h2', 'opt-alpn-h2-h3', 'opt-alpn-h3', 'opt-alpn-h2', 'opt-dns-txt'
+  ];
+  optionIds.forEach(id => {
+    const el = document.getElementById(id);
+    const key = id.replace(/-/g, '_');
+    if (el && I18N[currentLang] && I18N[currentLang][key]) {
+      el.textContent = t(key);
+    }
+  });
+
+
+  // Section Headers
+  const sec1 = document.getElementById('t-edit-sec-1-title');
+  if (sec1) sec1.textContent = t('edit_sec_1_title');
+  const sec2 = document.getElementById('t-edit-sec-2-title');
+  if (sec2) sec2.textContent = t('edit_sec_2_title');
+  const sec3 = document.getElementById('t-edit-sec-3-title');
+  if (sec3) sec3.textContent = t('edit_sec_3_title');
+  const sec4 = document.getElementById('t-edit-sec-4-title');
+  if (sec4) sec4.textContent = t('edit_sec_4_title');
+
+  // Placeholders
+  const phMap = {
+    'edit-node-name': 'edit_name_placeholder',
+    'edit-node-ssh-addr': 'edit_ssh_addr_placeholder',
+    'edit-node-user': 'edit_user_placeholder',
+    'edit-node-pass': 'edit_pass_placeholder',
+    'edit-node-key-pass': 'edit_key_pass_placeholder',
+    'edit-node-proxy-addr': 'edit_proxy_addr_placeholder',
+    'edit-node-custom-host': 'edit_custom_host_placeholder',
+    'edit-node-server-name': 'edit_server_name_placeholder',
+    'edit-node-custom-path': 'edit_custom_path_placeholder',
+    'edit-node-udp-custom-psk': 'edit_udp_psk_placeholder',
+    'edit-node-noise-public-key': 'edit_noise_pk_placeholder',
+    'edit-node-ssh-fingerprint': 'edit_ssh_fp_placeholder',
+    'edit-node-cert-fingerprint': 'edit_cert_fp_placeholder',
+    'edit-node-auth-token': 'edit_auth_token_placeholder',
+    'node-app-search': 'search_placeholder',
+    'input-custom-token': 'custom_token_placeholder',
+    'profile-json-input': 'import_placeholder',
+    'input-import-pin': 'import_pin_placeholder',
+    'input-export-pin': 'export_pin_placeholder',
+    'conns-search': 'search_conns_placeholder',
+    'app-search': 'search_placeholder'
+  };
+  for (const [id, key] of Object.entries(phMap)) {
+    const el = document.getElementById(id);
+    if (el) el.placeholder = t(key);
+  }
+
+  // Button Titles & Tooltips
+  const btnFetchSsh = document.getElementById('t-btn-fetch-ssh-fp');
+  if (btnFetchSsh) btnFetchSsh.title = t('btn_fetch_ssh_fp_title');
+  const btnDetSsh = document.getElementById('t-btn-details-ssh');
+  if (btnDetSsh) btnDetSsh.title = t('btn_details_ssh_title');
+  const btnFetchCert = document.getElementById('t-btn-fetch-cert-fp');
+  if (btnFetchCert) btnFetchCert.title = t('btn_fetch_cert_fp_title');
+  const btnDetCert = document.getElementById('t-btn-details-cert');
+  if (btnDetCert) btnDetCert.title = t('btn_details_cert_title');
+
 
   if (currentTab === 'conntrack') renderConnections();
   renderProfiles(allProfiles);
@@ -1835,7 +2465,11 @@ async function testSingleProfileLatency(id, name) {
         display: r.display,
         testing: false
       };
-      showToast(t('toast_latency_tested', {name: name, delay: r.display}));
+      if (r.ok) {
+        showToast(t('toast_latency_tested', {name: name, delay: r.display}));
+      } else {
+        showToast((name || 'Node') + ': ' + (r.error ? r.error : r.display));
+      }
     } else {
       profileDelays[id] = { ok: false, latencyMs: -1, display: 'Error', testing: false };
       showToast(t('toast_latency_failed'));
@@ -1882,7 +2516,7 @@ function onEditAuthTypeChange() {
 
 function updateEditModalTunnelFields() {
   const selected = document.getElementById('edit-node-tunnel-type').value;
-  const isDns = (selected === 'dns');
+  const isDns = (selected === 'dns_custom');
   const isHttp = (selected === 'http');
   const isBase = (selected === 'base');
   const isKcp = (selected === 'kcp');
@@ -1908,7 +2542,8 @@ function updateEditModalTunnelFields() {
   document.getElementById('edit-group-custom-path').style.display = isCustomPathSupported ? 'flex' : 'none';
 
   // 5. ALPN
-  document.getElementById('edit-group-alpn').style.display = isXhttp ? 'flex' : 'none';
+  const isAlpnSupported = isXhttp || isMasque;
+  document.getElementById('edit-group-alpn').style.display = isAlpnSupported ? 'flex' : 'none';
 
   // 6. HTTP Payload
   document.getElementById('edit-group-http-payload-container').style.display = isHttp ? 'flex' : 'none';
@@ -1929,6 +2564,203 @@ function updateEditModalTunnelFields() {
 
   // 11. UDP Custom Container
   document.getElementById('edit-group-udp-custom-container').style.display = isUdpCustom ? 'grid' : 'none';
+
+  // 12. Noise Public Key Container (DNS & UDP Custom)
+  document.getElementById('edit-group-noise-container').style.display = (isDns || isUdpCustom) ? 'flex' : 'none';
+}
+
+
+function toggleSSHFingerprintInput() {
+  const checked = document.getElementById('edit-node-verify-ssh-fp').checked;
+  document.getElementById('edit-group-ssh-fingerprint').style.display = checked ? 'block' : 'none';
+}
+
+let currentDetailsApplyFp = '';
+let currentDetailsTargetId = '';
+let currentDetailsCheckboxId = '';
+
+async function fetchSSHFingerprint() {
+  const sshAddr = document.getElementById('edit-node-ssh-addr').value.trim();
+  if (!sshAddr) {
+    showToast(t('toast_missing_ssh_addr'));
+    document.getElementById('edit-node-ssh-addr').focus();
+    return;
+  }
+  const btn = document.getElementById('t-btn-fetch-ssh-fp');
+  if (btn) btn.disabled = true;
+  try {
+    const res = await fetch('/api/diagnostics/ssh-fingerprint?token=' + token, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ sshAddr })
+    });
+    const data = await res.json();
+    if (res.ok && data.status === 'success' && data.fingerprint) {
+      document.getElementById('edit-node-ssh-fingerprint').value = data.fingerprint;
+      document.getElementById('edit-node-verify-ssh-fp').checked = true;
+      document.getElementById('edit-group-ssh-fingerprint').style.display = 'block';
+      showToast(t('toast_ssh_fp_success'));
+    } else {
+      showToast(t('toast_fetch_failed', { msg: data.error || 'Unknown error' }));
+    }
+  } catch (e) {
+    showToast(t('toast_fetch_failed', { msg: e.message }));
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function fetchSSHDetails() {
+  const sshAddr = document.getElementById('edit-node-ssh-addr').value.trim();
+  if (!sshAddr) {
+    showToast(t('toast_missing_ssh_addr'));
+    document.getElementById('edit-node-ssh-addr').focus();
+    return;
+  }
+  const btn = document.getElementById('t-btn-details-ssh');
+  if (btn) btn.disabled = true;
+  try {
+    const res = await fetch('/api/diagnostics/ssh-fingerprint?token=' + token, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ sshAddr })
+    });
+    const data = await res.json();
+    if (res.ok && data.status === 'success' && data.detailsJson) {
+      const d = JSON.parse(data.detailsJson);
+      const text = `🌐 ${t('info_target_address')}: ${d.address || sshAddr}\n` +
+        `🏷️ ${t('info_server_banner')}: ${d.banner || 'N/A'}\n` +
+        `🔑 ${t('info_public_key_type')}: ${d.key_type || 'N/A'}\n` +
+        `⚡ ${t('info_handshake_latency')}: ${d.latency_ms || 0} ms\n\n` +
+        `🛡️ ${t('info_sha256_fingerprint')}:\n${d.fingerprint_sha256 || 'N/A'}\n\n` +
+        `🔒 ${t('info_md5_fingerprint')}:\n${d.fingerprint_md5 || 'N/A'}`;
+      openDetailsModal(t('ssh_details_title'), text, d.fingerprint_sha256 || data.fingerprint, 'edit-node-ssh-fingerprint', 'edit-node-verify-ssh-fp');
+    } else {
+      showToast(t('toast_fetch_failed', { msg: data.error || 'Unknown error' }));
+    }
+  } catch (e) {
+    showToast(t('toast_fetch_failed', { msg: e.message }));
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function fetchCertFingerprint() {
+  let target = document.getElementById('edit-node-proxy-addr').value.trim();
+  if (!target) target = document.getElementById('edit-node-ssh-addr').value.trim();
+  if (!target) {
+    showToast(t('toast_missing_proxy_addr'));
+    document.getElementById('edit-node-proxy-addr').focus();
+    return;
+  }
+  let serverName = document.getElementById('edit-node-server-name').value.trim();
+  if (!serverName) serverName = document.getElementById('edit-node-custom-host').value.trim();
+
+  const btn = document.getElementById('t-btn-fetch-cert-fp');
+  if (btn) btn.disabled = true;
+  try {
+    const res = await fetch('/api/diagnostics/tls-fingerprint?token=' + token, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ target, serverName })
+    });
+    const data = await res.json();
+    if (res.ok && data.status === 'success' && data.fingerprint) {
+      document.getElementById('edit-node-cert-fingerprint').value = data.fingerprint;
+      document.getElementById('edit-node-verify-cert').checked = true;
+      document.getElementById('edit-group-cert-fingerprint').style.display = 'block';
+      showToast(t('toast_cert_fp_success'));
+    } else {
+      showToast(t('toast_fetch_failed', { msg: data.error || 'Unknown error' }));
+    }
+  } catch (e) {
+    showToast(t('toast_fetch_failed', { msg: e.message }));
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function fetchCertDetails() {
+  let target = document.getElementById('edit-node-proxy-addr').value.trim();
+  if (!target) target = document.getElementById('edit-node-ssh-addr').value.trim();
+  if (!target) {
+    showToast(t('toast_missing_proxy_addr'));
+    document.getElementById('edit-node-proxy-addr').focus();
+    return;
+  }
+  let serverName = document.getElementById('edit-node-server-name').value.trim();
+  if (!serverName) serverName = document.getElementById('edit-node-custom-host').value.trim();
+
+  const btn = document.getElementById('t-btn-details-cert');
+  if (btn) btn.disabled = true;
+  try {
+    const res = await fetch('/api/diagnostics/tls-fingerprint?token=' + token, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ target, serverName })
+    });
+    const data = await res.json();
+    if (res.ok && data.status === 'success' && data.detailsJson) {
+      const d = JSON.parse(data.detailsJson);
+      const sans = (d.dns_names && d.dns_names.length) ? d.dns_names.join(', ') : 'N/A';
+      const expireStatus = d.is_expired ? t('info_cert_expired') : t('info_days_remaining', {days: d.days_remaining});
+      const durationStr = t('info_duration_ms', {ms: d.latency_ms || 0});
+      const text = `🌐 ${t('info_target_address')}: ${d.target || target}\n` +
+        `🏷️ ${t('info_sni')}: ${d.sni || 'N/A'}\n` +
+        `📜 ${t('info_subject')}: ${d.subject || 'N/A'}\n` +
+        `🏢 ${t('info_issuer')}: ${d.issuer || 'N/A'}\n` +
+        `🌍 ${t('info_sans')}: ${sans}\n` +
+        `⏳ ${t('info_cert_validity')}: ${expireStatus}\n` +
+        `🔒 ${t('info_signature_alg')}: ${d.signature_algorithm || 'N/A'}\n` +
+        `🔑 ${t('info_public_key_alg')}: ${d.public_key_algorithm || 'N/A'}\n` +
+        `🛡️ ${t('info_tls_version')}: ${d.tls_version || 'N/A'}\n` +
+        `⚡ ${t('info_alpn_negotiation')}: ${d.negotiated_protocol || 'N/A'} (${durationStr})\n\n` +
+        `🛡️ ${t('info_sha256_fingerprint')}:\n${d.fingerprint_sha256 || 'N/A'}\n\n` +
+        `🔒 ${t('info_sha1_fingerprint')}:\n${d.fingerprint_sha1 || 'N/A'}`;
+      openDetailsModal(t('tls_details_title'), text, d.fingerprint_sha256 || data.fingerprint, 'edit-node-cert-fingerprint', 'edit-node-verify-cert');
+    } else {
+      showToast(t('toast_fetch_failed', { msg: data.error || 'Unknown error' }));
+    }
+  } catch (e) {
+    showToast(t('toast_fetch_failed', { msg: e.message }));
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function openDetailsModal(title, content, applyFp, targetInputId, targetCheckboxId) {
+  currentDetailsApplyFp = applyFp;
+  currentDetailsTargetId = targetInputId;
+  currentDetailsCheckboxId = targetCheckboxId;
+  document.getElementById('details-modal-title').textContent = title;
+  document.getElementById('details-modal-content').textContent = content;
+  document.getElementById('details-modal').classList.add('active');
+}
+
+function closeDetailsModal() {
+  document.getElementById('details-modal').classList.remove('active');
+}
+
+function copyDetailsContent() {
+  const text = document.getElementById('details-modal-content').textContent;
+  navigator.clipboard.writeText(text);
+  showToast(t('toast_details_copied'));
+}
+
+function applyDetailsFingerprint() {
+  if (currentDetailsApplyFp && currentDetailsTargetId) {
+    document.getElementById(currentDetailsTargetId).value = currentDetailsApplyFp;
+    if (currentDetailsCheckboxId) {
+      document.getElementById(currentDetailsCheckboxId).checked = true;
+      if (currentDetailsCheckboxId === 'edit-node-verify-ssh-fp') {
+        document.getElementById('edit-group-ssh-fingerprint').style.display = 'block';
+      } else if (currentDetailsCheckboxId === 'edit-node-verify-cert') {
+        document.getElementById('edit-group-cert-fingerprint').style.display = 'block';
+      }
+    }
+    showToast(t('toast_fp_applied'));
+    closeDetailsModal();
+  }
 }
 
 function toggleCertFingerprintInput() {
@@ -2000,6 +2832,7 @@ async function openEditModal(id) {
 
   document.getElementById('edit-node-udp-custom-psk').value = p.udpCustomPsk || '';
   document.getElementById('edit-node-udp-custom-magic').value = p.udpCustomMagic || '';
+  document.getElementById('edit-node-noise-public-key').value = p.noisePublicKey || '';
 
   updateEditModalTunnelFields();
 
@@ -2109,6 +2942,8 @@ async function submitEditProfile() {
   const httpPayload = document.getElementById('edit-node-http-payload').value.trim();
   const disableStatusCheck = document.getElementById('edit-node-disable-status-check').checked;
 
+  const verifyFingerprint = document.getElementById('edit-node-verify-ssh-fp').checked;
+  const serverFingerprint = document.getElementById('edit-node-ssh-fingerprint').value.trim();
   const verifyCertFingerprint = document.getElementById('edit-node-verify-cert').checked;
   const serverCertFingerprint = document.getElementById('edit-node-cert-fingerprint').value.trim();
 
@@ -2129,6 +2964,7 @@ async function submitEditProfile() {
 
   const udpCustomPsk = document.getElementById('edit-node-udp-custom-psk').value;
   const udpCustomMagic = document.getElementById('edit-node-udp-custom-magic').value.trim();
+  const noisePublicKey = document.getElementById('edit-node-noise-public-key').value.trim();
 
   const dnsOverride = document.getElementById('edit-node-dns-override').checked;
   const remoteDns = document.getElementById('edit-node-remote-dns').value.trim();
@@ -2145,11 +2981,12 @@ async function submitEditProfile() {
   const payload = {
     id, name, sshAddr, authType, user, pass, keyPass, privateKey,
     tunnelType, proxyAddr, customHost, serverName, customPath, alpn, httpPayload, disableStatusCheck,
+    verifyFingerprint, serverFingerprint,
     verifyCertFingerprint, serverCertFingerprint,
     proxyAuthRequired, proxyAuthToken, proxyAuthUser, proxyAuthPass,
     dnsTunnelServers, dnsTunnelDomain, dnsTunnelType,
     kcpPassword, kcpCrypt, kcpDataShards, kcpParityShards, kcpNoDelay,
-    udpCustomPsk, udpCustomMagic,
+    udpCustomPsk, udpCustomMagic, noisePublicKey,
     dnsOverride, remoteDns, localDns, udpgwVersion, udpgwAddr, geositeDirect, geoipDirect,
     appFilterOverride, filterMode, filterApps
   };

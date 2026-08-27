@@ -37,7 +37,7 @@
                 android:background="@drawable/shape_status_dot"
                 android:backgroundTint="@color/tv_card_inner_bg"
                 android:gravity="center"
-                android:text="🌐"
+                tools:text="🌐"
                 android:textColor="@color/tv_text_primary"
                 android:textSize="18sp"
                 android:textStyle="bold" />
@@ -88,7 +88,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="monospace"
-                    android:text="—"
+                    tools:text="—"
                     android:textColor="@color/tv_text_secondary"
                     android:textSize="13sp"
                     android:textStyle="bold" />
@@ -125,7 +125,7 @@
                 android:background="@drawable/bg_badge_type"
                 android:paddingHorizontal="7dp"
                 android:paddingVertical="2dp"
-                android:text="SSH"
+                tools:text="SSH"
                 android:textAllCaps="true"
                 android:textColor="?attr/colorOnTertiaryContainer"
                 android:textSize="11sp"

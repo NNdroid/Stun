@@ -168,7 +168,7 @@
     <string name="encrypt_backup_title">Encrypt Backup</string>
     <string name="decrypt_backup_title">Decrypt Backup</string>
     <string name="share_pin_format">PIN: %1$s</string>
-    <string name="web_console_url_format">http://%1:%2/?token=%3</string>
+    <string name="web_console_url_format">http://%1$s:%2$d/?token=%3$s</string>
     <string name="traffic_up_format">▲ %1$s/s</string>
     <string name="traffic_down_format">▼ %1$s/s</string>
     <string name="tv_traffic_format">↑ %1$s  ↓ %2$s</string>
@@ -281,6 +281,8 @@
     <string name="dns_tunnel_record_type">DNS Record Type</string>
     <string name="dns_tunnel_domain_hint">Tunnel Authority Domain (e.g. tunnel.example.com)</string>
     <string name="dns_tunnel_servers_hint">DNS Server(s) (e.g. 8.8.8.8:53, 1.1.1.1:53)</string>
+    <string name="noise_public_key">Noise Public Key (Optional)</string>
+    <string name="noise_public_key_hint">Server Noise Curve25519 Public Key (Hex / Base64)</string>
     <string name="refresh">Refresh</string>
     <string name="error_prefix">Error: %1$s</string>
     <string name="latency_format">%1$d ms</string>
@@ -345,4 +347,28 @@
     <string name="auth_password_badge">Password</string>
     <string name="auth_private_key_badge">Private Key</string>
     <string name="tv_profile_selected_badge">✓ Active</string>
+
+    <!-- Log Levels -->
+    <string name="log_all">ALL</string>
+    <string name="log_debug">DEBUG</string>
+    <string name="log_info">INFO</string>
+    <string name="log_warn">WARN</string>
+    <string name="log_error">ERROR</string>
+
+    <!-- Generic Accessibility -->
+    <string name="desc_app_logo">App logo</string>
+    <string name="desc_back">Navigate back</string>
+    <string name="desc_qr_code">QR code</string>
+    <string name="desc_edit">Edit</string>
+    <string name="desc_delete">Delete</string>
+    <string name="desc_info">Information</string>
+    <string name="desc_refresh">Refresh</string>
+    <string name="desc_send">Send</string>
+    <string name="desc_add">Add</string>
+    <string name="desc_search">Search</string>
+    <string name="desc_lock">Locked</string>
+    <string name="desc_person">User Profile</string>
+    <string name="desc_tv">TV Device</string>
+    <string name="desc_speed">Network Speed</string>
+    <string name="desc_filter">Filter</string>
 </resources>

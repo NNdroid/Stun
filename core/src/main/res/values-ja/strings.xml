@@ -225,7 +225,7 @@
     <string name="encrypt_backup_title">バックアップを暗号化</string>
     <string name="decrypt_backup_title">バックアップを復号</string>
     <string name="share_pin_format">PIN: %1$s</string>
-    <string name="web_console_url_format">http://%1:%2/?token=%3</string>
+    <string name="web_console_url_format">http://%1$s:%2$d/?token=%3$s</string>
 
     <!-- VayDNS Config -->
     <string name="vaydns_pubkey_hint">VayDNS 公開鍵 (Noise)</string>

@@ -19,7 +19,7 @@
     </span>
   </div>
   <div class="header-actions">
-    <button id="theme-btn" class="theme-toggle-btn" onclick="toggleTheme()" title="切换亮暗主题">🌙</button>
+    <button id="theme-btn" class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Theme">🌙</button>
     <select id="lang-select" class="lang-select" onchange="changeLang(this.value)">
       <option value="zh-CN">🇨🇳 简体中文</option>
       <option value="zh-TW">🇭🇰 繁體中文</option>
@@ -117,7 +117,7 @@
       <div class="card-header">
         <span id="t-conntrack-title" class="card-title">🔍 实时活跃连接跟踪</span>
         <div style="display:flex;align-items:center;gap:8px">
-          <input id="conns-search" class="app-search" style="max-width:240px;padding:6px 12px;font-size:0.8rem" type="text" placeholder="搜索连接目标..." oninput="onConnsSearchChange()">
+          <input id="conns-search" class="app-search" style="max-width:240px;padding:6px 12px;font-size:0.8rem" type="text" placeholder="Search destination..." oninput="onConnsSearchChange()">
           <button id="t-btn-refresh-conns" class="btn btn-sm" onclick="loadConntrack()">🔄 刷新</button>
         </div>
       </div>
@@ -132,7 +132,7 @@
             </tr>
           </thead>
           <tbody id="conns-table-body">
-            <tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px">加载中...</td></tr>
+            <tr><td id="t-conns-loading" colspan="4" style="text-align:center;color:var(--text-muted);padding:20px">Loading...</td></tr>
           </tbody>
         </table>
       </div>
@@ -272,7 +272,7 @@
       </div>
 
       <div style="display:flex;gap:12px">
-        <input id="app-search" class="app-search" type="text" placeholder="搜索应用名称或包名..." oninput="filterAppList()">
+        <input id="app-search" class="app-search" type="text" placeholder="Search apps..." oninput="filterAppList()">
         <button id="t-btn-select-all" class="btn btn-sm" onclick="toggleSelectAllApps()">全选 / 全不选</button>
       </div>
 
@@ -335,7 +335,7 @@
       <!-- 自定义 Token 输入框 -->
       <div id="custom-token-group" style="display:none;flex-direction:column;gap:8px">
         <label id="t-custom-token-label" style="font-size:0.85rem;font-weight:700">自定义访问密码 (Custom Token)：</label>
-        <input id="input-custom-token" class="text-input" type="text" placeholder="输入自定义 Token 口令，如 123456 或 mysecret" oninput="updateAccessUrlPreview()">
+        <input id="input-custom-token" class="text-input" type="text" placeholder="Custom Token Secret" oninput="updateAccessUrlPreview()">
       </div>
 
       <!-- 当前生效访问地址 -->
@@ -394,14 +394,14 @@
       <div style="flex:1;height:1px;background:var(--border)"></div>
     </div>
 
-    <textarea id="profile-json-input" class="code-input" placeholder="粘贴手机端加密分享码、备份文本或JSON节点配置..." oninput="checkPayloadEncryption()" ondragover="onFileDragOver(event)" ondrop="onFileDrop(event)"></textarea>
+    <textarea id="profile-json-input" class="code-input" placeholder="Paste configuration..." oninput="checkPayloadEncryption()" ondragover="onFileDragOver(event)" ondrop="onFileDrop(event)"></textarea>
     
     <div id="pin-input-group" style="display:flex;flex-direction:column;gap:6px">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <label id="t-import-pin-label" style="font-size:0.82rem;font-weight:700">🔒 6位解密 PIN 码：</label>
         <span id="pin-detected-badge" style="display:none;font-size:0.72rem;color:var(--primary);font-weight:700">✓ 检测到加密数据</span>
       </div>
-      <input id="input-import-pin" class="text-input" type="text" maxlength="6" placeholder="若为加密分享码/备份，请输入6位数字PIN码（明文配置可留空）">
+      <input id="input-import-pin" class="text-input" type="text" maxlength="6" placeholder="6-digit PIN (optional)">
     </div>
 
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:4px">
@@ -422,7 +422,7 @@
     <div style="display:flex;flex-direction:column;gap:6px">
       <label id="t-export-pin-label" style="font-size:0.82rem;font-weight:700">设定 6 位加密保护 PIN 码：</label>
       <div style="display:flex;gap:10px">
-        <input id="input-export-pin" class="text-input" type="text" maxlength="6" placeholder="输入6位数字PIN码">
+        <input id="input-export-pin" class="text-input" type="text" maxlength="6" placeholder="6-digit PIN">
         <button id="t-btn-gen-pin" class="btn btn-sm" onclick="generateRandomExportPin()">🎲 随机生成</button>
       </div>
     </div>
@@ -442,304 +442,426 @@
 
 <!-- ✏️ 编辑节点弹窗 (Edit Node Modal - 与手机版逻辑 100% 对齐) -->
 <div id="edit-modal" class="modal-overlay">
-  <div class="modal" style="max-width:720px;max-height:90vh;overflow-y:auto">
-    <div class="card-header" style="position:sticky;top:0;background:var(--bg-card);z-index:10;margin-top:-6px;padding-top:6px">
-      <span id="t-modal-edit-title" class="card-title">✏️ 编辑节点配置</span>
+  <div class="modal" style="max-width:760px;max-height:92vh;padding:0;overflow:hidden;display:flex;flex-direction:column">
+    
+    <!-- 头部 (Sticky Header) -->
+    <div class="card-header" style="position:sticky;top:0;background:var(--bg-glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);z-index:20;padding:14px 20px;margin:0;border-bottom:1px solid var(--border)">
+      <span id="t-modal-edit-title" class="card-title" style="font-size:1.05rem">✏️ 编辑节点配置</span>
       <button class="btn btn-sm" onclick="closeEditModal()">✕</button>
     </div>
 
-    <input type="hidden" id="edit-profile-id">
+    <!-- 弹窗可滚动主体 -->
+    <div style="flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+      <input type="hidden" id="edit-profile-id">
 
-    <!-- 1. SSH 基础连接信息 -->
-    <div class="form-grid">
-      <div class="form-group">
-        <label id="t-label-edit-name" class="form-label">节点名称：</label>
-        <input id="edit-node-name" class="text-input" type="text">
-      </div>
-      <div class="form-group">
-        <label id="t-label-edit-ssh-addr" class="form-label">SSH 服务器地址：</label>
-        <input id="edit-node-ssh-addr" class="text-input" type="text" placeholder="IP:Port">
-      </div>
-      <div class="form-group">
-        <label id="t-label-edit-auth-type" class="form-label">SSH 认证方式：</label>
-        <select id="edit-node-auth-type" class="select-input" onchange="onEditAuthTypeChange()">
-          <option value="password" id="opt-auth-password">密码认证 (Password)</option>
-          <option value="privatekey" id="opt-auth-key">私钥认证 (Private Key)</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label id="t-label-edit-user" class="form-label">SSH 用户名：</label>
-        <input id="edit-node-user" class="text-input" type="text">
-      </div>
-      <div class="form-group" id="edit-group-pass">
-        <label id="t-label-edit-pass" class="form-label">SSH 密码：</label>
-        <input id="edit-node-pass" class="text-input" type="password">
-      </div>
-      <div class="form-group" id="edit-group-key-pass" style="display:none">
-        <label id="t-label-edit-key-pass" class="form-label">私钥口令 (Key Passphrase)：</label>
-        <input id="edit-node-key-pass" class="text-input" type="password">
-      </div>
-    </div>
-
-    <!-- 私钥文本框 -->
-    <div id="edit-group-private-key" class="form-group" style="display:none;margin-top:6px">
-      <label id="t-label-edit-private-key" class="form-label">私钥内容 (OpenSSH / RSA / Ed25519)：</label>
-      <textarea id="edit-node-private-key" class="code-input" style="height:90px;font-size:0.78rem" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----..."></textarea>
-    </div>
-
-    <!-- 2. 传输协议选择 -->
-    <div class="form-group" style="margin-top:10px">
-      <label id="t-label-edit-tunnel-type" class="form-label" style="font-size:0.92rem;font-weight:800;color:var(--accent)">传输协议 (Tunnel Type)：</label>
-      <select id="edit-node-tunnel-type" class="select-input" onchange="updateEditModalTunnelFields()">
-        <option value="tls">TLS (标准 TLS 加密隧道)</option>
-        <option value="ws">WS (WebSocket 明文)</option>
-        <option value="wss">WSS (WebSocket over TLS)</option>
-        <option value="h2">H2 (HTTP/2 over TLS)</option>
-        <option value="h2c">H2C (HTTP/2 Cleartext)</option>
-        <option value="http">HTTP (HTTP 代理隧道)</option>
-        <option value="base">BASE (直连 TCP 纯净隧道)</option>
-        <option value="quic">QUIC (QUIC 快速数据报)</option>
-        <option value="grpc">gRPC (gRPC over TLS)</option>
-        <option value="grpcc">gRPCC (gRPC Cleartext)</option>
-        <option value="h3">H3 (HTTP/3 over QUIC)</option>
-        <option value="wt">WebTransport</option>
-        <option value="masque">MASQUE (HTTP/3 IP 代理)</option>
-        <option value="xhttp">XHTTP (流式多路复用 HTTP)</option>
-        <option value="xhttpc">XHTTPC (XHTTP Cleartext)</option>
-        <option value="dns">DNS Tunnel (SSH-over-DNS)</option>
-        <option value="kcp">KCP (SSH-over-KCP 抗丢包)</option>
-        <option value="udp_custom">UDP Custom (自定义混淆 UDP 隧道)</option>
-      </select>
-    </div>
-
-    <!-- 3. 动态协议专属配置字段 -->
-    <div id="edit-dynamic-tunnel-fields" class="form-grid" style="margin-top:8px">
-      <!-- 代理地址 Proxy Addr -->
-      <div class="form-group" id="edit-group-proxy-addr">
-        <label id="t-label-edit-proxy-addr" class="form-label">代理目标地址 (Proxy Addr)：</label>
-        <input id="edit-node-proxy-addr" class="text-input" type="text" placeholder="IP:Port">
-      </div>
-
-      <!-- 伪装域名 Custom Host -->
-      <div class="form-group" id="edit-group-custom-host">
-        <label id="t-label-edit-custom-host" class="form-label">伪装域名 (Custom Host)：</label>
-        <input id="edit-node-custom-host" class="text-input" type="text">
-      </div>
-
-      <!-- SNI 域名 Server Name -->
-      <div class="form-group" id="edit-group-server-name">
-        <label id="t-label-edit-server-name" class="form-label">SNI 域名 (Server Name)：</label>
-        <input id="edit-node-server-name" class="text-input" type="text">
-      </div>
-
-      <!-- 自定义路径 Custom Path -->
-      <div class="form-group" id="edit-group-custom-path">
-        <label id="t-label-edit-custom-path" class="form-label">自定义路径 (Custom Path)：</label>
-        <input id="edit-node-custom-path" class="text-input" type="text" placeholder="/path">
-      </div>
-
-      <!-- ALPN 协商 -->
-      <div class="form-group" id="edit-group-alpn" style="display:none">
-        <label id="t-label-edit-alpn" class="form-label">ALPN 协商 (ALPN)：</label>
-        <select id="edit-node-alpn" class="select-input">
-          <option value="h3">h3</option>
-          <option value="h2">h2</option>
-          <option value="http/1.1">http/1.1</option>
-          <option value="h2,http/1.1">h2,http/1.1</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- HTTP Payload 专区 -->
-    <div id="edit-group-http-payload-container" style="display:none;flex-direction:column;gap:8px;margin-top:8px">
-      <div class="form-group">
-        <label id="t-label-edit-http-payload" class="form-label">HTTP Payload (自定义请求头模版)：</label>
-        <textarea id="edit-node-http-payload" class="code-input" style="height:70px;font-size:0.78rem" placeholder="CONNECT [host_port] HTTP/1.1\r\nHost: [host]\r\n\r\n"></textarea>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <label id="t-label-edit-disable-status-check" style="font-size:0.85rem;cursor:pointer" for="edit-node-disable-status-check">禁用 HTTP 200 响应状态码严格检查</label>
-        <input type="checkbox" id="edit-node-disable-status-check" style="width:16px;height:16px;cursor:pointer">
-      </div>
-    </div>
-
-    <!-- 证书指纹校验 Row -->
-    <div id="edit-group-cert-fingerprint-row" style="display:none;flex-direction:column;gap:8px;margin-top:8px;padding:8px 0">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <label id="t-label-edit-verify-cert" style="font-size:0.85rem;font-weight:700;cursor:pointer" for="edit-node-verify-cert">🔒 校验服务器证书 SHA-256 指纹</label>
-        <input type="checkbox" id="edit-node-verify-cert" style="width:16px;height:16px;cursor:pointer" onchange="toggleCertFingerprintInput()">
-      </div>
-      <div class="form-group" id="edit-group-cert-fingerprint" style="display:none">
-        <label id="t-label-edit-cert-fp" class="form-label">证书 SHA-256 指纹 (Hex)：</label>
-        <input id="edit-node-cert-fingerprint" class="text-input" type="text" placeholder="AA:BB:CC:DD...">
-      </div>
-    </div>
-
-    <!-- 上游代理认证 Proxy Auth Row -->
-    <div id="edit-group-proxy-auth-container" style="display:none;flex-direction:column;gap:8px;margin-top:8px;padding:8px 0">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <label id="t-label-edit-proxy-auth" style="font-size:0.85rem;font-weight:700;cursor:pointer" for="edit-node-proxy-auth">🔑 启用上游代理身份验证 (Proxy Auth)</label>
-        <input type="checkbox" id="edit-node-proxy-auth" style="width:16px;height:16px;cursor:pointer" onchange="toggleProxyAuthInputs()">
-      </div>
-      <!-- Token 认证 -->
-      <div class="form-group" id="edit-group-auth-token" style="display:none">
-        <label id="t-label-edit-auth-token" class="form-label">Proxy Auth Token：</label>
-        <input id="edit-node-auth-token" class="text-input" type="text">
-      </div>
-      <!-- 用户名 / 密码 认证 -->
-      <div class="form-grid" id="edit-group-auth-userpass" style="display:none">
-        <div class="form-group">
-          <label id="t-label-edit-auth-user" class="form-label">Proxy 用户名：</label>
-          <input id="edit-node-auth-user" class="text-input" type="text">
+      <!-- 1. 基础连接与 SSH 认证 -->
+      <div class="edit-section">
+        <div class="edit-section-header">
+          <span id="t-edit-sec-1-title" class="edit-section-title">🖥️ 基础连接与 SSH 认证</span>
+          <span class="section-badge">01 · BASIC AUTH</span>
         </div>
-        <div class="form-group">
-          <label id="t-label-edit-auth-pass" class="form-label">Proxy 密码：</label>
-          <input id="edit-node-auth-pass" class="text-input" type="password">
+        <div class="form-grid">
+          <div class="form-group">
+            <label id="t-label-edit-name" class="form-label">节点名称：</label>
+            <input id="edit-node-name" class="text-input" type="text" placeholder="e.g. Node 1">
+          </div>
+          <div class="form-group">
+            <label id="t-label-edit-ssh-addr" class="form-label">SSH 服务器地址：</label>
+            <input id="edit-node-ssh-addr" class="text-input" type="text" placeholder="IP:Port">
+          </div>
+          <div class="form-group">
+            <label id="t-label-edit-auth-type" class="form-label">SSH 认证方式：</label>
+            <select id="edit-node-auth-type" class="select-input" onchange="onEditAuthTypeChange()">
+              <option value="password" id="opt-auth-password">密码认证 (Password)</option>
+              <option value="privatekey" id="opt-auth-key">私钥认证 (Private Key)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label id="t-label-edit-user" class="form-label">SSH 用户名：</label>
+            <input id="edit-node-user" class="text-input" type="text" placeholder="e.g. root">
+          </div>
+          <div class="form-group" id="edit-group-pass">
+            <label id="t-label-edit-pass" class="form-label">SSH 密码：</label>
+            <input id="edit-node-pass" class="text-input" type="password" placeholder="Password">
+          </div>
+          <div class="form-group" id="edit-group-key-pass" style="display:none">
+            <label id="t-label-edit-key-pass" class="form-label">私钥口令 (Key Passphrase)：</label>
+            <input id="edit-node-key-pass" class="text-input" type="password" placeholder="Key Passphrase">
+          </div>
+        </div>
+
+        <!-- 私钥文本框 -->
+        <div id="edit-group-private-key" class="form-group" style="display:none;margin-top:4px">
+          <label id="t-label-edit-private-key" class="form-label">私钥内容 (OpenSSH / RSA / Ed25519)：</label>
+          <textarea id="edit-node-private-key" class="code-input" style="height:90px;font-size:0.78rem" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----..."></textarea>
         </div>
       </div>
-    </div>
 
-    <!-- DNS 专属配置容器 -->
-    <div id="edit-group-dns-container" class="form-grid" style="display:none;margin-top:8px">
-      <div class="form-group">
-        <label id="t-label-edit-dns-servers" class="form-label">DNS 服务器 (多个逗号分隔)：</label>
-        <input id="edit-node-dns-servers" class="text-input" type="text" placeholder="1.1.1.1,8.8.8.8">
-      </div>
-      <div class="form-group">
-        <label id="t-label-edit-dns-domain" class="form-label">DNS 域名 (Tunnel Domain)：</label>
-        <input id="edit-node-dns-domain" class="text-input" type="text" placeholder="tunnel.example.com">
-      </div>
-      <div class="form-group">
-        <label id="t-label-edit-dns-type" class="form-label">DNS 记录类型 (Record Type)：</label>
-        <select id="edit-node-dns-type" class="select-input">
-          <option value="txt">TXT (推荐)</option>
-          <option value="a">A</option>
-          <option value="aaaa">AAAA</option>
-          <option value="cname">CNAME</option>
-          <option value="null">NULL</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- KCP 专属配置容器 -->
-    <div id="edit-group-kcp-container" class="form-grid" style="display:none;margin-top:8px">
-      <div class="form-group">
-        <label id="t-label-edit-kcp-pass" class="form-label">KCP 密码 (Password)：</label>
-        <input id="edit-node-kcp-pass" class="text-input" type="password">
-      </div>
-      <div class="form-group">
-        <label id="t-label-edit-kcp-crypt" class="form-label">KCP 加密方式：</label>
-        <select id="edit-node-kcp-crypt" class="select-input">
-          <option value="aes">aes</option>
-          <option value="aes-128">aes-128</option>
-          <option value="aes-192">aes-192</option>
-          <option value="salsa20">salsa20</option>
-          <option value="blowfish">blowfish</option>
-          <option value="twofish">twofish</option>
-          <option value="cast5">cast5</option>
-          <option value="3des">3des</option>
-          <option value="tea">tea</option>
-          <option value="xtea">xtea</option>
-          <option value="none">none</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label id="t-label-edit-kcp-data-shards" class="form-label">Data Shards (数据分片)：</label>
-        <input id="edit-node-kcp-data-shards" class="text-input" type="number" placeholder="10">
-      </div>
-      <div class="form-group">
-        <label id="t-label-edit-kcp-parity-shards" class="form-label">Parity Shards (校验分片)：</label>
-        <input id="edit-node-kcp-parity-shards" class="text-input" type="number" placeholder="3">
-      </div>
-      <div style="grid-column:span 2;display:flex;align-items:center;justify-content:space-between">
-        <label id="t-label-edit-kcp-nodelay" style="font-size:0.85rem;cursor:pointer" for="edit-node-kcp-nodelay">启用 KCP NoDelay 极速低延迟模式</label>
-        <input type="checkbox" id="edit-node-kcp-nodelay" style="width:16px;height:16px;cursor:pointer">
-      </div>
-    </div>
-
-    <!-- UDP Custom 专属配置容器 -->
-    <div id="edit-group-udp-custom-container" class="form-grid" style="display:none;margin-top:8px">
-      <div class="form-group">
-        <label id="t-label-edit-udp-custom-psk" class="form-label">UDP Custom PSK 密码：</label>
-        <input id="edit-node-udp-custom-psk" class="text-input" type="password">
-      </div>
-      <div class="form-group">
-        <label id="t-label-edit-udp-custom-magic" class="form-label">Magic 识别码 (十六进制)：</label>
-        <input id="edit-node-udp-custom-magic" class="text-input" type="text" placeholder="12345678">
-      </div>
-    </div>
-
-    <!-- 4. 独立 DNS 与直连分流 (dnsOverride) -->
-    <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:10px;display:flex;flex-direction:column;gap:10px">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <label id="t-label-edit-dns-override" style="font-size:0.88rem;font-weight:700;cursor:pointer" for="edit-node-dns-override">🌐 为此节点启用独立 DNS 与直连分流规则</label>
-        <input type="checkbox" id="edit-node-dns-override" style="width:18px;height:18px;cursor:pointer" onchange="toggleNodeDnsOverrideGroup()">
-      </div>
-
-      <div id="node-dns-override-group" class="form-grid" style="display:none">
-        <div class="form-group">
-          <label id="t-label-edit-remote-dns" class="form-label">节点专用远程 DNS：</label>
-          <input id="edit-node-remote-dns" class="text-input" type="text" placeholder="doh://8.8.8.8/dns-query">
+      <!-- 2. 传输协议与专属参数 -->
+      <div class="edit-section">
+        <div class="edit-section-header">
+          <span id="t-edit-sec-2-title" class="edit-section-title">🚀 传输协议与专属配置</span>
+          <span class="section-badge">02 · TRANSPORT</span>
         </div>
         <div class="form-group">
-          <label id="t-label-edit-local-dns" class="form-label">节点专用本地 DNS：</label>
-          <input id="edit-node-local-dns" class="text-input" type="text" placeholder="doh://223.5.5.5/dns-query">
-        </div>
-        <div class="form-group">
-          <label id="t-label-edit-udpgw-version" class="form-label">节点专用 UDPGW 引擎：</label>
-          <select id="edit-node-udpgw-version" class="select-input">
-            <option value="tun2proxy">tun2proxy</option>
-            <option value="badvpn">badvpn</option>
+          <label id="t-label-edit-tunnel-type" class="form-label" style="color:var(--primary)">选择底层传输协议 (Tunnel Type)：</label>
+          <select id="edit-node-tunnel-type" class="select-input" onchange="updateEditModalTunnelFields()" style="font-weight:700;border-color:var(--primary)">
+            <option value="tls" id="opt-tunnel-tls">TLS (标准 TLS 加密隧道)</option>
+            <option value="ws" id="opt-tunnel-ws">WS (WebSocket 明文)</option>
+            <option value="wss" id="opt-tunnel-wss">WSS (WebSocket over TLS)</option>
+            <option value="h2" id="opt-tunnel-h2">H2 (HTTP/2 over TLS)</option>
+            <option value="h2c" id="opt-tunnel-h2c">H2C (HTTP/2 Cleartext)</option>
+            <option value="http" id="opt-tunnel-http">HTTP (HTTP 代理隧道)</option>
+            <option value="base" id="opt-tunnel-base">BASE (直连 TCP 纯净隧道)</option>
+            <option value="quic" id="opt-tunnel-quic">QUIC (QUIC 快速数据报)</option>
+            <option value="grpc" id="opt-tunnel-grpc">gRPC (gRPC over TLS)</option>
+            <option value="grpcc" id="opt-tunnel-grpcc">gRPCC (gRPC Cleartext)</option>
+            <option value="h3" id="opt-tunnel-h3">H3 (HTTP/3 over QUIC)</option>
+            <option value="wt" id="opt-tunnel-wt">WebTransport</option>
+            <option value="masque" id="opt-tunnel-masque">MASQUE (HTTP/3 IP 代理)</option>
+            <option value="xhttp" id="opt-tunnel-xhttp">XHTTP (流式多路复用 HTTP)</option>
+            <option value="xhttpc" id="opt-tunnel-xhttpc">XHTTPC (XHTTP Cleartext)</option>
+            <option value="dns_custom" id="opt-tunnel-dns">DNS Tunnel (SSH-over-DNS)</option>
+            <option value="kcp" id="opt-tunnel-kcp">KCP (SSH-over-KCP 抗丢包)</option>
+            <option value="udp_custom" id="opt-tunnel-udpc">UDP Custom (自定义混淆 UDP 隧道)</option>
           </select>
         </div>
-        <div class="form-group">
-          <label id="t-label-edit-udpgw-addr" class="form-label">节点专用 UDPGW 地址：</label>
-          <input id="edit-node-udpgw-addr" class="text-input" type="text" placeholder="127.0.0.1:7300">
+
+        <!-- 动态协议专属配置字段 -->
+        <div id="edit-dynamic-tunnel-fields" class="form-grid">
+          <!-- 代理地址 Proxy Addr -->
+          <div class="form-group" id="edit-group-proxy-addr">
+            <label id="t-label-edit-proxy-addr" class="form-label">代理目标地址 (Proxy Addr)：</label>
+            <input id="edit-node-proxy-addr" class="text-input" type="text" placeholder="IP:Port">
+          </div>
+
+          <!-- 伪装域名 Custom Host -->
+          <div class="form-group" id="edit-group-custom-host">
+            <label id="t-label-edit-custom-host" class="form-label">伪装域名 (Custom Host)：</label>
+            <input id="edit-node-custom-host" class="text-input" type="text" placeholder="e.g. domain.com">
+          </div>
+
+          <!-- SNI 域名 Server Name -->
+          <div class="form-group" id="edit-group-server-name">
+            <label id="t-label-edit-server-name" class="form-label">SNI 域名 (Server Name)：</label>
+            <input id="edit-node-server-name" class="text-input" type="text" placeholder="SNI domain">
+          </div>
+
+          <!-- 自定义路径 Custom Path -->
+          <div class="form-group" id="edit-group-custom-path">
+            <label id="t-label-edit-custom-path" class="form-label">自定义路径 (Custom Path)：</label>
+            <input id="edit-node-custom-path" class="text-input" type="text" placeholder="/path/to/stream">
+          </div>
+
+          <!-- ALPN 协商 -->
+          <div class="form-group" id="edit-group-alpn" style="display:none">
+            <label id="t-label-edit-alpn" class="form-label">ALPN 协商协议：</label>
+            <select id="edit-node-alpn" class="select-input">
+              <option value="h3,h2" id="opt-alpn-h3-h2">h3,h2 (H3 优先 / 自动回退)</option>
+              <option value="h2,h3" id="opt-alpn-h2-h3">h2,h3 (H2 优先 / 自动回退)</option>
+              <option value="h3" id="opt-alpn-h3">h3 (仅 HTTP/3)</option>
+              <option value="h2" id="opt-alpn-h2">h2 (仅 HTTP/2)</option>
+              <option value="http/1.1">http/1.1</option>
+              <option value="h2,http/1.1">h2,http/1.1</option>
+            </select>
+          </div>
         </div>
-        <div class="form-group">
-          <label id="t-label-edit-geosite-direct" class="form-label">GeoSite 直连标签：</label>
-          <input id="edit-node-geosite-direct" class="text-input" type="text" placeholder="cn,apple,steam">
+
+        <!-- HTTP Payload 专区 -->
+        <div id="edit-group-http-payload-container" class="dynamic-subcard" style="display:none">
+          <div class="form-group">
+            <label id="t-label-edit-http-payload" class="form-label">HTTP Payload (自定义请求头模版)：</label>
+            <textarea id="edit-node-http-payload" class="code-input" style="height:70px;font-size:0.78rem" placeholder="CONNECT [host_port] HTTP/1.1
+Host: [host]
+
+"></textarea>
+          </div>
+          <div class="switch-row">
+            <label id="t-label-edit-disable-status-check" class="switch-label" for="edit-node-disable-status-check">
+              <span id="t-label-edit-disable-status-check">🚫 禁用 HTTP 200 响应状态码严格检查</span>
+            </label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="edit-node-disable-status-check">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
         </div>
-        <div class="form-group">
-          <label id="t-label-edit-geoip-direct" class="form-label">GeoIP 直连标签：</label>
-          <input id="edit-node-geoip-direct" class="text-input" type="text" placeholder="cn,private">
+
+        <!-- DNS 专属配置容器 -->
+        <div id="edit-group-dns-container" class="dynamic-subcard" style="display:none">
+          <div class="form-grid">
+            <div class="form-group">
+              <label id="t-label-edit-dns-servers" class="form-label">DNS 服务器 (多个逗号分隔)：</label>
+              <input id="edit-node-dns-servers" class="text-input" type="text" placeholder="1.1.1.1,8.8.8.8">
+            </div>
+            <div class="form-group">
+              <label id="t-label-edit-dns-domain" class="form-label">DNS 域名 (Tunnel Domain)：</label>
+              <input id="edit-node-dns-domain" class="text-input" type="text" placeholder="tunnel.example.com">
+            </div>
+            <div class="form-group">
+              <label id="t-label-edit-dns-type" class="form-label">DNS 记录类型 (Record Type)：</label>
+              <select id="edit-node-dns-type" class="select-input">
+                <option value="txt" id="opt-dns-txt">TXT (推荐)</option>
+                <option value="a">A</option>
+                <option value="aaaa">AAAA</option>
+                <option value="cname">CNAME</option>
+                <option value="null">NULL</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- KCP 专属配置容器 -->
+        <div id="edit-group-kcp-container" class="dynamic-subcard" style="display:none">
+          <div class="form-grid">
+            <div class="form-group">
+              <label id="t-label-edit-kcp-pass" class="form-label">KCP 密码 (Password)：</label>
+              <input id="edit-node-kcp-pass" class="text-input" type="password">
+            </div>
+            <div class="form-group">
+              <label id="t-label-edit-kcp-crypt" class="form-label">KCP 加密方式：</label>
+              <select id="edit-node-kcp-crypt" class="select-input">
+                <option value="aes">aes</option>
+                <option value="aes-128">aes-128</option>
+                <option value="aes-192">aes-192</option>
+                <option value="salsa20">salsa20</option>
+                <option value="blowfish">blowfish</option>
+                <option value="twofish">twofish</option>
+                <option value="cast5">cast5</option>
+                <option value="3des">3des</option>
+                <option value="tea">tea</option>
+                <option value="xtea">xtea</option>
+                <option value="none">none</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label id="t-label-edit-kcp-data-shards" class="form-label">Data Shards (数据分片)：</label>
+              <input id="edit-node-kcp-data-shards" class="text-input" type="number" placeholder="10">
+            </div>
+            <div class="form-group">
+              <label id="t-label-edit-kcp-parity-shards" class="form-label">Parity Shards (校验分片)：</label>
+              <input id="edit-node-kcp-parity-shards" class="text-input" type="number" placeholder="3">
+            </div>
+          </div>
+          <div class="switch-row">
+            <label id="t-label-edit-kcp-nodelay" class="switch-label" for="edit-node-kcp-nodelay">
+              <span id="t-label-edit-kcp-nodelay">⚡ 启用 KCP NoDelay 极速低延迟模式</span>
+            </label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="edit-node-kcp-nodelay">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- UDP Custom 专属配置容器 -->
+        <div id="edit-group-udp-custom-container" class="dynamic-subcard" style="display:none">
+          <div class="form-grid">
+            <div class="form-group">
+              <label id="t-label-edit-udp-custom-psk" class="form-label">UDP Custom PSK 密码：</label>
+              <input id="edit-node-udp-custom-psk" class="text-input" type="password" placeholder="Pre-Shared Key">
+            </div>
+            <div class="form-group">
+              <label id="t-label-edit-udp-custom-magic" class="form-label">Magic 识别码 (十六进制)：</label>
+              <input id="edit-node-udp-custom-magic" class="text-input" type="text" placeholder="12345678">
+            </div>
+          </div>
+        </div>
+
+        <!-- Noise 专属公钥容器 (DNS & UDP Custom) -->
+        <div id="edit-group-noise-container" class="form-group" style="display:none">
+          <label id="t-label-edit-noise-public-key" class="form-label">Noise 服务端公钥 (可选，Curve25519 Hex/Base64)：</label>
+          <input id="edit-node-noise-public-key" class="text-input" type="text" placeholder="Base64 or Hex public key">
+        </div>
+      </div>
+
+      <!-- 3. 安全加密与指纹校验 -->
+      <div class="edit-section">
+        <div class="edit-section-header">
+          <span id="t-edit-sec-3-title" class="edit-section-title">🛡️ 安全加密与指纹校验</span>
+          <span class="section-badge">03 · SECURITY & FINGERPRINT</span>
+        </div>
+
+        <!-- SSH 主机指纹校验 Row -->
+        <div class="switch-row">
+          <label id="t-label-edit-verify-ssh-fp" class="switch-label" for="edit-node-verify-ssh-fp">
+            <span id="t-label-edit-verify-ssh-fp">🔑 校验 SSH 主机公钥指纹 (Verify Host Key)</span>
+          </label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="edit-node-verify-ssh-fp" onchange="toggleSSHFingerprintInput()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="dynamic-subcard" id="edit-group-ssh-fingerprint" style="display:none">
+          <label id="t-label-edit-ssh-fp" class="form-label">SSH 公钥指纹 (SHA256 / MD5)：</label>
+          <div class="input-with-actions">
+            <input id="edit-node-ssh-fingerprint" class="text-input" type="text" placeholder="SHA256:... 或 MD5:...">
+            <div class="action-btn-group">
+              <button id="t-btn-fetch-ssh-fp" class="btn btn-sm btn-secondary" onclick="fetchSSHFingerprint()" style="white-space:nowrap;height:38px" title="Fetch SSH Fingerprint">🔍 获取指纹</button>
+              <button id="t-btn-details-ssh" class="btn btn-sm btn-secondary" onclick="fetchSSHDetails()" style="white-space:nowrap;height:38px" title="SSH Details">ℹ️ 详情</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 证书指纹校验 Row -->
+        <div id="edit-group-cert-fingerprint-row" style="display:none;flex-direction:column;gap:8px">
+          <div class="switch-row">
+            <label id="t-label-edit-verify-cert" class="switch-label" for="edit-node-verify-cert">
+              <span id="t-label-edit-verify-cert">🔒 校验服务器证书 SHA-256 指纹</span>
+            </label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="edit-node-verify-cert" onchange="toggleCertFingerprintInput()">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="dynamic-subcard" id="edit-group-cert-fingerprint" style="display:none">
+            <label id="t-label-edit-cert-fp" class="form-label">证书 SHA-256 指纹 (Hex)：</label>
+            <div class="input-with-actions">
+              <input id="edit-node-cert-fingerprint" class="text-input" type="text" placeholder="AA:BB:CC:DD...">
+              <div class="action-btn-group">
+                <button id="t-btn-fetch-cert-fp" class="btn btn-sm btn-secondary" onclick="fetchCertFingerprint()" style="white-space:nowrap;height:38px" title="Fetch TLS Fingerprint">🔍 获取指纹</button>
+                <button id="t-btn-details-cert" class="btn btn-sm btn-secondary" onclick="fetchCertDetails()" style="white-space:nowrap;height:38px" title="TLS Details">ℹ️ 详情</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 上游代理认证 Proxy Auth Row -->
+        <div id="edit-group-proxy-auth-container" style="display:none;flex-direction:column;gap:8px">
+          <div class="switch-row">
+            <label id="t-label-edit-proxy-auth" class="switch-label" for="edit-node-proxy-auth">
+              <span id="t-label-edit-proxy-auth">🔑 启用上游代理身份验证 (Proxy Auth)</span>
+            </label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="edit-node-proxy-auth" onchange="toggleProxyAuthInputs()">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="dynamic-subcard" id="edit-group-auth-token" style="display:none">
+            <label id="t-label-edit-auth-token" class="form-label">Proxy Auth Token：</label>
+            <input id="edit-node-auth-token" class="text-input" type="text" placeholder="Token_Secret_888">
+          </div>
+          <div class="dynamic-subcard" id="edit-group-auth-userpass" style="display:none">
+            <div class="form-grid">
+              <div class="form-group">
+                <label id="t-label-edit-auth-user" class="form-label">Proxy 用户名：</label>
+                <input id="edit-node-auth-user" class="text-input" type="text">
+              </div>
+              <div class="form-group">
+                <label id="t-label-edit-auth-pass" class="form-label">Proxy 密码：</label>
+                <input id="edit-node-auth-pass" class="text-input" type="password">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. 独立 DNS 与直连分流规则 -->
+      <div class="edit-section">
+        <div class="edit-section-header">
+          <span id="t-edit-sec-4-title" class="edit-section-title">🌐 节点独立分流与规则覆盖</span>
+          <span class="section-badge">04 · ROUTING & APPS</span>
+        </div>
+
+        <div class="switch-row">
+          <label id="t-label-edit-dns-override" class="switch-label" for="edit-node-dns-override">
+            <span id="t-label-edit-dns-override">🌐 启用独立 DNS 与 Geo 直连分流</span>
+          </label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="edit-node-dns-override" onchange="toggleNodeDnsOverrideGroup()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div id="node-dns-override-group" class="dynamic-subcard" style="display:none">
+          <div class="form-grid">
+            <div class="form-group">
+              <label id="t-label-edit-remote-dns" class="form-label">节点专用远程 DNS：</label>
+              <input id="edit-node-remote-dns" class="text-input" type="text" placeholder="doh://8.8.8.8/dns-query">
+            </div>
+            <div class="form-group">
+              <label id="t-label-edit-local-dns" class="form-label">节点专用本地 DNS：</label>
+              <input id="edit-node-local-dns" class="text-input" type="text" placeholder="doh://223.5.5.5/dns-query">
+            </div>
+            <div class="form-group">
+              <label id="t-label-edit-udpgw-version" class="form-label">节点专用 UDPGW 引擎：</label>
+              <select id="edit-node-udpgw-version" class="select-input">
+                <option value="tun2proxy">tun2proxy</option>
+                <option value="badvpn">badvpn</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label id="t-label-edit-udpgw-addr" class="form-label">节点专用 UDPGW 地址：</label>
+              <input id="edit-node-udpgw-addr" class="text-input" type="text" placeholder="127.0.0.1:7300">
+            </div>
+            <div class="form-group">
+              <label id="t-label-edit-geosite-direct" class="form-label">GeoSite 直连标签：</label>
+              <input id="edit-node-geosite-direct" class="text-input" type="text" placeholder="cn,apple,steam">
+            </div>
+            <div class="form-group">
+              <label id="t-label-edit-geoip-direct" class="form-label">GeoIP 直连标签：</label>
+              <input id="edit-node-geoip-direct" class="text-input" type="text" placeholder="cn,private">
+            </div>
+          </div>
+        </div>
+
+        <!-- 独立应用分流 -->
+        <div class="switch-row">
+          <label id="t-label-edit-app-override" class="switch-label" for="edit-node-app-override">
+            <span id="t-label-edit-app-override">🔀 启用独立应用分流规则</span>
+          </label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="edit-node-app-override" onchange="toggleNodeAppOverrideGroup()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div id="node-app-override-group" class="dynamic-subcard" style="display:none">
+          <div class="filter-mode-box">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="radio" name="nodeFilterMode" value="0" id="mode-node-disallow" checked>
+              <span id="t-node-mode-disallow">🚫 <b>黑名单模式</b> (仅绕过勾选的应用)</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="radio" name="nodeFilterMode" value="1" id="mode-node-allow">
+              <span id="t-node-mode-allow">🚀 <b>白名单模式</b> (仅代理勾选的应用)</span>
+            </label>
+          </div>
+
+          <div style="display:flex;gap:10px">
+            <input id="node-app-search" class="app-search" type="text" placeholder="Search apps..." oninput="filterNodeAppList()">
+            <button id="t-btn-node-select-all" class="btn btn-sm btn-secondary" onclick="toggleSelectAllNodeApps()">全选 / 全不选</button>
+          </div>
+
+          <div id="node-app-list-container" class="app-list" style="max-height:240px">
+            <div style="color:var(--text-muted);font-size:0.85rem;padding:12px">...</div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- 5. 独立应用分流 (appFilterOverride) -->
-    <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:10px;display:flex;flex-direction:column;gap:10px">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <label id="t-label-edit-app-override" style="font-size:0.88rem;font-weight:700;cursor:pointer" for="edit-node-app-override">🔀 为此节点启用独立应用分流规则</label>
-        <input type="checkbox" id="edit-node-app-override" style="width:18px;height:18px;cursor:pointer" onchange="toggleNodeAppOverrideGroup()">
-      </div>
-
-      <div id="node-app-override-group" style="display:none;flex-direction:column;gap:10px">
-        <div class="filter-mode-box">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-            <input type="radio" name="nodeFilterMode" value="0" id="mode-node-disallow" checked>
-            <span id="t-node-mode-disallow">🚫 <b>黑名单模式</b> (仅绕过勾选的应用)</span>
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-            <input type="radio" name="nodeFilterMode" value="1" id="mode-node-allow">
-            <span id="t-node-mode-allow">🚀 <b>白名单模式</b> (仅代理勾选的应用)</span>
-          </label>
-        </div>
-
-        <div style="display:flex;gap:12px">
-          <input id="node-app-search" class="app-search" type="text" placeholder="搜索应用名称或包名..." oninput="filterNodeAppList()">
-          <button id="t-btn-node-select-all" class="btn btn-sm" onclick="toggleSelectAllNodeApps()">全选 / 全不选</button>
-        </div>
-
-        <div id="node-app-list-container" class="app-list" style="max-height:240px">
-          <div style="color:var(--text-muted);font-size:0.85rem;padding:12px">...</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 底部操作按钮 -->
-    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px;position:sticky;bottom:0;background:var(--bg-card);padding:10px 0 2px">
-      <button id="t-btn-edit-cancel" class="btn" onclick="closeEditModal()">取消</button>
+    <!-- 底部操作按钮 (Sticky Footer) -->
+    <div style="position:sticky;bottom:0;background:var(--bg-glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);z-index:20;padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:12px">
+      <button id="t-btn-edit-cancel" class="btn btn-secondary" onclick="closeEditModal()">取消</button>
       <button id="t-btn-save-node-edit" class="btn btn-primary" onclick="submitEditProfile()">💾 保存节点配置</button>
+    </div>
+  </div>
+</div>
+
+<!-- ℹ️ 详情弹窗 (Details Modal) -->
+<div id="details-modal" class="modal-overlay">
+  <div class="modal" style="max-width:620px;max-height:88vh;display:flex;flex-direction:column">
+    <div class="card-header">
+      <span id="details-modal-title" class="card-title">ℹ️ 详细信息</span>
+      <button class="btn btn-sm" onclick="closeDetailsModal()">✕</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;margin:12px 0">
+      <pre id="details-modal-content" class="code-input" style="white-space:pre-wrap;word-break:break-all;font-size:0.82rem;line-height:1.5;max-height:380px;overflow-y:auto;padding:12px;user-select:text"></pre>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px">
+      <button id="t-btn-details-copy" class="btn btn-sm" onclick="copyDetailsContent()">📋 复制详情</button>
+      <button id="t-btn-details-apply" class="btn btn-sm btn-primary" onclick="applyDetailsFingerprint()">✓ 应用指纹</button>
+      <button id="t-btn-details-close" class="btn btn-sm" onclick="closeDetailsModal()">关闭</button>
     </div>
   </div>
 </div>

@@ -64,35 +64,35 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:checked="true"
-                        android:text="ALL" />
+                        android:text="@string/log_all" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/chip_debug"
                         style="@style/Widget.Material3.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="DEBUG" />
+                        android:text="@string/log_debug" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/chip_info"
                         style="@style/Widget.Material3.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="INFO" />
+                        android:text="@string/log_info" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/chip_warn"
                         style="@style/Widget.Material3.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="WARN" />
+                        android:text="@string/log_warn" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/chip_error"
                         style="@style/Widget.Material3.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="ERROR" />
+                        android:text="@string/log_error" />
                 </com.google.android.material.chip.ChipGroup>
             </HorizontalScrollView>
         </LinearLayout>

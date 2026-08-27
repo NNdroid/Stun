@@ -110,6 +110,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_code"
+                            android:contentDescription="@string/desc_info"
                             app:tint="?attr/colorPrimary" />
 
                         <TextView
@@ -142,6 +143,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_send"
+                            android:contentDescription="@string/desc_send"
                             app:tint="?attr/colorPrimary" />
 
                         <TextView
@@ -174,6 +176,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_info"
+                            android:contentDescription="@string/desc_info"
                             app:tint="?attr/colorPrimary" />
 
                         <TextView
@@ -206,6 +209,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_lock"
+                            android:contentDescription="@string/desc_lock"
                             app:tint="?attr/colorPrimary" />
 
                         <TextView

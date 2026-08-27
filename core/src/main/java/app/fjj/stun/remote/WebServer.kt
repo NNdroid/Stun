@@ -256,6 +256,8 @@ object WebServer {
                                 proxyAuthToken = (body["proxyAuthToken"] as? String)?.trim() ?: existing.proxyAuthToken,
                                 proxyAuthUser = (body["proxyAuthUser"] as? String)?.trim() ?: existing.proxyAuthUser,
                                 proxyAuthPass = (body["proxyAuthPass"] as? String) ?: existing.proxyAuthPass,
+                                verifyFingerprint = (body["verifyFingerprint"] as? Boolean) ?: existing.verifyFingerprint,
+                                serverFingerprint = (body["serverFingerprint"] as? String)?.trim() ?: existing.serverFingerprint,
                                 verifyCertFingerprint = (body["verifyCertFingerprint"] as? Boolean) ?: existing.verifyCertFingerprint,
                                 serverCertFingerprint = (body["serverCertFingerprint"] as? String)?.trim() ?: existing.serverCertFingerprint,
                                 dnsTunnelDomain = (body["dnsTunnelDomain"] as? String)?.trim() ?: existing.dnsTunnelDomain,
@@ -268,6 +270,7 @@ object WebServer {
                                 kcpParityShards = (body["kcpParityShards"] as? Number)?.toInt() ?: existing.kcpParityShards,
                                 udpCustomPsk = (body["udpCustomPsk"] as? String) ?: existing.udpCustomPsk,
                                 udpCustomMagic = (body["udpCustomMagic"] as? String)?.trim() ?: existing.udpCustomMagic,
+                                noisePublicKey = (body["noisePublicKey"] as? String)?.trim() ?: (body["noise_public_key"] as? String)?.trim() ?: existing.noisePublicKey,
                                 dnsOverride = (body["dnsOverride"] as? Boolean) ?: existing.dnsOverride,
                                 remoteDns = (body["remoteDns"] as? String)?.trim() ?: existing.remoteDns,
                                 localDns = (body["localDns"] as? String)?.trim() ?: existing.localDns,
@@ -311,12 +314,46 @@ object WebServer {
                         }
                     }
 
-                    // ── 节点延迟测速 API ──
-                    post("/api/profiles/ping") {
+                    // ── 诊断与指纹获取 API ──
+                    post("/api/diagnostics/ssh-fingerprint") {
                         if (!call.checkToken(appContext)) return@post
                         try {
-                            val body = try { call.receive<Map<String, String>>() } catch (_: Exception) { emptyMap() }
-                            val targetId = body["id"]?.trim()
+                            val body = call.receive<Map<String, String>>()
+                            val sshAddr = body["sshAddr"]?.trim() ?: return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing sshAddr"))
+                            val fp = withContext(Dispatchers.IO) { myssh.Myssh.getSSHFingerprint(sshAddr) }
+                            val detailsJson = withContext(Dispatchers.IO) { myssh.Myssh.getSSHServerDetailsJSON(sshAddr) }
+                            call.respond(HttpStatusCode.OK, mapOf("status" to "success", "fingerprint" to fp, "detailsJson" to detailsJson))
+                        } catch (e: Exception) {
+                            call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Failed to fetch SSH fingerprint")))
+                        }
+                    }
+
+                    post("/api/diagnostics/tls-fingerprint") {
+                        if (!call.checkToken(appContext)) return@post
+                        try {
+                            val body = call.receive<Map<String, String>>()
+                            val target = body["target"]?.trim() ?: return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing target"))
+                            val serverName = body["serverName"]?.trim() ?: ""
+                            val fp = withContext(Dispatchers.IO) { myssh.Myssh.getTLSCertFingerprint(target, serverName) }
+                            val detailsJson = withContext(Dispatchers.IO) { myssh.Myssh.getTLSCertDetailsJSON(target, serverName) }
+                            call.respond(HttpStatusCode.OK, mapOf("status" to "success", "fingerprint" to fp, "detailsJson" to detailsJson))
+                        } catch (e: Exception) {
+                            call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Failed to fetch TLS certificate fingerprint")))
+                        }
+                    }
+
+                    // ── 节点延迟测速 API (支持 POST 与 GET，容错空 Body 与 Query 参数) ──
+                    suspend fun handleProfilePing(call: io.ktor.server.application.ApplicationCall) {
+                        if (!call.checkToken(appContext)) return
+                        try {
+                            val body = try { call.receiveNullable<Map<String, Any?>>() ?: emptyMap() } catch (_: Exception) { emptyMap() }
+                            val targetId = (body["id"] as? String)?.trim() ?: call.request.queryParameters["id"]?.trim()
+                            val pingUrl = (body["targetUrl"] as? String)?.trim()?.ifBlank { "http://cp.cloudflare.com/generate_204" }
+                                ?: call.request.queryParameters["targetUrl"]?.trim()?.ifBlank { "http://cp.cloudflare.com/generate_204" }
+                                ?: "http://cp.cloudflare.com/generate_204"
+                            val timeoutMs = (body["timeoutMs"] as? Number)?.toLong()
+                                ?: call.request.queryParameters["timeoutMs"]?.toLongOrNull()
+                                ?: 8000L
 
                             val profiles = if (!targetId.isNullOrBlank()) {
                                 val p = ProfileManager.getProfileById(appContext, targetId)
@@ -326,7 +363,8 @@ object WebServer {
                             }
 
                             if (profiles.isEmpty()) {
-                                return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to "No profiles found to ping"))
+                                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "No profiles found to ping"))
+                                return
                             }
 
                             val resultsMap = withContext(Dispatchers.IO) {
@@ -339,10 +377,11 @@ object WebServer {
                                 val jsonResStr = try {
                                     StunRepository.proxy.pingNodes(
                                         reqArray.toString(),
-                                        "http://cp.cloudflare.com/generate_204",
-                                        8000L
+                                        pingUrl,
+                                        timeoutMs
                                     )
                                 } catch (e: Exception) {
+                                    StunLogger.e(TAG, "pingNodes exception: ${e.message}", e)
                                     "[]"
                                 }
 
@@ -364,6 +403,9 @@ object WebServer {
                                             when (errType) {
                                                 "timeout" -> "Timeout"
                                                 "connrefused" -> "Refused"
+                                                "auth" -> "Auth Error"
+                                                "hostkey" -> "Key Mismatch"
+                                                "tcpforward" -> "No Forward"
                                                 "tls" -> "SSL Error"
                                                 "dns" -> "DNS Error"
                                                 "http" -> "HTTP $errMsg"
@@ -375,6 +417,7 @@ object WebServer {
                                             "ok" to ok,
                                             "latencyMs" to latencyMs,
                                             "errorType" to errType,
+                                            "error" to errMsg,
                                             "display" to display
                                         )
                                     }
@@ -390,6 +433,9 @@ object WebServer {
                             call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Ping failed")))
                         }
                     }
+
+                    post("/api/profiles/ping") { handleProfilePing(call) }
+                    get("/api/profiles/ping") { handleProfilePing(call) }
 
                     // ── 加密 / 明文 导入 API ──
                     post("/api/profiles/import") {

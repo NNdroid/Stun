@@ -124,7 +124,12 @@ class HomeFragment : Fragment() {
 
     private fun importProfileFromJsonBase64(base64Str: String) {
         try {
-            val decodedBytes = Base64.decode(base64Str, Base64.DEFAULT)
+            var clean = base64Str.trim()
+            if (clean.startsWith("stun://", ignoreCase = true)) {
+                clean = clean.substring(7)
+            }
+            clean = clean.replace("\r", "").replace("\n", "").replace(" ", "")
+            val decodedBytes = Base64.decode(clean, Base64.DEFAULT)
             val jsonString = String(decodedBytes, Charsets.UTF_8)
             importProfileFromJsonString(jsonString)
         } catch (e: Exception) {

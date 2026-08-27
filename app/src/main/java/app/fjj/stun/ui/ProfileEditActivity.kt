@@ -35,8 +35,9 @@ class ProfileEditActivity : BaseActivity() {
     private var globalFocusChangeListener: android.view.ViewTreeObserver.OnGlobalFocusChangeListener? = null
     private val authTypes = arrayOf(Profile.AUTH_TYPE_PASSWORD, Profile.AUTH_TYPE_PRIVATEKEY)
     private val udpgwVersions = arrayOf("tun2proxy", "badvpn")
-    private val alpnOptionsH3 = arrayOf("h3", "h2", "http/1.1", "h3,h2,http/1.1", "h3,h2", "h2,http/1.1")
-    private val alpnOptionsNoH3 = arrayOf("h2", "http/1.1", "h2,http/1.1")
+    private val alpnOptionsMasque = arrayOf("h3,h2", "h2,h3", "h3", "h2")
+    private val alpnOptionsH3 = arrayOf("h3,h2,http/1.1", "h3,h2", "h2,h3", "h3", "h2", "http/1.1", "h2,http/1.1")
+    private val alpnOptionsNoH3 = arrayOf("h2,http/1.1", "h2", "http/1.1")
     private val dnsRecordTypes = arrayOf("txt", "null", "cname", "a", "aaaa", "mx", "srv", "ns")
     private val kcpCryptOptions = arrayOf("none", "aes", "aes-128", "aes-192", "aes-256", "aes-gcm", "salsa20", "sm4", "twofish", "blowfish", "cast5", "3des", "tea", "xtea", "xor")
 
@@ -367,6 +368,7 @@ class ProfileEditActivity : BaseActivity() {
             switchKcpNodelay.isChecked = profile.kcpNoDelay
             etUdpCustomPsk.setText(profile.udpCustomPsk)
             etUdpCustomMagic.setText(profile.udpCustomMagic.ifBlank { "UDPC" })
+            etNoisePublicKey.setText(profile.noisePublicKey)
             
             etProxyAddr.setText(profile.proxyAddr)
             etCustomHost.setText(profile.customHost)
@@ -423,8 +425,13 @@ class ProfileEditActivity : BaseActivity() {
             spinnerFilterMode.setAdapter(ArrayAdapter(this@ProfileEditActivity, android.R.layout.simple_dropdown_item_1line, filterModes))
             spinnerUdpgwVersion.setAdapter(ArrayAdapter(this@ProfileEditActivity, android.R.layout.simple_dropdown_item_1line, udpgwVersions))
             
-            val isXhttp = spinnerTunnelType.text.toString() == Profile.TUNNEL_TYPE_XHTTP
-            spinnerAlpn.setAdapter(ArrayAdapter(this@ProfileEditActivity, android.R.layout.simple_dropdown_item_1line, if (isXhttp) alpnOptionsH3 else alpnOptionsNoH3))
+            val initialType = spinnerTunnelType.text.toString()
+            val initialAlpnOptions = when (initialType) {
+                Profile.TUNNEL_TYPE_MASQUE -> alpnOptionsMasque
+                Profile.TUNNEL_TYPE_XHTTP -> alpnOptionsH3
+                else -> alpnOptionsNoH3
+            }
+            spinnerAlpn.setAdapter(ArrayAdapter(this@ProfileEditActivity, android.R.layout.simple_dropdown_item_1line, initialAlpnOptions))
         }
     }
 
@@ -459,14 +466,22 @@ class ProfileEditActivity : BaseActivity() {
             layoutDnsTunnelDomain.isVisible = isDns
             layoutDnsRecordType.isVisible = isDns
 
+            layoutNoisePublicKey.isVisible = isDns || isUdpCustom
+
             layoutKcpContainer.isVisible = isKcp
             layoutUdpCustomContainer.isVisible = isUdpCustom
 
             switchEnableCustomPath.isVisible = isMasque
             layoutCustomPath.isVisible = (isMasque && switchEnableCustomPath.isChecked) || isCustomPathSupported
             
-            val isXhttp = selected == Profile.TUNNEL_TYPE_XHTTP || selected == Profile.TUNNEL_TYPE_XHTTPC
-            layoutAlpn.isVisible = isXhttp
+            val isAlpnSupported = selected == Profile.TUNNEL_TYPE_XHTTP || selected == Profile.TUNNEL_TYPE_XHTTPC || selected == Profile.TUNNEL_TYPE_MASQUE
+            layoutAlpn.isVisible = isAlpnSupported
+            val alpnOptions = when (selected) {
+                Profile.TUNNEL_TYPE_MASQUE -> alpnOptionsMasque
+                Profile.TUNNEL_TYPE_XHTTP -> alpnOptionsH3
+                else -> alpnOptionsNoH3
+            }
+            spinnerAlpn.setAdapter(ArrayAdapter(this@ProfileEditActivity, android.R.layout.simple_dropdown_item_1line, alpnOptions))
             
             switchDisableStatusCheck.isVisible = isHttp
             switchAuthRequired.isVisible = isHttp || selected in listOf(
@@ -598,6 +613,7 @@ class ProfileEditActivity : BaseActivity() {
             kcpNoDelay = binding.switchKcpNodelay.isChecked,
             udpCustomPsk = binding.etUdpCustomPsk.text.toString(),
             udpCustomMagic = binding.etUdpCustomMagic.text.toString().ifBlank { "UDPC" },
+            noisePublicKey = binding.etNoisePublicKey.text.toString().trim(),
             serverName = binding.etServerName.text.toString(),
             enableCustomPath = binding.switchEnableCustomPath.isChecked,
             customPath = binding.etCustomPath.text.toString(),
@@ -677,6 +693,7 @@ class ProfileEditActivity : BaseActivity() {
             binding.switchKcpNodelay.isChecked != currentProfile.kcpNoDelay ||
             binding.etUdpCustomPsk.text.toString() != currentProfile.udpCustomPsk ||
             binding.etUdpCustomMagic.text.toString() != currentProfile.udpCustomMagic ||
+            binding.etNoisePublicKey.text.toString().trim() != currentProfile.noisePublicKey ||
             // 密码字段非空时认为已修改（因为加载时出于安全清空了显示）
             binding.etPass.text.toString().isNotEmpty() ||
             (isKeyAuth && binding.etPrivateKey.text.toString() != currentProfile.privateKey)

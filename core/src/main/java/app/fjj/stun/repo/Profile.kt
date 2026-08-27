@@ -122,6 +122,10 @@ data class Profile(
     @SerializedName("udpCustomMagic")
     var udpCustomMagic: String = "UDPC",
 
+    // Noise Protocol options (for DNS Tunnel and UDP Custom)
+    @SerializedName("noisePublicKey")
+    var noisePublicKey: String = "",
+
     // Traffic statistics
     @SerializedName("totalTx")
     var totalTx: Long = 0,
@@ -147,7 +151,7 @@ data class Profile(
         const val TUNNEL_TYPE_MASQUE = "masque"
         const val TUNNEL_TYPE_XHTTP = "xhttp"
         const val TUNNEL_TYPE_XHTTPC = "xhttpc"
-        const val TUNNEL_TYPE_DNS = "dns"
+        const val TUNNEL_TYPE_DNS = "dns_custom"
         const val TUNNEL_TYPE_KCP = "kcp"
         const val TUNNEL_TYPE_UDP_CUSTOM = "udp_custom"
 

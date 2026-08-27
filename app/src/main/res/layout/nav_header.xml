@@ -23,6 +23,7 @@
             android:layout_height="match_parent"
             android:padding="12dp"
             android:src="@drawable/ic_fox_logo"
+            android:contentDescription="@string/desc_app_logo"
             app:tint="?attr/colorOnPrimaryContainer" />
     </com.google.android.material.card.MaterialCardView>
 

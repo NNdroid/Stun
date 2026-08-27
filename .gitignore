@@ -40,6 +40,8 @@ app/src/main/assets/adi-registration.properties
 app/src/main/assets/rules-dat
 
 core/libs
+core/src/main/assets/bin
+core/src/main/assets/rules-dat
 
 tv/src/main/assets/bin
 tv/src/main/assets/adi-registration.properties

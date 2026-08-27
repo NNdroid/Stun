@@ -225,7 +225,7 @@
     <string name="encrypt_backup_title">加密備份</string>
     <string name="decrypt_backup_title">解密備份</string>
     <string name="share_pin_format">PIN 碼: %1$s</string>
-    <string name="web_console_url_format">http://%1:%2/?token=%3</string>
+    <string name="web_console_url_format">http://%1$s:%2$d/?token=%3$s</string>
 
     <!-- VayDNS Config -->
     <string name="vaydns_pubkey_hint">VayDNS 公鑰 (Noise)</string>

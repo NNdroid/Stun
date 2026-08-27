@@ -41,6 +41,7 @@
                 android:layout_width="32dp"
                 android:layout_height="32dp"
                 android:src="@drawable/ic_edit"
+                android:contentDescription="@string/desc_edit"
                 app:tint="?attr/colorPrimary" />
 
             <TextView
@@ -67,6 +68,7 @@
                 android:layout_width="32dp"
                 android:layout_height="32dp"
                 android:src="@drawable/ic_code"
+                android:contentDescription="@string/desc_qr_code"
                 app:tint="?attr/colorPrimary" />
 
             <TextView
@@ -93,6 +95,7 @@
                 android:layout_width="32dp"
                 android:layout_height="32dp"
                 android:src="@drawable/ic_add"
+                android:contentDescription="@string/desc_add"
                 app:tint="?attr/colorPrimary" />
 
             <TextView

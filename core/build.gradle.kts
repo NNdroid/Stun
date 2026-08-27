@@ -48,6 +48,71 @@ val applyJniPatches = tasks.register("applyJniPatches") {
     }
 }
 
+// Automate moving the TProxy executable to assets (Now in :core)
+val copyTProxyBinaries = tasks.register("copyTProxyBinaries") {
+    description = "Copies hev-socks5-tproxy from core build intermediates to assets"
+    val projectDirectory = project.layout.projectDirectory
+    val buildDirectory = project.layout.buildDirectory
+
+    doLast {
+        val abis = listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
+        val coreBuildDir = buildDirectory.dir("intermediates/cxx").get().asFile
+
+        if (!coreBuildDir.exists()) {
+            println("CXX intermediates directory not found: ${coreBuildDir.path}")
+            return@doLast
+        }
+
+        abis.forEach { abi ->
+            var found = false
+            coreBuildDir.walkBottomUp().forEach { file ->
+                if (file.isFile && file.name == "hev-socks5-tproxy" && file.parentFile.name == abi) {
+                    val destDir = projectDirectory.dir("src/main/assets/bin/$abi").asFile
+                    destDir.mkdirs()
+                    file.copyTo(File(destDir, "hev-socks5-tproxy"), overwrite = true)
+                    println("Copied $abi binary to assets from: ${file.path}")
+                    found = true
+                }
+            }
+            if (!found) {
+                println("Could not find hev-socks5-tproxy for ABI: $abi")
+            }
+        }
+    }
+}
+
+// Ensure rules are downloaded before build (Now in :core)
+val downloadRulesDat = tasks.register("downloadRulesDat") {
+    description = "Downloads geoip.dat and geosite.dat"
+    val outputDir = project.layout.projectDirectory.dir("src/main/assets/rules-dat").asFile
+    val filesToDownload = mapOf(
+        "geoip.dat" to "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geoip.dat",
+        "geosite.dat" to "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geosite.dat"
+    )
+
+    doLast {
+        if (!outputDir.exists()) outputDir.mkdirs()
+        filesToDownload.forEach { (name, url) ->
+            val outputFile = File(outputDir, name)
+            if (!outputFile.exists()) {
+                println("Downloading $name from $url...")
+                try {
+                    URI(url).toURL().openStream().use { input ->
+                        outputFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    println("Successfully downloaded $name")
+                } catch (e: Exception) {
+                    println("Failed to download $name: ${e.message}")
+                }
+            } else {
+                println("$name already exists, skipping download.")
+            }
+        }
+    }
+}
+
 android {
     namespace = "app.fjj.stun.core"
     compileSdk = 37
@@ -94,6 +159,14 @@ kotlin {
 
 tasks.named("preBuild") {
     dependsOn(applyJniPatches)
+    dependsOn(downloadRulesDat)
+}
+
+// Ensure assets are copied before merging
+tasks.configureEach {
+    if (name.startsWith("merge") && name.endsWith("Assets")) {
+        dependsOn(copyTProxyBinaries)
+    }
 }
 
 dependencies {

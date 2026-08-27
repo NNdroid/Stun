@@ -168,7 +168,7 @@
     <string name="encrypt_backup_title">加密备份</string>
     <string name="decrypt_backup_title">解密备份</string>
     <string name="share_pin_format">PIN 码: %1$s</string>
-    <string name="web_console_url_format">http://%1:%2/?token=%3</string>
+    <string name="web_console_url_format">http://%1$s:%2$d/?token=%3$s</string>
     <string name="traffic_up_format">▲ %1$s/s</string>
     <string name="traffic_down_format">▼ %1$s/s</string>
     <string name="tv_traffic_format">↑ %1$s  ↓ %2$s</string>
@@ -281,6 +281,8 @@
     <string name="dns_tunnel_record_type">DNS 数据记录类型</string>
     <string name="dns_tunnel_domain_hint">权威隧道域名 (例如 tunnel.example.com)</string>
     <string name="dns_tunnel_servers_hint">权威 DNS 服务器 (例如 8.8.8.8:53, 1.1.1.1:53)</string>
+    <string name="noise_public_key">Noise 服务端公钥（可选）</string>
+    <string name="noise_public_key_hint">服务端 Noise Curve25519 公钥 (Hex / Base64)</string>
     <string name="refresh">刷新</string>
     <string name="error_prefix">错误: %1$s</string>
     <string name="latency_format">%1$d 毫秒</string>
@@ -345,4 +347,28 @@
     <string name="auth_password_badge">密码</string>
     <string name="auth_private_key_badge">私钥</string>
     <string name="tv_profile_selected_badge">✓ 当前使用</string>
+
+    <!-- Log Levels -->
+    <string name="log_all">全部</string>
+    <string name="log_debug">调试</string>
+    <string name="log_info">信息</string>
+    <string name="log_warn">警告</string>
+    <string name="log_error">错误</string>
+
+    <!-- Generic Accessibility -->
+    <string name="desc_app_logo">应用图标</string>
+    <string name="desc_back">返回</string>
+    <string name="desc_qr_code">二维码</string>
+    <string name="desc_edit">编辑</string>
+    <string name="desc_delete">删除</string>
+    <string name="desc_info">详情</string>
+    <string name="desc_refresh">刷新</string>
+    <string name="desc_send">发送</string>
+    <string name="desc_add">添加</string>
+    <string name="desc_search">搜索</string>
+    <string name="desc_lock">已锁定/密码</string>
+    <string name="desc_person">用户信息</string>
+    <string name="desc_tv">电视设备</string>
+    <string name="desc_speed">网速/延迟</string>
+    <string name="desc_filter">过滤</string>
 </resources>

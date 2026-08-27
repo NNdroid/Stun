@@ -1,4 +1,3 @@
-import java.io.File
 import java.net.URI
 
 plugins {
@@ -11,42 +10,8 @@ val gitHash = providers.exec {
     isIgnoreExitValue = true
 }.standardOutput.asText.map { it.trim() }.getOrElse("unknown")
 
-val baseVersionName = "1.10"
-val baseVersionCode = 10011
-
-// Automate moving the TProxy executable to assets
-val copyTProxyBinaries = tasks.register("copyTProxyBinaries") {
-    description = "Copies hev-socks5-tproxy from core build intermediates to tv assets"
-    val tvProjDir = project.projectDir
-    val rootDirBase = project.rootDir
-
-    doLast {
-        val abis = listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
-        // Note: CXX intermediates now come from :core
-        val coreBuildDir = File(rootDirBase, "core/build/intermediates/cxx")
-
-        if (!coreBuildDir.exists()) {
-            println("CXX intermediates directory not found: ${coreBuildDir.path}")
-            return@doLast
-        }
-
-        abis.forEach { abi ->
-            var found = false
-            coreBuildDir.walkBottomUp().forEach { file ->
-                if (file.isFile && file.name == "hev-socks5-tproxy" && file.parentFile.name == abi) {
-                    val destDir = File(tvProjDir, "src/main/assets/bin/$abi")
-                    destDir.mkdirs()
-                    file.copyTo(File(destDir, "hev-socks5-tproxy"), overwrite = true)
-                    println("Copied $abi binary to assets from: ${file.path}")
-                    found = true
-                }
-            }
-            if (!found) {
-                println("Could not find hev-socks5-tproxy for ABI: $abi")
-            }
-        }
-    }
-}
+val baseVersionName = "1.11"
+val baseVersionCode = 10012
 
 android {
     namespace = "app.fjj.stun.tv"
@@ -55,7 +20,7 @@ android {
     defaultConfig {
         applicationId = "app.fjj.stun"
         minSdk = 28
-        targetSdk = 35
+        targetSdk = 36
         versionCode = baseVersionCode
         versionName = baseVersionName
 
@@ -65,6 +30,23 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
+        }
+        resources {
+            excludes += setOf(
+                "META-INF/INDEX.LIST",
+                "META-INF/io.netty.versions.properties",
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE",
+                "META-INF/LICENSE.txt",
+                "META-INF/license.txt",
+                "META-INF/NOTICE",
+                "META-INF/NOTICE.txt",
+                "META-INF/notice.txt",
+                "META-INF/ASL2.0",
+                "META-INF/*.kotlin_module",
+                "META-INF/AL2.0",
+                "META-INF/LGPL2.1"
+            )
         }
     }
 
@@ -108,49 +90,6 @@ android {
 
 kotlin {
     jvmToolchain(17)
-}
-
-// Ensure assets are copied before merging
-tasks.configureEach {
-    if (name.startsWith("merge") && name.endsWith("Assets")) {
-        dependsOn(copyTProxyBinaries)
-    }
-}
-
-// Ensure rules are downloaded before build
-val downloadRulesDat = tasks.register("downloadRulesDat") {
-    description = ""
-    val outputDir = file("src/main/assets/rules-dat")
-    val filesToDownload = mapOf(
-        "geoip.dat" to "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geoip.dat",
-        "geosite.dat" to "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geosite.dat"
-    )
-
-    doLast {
-        if (!outputDir.exists()) outputDir.mkdirs()
-        filesToDownload.forEach { (name, url) ->
-            val outputFile = File(outputDir, name)
-            if (!outputFile.exists()) {
-                println("Downloading $name from $url...")
-                try {
-                    URI(url).toURL().openStream().use { input ->
-                        outputFile.outputStream().use { output ->
-                            input.copyTo(output)
-                        }
-                    }
-                    println("Successfully downloaded $name")
-                } catch (e: Exception) {
-                    println("Failed to download $name: ${e.message}")
-                }
-            } else {
-                println("$name already exists, skipping download.")
-            }
-        }
-    }
-}
-
-tasks.named("preBuild") {
-    dependsOn(downloadRulesDat)
 }
 
 dependencies {
