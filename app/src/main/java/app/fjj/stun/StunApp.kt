@@ -30,6 +30,8 @@ class StunApp : Application() {
         app.fjj.stun.util.KeystoreUtils.init(this@StunApp)
         // Setup bridge to UI LiveData
         app.fjj.stun.repo.StunRepository.setupLogBridge()
+        app.fjj.stun.repo.StunRepository.registerEngineCallback()
+        app.fjj.stun.repo.StunRepository.initCrashOutput(this@StunApp)
         initAssets(this@StunApp)
         // Trigger GeoData update check on startup
         SettingsManager.checkAndUpdateGeoData(this@StunApp)
@@ -39,6 +41,7 @@ class StunApp : Application() {
         StunLogger.init(context)
         val logPath = StunRepository.getTunnelLogFilePath(context)
         val logLevel = SettingsManager.getLogLevel(context)
+        StunLogger.setLogLevel(logLevel)
         val goLogReceiver = LogReceiver { level, tag, msg ->
             // 注意：Go 的 int 在 Java 中会变成 Long
             StunLogger.receiveGoLog(level.toInt(), tag, msg)

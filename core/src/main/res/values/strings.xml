@@ -26,6 +26,8 @@
 
     <string name="add_profile">Add Node</string>
     <string name="edit_profile">Edit Node</string>
+    <string name="node_default_name">Default config</string>
+    <string name="node_new_name">New Node</string>
     <string name="add_manually">Add Manually</string>
     <string name="scan_qr_code">Scan QR Code</string>
     <string name="scan_prompt">Scan a node QR code</string>
@@ -42,6 +44,7 @@
     <string name="tunnel_type">Tunnel Protocol</string>
     <string name="http_payload">HTTP Payload</string>
     <string name="proxy_address">Proxy Address (IP:Port)</string>
+    <string name="proxy_addr_udp_custom_hint">UDP Custom: you can enter a port range, e.g. 1.1.1.1:1024-23000,25000-30000. Each packet is sent to a different destination port to bypass per-port UDP rate limits. The server must DNAT the range onto its listen port.</string>
     <string name="custom_host">Custom Host</string>
     <string name="server_name">Server Name (SNI)</string>
     <string name="custom_path">Path</string>
@@ -85,10 +88,13 @@
 
     <string name="clear_logs">Clear</string>
     <string name="copy">Copy</string>
+    <string name="copy_uri">Copy URI</string>
     <string name="copy_success">Copied to clipboard</string>
     <string name="close">Close</string>
     <string name="app_logs">App Logs</string>
     <string name="tunnel_logs">Tunnel Logs</string>
+    <string name="logs_title_full">Stun Logs</string>
+    <string name="logs_share_subject">Stun Diagnostic Logs</string>
 
     <string name="action_tools">Tools</string>
     <string name="action_import_export">Backup &amp; Restore</string>
@@ -101,6 +107,7 @@
     <string name="nav_nodes">Node</string>
     <string name="main_disconnected">Disconnected</string>
     <string name="main_connected">Connected</string>
+    <string name="main_connected_with_latency">%1$s (%2$s)</string>
     <string name="main_connecting">Connecting...</string>
     <string name="main_reconnecting">Reconnecting...</string>
     <string name="main_connection_failed">Connection Failed</string>
@@ -149,11 +156,14 @@
     <string name="label_sni">SNI: %1$s</string>
     <string name="label_host">Host: %1$s</string>
     <string name="label_domain">Domain: %1$s</string>
+    <string name="label_magic">Magic: %1$s</string>
     <string name="connection_complete">Connection successful</string>
     <string name="error_invalid_private_key">Invalid private key format</string>
-    <string name="error_invalid_address">Invalid address format (host:port)</string>
+    <string name="error_invalid_address">Invalid address format (host:port or host:port-range)</string>
+    <string name="error_invalid_address_single_port">Invalid address format (host:port). Port range not supported for this protocol.</string>
     <string name="error_invalid_port">Invalid port number (1-65535)</string>
     <string name="geodata_success">GeoData updated successfully</string>
+    <string name="not_available">N/A</string>
     <string name="error_field_required">This field cannot be empty</string>
     <string name="error_invalid_path">Path must start with /</string>
     <string name="error_invalid_pin">Incorrect PIN or corrupted data</string>
@@ -171,6 +181,8 @@
     <string name="web_console_url_format">http://%1$s:%2$d/?token=%3$s</string>
     <string name="traffic_up_format">▲ %1$s/s</string>
     <string name="traffic_down_format">▼ %1$s/s</string>
+    <string name="traffic_up_placeholder">▲ 0 B/s</string>
+    <string name="traffic_down_placeholder">▼ 0 B/s</string>
     <string name="tv_traffic_format">↑ %1$s  ↓ %2$s</string>
     <string name="tv_traffic_total_format">↑ %1$s  ↓ %2$s</string>
     <string name="error_key_password_required">Passphrase required for this key</string>
@@ -371,4 +383,7 @@
     <string name="desc_tv">TV Device</string>
     <string name="desc_speed">Network Speed</string>
     <string name="desc_filter">Filter</string>
+
+    <string name="crash_dialog_title">Core Engine Exception Report</string>
+    <string name="crash_dialog_title_prev">Previous Core Crash Report</string>
 </resources>

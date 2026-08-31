@@ -1,5 +1,6 @@
 package app.fjj.stun.ui
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.MenuItem
 import androidx.activity.OnBackPressedCallback
@@ -19,6 +20,9 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
 
     private lateinit var binding: ActivityMainBinding
 
+    // 来自 stun:// deep link 的待导入 URI，由 HomeFragment 在 onResume 消费
+    var pendingStunImport: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -32,6 +36,8 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
 
         binding.navView.setNavigationItemSelectedListener(this)
         setupHeader()
+
+        handleDeepLink(intent)
 
         if (savedInstanceState == null) {
             navigateTo(HomeFragment(), R.id.nav_home)
@@ -111,6 +117,23 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
 
     fun openDrawer() {
         binding.drawerLayout.openDrawer(GravityCompat.START)
+    }
+
+    private fun handleDeepLink(intent: Intent?) {
+        val data = intent?.data ?: return
+        if (data.scheme.equals("stun", ignoreCase = true)) {
+            // 用 schemeSpecificPart（已解码 % 编码），避免 base64 中的 /+= 被百分号编码后 base64 解码失败
+            pendingStunImport = "stun://" + data.schemeSpecificPart
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleDeepLink(intent)
+        setIntent(intent)
+        // App 已在前台：直接把 deep link 转交给当前 HomeFragment 导入
+        (supportFragmentManager.findFragmentById(R.id.fragment_container) as? HomeFragment)
+            ?.let { it.consumePendingStunImport() }
     }
 
     override fun dispatchTouchEvent(ev: android.view.MotionEvent?): Boolean {

@@ -63,6 +63,7 @@ class MainActivity : FragmentActivity() {
         setupUI()
         setupRemoteCallbacks()
         observeData()
+        checkPreviousCrash()
 
         // Handle back button for sidebar
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -421,11 +422,53 @@ class MainActivity : FragmentActivity() {
             updateEngineErrorUI(err)
         }
 
+        // 🌟 核心引擎崩溃/Panic 拦截事件弹窗展示
+        StunRepository.crashEvent.observe(this) { crashLog ->
+            if (!crashLog.isNullOrEmpty()) {
+                showCrashDialog(crashLog, isPrevious = false)
+                StunRepository.crashEvent.postValue(null)
+            }
+        }
+
         // 实时流量速率（上行/下行），来自引擎 1Hz 回调
         StunRepository.txRate.observe(this) { updateTrafficUI() }
         StunRepository.rxRate.observe(this) { updateTrafficUI() }
         StunRepository.txTotal.observe(this) { updateTrafficUI() }
         StunRepository.rxTotal.observe(this) { updateTrafficUI() }
+    }
+
+    private fun checkPreviousCrash() {
+        val prevCrash = StunRepository.checkPreviousCrash(this)
+        if (!prevCrash.isNullOrEmpty()) {
+            showCrashDialog(prevCrash, isPrevious = true)
+        }
+    }
+
+    private fun showCrashDialog(crashLog: String, isPrevious: Boolean) {
+        if (isFinishing || isDestroyed) return
+        val titleRes = if (isPrevious) CoreR.string.crash_dialog_title_prev else CoreR.string.crash_dialog_title
+
+        val paddingH = (24 * resources.displayMetrics.density).toInt()
+        val paddingV = (16 * resources.displayMetrics.density).toInt()
+
+        val textView = android.widget.TextView(this).apply {
+            text = crashLog
+            textSize = 13f
+            typeface = android.graphics.Typeface.MONOSPACE
+            setTextIsSelectable(true)
+            setPadding(paddingH, paddingV, paddingH, paddingV)
+            setTextColor(android.graphics.Color.WHITE)
+        }
+
+        val scrollView = android.widget.ScrollView(this).apply {
+            addView(textView)
+        }
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(getString(titleRes))
+            .setView(scrollView)
+            .setPositiveButton(getString(CoreR.string.close), null)
+            .show()
     }
 
     private var publicIpJob: kotlinx.coroutines.Job? = null

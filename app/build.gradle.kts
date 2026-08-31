@@ -20,7 +20,7 @@ android {
     defaultConfig {
         applicationId = "app.fjj.stun"
         minSdk = 28
-        targetSdk = 36
+        targetSdk = 37
         versionCode = baseVersionCode
         versionName = baseVersionName
 

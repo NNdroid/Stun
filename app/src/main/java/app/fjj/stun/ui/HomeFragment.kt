@@ -129,12 +129,28 @@ class HomeFragment : Fragment() {
                 clean = clean.substring(7)
             }
             clean = clean.replace("\r", "").replace("\n", "").replace(" ", "")
+            // 方案B：stun:// 内容为加密 payload（{v,s,i,c}），需 PIN 解密后导入
+            if (ShareCryptoUtils.isEncryptedPayload(clean)) {
+                showPinInputDialog(clean)
+                return
+            }
             val decodedBytes = Base64.decode(clean, Base64.DEFAULT)
             val jsonString = String(decodedBytes, Charsets.UTF_8)
             importProfileFromJsonString(jsonString)
         } catch (e: Exception) {
             StunLogger.e("HomeFragment", "Scan QR Code failed", e)
             Toast.makeText(requireContext(), getString(CoreR.string.invalid_qr), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // 统一的导入分派：解密弹窗 / 明文 JSON / base64 JSON。raw 可带或不带 stun:// 前缀
+    private fun handleImportText(raw: String) {
+        val text = raw.trim().let { if (it.startsWith("stun://", ignoreCase = true)) it.substring(7) else it }
+            .replace("\r", "").replace("\n", "").replace(" ", "")
+        when {
+            ShareCryptoUtils.isEncryptedPayload(text) -> showPinInputDialog(text)
+            text.startsWith("{") && text.endsWith("}") && text.contains("\"sshAddr\"") -> importProfileFromJsonString(text)
+            else -> importProfileFromJsonBase64(text)
         }
     }
 
@@ -196,6 +212,7 @@ class HomeFragment : Fragment() {
         observeViewModel()
         observeVpnState()
         setupListeners()
+        checkPreviousCrash()
     }
 
     private fun setupToolbar() {
@@ -237,6 +254,15 @@ class HomeFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         checkClipboardForImport()
+        consumePendingStunImport()
+    }
+
+    // 消费来自 stun:// deep link 的待导入 URI（由 MainActivity 暂存）
+    fun consumePendingStunImport() {
+        val act = requireActivity() as? MainActivity ?: return
+        val uri = act.pendingStunImport ?: return
+        act.pendingStunImport = null
+        handleImportText(uri)
     }
 
     private fun checkClipboardForImport() {
@@ -263,13 +289,7 @@ class HomeFragment : Fragment() {
             if (isEncrypted || isJson || isBase64) {
                 Snackbar.make(binding.root, getString(CoreR.string.action_import) + "?", Snackbar.LENGTH_LONG)
                     .setAction(getString(CoreR.string.action_import)) {
-                        if (isEncrypted) {
-                            showPinInputDialog(text)
-                        } else if (isJson) {
-                            importProfileFromJsonString(text)
-                        } else if (isBase64) {
-                            importProfileFromJsonBase64(text)
-                        }
+                        handleImportText(text)
                     }
                     .setAnchorView(binding.bottomContainer)
                     .show()
@@ -307,11 +327,12 @@ class HomeFragment : Fragment() {
 
         StunLogger.errorListener = { tag, msg, _ ->
             activity?.runOnUiThread {
+                val b = _binding ?: return@runOnUiThread
                 Snackbar.make(
-                    binding.root,
+                    b.root,
                     if (app.fjj.stun.BuildConfig.DEBUG) "[$tag] $msg" else msg,
                     Snackbar.LENGTH_LONG
-                ).setAnchorView(binding.bottomContainer).show()
+                ).setAnchorView(b.bottomContainer).show()
             }
         }
     }
@@ -350,6 +371,54 @@ class HomeFragment : Fragment() {
                 StunRepository.engineError.postValue(null) // 仅提示一次
             }
         }
+        // 🌟 核心引擎崩溃/Panic 拦截事件弹窗展示
+        StunRepository.crashEvent.observe(viewLifecycleOwner) { crashLog ->
+            if (_binding == null || !isAdded) return@observe
+            if (!crashLog.isNullOrEmpty()) {
+                showCrashDialog(crashLog, isPrevious = false)
+                StunRepository.crashEvent.postValue(null)
+            }
+        }
+    }
+
+    private fun checkPreviousCrash() {
+        val ctx = context ?: return
+        val prevCrash = StunRepository.checkPreviousCrash(ctx)
+        if (!prevCrash.isNullOrEmpty()) {
+            showCrashDialog(prevCrash, isPrevious = true)
+        }
+    }
+
+    private fun showCrashDialog(crashLog: String, isPrevious: Boolean) {
+        val ctx = context ?: return
+        val titleRes = if (isPrevious) CoreR.string.crash_dialog_title_prev else CoreR.string.crash_dialog_title
+
+        val paddingH = (16 * resources.displayMetrics.density).toInt()
+        val paddingV = (10 * resources.displayMetrics.density).toInt()
+
+        val textView = android.widget.TextView(ctx).apply {
+            text = crashLog
+            textSize = 12f
+            typeface = android.graphics.Typeface.MONOSPACE
+            setTextIsSelectable(true)
+            setPadding(paddingH, paddingV, paddingH, paddingV)
+        }
+
+        val scrollView = android.widget.ScrollView(ctx).apply {
+            addView(textView)
+        }
+
+        MaterialAlertDialogBuilder(ctx)
+            .setTitle(getString(titleRes))
+            .setView(scrollView)
+            .setPositiveButton(getString(CoreR.string.copy)) { _, _ ->
+                val clipboard = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                val clip = android.content.ClipData.newPlainText("CrashLog", crashLog)
+                clipboard.setPrimaryClip(clip)
+                Snackbar.make(binding.root, getString(CoreR.string.copy_success), Snackbar.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(getString(CoreR.string.close), null)
+            .show()
     }
 
     private fun updateUiState(state: VpnState?) {
@@ -605,6 +674,14 @@ class HomeFragment : Fragment() {
                 TvDevicePickerBottomSheet.newInstance(profile).show(childFragmentManager, "TvDevicePicker")
             }
 
+            view.findViewById<View>(R.id.btn_copy_uri).setOnClickListener {
+                val uri = "stun://$encryptedPayload"
+                val clipboard = requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                val clip = android.content.ClipData.newPlainText("Stun Node URI", uri)
+                clipboard?.setPrimaryClip(clip)
+                Toast.makeText(requireContext(), getString(CoreR.string.copy_success), Toast.LENGTH_SHORT).show()
+            }
+
             dialog.show()
         } else {
             Toast.makeText(requireContext(), getString(CoreR.string.main_qr_fail), Toast.LENGTH_SHORT).show()
@@ -780,7 +857,7 @@ class HomeFragment : Fragment() {
                     withContext(Dispatchers.Main) {
                         if (_binding != null && isAdded) {
                             adapter.updateDelay(selectedProfile.id, delayStr)
-                            binding.tvStatus.text = "${ctx.getString(CoreR.string.main_connected)} ($delayStr)"
+                            binding.tvStatus.text = getString(CoreR.string.main_connected_with_latency, getString(CoreR.string.main_connected), delayStr)
                             if (ipDisplayStr.isNotEmpty()) {
                                 binding.tvStatusSubtitle.visibility = View.VISIBLE
                                 binding.tvStatusSubtitle.text = ipDisplayStr

@@ -50,6 +50,8 @@ object StunLogger {
 
     var isLogcatEnabled = true
     var logListener: ((CharSequence) -> Unit)? = null
+    var logEntryListener: ((LogEntry) -> Unit)? = null
+    private val nextLogId = java.util.concurrent.atomic.AtomicLong(1L)
     private val TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
         .withZone(ZoneId.systemDefault())
     private val FALLBACK_DATE_FORMAT = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
@@ -59,6 +61,63 @@ object StunLogger {
     private val COLOR_INFO  = "#4CAF50".toColorInt() // 绿色
     private val COLOR_WARN  = "#FFC107".toColorInt() // 琥珀色
     private val COLOR_ERROR = "#F44336".toColorInt() // 红色
+
+    @Volatile
+    private var currentLevelPriority: Int = 1 // 0=DEBUG, 1=INFO, 2=WARN, 3=ERROR
+
+    @Volatile
+    var currentLogLevel: String = "INFO"
+        private set
+
+    /**
+     * 实时设置日志等级，并同步通知底层 Go 核心
+     */
+    fun setLogLevel(levelStr: String) {
+        val cleanLevel = levelStr.uppercase().trim()
+        currentLogLevel = cleanLevel
+        currentLevelPriority = parseLevelPriority(cleanLevel)
+        Log.i(TAG, "Log level updated to $cleanLevel (priority=$currentLevelPriority)")
+        try {
+            myssh.Myssh.setLogLevel(cleanLevel)
+        } catch (_: Throwable) {}
+        try {
+            StunRepository.proxy.setLogLevel(cleanLevel)
+        } catch (_: Throwable) {}
+    }
+
+    fun parseLevelPriority(levelStr: String): Int {
+        return when (levelStr.uppercase().trim()) {
+            "DEBUG" -> 0
+            "INFO" -> 1
+            "WARN", "WARNING" -> 2
+            "ERROR", "FATAL" -> 3
+            else -> 1
+        }
+    }
+
+    /**
+     * 从格式化日志行 ("HH:mm:ss.SSS LEVEL [Tag] Msg") 精准提取真实的日志等级
+     */
+    fun extractLogLevel(line: String): String {
+        val trimmed = line.trimStart()
+        val spaceIdx = trimmed.indexOf(' ')
+        if (spaceIdx in 1..20) {
+            val nextPart = trimmed.substring(spaceIdx + 1).trimStart()
+            val nextSpaceIdx = nextPart.indexOf(' ')
+            val token = if (nextSpaceIdx != -1) nextPart.substring(0, nextSpaceIdx) else nextPart
+            when (token.uppercase()) {
+                "DEBUG" -> return "DEBUG"
+                "INFO" -> return "INFO"
+                "WARN", "WARNING" -> return "WARN"
+                "ERROR", "FATAL" -> return "ERROR"
+            }
+        }
+        if (trimmed.startsWith("[D]") || trimmed.startsWith("DEBUG")) return "DEBUG"
+        if (trimmed.startsWith("[I]") || trimmed.startsWith("INFO")) return "INFO"
+        if (trimmed.startsWith("[W]") || trimmed.startsWith("WARN")) return "WARN"
+        if (trimmed.startsWith("[E]") || trimmed.startsWith("ERROR") || trimmed.startsWith("FATAL")) return "ERROR"
+        return "INFO"
+    }
 
     init {
         // --- 单一后台守护线程专门负责写盘 ---
@@ -183,20 +242,39 @@ object StunLogger {
             metaInfo = "[$tag]"
         }
 
+        val levelEnum = LogLevel.fromString(finalLevel)
+
+        // 🌟 核心过滤：若当前日志优先级低于用户配置等级，立即静默丢弃（不写盘、不广播、不触发 UI）
+        if (levelEnum.priority < currentLevelPriority) {
+            return
+        }
+
         val stackTrace = if (tr != null) "\n" + Log.getStackTraceString(tr) else ""
 
         // 组装纯文本日志 (用于 Logcat 和写盘，保证文件干净)
         // 使用 %-5s 保证级别占 5 个字符，完美对齐
-        val plainLogStr = String.format("%s %-5s %s %s%s\n", timeStr, finalLevel, metaInfo, msgContent, stackTrace)
+        val plainLogStr = String.format("%s %-5s %s %s%s\n", timeStr, levelEnum.name, metaInfo, msgContent, stackTrace)
+
+        // 🌟 生产强类型结构化日志条目（零 GC 抖动，100% 精准级别）
+        val entry = LogEntry(
+            id = nextLogId.getAndIncrement(),
+            timestamp = System.currentTimeMillis(),
+            timeStr = timeStr,
+            level = levelEnum,
+            tag = tag,
+            message = msgContent,
+            metaInfo = metaInfo,
+            stackTrace = stackTrace,
+            formattedLine = plainLogStr.trimEnd()
+        )
 
         // 投递给系统 Logcat
         if (isLogcatEnabled) {
-            when (finalLevel) {
-                "DEBUG" -> Log.d(tag, msgContent)
-                "INFO"  -> Log.i(tag, msgContent)
-                "WARN"  -> Log.w(tag, msgContent)
-                "ERROR" -> Log.e(tag, msgContent, tr)
-                else    -> Log.v(tag, msgContent)
+            when (levelEnum) {
+                LogLevel.DEBUG -> Log.d(tag, msgContent)
+                LogLevel.INFO  -> Log.i(tag, msgContent)
+                LogLevel.WARN  -> Log.w(tag, msgContent)
+                LogLevel.ERROR -> Log.e(tag, msgContent, tr)
             }
         }
 
@@ -205,31 +283,25 @@ object StunLogger {
             Log.w("LogSystem", "Log queue is full! Dropping log: $msgContent")
         }
 
-        // 广播给 SSE 订阅者 (非阻塞，DROP_OLDEST 策略)
-        _logFlow.tryEmit(plainLogStr)
+        // 广播给 SSE 订阅者（首字符带上结构化等级标识符：E|..., W|..., I|..., D|...）
+        _logFlow.tryEmit("${levelEnum.shortCode}|${plainLogStr.trimEnd()}")
 
-        // 组装彩色文本并投递给 UI
+        // 投递结构化实体给 App 仓库
+        logEntryListener?.invoke(entry)
+
+        // 兼容旧文本监听器
         logListener?.let { listener ->
-            val color = when (finalLevel) {
-                "DEBUG" -> COLOR_DEBUG
-                "WARN", "WARNING" -> COLOR_WARN
-                "ERROR", "FATAL"  -> COLOR_ERROR
-                else -> COLOR_INFO // INFO 默认为绿色
-            }
-
             val spannableBuilder = SpannableStringBuilder(plainLogStr)
-            // 给整行文字上色
             spannableBuilder.setSpan(
-                ForegroundColorSpan(color),
+                ForegroundColorSpan(levelEnum.color),
                 0,
                 spannableBuilder.length,
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
             )
-
             listener.invoke(spannableBuilder)
         }
 
-        if (finalLevel == "ERROR" || finalLevel == "FATAL") errorListener?.invoke(tag, msgContent, tr)
+        //if (finalLevel == "ERROR" || finalLevel == "FATAL") errorListener?.invoke(tag, msgContent, tr)
     }
 
     /**
@@ -301,13 +373,12 @@ object StunLogger {
 
     @JvmStatic
     fun receiveGoLog(level: Int, tag: String, msg: String) {
-        when (level) {
-            0 -> d(tag, msg)
-            1 -> i(tag, msg)
-            2 -> w(tag, msg)
-            3 -> e(tag, msg)
-            4 -> e(tag, "🔥 PANIC: $msg")
-            5 -> e(tag, "💀 FATAL: $msg")
+        val levelEnum = LogLevel.fromInt(level)
+        val prefix = when (level) {
+            4 -> "🔥 PANIC: "
+            5 -> "💀 FATAL: "
+            else -> ""
         }
+        log(levelEnum.name, tag, prefix + msg)
     }
 }

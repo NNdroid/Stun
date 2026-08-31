@@ -34,6 +34,7 @@ class ProfileEditViewModel(application: Application) : AndroidViewModel(applicat
 
     private fun createDefaultProfile(context: android.content.Context): Profile {
         return Profile().apply {
+            name = context.getString(app.fjj.stun.core.R.string.node_default_name)
             remoteDns = SettingsManager.getRemoteDnsServer(context)
             localDns = SettingsManager.getLocalDnsServer(context)
             udpgwVersion = SettingsManager.getUdpgwVersion(context)

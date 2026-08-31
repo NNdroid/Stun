@@ -57,7 +57,10 @@ object SettingsManager {
     }
 
     fun getLogLevel(context: Context): String = getPrefs(context).getString(KEY_LOG_LEVEL, DEFAULT_LOG_LEVEL) ?: DEFAULT_LOG_LEVEL
-    fun saveLogLevel(context: Context, level: String) = getPrefs(context).edit { putString(KEY_LOG_LEVEL, level) }
+    fun saveLogLevel(context: Context, level: String) {
+        getPrefs(context).edit { putString(KEY_LOG_LEVEL, level) }
+        StunLogger.setLogLevel(level)
+    }
 
     fun getRemoteDnsServer(context: Context): String = getPrefs(context).getString(KEY_REMOTE_DNS_SERVER, DEFAULT_REMOTE_DNS_SERVER) ?: DEFAULT_REMOTE_DNS_SERVER
     fun saveRemoteDnsServer(context: Context, dns: String) = getPrefs(context).edit { putString(KEY_REMOTE_DNS_SERVER, dns) }

@@ -98,6 +98,8 @@ const I18N = {
     label_edit_noise_public_key: "Noise 服务端公钥 (可选，Curve25519 Hex/Base64)：",
 
     label_edit_verify_ssh_fp: '🔑 校验 SSH 主机公钥指纹 (Verify Host Key)',
+    error_invalid_address: "地址格式无效 (host:port 或 host:端口范围)",
+    error_invalid_address_single_port: "地址格式无效 (host:port)。该协议不支持端口范围。",
     label_edit_ssh_fp: 'SSH 公钥指纹 (SHA256 / MD5)：',
     btn_fetch_fp: '🔍 获取指纹',
     btn_details: 'ℹ️ 详情',
@@ -390,6 +392,8 @@ const I18N = {
     label_edit_noise_public_key: "Noise 伺服器公鑰 (可選，Curve25519 Hex/Base64)：",
 
     label_edit_verify_ssh_fp: '🔑 校驗 SSH 主機公鑰指紋 (Verify Host Key)',
+    error_invalid_address: "位址格式無效 (host:port 或 host:連接埠範圍)",
+    error_invalid_address_single_port: "位址格式無效 (host:port)。該協定不支援連接埠範圍。",
     label_edit_ssh_fp: 'SSH 公鑰指紋 (SHA256 / MD5)：',
     btn_fetch_fp: '🔍 獲取指紋',
     btn_details: 'ℹ️ 詳情',
@@ -682,6 +686,8 @@ const I18N = {
     label_edit_noise_public_key: "Noise Server Public Key (Optional, Curve25519 Hex/Base64):",
 
     label_edit_verify_ssh_fp: '🔑 Verify SSH Host Key Fingerprint',
+    error_invalid_address: "Invalid address format (host:port or host:port-range)",
+    error_invalid_address_single_port: "Invalid address format (host:port). Port range not supported for this protocol.",
     label_edit_ssh_fp: 'SSH Host Key Fingerprint (SHA256 / MD5):',
     btn_fetch_fp: '🔍 Fetch Fingerprint',
     btn_details: 'ℹ️ Details',
@@ -708,6 +714,8 @@ const I18N = {
     toast_export_failed: '✕ Export failed, please try again',
     toast_logs_cleared: '✓ Console logs cleared',
     toast_profile_updated: '✓ Node "{name}" configuration saved!',
+    error_invalid_address: "Format d'adresse invalide (hôte:port ou hôte:plage-de-ports)",
+    error_invalid_address_single_port: "Format d'adresse invalide (hôte:port). La plage de ports n'est pas prise en charge pour ce protocole.",
     toast_profile_update_failed: '✕ Failed to save node configuration.',
     file_loaded_toast: '✓ Loaded file "{name}" successfully',
     btn_test_latency_all: '⚡ Test Latency All',
@@ -974,6 +982,8 @@ const I18N = {
     label_edit_noise_public_key: "Noise サーバー公開鍵 (任意、Curve25519 Hex/Base64):",
 
     label_edit_verify_ssh_fp: '🔑 SSH ホスト公開鍵フィンガープリントを検証',
+    error_invalid_address: "無効なアドレス形式です (ホスト:ポート または ホスト:ポート範囲)",
+    error_invalid_address_single_port: "無効なアドレス形式です (ホスト:ポート)。このプロトコルではポート範囲はサポートされていません。",
     label_edit_ssh_fp: 'SSH 公開鍵フィンガープリント (SHA256 / MD5):',
     btn_fetch_fp: '🔍 取得',
     btn_details: 'ℹ️ 詳細',
@@ -1292,6 +1302,8 @@ const I18N = {
     toast_export_failed: '✕ Export fehlgeschlagen, bitte erneut versuchen',
     toast_logs_cleared: '✓ Protokolle gelöscht',
     toast_profile_updated: '✓ Knotenkonfiguration "{name}" gespeichert!',
+    error_invalid_address: "Ungültiges Adressformat (Host:Port oder Host:Portbereich)",
+    error_invalid_address_single_port: "Ungültiges Adressformat (Host:Port). Portbereich wird für dieses Protokoll nicht unterstützt.",
     toast_profile_update_failed: '✕ Speichern des Knotens fehlgeschlagen.',
     file_loaded_toast: '✓ Datei "{name}" erfolgreich geladen',
     btn_test_latency_all: '⚡ Alle Latenzen testen',
@@ -1801,6 +1813,27 @@ function showToast(msg) {
       if (box.contains(toast)) box.removeChild(toast);
     }, 300);
   }, 2800);
+}
+
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text);
+  } else {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-9999px";
+    textArea.style.top = "0";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand('copy');
+    } catch (err) {
+      console.error('Fallback copy failed', err);
+    }
+    document.body.removeChild(textArea);
+  }
 }
 
 function applyI18n() {
@@ -2743,7 +2776,7 @@ function closeDetailsModal() {
 
 function copyDetailsContent() {
   const text = document.getElementById('details-modal-content').textContent;
-  navigator.clipboard.writeText(text);
+  copyToClipboard(text);
   showToast(t('toast_details_copied'));
 }
 
@@ -2952,6 +2985,29 @@ async function submitEditProfile() {
   const proxyAuthUser = document.getElementById('edit-node-auth-user').value.trim();
   const proxyAuthPass = document.getElementById('edit-node-auth-pass').value;
 
+  // Validation
+  const validateAddr = (addr, fieldName, allowRange) => {
+    if (!addr) {
+      showToast(fieldName + ' is required');
+      return false;
+    }
+    const portRangePattern = "(\\d+(?:-\\d+)?(?:,\\d+(?:-\\d+)?)*)";
+    const singlePortPattern = "(\\d+)";
+    const portPattern = allowRange ? portRangePattern : singlePortPattern;
+
+    // Simple regex for WebUI (covers both IPv4 and IPv6-ish with port/range)
+    const regex = new RegExp("^(.+):" + portPattern + "$");
+    if (!regex.test(addr)) {
+      showToast(allowRange ? t('error_invalid_address') : t('error_invalid_address_single_port'));
+      return false;
+    }
+    return true;
+  };
+
+  if (!validateAddr(sshAddr, 'SSH Address', false)) return;
+  if (tunnelType !== 'base' && tunnelType !== 'dns_custom') {
+    if (!validateAddr(proxyAddr, 'Proxy Address', tunnelType === 'udp_custom')) return;
+  }
   const dnsTunnelServers = document.getElementById('edit-node-dns-servers').value.trim();
   const dnsTunnelDomain = document.getElementById('edit-node-dns-domain').value.trim();
   const dnsTunnelType = document.getElementById('edit-node-dns-type').value;
@@ -3220,7 +3276,7 @@ async function submitExportProfiles() {
 
 function copyExportPayload() {
   const text = document.getElementById('export-payload-output').value;
-  navigator.clipboard.writeText(text);
+  copyToClipboard(text);
   showToast(t('export_copied'));
 }
 
@@ -3473,7 +3529,7 @@ async function updateGeoDataNow() {
 
 function copyAccessUrl() {
   const url = document.getElementById('display-access-url').value;
-  navigator.clipboard.writeText(url);
+  copyToClipboard(url);
   showToast(t('url_copied'));
 }
 
@@ -3487,18 +3543,71 @@ function initLogStream() {
     logLines++;
     const div = document.createElement('div');
     let level = 'I';
-    if (/ERROR|FATAL/.test(e.data)) level = 'E';
-    else if (/WARN/.test(e.data)) level = 'W';
-    else if (/DEBUG/.test(e.data)) level = 'D';
+    let content = e.data;
+
+    // 🌟 结构化前缀毫秒级解析：E|..., W|..., I|..., D|...（零正则，零误判）
+    if (e.data.length >= 2 && e.data[1] === '|') {
+      level = e.data[0];
+      content = e.data.substring(2);
+    } else {
+      const match = e.data.match(/^\S+\s+(\w+)/);
+      const tagLevel = match ? match[1].toUpperCase() : '';
+      if (tagLevel === 'ERROR' || tagLevel === 'FATAL') level = 'E';
+      else if (tagLevel === 'WARN' || tagLevel === 'WARNING') level = 'W';
+      else if (tagLevel === 'DEBUG') level = 'D';
+    }
 
     div.className = 'log-line ' + level;
-    div.textContent = e.data;
+    div.textContent = content;
+    if (!matchesWebLogLevel(level, currentWebFilterLevel)) {
+      div.style.display = 'none';
+    }
     logBox.appendChild(div);
 
     if (logBox.children.length > 1000) logBox.removeChild(logBox.firstChild);
     if (autoScroll) logBox.scrollTop = logBox.scrollHeight;
     document.getElementById('log-count').textContent = logLines + t('lines_unit');
   };
+}
+
+let currentWebFilterLevel = 'ALL';
+
+function filterWebLogs() {
+  const sel = document.getElementById('select-filter-level');
+  currentWebFilterLevel = sel ? sel.value : 'ALL';
+  const lines = logBox.querySelectorAll('.log-line');
+  lines.forEach(line => {
+    line.style.display = matchesWebLogLevel(line, currentWebFilterLevel) ? '' : 'none';
+  });
+}
+
+function matchesWebLogLevel(elOrClass, filterLevel) {
+  if (filterLevel === 'ALL') return true;
+  const isE = typeof elOrClass === 'string' ? elOrClass === 'E' : elOrClass.classList.contains('E');
+  const isW = typeof elOrClass === 'string' ? elOrClass === 'W' : elOrClass.classList.contains('W');
+  const isI = typeof elOrClass === 'string' ? elOrClass === 'I' : elOrClass.classList.contains('I');
+  const isD = typeof elOrClass === 'string' ? elOrClass === 'D' : elOrClass.classList.contains('D');
+
+  if (filterLevel === 'ERROR') return isE;
+  if (filterLevel === 'WARN') return isW || isE;
+  if (filterLevel === 'INFO') return isI || isW || isE;
+  if (filterLevel === 'DEBUG') return true;
+  return true;
+}
+
+async function onLogLevelChanged(newLevel) {
+  try {
+    const res = await fetch('/api/settings/save?token=' + token, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ logLevel: newLevel })
+    });
+    if (res.ok) {
+      showToast((t('settings_save_success') || 'Saved') + ' (' + newLevel + ')');
+    }
+  } catch (e) {
+    console.error('Failed to change log level dynamically', e);
+  }
 }
 
 function toggleAutoScroll() {
@@ -3516,7 +3625,7 @@ async function clearLogs() {
 
 function copyLogs() {
   const text = Array.from(logBox.children).map(c => c.textContent).join('\n');
-  navigator.clipboard.writeText(text);
+  copyToClipboard(text);
   showToast(t('logs_copied'));
 }
 

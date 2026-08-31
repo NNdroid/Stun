@@ -471,6 +471,10 @@ class ProfileEditActivity : BaseActivity() {
             layoutKcpContainer.isVisible = isKcp
             layoutUdpCustomContainer.isVisible = isUdpCustom
 
+            // UDP Custom accepts a destination-port range to spread packets and
+            // bypass per-port UDP rate limiting; surface a hint on the address field.
+            layoutProxyAddr.helperText = if (isUdpCustom) getString(CoreR.string.proxy_addr_udp_custom_hint) else null
+
             switchEnableCustomPath.isVisible = isMasque
             layoutCustomPath.isVisible = (isMasque && switchEnableCustomPath.isChecked) || isCustomPathSupported
             
@@ -525,6 +529,7 @@ class ProfileEditActivity : BaseActivity() {
         val isKeyAuth = binding.spinnerAuthType.text.toString() == getString(CoreR.string.auth_key)
         val selectedTunnel = binding.spinnerTunnelType.text.toString()
         val isDns = selectedTunnel == Profile.TUNNEL_TYPE_DNS
+        val isUdpCustom = selectedTunnel == Profile.TUNNEL_TYPE_UDP_CUSTOM
         
         var firstErrorView: View? = null
 
@@ -534,12 +539,12 @@ class ProfileEditActivity : BaseActivity() {
         }
 
         // 1. Validate Address
-        if (!validateAddress(binding.etSshAddr.text.toString(), binding.layoutSshAddr)) {
+        if (!validateAddress(binding.etSshAddr.text.toString(), binding.layoutSshAddr, allowRange = false)) {
             if (firstErrorView == null) firstErrorView = binding.layoutSshAddr
         }
         
         if (binding.layoutProxyAddr.isVisible) {
-            if (!validateAddress(binding.etProxyAddr.text.toString(), binding.layoutProxyAddr)) {
+            if (!validateAddress(binding.etProxyAddr.text.toString(), binding.layoutProxyAddr, allowRange = isUdpCustom)) {
                 if (firstErrorView == null) firstErrorView = binding.layoutProxyAddr
             }
         }
@@ -593,7 +598,7 @@ class ProfileEditActivity : BaseActivity() {
         // 4. Save
         val isEdit = profileId != null
         val updatedProfile = currentProfile.copy(
-            name = binding.etName.text.toString().ifBlank { "New Node" },
+            name = binding.etName.text.toString().ifBlank { getString(CoreR.string.node_new_name) },
             sshAddr = binding.etSshAddr.text.toString(),
             user = binding.etUser.text.toString(),
             authType = if (isKeyAuth) Profile.AUTH_TYPE_PRIVATEKEY else Profile.AUTH_TYPE_PASSWORD,
@@ -641,17 +646,27 @@ class ProfileEditActivity : BaseActivity() {
         viewModel.saveProfile(updatedProfile, isEdit)
     }
 
-    private fun validateAddress(content: String, layout: com.google.android.material.textfield.TextInputLayout): Boolean {
+    private fun validateAddress(content: String, layout: com.google.android.material.textfield.TextInputLayout, allowRange: Boolean): Boolean {
         if (content.isBlank()) {
             layout.error = getString(CoreR.string.error_field_required)
             return false
         }
+
+        val portRangePattern = """(\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)"""
+        val singlePortPattern = """(\d+)"""
+        val portPattern = if (allowRange) portRangePattern else singlePortPattern
+
         // IPv6
-        if (content.startsWith("[") && Regex("""^\[([0-9a-fA-F:]+)\]:(\d+)$""").matches(content)) return true
-        // IPv4 / Domain
-        if (Regex("""^([^:]+):(\d+)$""").matches(content)) return true
+        if (content.startsWith("[")) {
+            val ipv6Regex = Regex("""^\[([0-9a-fA-F:]+)\]:$portPattern$""")
+            if (ipv6Regex.matches(content)) return true
+        } else {
+            // IPv4 / Domain
+            val ipv4Regex = Regex("""^([^:]+):$portPattern$""")
+            if (ipv4Regex.matches(content)) return true
+        }
         
-        layout.error = getString(CoreR.string.error_invalid_address)
+        layout.error = if (allowRange) getString(CoreR.string.error_invalid_address) else getString(CoreR.string.error_invalid_address_single_port)
         return false
     }
 
@@ -702,7 +717,7 @@ class ProfileEditActivity : BaseActivity() {
     private fun showSSHDetailsDialog(jsonStr: String) {
         val json = JSONObject(jsonStr)
         val addr = json.optString("address")
-        val banner = json.optString("banner").ifBlank { "N/A" }
+        val banner = json.optString("banner").ifBlank { getString(CoreR.string.not_available) }
         val keyType = json.optString("key_type")
         val fpSha256 = json.optString("fingerprint_sha256")
         val fpMd5 = json.optString("fingerprint_md5")
@@ -737,15 +752,15 @@ class ProfileEditActivity : BaseActivity() {
         val json = JSONObject(jsonStr)
         val target = json.optString("target")
         val sni = json.optString("sni")
-        val subject = json.optString("subject").ifBlank { "N/A" }
-        val issuer = json.optString("issuer").ifBlank { "N/A" }
+        val subject = json.optString("subject").ifBlank { getString(CoreR.string.not_available) }
+        val issuer = json.optString("issuer").ifBlank { getString(CoreR.string.not_available) }
         val daysRemaining = json.optInt("days_remaining")
         val isExpired = json.optBoolean("is_expired")
         val sigAlg = json.optString("signature_algorithm")
         val pubKeyAlg = json.optString("public_key_algorithm")
         val fpSha256 = json.optString("fingerprint_sha256")
         val tlsVer = json.optString("tls_version")
-        val proto = json.optString("negotiated_protocol").ifBlank { "N/A" }
+        val proto = json.optString("negotiated_protocol").ifBlank { getString(CoreR.string.not_available) }
         val latencyMs = json.optLong("latency_ms")
 
         val dnsNamesArray = json.optJSONArray("dns_names")
@@ -753,7 +768,7 @@ class ProfileEditActivity : BaseActivity() {
             val list = mutableListOf<String>()
             for (i in 0 until dnsNamesArray.length()) list.add(dnsNamesArray.getString(i))
             list.joinToString(", ")
-        } else "N/A"
+        } else getString(CoreR.string.not_available)
 
         val expireStatus = if (isExpired) getString(CoreR.string.info_cert_expired) else getString(CoreR.string.info_days_remaining, daysRemaining)
 

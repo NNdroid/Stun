@@ -18,6 +18,9 @@ import androidx.recyclerview.widget.RecyclerView
 import app.fjj.stun.R
 import app.fjj.stun.core.R as CoreR
 import app.fjj.stun.databinding.ActivityLogsBinding
+import app.fjj.stun.repo.LogEntry
+import app.fjj.stun.repo.LogLevel
+import app.fjj.stun.repo.StunLogger
 import app.fjj.stun.repo.StunRepository
 
 class LogsFragment : Fragment() {
@@ -46,7 +49,7 @@ class LogsFragment : Fragment() {
                 R.id.action_copy -> {
                     val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     val fullLogs = StunRepository.appLogs.value?.toString() ?: ""
-                    val clip = ClipData.newPlainText("Stun Logs", fullLogs)
+                    val clip = ClipData.newPlainText(getString(CoreR.string.logs_title_full), fullLogs)
                     clipboard.setPrimaryClip(clip)
                     Toast.makeText(requireContext(), getString(CoreR.string.copy_success), Toast.LENGTH_SHORT).show()
                     true
@@ -56,7 +59,7 @@ class LogsFragment : Fragment() {
                     if (fullLogs.isNotBlank()) {
                         val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                             type = "text/plain"
-                            putExtra(android.content.Intent.EXTRA_SUBJECT, "Stun Diagnostic Logs")
+                            putExtra(android.content.Intent.EXTRA_SUBJECT, getString(CoreR.string.logs_share_subject))
                             putExtra(android.content.Intent.EXTRA_TEXT, fullLogs)
                         }
                         startActivity(android.content.Intent.createChooser(shareIntent, getString(CoreR.string.share)))
@@ -84,8 +87,9 @@ class LogsFragment : Fragment() {
             insets
         }
 
-        StunRepository.appLogs.observe(viewLifecycleOwner) {
-            updateLogs(it?.toString() ?: "")
+        StunRepository.logEntries.observe(viewLifecycleOwner) { entries ->
+            allLogEntries = entries ?: emptyList()
+            applyFiltersAndDisplay()
         }
 
         binding.fabScrollBottom.setOnClickListener {
@@ -94,12 +98,13 @@ class LogsFragment : Fragment() {
             userIsScrolling = false
         }
 
-        updateLogs(StunRepository.appLogs.value?.toString() ?: "")
+        allLogEntries = StunRepository.logEntries.value ?: emptyList()
+        applyFiltersAndDisplay()
     }
 
     private var currentFilterLevel = "ALL"
     private var currentSearchQuery = ""
-    private var cachedFullLogs = ""
+    private var allLogEntries = listOf<LogEntry>()
 
     private fun setupFilters() {
         binding.chipGroupLogLevel.setOnCheckedStateChangeListener { _, checkedIds ->
@@ -143,39 +148,31 @@ class LogsFragment : Fragment() {
         }
     }
 
-    private fun updateLogs(fullText: String) {
-        cachedFullLogs = fullText
-        applyFiltersAndDisplay()
-    }
-
     private fun applyFiltersAndDisplay() {
-        if (cachedFullLogs.isEmpty()) {
+        if (allLogEntries.isEmpty()) {
             logAdapter.submitList(emptyList())
             return
         }
 
         val wasAtBottom = !userIsScrolling
-        val filteredLines = cachedFullLogs.lines().filter { line ->
-            if (line.isBlank()) return@filter false
+        val targetLevel = when (currentFilterLevel) {
+            "DEBUG" -> LogLevel.DEBUG
+            "INFO" -> LogLevel.INFO
+            "WARN" -> LogLevel.WARN
+            "ERROR" -> LogLevel.ERROR
+            else -> null
+        }
 
-            val matchesLevel = when (currentFilterLevel) {
-                "DEBUG" -> line.contains("DEBUG", ignoreCase = true)
-                "INFO" -> line.contains("INFO", ignoreCase = true)
-                "WARN" -> line.contains("WARN", ignoreCase = true) || line.contains("⚠️")
-                "ERROR" -> line.contains("ERROR", ignoreCase = true) || line.contains("❌")
-                else -> true
-            }
-
-            val matchesSearch = if (currentSearchQuery.isEmpty()) {
-                true
-            } else {
-                line.contains(currentSearchQuery, ignoreCase = true)
-            }
+        val filtered = allLogEntries.filter { entry ->
+            val matchesLevel = targetLevel == null || entry.level == targetLevel
+            val matchesSearch = currentSearchQuery.isEmpty() ||
+                entry.message.contains(currentSearchQuery, ignoreCase = true) ||
+                entry.tag.contains(currentSearchQuery, ignoreCase = true)
 
             matchesLevel && matchesSearch
         }
 
-        logAdapter.submitList(filteredLines) {
+        logAdapter.submitList(filtered) {
             if (wasAtBottom) {
                 scrollToBottom()
             }

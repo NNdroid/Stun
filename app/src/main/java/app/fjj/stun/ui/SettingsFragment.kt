@@ -98,7 +98,8 @@ class SettingsFragment : Fragment() {
             object : androidx.core.view.WindowInsetsAnimationCompat.Callback(DISPATCH_MODE_STOP) {
                 override fun onEnd(animation: androidx.core.view.WindowInsetsAnimationCompat) {
                     super.onEnd(animation)
-                    val insets = ViewCompat.getRootWindowInsets(binding.root)
+                    val b = _binding ?: return
+                    val insets = ViewCompat.getRootWindowInsets(b.root)
                     val ime = insets?.getInsets(WindowInsetsCompat.Type.ime())
                     if (ime != null && ime.bottom > 0) {
                         activity?.currentFocus?.let { scrollToFocusedView(it) }
@@ -139,9 +140,10 @@ class SettingsFragment : Fragment() {
             binding.btnUpdateNow.text = getString(CoreR.string.updating)
             SettingsManager.updateGeoData(requireContext()) {
                 activity?.runOnUiThread {
+                    val b = _binding ?: return@runOnUiThread
                     viewModel.loadSettings()
-                    binding.btnUpdateNow.isEnabled = true
-                    binding.btnUpdateNow.text = getString(CoreR.string.update_now)
+                    b.btnUpdateNow.isEnabled = true
+                    b.btnUpdateNow.text = getString(CoreR.string.update_now)
                     Toast.makeText(requireContext(), getString(CoreR.string.geodata_success), Toast.LENGTH_SHORT).show()
                 }
             }
@@ -184,6 +186,10 @@ class SettingsFragment : Fragment() {
         binding.spinnerServiceMode.setAdapter(ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, serviceModes))
         binding.spinnerLanguage.setAdapter(ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, languageLabels))
         binding.spinnerLogLevel.setAdapter(ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, logLevels))
+        binding.spinnerLogLevel.setOnItemClickListener { _, _, position, _ ->
+            val selectedLevel = logLevels[position]
+            SettingsManager.saveLogLevel(context, selectedLevel)
+        }
         binding.spinnerUdpgwVersion.setAdapter(ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, udpgwVersions))
         binding.spinnerFilterMode.setAdapter(ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, filterModes))
     }

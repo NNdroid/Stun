@@ -93,7 +93,8 @@ class AboutFragment : Fragment() {
                     if (cacheFile.exists()) {
                         dialog.setMessage(cacheFile.readText())
                     } else {
-                        dialog.setMessage(getString(CoreR.string.error_license_load, e.message ?: "Unknown"))
+                        val msg = e.localizedMessage ?: e.message ?: "Unknown"
+                        dialog.setMessage(activity?.getString(CoreR.string.error_license_load, msg) ?: msg)
                     }
                 }
             }

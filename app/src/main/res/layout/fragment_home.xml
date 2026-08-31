@@ -211,7 +211,7 @@
                     android:id="@+id/tv_up_rate"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    tools:text="▲ 0 B/s"
+                    tools:text="@string/traffic_up_placeholder"
                     android:textAppearance="?attr/textAppearanceLabelSmall"
                     android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -219,7 +219,7 @@
                     android:id="@+id/tv_down_rate"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    tools:text="▼ 0 B/s"
+                    tools:text="@string/traffic_down_placeholder"
                     android:textAppearance="?attr/textAppearanceLabelSmall"
                     android:textColor="?attr/colorOnSurfaceVariant" />
             </LinearLayout>

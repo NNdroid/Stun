@@ -26,6 +26,8 @@
 
     <string name="add_profile">新增節點</string>
     <string name="edit_profile">編輯節點</string>
+    <string name="node_default_name">預設配置</string>
+    <string name="node_new_name">新節點</string>
     <string name="add_manually">手動新增</string>
     <string name="scan_qr_code">掃碼新增</string>
     <string name="scan_prompt">請掃描節點行動條碼</string>
@@ -42,6 +44,7 @@
     <string name="tunnel_type">隧道協定</string>
     <string name="http_payload">HTTP 酬載</string>
     <string name="proxy_address">代理地址 (IP:埠號)</string>
+    <string name="proxy_addr_udp_custom_hint">UDP Custom：可填寫連接埠範圍，例如 1.1.1.1:1024-23000,25000-30000。每個數據包會使用不同的目的地連接埠發送，以繞過按連接埠的 UDP 限速。服務端需將該範圍 DNAT 到其監聽連接埠。</string>
     <string name="custom_host">自訂 Host</string>
     <string name="server_name">伺服器名稱 (SNI)</string>
     <string name="custom_path">路徑</string>
@@ -85,10 +88,13 @@
 
     <string name="clear_logs">清空</string>
     <string name="copy">複製</string>
+    <string name="copy_uri">複製 URI</string>
     <string name="copy_success">已複製到剪貼簿</string>
     <string name="close">關閉</string>
     <string name="app_logs">應用程式日誌</string>
     <string name="tunnel_logs">核心日誌</string>
+    <string name="logs_title_full">Stun 日誌</string>
+    <string name="logs_share_subject">Stun 診斷日誌</string>
 
     <string name="action_tools">工具</string>
     <string name="action_import_export">備份與還原</string>
@@ -101,6 +107,7 @@
     <string name="nav_nodes">節點</string>
     <string name="main_disconnected">未連接</string>
     <string name="main_connected">已連接</string>
+    <string name="main_connected_with_latency">%1$s (%2$s)</string>
     <string name="main_connecting">正在連接...</string>
     <string name="main_reconnecting">正在重連...</string>
     <string name="main_connection_failed">連接失敗</string>
@@ -148,11 +155,14 @@
     <string name="label_user">使用者: %1$s</string>
     <string name="label_sni">SNI: %1$s</string>
     <string name="label_host">Host: %1$s</string>
+    <string name="label_magic">標識魔數: %1$s</string>
     <string name="connection_complete">連接成功</string>
     <string name="error_invalid_private_key">私鑰格式無效</string>
-    <string name="error_invalid_address">位址格式無效 (host:port)</string>
+    <string name="error_invalid_address">位址格式無效 (host:port 或 host:連接埠範圍)</string>
+    <string name="error_invalid_address_single_port">位址格式無效 (host:port)。該協定不支援連接埠範圍。</string>
     <string name="error_invalid_port">埠號無效 (1-65535)</string>
     <string name="geodata_success">GeoData 更新成功</string>
+    <string name="not_available">不可用</string>
     <string name="error_field_required">該項不能為空</string>
     <string name="error_invalid_path">路徑必須以 / 開頭</string>
     <string name="error_invalid_pin">PIN 碼錯誤或數據損壞</string>
@@ -243,6 +253,10 @@
 
     <!-- TV Specific -->
     <string name="tv_nodes_received">已接收節點</string>
+    <string name="tv_profile_options_title">節點操作</string>
+    <string name="tv_sheet_close_hint">按 [返回鍵] 關閉</string>
+    <string name="tv_node_options_subtitle">節點操作： %1$s</string>
+    <string name="tv_node_indicator">"🎯 "</string>
     <string name="tv_sync_server_on">同步服務：已開啟 (顯示為 %1$s)</string>
     <string name="tv_sync_server_off">同步服務：已關閉</string>
     <string name="tv_stop_sync">停止同步服務</string>
@@ -273,6 +287,8 @@
     <string name="dns_tunnel_record_type">DNS 資料記錄類型</string>
     <string name="dns_tunnel_domain_hint">權威隧道網域 (例如 tunnel.example.com)</string>
     <string name="dns_tunnel_servers_hint">權威 DNS 伺服器 (例如 8.8.8.8:53, 1.1.1.1:53)</string>
+    <string name="noise_public_key">Noise 伺服端公鑰 (可選)</string>
+    <string name="noise_public_key_hint">伺服端 Noise Curve25519 公鑰 (Hex / Base64)</string>
     <string name="refresh">重新整理</string>
     <string name="tv_picker_refresh">重新整理</string>
 
@@ -336,10 +352,39 @@
     <string name="tv_profile_selected_badge">✓ 當前使用</string>
     <string name="label_domain">網域名稱</string>
     <string name="latency_format">%1$d ms</string>
-    <string name="traffic_down_format">↓ %1$s/s</string>
-    <string name="traffic_up_format">↑ %1$s/s</string>
-    <string name="tv_traffic_format">↑ %1$s/s  ↓ %2$s/s</string>
+    <string name="traffic_up_format">▲ %1$s/s</string>
+    <string name="traffic_down_format">▼ %1$s/s</string>
+    <string name="traffic_up_placeholder">▲ 0 B/s</string>
+    <string name="traffic_down_placeholder">▼ 0 B/s</string>
+    <string name="tv_traffic_format">↑ %1$s  ↓ %2$s</string>
     <string name="tv_traffic_total_format">Σ %1$s</string>
     <string name="error_prefix">錯誤: %1$s</string>
     <string name="info_protocol_negotiation_format">協議協商: %1$s -> %2$s</string>
+
+    <!-- Log Levels -->
+    <string name="log_all">全部</string>
+    <string name="log_debug">除錯</string>
+    <string name="log_info">資訊</string>
+    <string name="log_warn">警告</string>
+    <string name="log_error">錯誤</string>
+
+    <!-- Generic Accessibility -->
+    <string name="desc_app_logo">應用程式圖示</string>
+    <string name="desc_back">返回</string>
+    <string name="desc_qr_code">行動條碼</string>
+    <string name="desc_edit">編輯</string>
+    <string name="desc_delete">刪除</string>
+    <string name="desc_info">詳情</string>
+    <string name="desc_refresh">重新整理</string>
+    <string name="desc_send">發送</string>
+    <string name="desc_add">新增</string>
+    <string name="desc_search">搜尋</string>
+    <string name="desc_lock">已鎖定/密碼</string>
+    <string name="desc_person">使用者資訊</string>
+    <string name="desc_tv">電視裝置</string>
+    <string name="desc_speed">網速/延遲</string>
+    <string name="desc_filter">過濾</string>
+
+    <string name="crash_dialog_title">核心引擎異常診斷</string>
+    <string name="crash_dialog_title_prev">上次運行核心異常報告</string>
 </resources>
