@@ -287,8 +287,20 @@
     <string name="tv_remote_connected">Connecté</string>
     <string name="tv_remote_disconnected">Déconnecté</string>
     <string name="tv_remote_start_vpn">Démarrer VPN TV</string>
-    <string name="tv_remote_stop_vpn">Arrêter VPN TV</string>
-    <string name="tv_waiting_confirmation">Attente confirmation TV…</string>
+    <string name="tv_remote_stop_vpn">Déconnecter VPN TV</string>
+    <string name="tv_remote_reconnecting">Connexion en cours…</string>
+    <string name="tv_remote_disconnecting">Déconnexion en cours…</string>
+    <string name="tv_remote_starting">Démarrage en cours…</string>
+    <string name="tv_remote_reconnect">Reconnecter</string>
+    <string name="tv_remote_reconnecting_action">Redémarrage du VPN TV…</string>
+    <string name="tv_remote_switch_node">Changer de nœud TV</string>
+    <string name="tv_remote_push_and_start">Envoyer et démarrer le nœud actuel</string>
+    <string name="tv_remote_traffic_live">Trafic en direct</string>
+    <string name="tv_remote_public_ip_title">IP publique TV</string>
+    <string name="tv_remote_loading">Chargement de l\'état…</string>
+    <string name="tv_remote_no_profiles">Aucun nœud disponible sur la TV</string>
+    <string name="tv_remote_node_switched">Nœud TV changé pour : %1$s</string>
+    <string name="tv_waiting_confirmation">En attente de confirmation sur la TV…</string>
     <string name="show_notification_speed">Afficher vitesse en temps réel en notification</string>
     <string name="dns_tunnel_record_type">Type d\'enregistrement DNS</string>
     <string name="dns_tunnel_domain_hint">Domaine d\'autorité (ex: tunnel.example.com)</string>
@@ -386,4 +398,33 @@
 
     <string name="crash_dialog_title">Rapport d\'exception du moteur central</string>
     <string name="crash_dialog_title_prev">Rapport de plantage précédent du moteur central</string>
+
+    <!-- Car & Bluetooth Sync -->
+    <string name="car_app_name">Stun Car</string>
+    <string name="car_dashboard_title">Tableau de bord auto</string>
+    <string name="car_power_button_connect">CONNECTER</string>
+    <string name="car_power_button_disconnect">DÉCONNECTER</string>
+    <string name="car_status_protected">Protégé</string>
+    <string name="car_status_unprotected">Non protégé</string>
+    <string name="car_bt_sync_on">Synchro Bluetooth : ACTIF</string>
+    <string name="car_bt_sync_off">Synchro Bluetooth : INACTIF</string>
+    <string name="car_bt_paired_devices">Appareils Bluetooth associés</string>
+    <string name="car_bt_select_device">Sélectionner appareil Bluetooth auto</string>
+    <string name="car_bt_scanning">Analyse des appareils Bluetooth…</string>
+    <string name="car_bt_no_devices">Aucun appareil Bluetooth associé trouvé.</string>
+    <string name="car_push_success">Nœud envoyé avec succès via Bluetooth</string>
+    <string name="car_remote_success">Commande envoyée via Bluetooth</string>
+    <string name="device_picker_wifi_tab">Wi-Fi (LAN)</string>
+    <string name="device_picker_bt_tab">Bluetooth (Auto)</string>
+    <string name="desc_car_power_button">Basculer connexion</string>
+
+    <!-- Wear OS & XR Specific -->
+    <string name="wear_app_name">Stun Wear</string>
+    <string name="wear_tile_title">Raccourci Stun</string>
+    <string name="wear_tile_connected">VPN Actif</string>
+    <string name="wear_tile_disconnected">VPN Inactif</string>
+    <string name="xr_app_name">Stun XR</string>
+    <string name="xr_spatial_dashboard">Panneau Spatial</string>
+    <string name="xr_spatial_status_connected">Protection Spatiale Active</string>
+    <string name="xr_spatial_status_disconnected">Protection Spatiale Inactive</string>
 </resources>

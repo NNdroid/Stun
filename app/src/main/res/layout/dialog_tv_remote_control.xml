@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="24dp">
+    android:padding="20dp">
 
     <!-- Header -->
     <LinearLayout
@@ -16,10 +16,10 @@
         android:gravity="center_vertical">
 
         <ImageView
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
             android:src="@drawable/ic_tv"
-            android:padding="6dp"
+            android:padding="7dp"
             android:background="@drawable/bg_badge_type"
             app:tint="?attr/colorPrimary"
             android:contentDescription="@string/tv_remote_control" />
@@ -38,7 +38,7 @@
                 android:textSize="17sp"
                 android:textStyle="bold"
                 android:textColor="?attr/colorOnSurface"
-                tools:text="StunTV - MiBox 4K" />
+                tools:text="Box R 4K Plus (3)" />
 
             <TextView
                 android:id="@+id/tv_dialog_device_ip"
@@ -46,20 +46,29 @@
                 android:layout_height="wrap_content"
                 android:textSize="13sp"
                 android:textColor="?attr/colorOnSurfaceVariant"
-                tools:text="192.168.1.105:51820" />
+                tools:text="192.168.192.30:37175" />
         </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_dialog_refresh"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            app:icon="@drawable/ic_sync"
+            app:iconTint="?attr/colorPrimary"
+            android:contentDescription="@string/refresh" />
     </LinearLayout>
 
     <com.google.android.material.divider.MaterialDivider
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginVertical="16dp" />
+        android:layout_marginVertical="12dp" />
 
-    <!-- TV VPN Status Card -->
+    <!-- TV VPN Status & Details Card -->
     <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:cardCornerRadius="12dp"
+        app:cardCornerRadius="14dp"
         app:cardElevation="0dp"
         app:strokeWidth="1dp"
         app:strokeColor="?attr/colorOutlineVariant"
@@ -69,8 +78,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:padding="14dp">
 
+            <!-- Status Row with Dot & Badge -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -82,43 +92,194 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="@string/desc_connection_status"
-                    android:textSize="14sp"
+                    android:textSize="13sp"
                     android:textColor="?attr/colorOnSurfaceVariant" />
 
-                <TextView
-                    android:id="@+id/tv_dialog_vpn_status"
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/status_disconnected"
-                    tools:text="未连接" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <ImageView
+                        android:id="@+id/iv_dialog_status_dot"
+                        android:layout_width="8dp"
+                        android:layout_height="8dp"
+                        android:layout_marginEnd="6dp"
+                        android:src="@drawable/shape_status_dot"
+                        app:tint="@color/status_disconnected"
+                        android:contentDescription="@null" />
+
+                    <TextView
+                        android:id="@+id/tv_dialog_vpn_status"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/status_disconnected"
+                        android:text="@string/tv_remote_loading"
+                        tools:text="已連線" />
+                </LinearLayout>
             </LinearLayout>
 
+            <com.google.android.material.divider.MaterialDivider
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginVertical="8dp"
+                app:dividerColor="?attr/colorOutlineVariant" />
+
+            <!-- Profile Name Row -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginTop="8dp">
+                android:gravity="center_vertical">
 
                 <TextView
-                    android:layout_width="0dp"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
                     android:text="@string/profile_name"
-                    android:textSize="14sp"
+                    android:textSize="13sp"
                     android:textColor="?attr/colorOnSurfaceVariant" />
 
                 <TextView
-                    android:id="@+id/tv_dialog_active_profile"
+                    android:id="@+id/tv_dialog_tunnel_type"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:paddingHorizontal="6dp"
+                    android:paddingVertical="1dp"
+                    android:background="@drawable/bg_badge_type"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorPrimary"
+                    android:visibility="gone"
+                    tools:visibility="visible"
+                    tools:text="UDP_CUSTOM" />
+
+                <TextView
+                    android:id="@+id/tv_dialog_active_profile"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="end"
                     android:textSize="14sp"
                     android:textStyle="bold"
                     android:textColor="?attr/colorOnSurface"
-                    tools:text="HK-Node-01" />
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:text="@string/tv_remote_loading"
+                    tools:text="Guangzhou Home" />
             </LinearLayout>
+
+            <!-- Server Row -->
+            <LinearLayout
+                android:id="@+id/layout_dialog_server"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="6dp"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ssh_address"
+                    android:textSize="12sp"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <TextView
+                    android:id="@+id/tv_dialog_server_address"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="end"
+                    android:textSize="12sp"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:ellipsize="middle"
+                    android:singleLine="true"
+                    tools:text="43.138.143.71:22" />
+            </LinearLayout>
+
+            <!-- Public IP Row -->
+            <LinearLayout
+                android:id="@+id/layout_dialog_public_ip"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="6dp"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/tv_remote_public_ip_title"
+                    android:textSize="12sp"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <TextView
+                    android:id="@+id/tv_dialog_public_ip"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="end"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorPrimary"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    tools:text="🌐 103.24.xxx.xxx 🇭🇰 Hong Kong" />
+            </LinearLayout>
+
+            <!-- Traffic Stats Row -->
+            <LinearLayout
+                android:id="@+id/layout_dialog_traffic"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="8dp"
+                android:padding="8dp"
+                android:background="@drawable/bg_badge_type"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/tv_remote_traffic_live"
+                        android:textSize="11sp"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <TextView
+                        android:id="@+id/tv_dialog_traffic_total"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="11sp"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        tools:text="Σ 166.4 MB" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_dialog_traffic_rate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorOnSurface"
+                    tools:text="↑ 128.0 KB/s   ↓ 2.4 MB/s" />
+            </LinearLayout>
+
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -128,17 +289,66 @@
         style="@style/Widget.Material3.Button"
         android:layout_width="match_parent"
         android:layout_height="52dp"
-        android:layout_marginTop="20dp"
-        android:text="@string/tv_remote_start_vpn"
+        android:layout_marginTop="16dp"
+        android:text="@string/tv_remote_loading"
         android:textSize="15sp"
+        android:textStyle="bold"
         app:cornerRadius="12dp" />
+
+    <!-- Secondary Actions Grid -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_dialog_reconnect"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="4dp"
+            android:text="@string/tv_remote_reconnect"
+            android:textSize="13sp"
+            app:cornerRadius="10dp"
+            app:icon="@drawable/ic_sync"
+            app:iconSize="16dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_dialog_switch_profile"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:text="@string/tv_remote_switch_node"
+            android:textSize="13sp"
+            app:cornerRadius="10dp"
+            app:icon="@drawable/ic_dashboard"
+            app:iconSize="16dp" />
+    </LinearLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_dialog_push_current"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginTop="6dp"
+        android:text="@string/tv_remote_push_and_start"
+        android:textSize="13sp"
+        android:visibility="gone"
+        app:cornerRadius="10dp"
+        app:icon="@drawable/ic_share"
+        app:iconSize="16dp"
+        tools:visibility="visible" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_dialog_close"
         style="@style/Widget.Material3.Button.TextButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="4dp"
         android:text="@string/close" />
 
 </LinearLayout>

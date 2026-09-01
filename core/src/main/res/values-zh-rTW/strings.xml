@@ -282,6 +282,18 @@
     <string name="tv_remote_disconnected">未連線</string>
     <string name="tv_remote_start_vpn">啟動電視 VPN</string>
     <string name="tv_remote_stop_vpn">斷開電視 VPN</string>
+    <string name="tv_remote_reconnecting">連線中…</string>
+    <string name="tv_remote_disconnecting">斷開中…</string>
+    <string name="tv_remote_starting">啟動中…</string>
+    <string name="tv_remote_reconnect">重新連線</string>
+    <string name="tv_remote_reconnecting_action">正在重啟電視 VPN…</string>
+    <string name="tv_remote_switch_node">切換電視節點</string>
+    <string name="tv_remote_push_and_start">推送並啟動目前節點</string>
+    <string name="tv_remote_traffic_live">即時流量</string>
+    <string name="tv_remote_public_ip_title">電視公網 IP</string>
+    <string name="tv_remote_loading">正在讀取狀態…</string>
+    <string name="tv_remote_no_profiles">電視端暫無可用節點</string>
+    <string name="tv_remote_node_switched">已切換電視節點至：%1$s</string>
     <string name="tv_waiting_confirmation">正在等待電視端確認…</string>
     <string name="show_notification_speed">通知欄顯示即時網速</string>
     <string name="dns_tunnel_record_type">DNS 資料記錄類型</string>
@@ -387,4 +399,33 @@
 
     <string name="crash_dialog_title">核心引擎異常診斷</string>
     <string name="crash_dialog_title_prev">上次運行核心異常報告</string>
+
+    <!-- Car & Bluetooth Sync -->
+    <string name="car_app_name">Stun 車載版</string>
+    <string name="car_dashboard_title">車載儀表板</string>
+    <string name="car_power_button_connect">一鍵開啟</string>
+    <string name="car_power_button_disconnect">中斷代理</string>
+    <string name="car_status_protected">安全代理中</string>
+    <string name="car_status_unprotected">未開啟代理</string>
+    <string name="car_bt_sync_on">藍牙遙控：已開啟</string>
+    <string name="car_bt_sync_off">藍牙遙控：已關閉</string>
+    <string name="car_bt_paired_devices">已配對車載藍牙裝置</string>
+    <string name="car_bt_select_device">選擇車載藍牙裝置</string>
+    <string name="car_bt_scanning">正在掃描已配對藍牙裝置…</string>
+    <string name="car_bt_no_devices">未找到已配對的藍牙裝置，請先在系統設定中與車機配對。</string>
+    <string name="car_push_success">藍牙成功推送節點</string>
+    <string name="car_remote_success">藍牙遠端命令已發送</string>
+    <string name="device_picker_wifi_tab">Wi-Fi 區域網路</string>
+    <string name="device_picker_bt_tab">車載藍牙</string>
+    <string name="desc_car_power_button">切換連線狀態</string>
+
+    <!-- Wear OS & XR Specific -->
+    <string name="wear_app_name">Stun 手表版</string>
+    <string name="wear_tile_title">Stun 快捷開關</string>
+    <string name="wear_tile_connected">代理已開啟</string>
+    <string name="wear_tile_disconnected">代理已關閉</string>
+    <string name="xr_app_name">Stun 空間版</string>
+    <string name="xr_spatial_dashboard">懸浮空間儀表板</string>
+    <string name="xr_spatial_status_connected">空間安全代理中</string>
+    <string name="xr_spatial_status_disconnected">空間未開啟代理</string>
 </resources>

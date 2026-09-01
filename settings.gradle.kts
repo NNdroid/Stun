@@ -33,3 +33,6 @@ rootProject.name = "Stun"
 include(":core")
 include(":app")
 include(":tv")
+include(":car")
+include(":wear")
+include(":xr")

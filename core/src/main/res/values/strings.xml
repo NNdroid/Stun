@@ -287,7 +287,19 @@
     <string name="tv_remote_connected">Connected</string>
     <string name="tv_remote_disconnected">Disconnected</string>
     <string name="tv_remote_start_vpn">Start TV VPN</string>
-    <string name="tv_remote_stop_vpn">Stop TV VPN</string>
+    <string name="tv_remote_stop_vpn">Disconnect TV VPN</string>
+    <string name="tv_remote_reconnecting">Connecting…</string>
+    <string name="tv_remote_disconnecting">Disconnecting…</string>
+    <string name="tv_remote_starting">Starting…</string>
+    <string name="tv_remote_reconnect">Restart / Reconnect</string>
+    <string name="tv_remote_reconnecting_action">Restarting TV VPN…</string>
+    <string name="tv_remote_switch_node">Switch TV Node</string>
+    <string name="tv_remote_push_and_start">Push &amp; Start Current Node</string>
+    <string name="tv_remote_traffic_live">Live Traffic</string>
+    <string name="tv_remote_public_ip_title">TV Public IP</string>
+    <string name="tv_remote_loading">Loading status…</string>
+    <string name="tv_remote_no_profiles">No nodes available on TV</string>
+    <string name="tv_remote_node_switched">Switched TV node to: %1$s</string>
     <string name="tv_waiting_confirmation">Waiting for TV user confirmation…</string>
     <string name="show_notification_speed">Show Real-Time Speed in Notification</string>
     <string name="dns_tunnel_record_type">DNS Record Type</string>
@@ -386,4 +398,33 @@
 
     <string name="crash_dialog_title">Core Engine Exception Report</string>
     <string name="crash_dialog_title_prev">Previous Core Crash Report</string>
+
+    <!-- Car & Bluetooth Sync -->
+    <string name="car_app_name">Stun Car</string>
+    <string name="car_dashboard_title">Car Dashboard</string>
+    <string name="car_power_button_connect">CONNECT</string>
+    <string name="car_power_button_disconnect">DISCONNECT</string>
+    <string name="car_status_protected">Protected</string>
+    <string name="car_status_unprotected">Unprotected</string>
+    <string name="car_bt_sync_on">Bluetooth Sync: ON</string>
+    <string name="car_bt_sync_off">Bluetooth Sync: OFF</string>
+    <string name="car_bt_paired_devices">Paired Bluetooth Devices</string>
+    <string name="car_bt_select_device">Select Car Bluetooth Device</string>
+    <string name="car_bt_scanning">Scanning Bluetooth devices…</string>
+    <string name="car_bt_no_devices">No paired Bluetooth devices found. Please pair in system settings first.</string>
+    <string name="car_push_success">Successfully pushed node via Bluetooth</string>
+    <string name="car_remote_success">Command sent via Bluetooth</string>
+    <string name="device_picker_wifi_tab">Wi-Fi (LAN)</string>
+    <string name="device_picker_bt_tab">Bluetooth (Car)</string>
+    <string name="desc_car_power_button">Toggle Connection</string>
+
+    <!-- Wear OS & XR Specific -->
+    <string name="wear_app_name">Stun Wear</string>
+    <string name="wear_tile_title">Stun Toggle</string>
+    <string name="wear_tile_connected">VPN Active</string>
+    <string name="wear_tile_disconnected">VPN Off</string>
+    <string name="xr_app_name">Stun XR</string>
+    <string name="xr_spatial_dashboard">Spatial Panel</string>
+    <string name="xr_spatial_status_connected">Spatial Protection Active</string>
+    <string name="xr_spatial_status_disconnected">Spatial Protection Off</string>
 </resources>

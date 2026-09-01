@@ -113,14 +113,44 @@ class MainActivity : FragmentActivity() {
     private fun setupRemoteCallbacks() {
         // Status provider for remote queries
         RemoteSyncManager.tvStatusProvider = {
-            val selectedProfile = ProfileManager.getSelectedProfile(this)
-            app.fjj.stun.remote.TvStatusResponse(
-                vpnState = currentVpnState.name,
-                currentProfileName = selectedProfile?.name,
-                currentProfileId = SettingsManager.getSelectedProfileId(this),
-                profileCount = adapter.itemCount,
-                deviceName = android.os.Build.MODEL
-            )
+            try {
+                val selectedProfile = ProfileManager.getSelectedProfile(this)
+                val allProfiles = try {
+                    ProfileManager.getProfiles(this).map {
+                        app.fjj.stun.remote.TvProfileSummary(it.id, it.name, it.tunnelType)
+                    }
+                } catch (_: Exception) { emptyList() }
+                val pubIp = if (binding.tvPublicIp.visibility == View.VISIBLE) binding.tvPublicIp.text.toString() else null
+                val typeStr = when (selectedProfile.tunnelType) {
+                    Profile.TUNNEL_TYPE_UDP_CUSTOM -> "UDP CUSTOM (${selectedProfile.udpCustomMagic.ifBlank { "UDPC" }})"
+                    Profile.TUNNEL_TYPE_DNS -> "DNS"
+                    Profile.TUNNEL_TYPE_KCP -> "KCP"
+                    else -> selectedProfile.tunnelType.uppercase()
+                }
+                app.fjj.stun.remote.TvStatusResponse(
+                    vpnState = (StunRepository.vpnState.value ?: currentVpnState).name,
+                    currentProfileName = selectedProfile.name.ifBlank { null },
+                    currentProfileId = SettingsManager.getSelectedProfileId(this),
+                    currentProfileType = if (selectedProfile.name.isNotBlank()) typeStr else null,
+                    currentProfileServer = if (selectedProfile.sshAddr.isNotBlank()) selectedProfile.sshAddr else null,
+                    profileCount = allProfiles.size,
+                    deviceName = android.os.Build.MODEL,
+                    publicIp = pubIp,
+                    txRate = StunRepository.txRate.value ?: 0L,
+                    rxRate = StunRepository.rxRate.value ?: 0L,
+                    txTotal = StunRepository.txTotal.value ?: 0L,
+                    rxTotal = StunRepository.rxTotal.value ?: 0L,
+                    profiles = allProfiles
+                )
+            } catch (e: Exception) {
+                app.fjj.stun.remote.TvStatusResponse(
+                    vpnState = (StunRepository.vpnState.value ?: currentVpnState).name,
+                    currentProfileName = null,
+                    currentProfileId = SettingsManager.getSelectedProfileId(this),
+                    profileCount = 0,
+                    deviceName = android.os.Build.MODEL
+                )
+            }
         }
 
         // Push confirmation dialog callback
@@ -138,7 +168,7 @@ class MainActivity : FragmentActivity() {
             }
         }
 
-        // Remote control callback (Connect, Disconnect, Select Profile)
+        // Remote control callback (Connect, Disconnect, Restart, Select Profile)
         RemoteSyncManager.onRemoteControlRequested = { action, profileId ->
             withContext(Dispatchers.Main) {
                 when (action) {
@@ -148,11 +178,26 @@ class MainActivity : FragmentActivity() {
                             adapter.updateSelectedId(profileId)
                             updateSelectedNodeUI()
                         }
-                        handleConnectClick()
+                        if (currentVpnState != VpnState.CONNECTED && currentVpnState != VpnState.CONNECTING) {
+                            startVpn()
+                        }
                         true
                     }
                     "stop_vpn" -> {
                         stopVpn()
+                        true
+                    }
+                    "restart_vpn" -> {
+                        stopVpn()
+                        lifecycleScope.launch(Dispatchers.Main) {
+                            kotlinx.coroutines.delay(600L)
+                            if (profileId != null) {
+                                SettingsManager.setSelectedProfileId(this@MainActivity, profileId)
+                                adapter.updateSelectedId(profileId)
+                                updateSelectedNodeUI()
+                            }
+                            startVpn()
+                        }
                         true
                     }
                     "select_profile" -> {
@@ -160,6 +205,13 @@ class MainActivity : FragmentActivity() {
                             SettingsManager.setSelectedProfileId(this@MainActivity, profileId)
                             adapter.updateSelectedId(profileId)
                             updateSelectedNodeUI()
+                            if (currentVpnState == VpnState.CONNECTED || currentVpnState == VpnState.CONNECTING) {
+                                stopVpn()
+                                lifecycleScope.launch(Dispatchers.Main) {
+                                    kotlinx.coroutines.delay(600L)
+                                    startVpn()
+                                }
+                            }
                             true
                         } else false
                     }

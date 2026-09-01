@@ -51,5 +51,11 @@ tv/release
 tv/debug
 app/release
 app/debug
+car/release
+car/debug
+wear/release
+wear/debug
+xr/release
+xr/debug
 
 .artifacts/

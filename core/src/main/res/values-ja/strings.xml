@@ -288,6 +288,18 @@
     <string name="tv_remote_disconnected">未接続</string>
     <string name="tv_remote_start_vpn">テレビのVPNを開始</string>
     <string name="tv_remote_stop_vpn">テレビのVPNを切断</string>
+    <string name="tv_remote_reconnecting">接続中…</string>
+    <string name="tv_remote_disconnecting">切断中…</string>
+    <string name="tv_remote_starting">起動中…</string>
+    <string name="tv_remote_reconnect">再接続</string>
+    <string name="tv_remote_reconnecting_action">テレビのVPNを再起動中…</string>
+    <string name="tv_remote_switch_node">ノードを切り替え</string>
+    <string name="tv_remote_push_and_start">現在のノードを転送して開始</string>
+    <string name="tv_remote_traffic_live">リアルタイム通信量</string>
+    <string name="tv_remote_public_ip_title">テレビのパブリックIP</string>
+    <string name="tv_remote_loading">ステータス取得中…</string>
+    <string name="tv_remote_no_profiles">テレビに利用可能なノードがありません</string>
+    <string name="tv_remote_node_switched">ノードを切り替えました: %1$s</string>
     <string name="tv_waiting_confirmation">テレビ側の確認を待機中…</string>
     <string name="show_notification_speed">通知バーに速度を表示</string>
     <string name="dns_tunnel_record_type">DNSレコードタイプ</string>
@@ -386,4 +398,33 @@
 
     <string name="crash_dialog_title">コアエンジン異常診断</string>
     <string name="crash_dialog_title_prev">前回のコアクラッシュレポート</string>
+
+    <!-- Car & Bluetooth Sync -->
+    <string name="car_app_name">Stun 車載版</string>
+    <string name="car_dashboard_title">車載ダッシュボード</string>
+    <string name="car_power_button_connect">接続</string>
+    <string name="car_power_button_disconnect">切断</string>
+    <string name="car_status_protected">保護中</string>
+    <string name="car_status_unprotected">未保護</string>
+    <string name="car_bt_sync_on">Bluetooth同期：オン</string>
+    <string name="car_bt_sync_off">Bluetooth同期：オフ</string>
+    <string name="car_bt_paired_devices">ペアリング済みBluetooth機器</string>
+    <string name="car_bt_select_device">車載Bluetooth機器を選択</string>
+    <string name="car_bt_scanning">Bluetooth機器をスキャン中…</string>
+    <string name="car_bt_no_devices">ペアリング済みのBluetooth機器が見つかりません。</string>
+    <string name="car_push_success">Bluetooth経由でノードを送信しました</string>
+    <string name="car_remote_success">Bluetoothコマンドを送信しました</string>
+    <string name="device_picker_wifi_tab">Wi-Fi (LAN)</string>
+    <string name="device_picker_bt_tab">Bluetooth (車載)</string>
+    <string name="desc_car_power_button">接続切り替え</string>
+
+    <!-- Wear OS & XR Specific -->
+    <string name="wear_app_name">Stun ウェア</string>
+    <string name="wear_tile_title">Stun ショートカット</string>
+    <string name="wear_tile_connected">VPN 有効</string>
+    <string name="wear_tile_disconnected">VPN 无効</string>
+    <string name="xr_app_name">Stun XR</string>
+    <string name="xr_spatial_dashboard">空間ダッシュボード</string>
+    <string name="xr_spatial_status_connected">空間保護 有効</string>
+    <string name="xr_spatial_status_disconnected">空間保護 无効</string>
 </resources>

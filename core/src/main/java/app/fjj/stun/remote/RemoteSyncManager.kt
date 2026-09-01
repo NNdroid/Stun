@@ -39,17 +39,32 @@ data class RemoteDeviceInfo(
 )
 
 @Keep
+data class TvProfileSummary(
+    val id: String,
+    val name: String,
+    val tunnelType: String = ""
+)
+
+@Keep
 data class TvStatusResponse(
     val vpnState: String,
     val currentProfileName: String?,
     val currentProfileId: String?,
-    val profileCount: Int,
-    val deviceName: String
+    val currentProfileType: String? = null,
+    val currentProfileServer: String? = null,
+    val profileCount: Int = 0,
+    val deviceName: String = "",
+    val publicIp: String? = null,
+    val txRate: Long = 0L,
+    val rxRate: Long = 0L,
+    val txTotal: Long = 0L,
+    val rxTotal: Long = 0L,
+    val profiles: List<TvProfileSummary>? = null
 )
 
 @Keep
 data class RemoteControlRequest(
-    val action: String, // "start_vpn", "stop_vpn", "select_profile"
+    val action: String, // "start_vpn", "stop_vpn", "restart_vpn", "select_profile"
     val profileId: String? = null
 )
 
@@ -116,17 +131,31 @@ object RemoteSyncManager {
 
                     // Get TV Status
                     get("/api/status") {
-                        val status = tvStatusProvider?.invoke() ?: TvStatusResponse(
-                            vpnState = StunRepository.vpnState.value?.name ?: "DISCONNECTED",
-                            currentProfileName = null,
-                            currentProfileId = SettingsManager.getSelectedProfileId(context),
-                            profileCount = 0,
-                            deviceName = Build.MODEL
-                        )
-                        call.respond(HttpStatusCode.OK, status)
+                        try {
+                            val status = tvStatusProvider?.invoke() ?: TvStatusResponse(
+                                vpnState = StunRepository.vpnState.value?.name ?: "DISCONNECTED",
+                                currentProfileName = null,
+                                currentProfileId = SettingsManager.getSelectedProfileId(context),
+                                profileCount = 0,
+                                deviceName = Build.MODEL
+                            )
+                            call.respond(HttpStatusCode.OK, status)
+                        } catch (e: Exception) {
+                            StunLogger.e(TAG, "Failed to provide tv status", e)
+                            call.respond(
+                                HttpStatusCode.OK,
+                                TvStatusResponse(
+                                    vpnState = StunRepository.vpnState.value?.name ?: "DISCONNECTED",
+                                    currentProfileName = null,
+                                    currentProfileId = SettingsManager.getSelectedProfileId(context),
+                                    profileCount = 0,
+                                    deviceName = Build.MODEL
+                                )
+                            )
+                        }
                     }
 
-                    // Remote Control (Start/Stop VPN, Switch profile)
+                    // Remote Control (Start/Stop/Restart VPN, Switch profile)
                     post("/api/control") {
                         try {
                             val req = call.receive<RemoteControlRequest>()
@@ -137,6 +166,7 @@ object RemoteSyncManager {
                                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to "control action failed"))
                             }
                         } catch (e: Exception) {
+                            StunLogger.e(TAG, "Remote control error", e)
                             call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "unknown error")))
                         }
                     }

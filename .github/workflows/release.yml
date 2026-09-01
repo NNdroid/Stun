@@ -10,10 +10,13 @@ on:
         required: true
         type: choice
         options:
-          - 'both'
+          - 'all'
           - 'app'
           - 'tv'
-        default: 'both'
+          - 'car'
+          - 'wear'
+          - 'xr'
+        default: 'all'
       build_variant:
         description: '🚀 构建类型 (Variant)'
         required: true
@@ -128,8 +131,8 @@ jobs:
             echo "clean=${{ github.event.inputs.clean_build }}" >> $GITHUB_OUTPUT
             echo "tag=${{ github.event.inputs.custom_tag }}" >> $GITHUB_OUTPUT
           else
-            # 自动触发时（Release 发布）
-            echo "build_module=both" >> $GITHUB_OUTPUT
+            # 自动触发时（Release 发布）全量构建所有端
+            echo "build_module=all" >> $GITHUB_OUTPUT
             echo "build_variant=both" >> $GITHUB_OUTPUT
             echo "build_aab=false" >> $GITHUB_OUTPUT
             echo "sign=true" >> $GITHUB_OUTPUT
@@ -155,14 +158,15 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          MODULES=""
-          if [ "${{ steps.options.outputs.build_module }}" == "app" ]; then
-            MODULES="app"
-          elif [ "${{ steps.options.outputs.build_module }}" == "tv" ]; then
-            MODULES="tv"
-          else
-            MODULES="app tv"
-          fi
+          MODULE_CHOICE="${{ steps.options.outputs.build_module }}"
+          case "$MODULE_CHOICE" in
+            app)  MODULES="app" ;;
+            tv)   MODULES="tv" ;;
+            car)  MODULES="car" ;;
+            wear) MODULES="wear" ;;
+            xr)   MODULES="xr" ;;
+            *)    MODULES="app tv car wear xr" ;;
+          esac
 
           TASKS=""
           if [ "${{ steps.options.outputs.clean }}" == "true" ]; then
@@ -225,6 +229,12 @@ jobs:
             app/build/outputs/bundle/**/*.aab
             tv/build/outputs/apk/**/*.apk
             tv/build/outputs/bundle/**/*.aab
+            car/build/outputs/apk/**/*.apk
+            car/build/outputs/bundle/**/*.aab
+            wear/build/outputs/apk/**/*.apk
+            wear/build/outputs/bundle/**/*.aab
+            xr/build/outputs/apk/**/*.apk
+            xr/build/outputs/bundle/**/*.aab
             core/libs/*.aar
           if-no-files-found: warn
 
@@ -237,8 +247,17 @@ jobs:
             app/build/outputs/bundle/release/*.aab
             tv/build/outputs/apk/release/*.apk
             tv/build/outputs/bundle/release/*.aab
+            car/build/outputs/apk/release/*.apk
+            car/build/outputs/bundle/release/*.aab
+            wear/build/outputs/apk/release/*.apk
+            wear/build/outputs/bundle/release/*.aab
+            xr/build/outputs/apk/release/*.apk
+            xr/build/outputs/bundle/release/*.aab
             app/build/outputs/apk/debug/*.apk
             tv/build/outputs/apk/debug/*.apk
+            car/build/outputs/apk/debug/*.apk
+            wear/build/outputs/apk/debug/*.apk
+            xr/build/outputs/apk/debug/*.apk
             core/libs/myssh.release.aar
             core/libs/myssh.debug.aar
           fail_on_unmatched_files: false
