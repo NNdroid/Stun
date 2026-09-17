@@ -4,7 +4,7 @@ import android.app.Application
 import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.StunLogger
 import app.fjj.stun.repo.StunRepository
-import app.fjj.stun.util.ExecUtils
+import app.fjj.stun.util.AppBootstrap
 import app.fjj.stun.util.KeystoreUtils
 import app.fjj.stun.util.LocaleHelper
 import com.google.android.material.color.DynamicColors
@@ -21,14 +21,8 @@ class TVApp : Application() {
 
         initLogger()
         
-        // --- Fatal Crash Logger ---
-        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            StunLogger.e("FATAL", "Uncaught Exception in TV App [Thread: ${thread.name}]", throwable)
-            // Give the logger thread a moment to write to disk
-            Thread.sleep(500)
-            defaultHandler?.uncaughtException(thread, throwable)
-        }
+        // --- Fatal Crash Logger & Recorder ---
+        app.fjj.stun.util.CrashHandler.init(this)
         
         KeystoreUtils.init(this)
         
@@ -38,10 +32,22 @@ class TVApp : Application() {
         app.fjj.stun.repo.StunRepository.initCrashOutput(this)
 
         // Deploy assets (geoip.dat, geosite.dat, etc.)
-        initAssets()
+        // 从前这里是 TV 独有的**主线程同步**实现：铺 12.9MB + 因为判定口径的 bug 每次冷启动都重铺，
+        // 是 5 个变体里唯一真会卡住启动的一个。现统一交给 AppBootstrap（IO + 内含就绪门，
+        // 服务侧会 awaitAssets），实现只此一处。
+        AppBootstrap.start(this)
 
-        // Trigger GeoData auto-update check on startup
-        SettingsManager.checkAndUpdateGeoData(this)
+        // Start Bluetooth Sync Server for phone-to-tv remote control & node push
+        app.fjj.stun.remote.BluetoothSyncManager.startServer(this)
+
+        // Start MCP Server for TV AI agent remote control (Claude / Cursor / Gemini)
+        try {
+            app.fjj.stun.remote.StunMcpServer.start(this)
+        } catch (e: Throwable) {
+            StunLogger.e("TVApp", "Failed to start StunMcpServer", e)
+        }
+
+        // GeoData auto-update check 由 AppBootstrap 在部署完成后负责（它的前提是文件已就位）。
     }
 
     private fun initLogger() {
@@ -72,26 +78,6 @@ class TVApp : Application() {
             StunLogger.i("TVApp", "Log system bridge established (PID: ${android.os.Process.myPid()})")
         } catch (e: Exception) {
             StunLogger.e("TVApp", "Fatal error during logger init", e)
-        }
-    }
-
-    private fun initAssets() {
-        val lastUpdate = SettingsManager.getLastUpdateTime(this)
-        val apkUpdateTime = try {
-            val info = packageManager.getPackageInfo(packageName, 0)
-            info.lastUpdateTime / 1000
-        } catch (_: Exception) {
-            0L
-        }
-
-        if (lastUpdate <= 0 || apkUpdateTime > lastUpdate) {
-            StunLogger.i("TVApp", "App updated or first run, deploying geo assets...")
-            ExecUtils.copyAssetToCache(this, "rules-dat/geoip.dat", "geoip.dat")
-            ExecUtils.copyAssetToCache(this, "rules-dat/geosite.dat", "geosite.dat")
-            
-            if (lastUpdate > 0) {
-                SettingsManager.saveLastUpdateTime(this, apkUpdateTime)
-            }
         }
     }
 }

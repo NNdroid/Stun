@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 桌面小组件：五种版式的名称/说明，以及展开详情用到的字段标签 -->
+<resources>
+    <string name="widget_label_capsule">快捷条</string>
+    <string name="widget_label_mini">迷你版</string>
+    <string name="widget_label_compact">紧凑版</string>
+    <string name="widget_label_standard">标准版</string>
+    <string name="widget_label_wide">平板 / 桌面版</string>
+    <string name="widget_label_detail">展开详情</string>
+
+    <string name="widget_desc_capsule">节点名、时延、实时速率图与一键开关</string>
+    <string name="widget_desc_mini">仅显示名称、时延与当前速率</string>
+    <string name="widget_desc_compact">有限空间内显示核心信息与连接操作</string>
+    <string name="widget_desc_standard">显示完整信息：名称、状态、时延、协议与上下行速率</string>
+    <string name="widget_desc_wide">适合大屏的横向信息与实时速率图</string>
+    <string name="widget_desc_detail">展示完整字段与实时速率图</string>
+
+    <string name="widget_label_uptime">运行时长</string>
+    <string name="widget_uptime_days">%1$d天%2$d小时%3$d分钟</string>
+    <string name="widget_uptime_hours">%1$d小时%2$d分钟</string>
+
+    <string name="desc_open_app">打开应用</string>
+    <string name="desc_widget_favorite">已收藏节点</string>
+</resources>

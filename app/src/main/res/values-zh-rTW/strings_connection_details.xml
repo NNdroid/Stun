@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connection_details_expand">展開連接詳情</string>
+    <string name="connection_node_details">節點詳情</string>
+    <string name="connection_server">伺服器</string>
+    <string name="connection_realtime_speed">即時速率 · 最近 15 個取樣</string>
+    <string name="connection_upload">上行</string>
+    <string name="connection_download">下行</string>
+    <string name="connection_upload_chart">最近上行速率圖</string>
+    <string name="connection_download_chart">最近下行速率圖</string>
+    <string name="connection_auxiliary_info">輔助資訊</string>
+    <string name="connection_total_traffic">總流量</string>
+    <string name="connection_exit">出口位址</string>
+    <string name="connection_exit_pending">正在取得出口位址…</string>
+    <string name="connection_last_connected">上次連接</string>
+    <string name="connection_magic_format">標記魔數：%1$s</string>
+    <string name="connection_label_protocol">協定</string>
+    <string name="connection_label_magic">標記魔數</string>
+    <string name="connection_label_note">備註</string>
+    <string name="connection_label_ssh_banner">SSH 標識</string>
+    <string name="connection_label_ssh_notice">伺服器提示</string>
+    <string name="connection_banner_link_failed">無法開啟該連結</string>
+    <string name="connection_bar_action_stop">斷開</string>
+    <string name="connection_disconnect_action">斷開連接</string>
+    <string name="connection_favorite_add">加入收藏</string>
+    <string name="connection_favorite_remove">取消收藏</string>
+    <!-- 2026-09-15: 质量分 i18n 补全 -->
+    <string name="connection_quality_format">品質 %1$s</string>
+
+    <!-- 拓撲地球 -->
+    <string name="connection_topology">連接拓撲</string>
+    <string name="connection_topology_mode_desc">切換星空模式</string>
+    <string name="connection_globe_description">連接拓撲地球</string>
+    <string name="connection_globe_description_counts">%1$s · %2$s</string>
+    <string name="connection_globe_empty">暫時沒有節點可以落到地球上。</string>
+    <string name="connection_globe_need_library">下載離線地理庫後，節點就能落到地球上。</string>
+    <string name="connection_globe_download">下載</string>
+    <string name="connection_globe_downloading_format">正在下載地理庫… %1$d%%</string>
+    <string name="connection_globe_download_failed">下載失敗，請檢查網路後重試。</string>
+    <string name="connection_globe_retry">重試</string>
+    <string name="connection_globe_bubble_exit">出口位置</string>
+    <string name="connection_globe_bubble_merged_format">此處聚合 %1$d 個節點</string>
+    <string name="connection_globe_bubble_idle">暫無活躍連線</string>
+    <string name="connection_active_connections">活躍連線</string>
+    <plurals name="connection_globe_nodes">
+        <item quantity="other">地球上 %d 個節點</item>
+    </plurals>
+    <plurals name="connection_globe_connections">
+        <item quantity="other">%d 條活躍連線</item>
+    </plurals>
+    <!-- 2026-09-16 對齊效果圖：卡片頭副標題、地球卡身分頭短標籤、復位視角 -->
+    <string name="connection_node_details_subtitle">伺服器連線與基本資訊</string>
+    <string name="connection_auxiliary_info_subtitle">其他技術資訊與伺服器提示</string>
+    <string name="connection_last_connected_short">上次：%1$s</string>
+    <string name="connection_globe_reset_view">復位視角</string>
+</resources>

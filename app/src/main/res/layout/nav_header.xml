@@ -1,46 +1,123 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_drawer_content"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:paddingHorizontal="24dp"
-    android:paddingTop="48dp"
-    android:paddingBottom="24dp">
+    android:layout_height="match_parent"
+    android:clipToPadding="false"
+    android:fillViewport="true"
+    android:paddingStart="@dimen/space_4"
+    android:paddingTop="@dimen/space_4"
+    android:paddingEnd="@dimen/space_4"
+    android:paddingBottom="@dimen/space_4">
 
-    <com.google.android.material.card.MaterialCardView
-        android:layout_width="72dp"
-        android:layout_height="72dp"
-        app:cardCornerRadius="20dp"
-        app:cardElevation="0dp"
-        app:cardBackgroundColor="?attr/colorPrimaryContainer"
-        app:strokeWidth="0dp">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
 
-        <ImageView
-            android:id="@+id/iv_logo"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:padding="12dp"
-            android:src="@drawable/ic_fox_logo"
-            android:contentDescription="@string/desc_app_logo"
-            app:tint="?attr/colorOnPrimaryContainer" />
-    </com.google.android.material.card.MaterialCardView>
+    <!-- Brand header (no card) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/space_2"
+        android:paddingTop="@dimen/space_3"
+        android:paddingEnd="@dimen/space_2"
+        android:paddingBottom="@dimen/space_3">
+
+        <FrameLayout
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:background="@drawable/bg_icon_circle">
+
+            <ImageView
+                android:id="@+id/iv_logo"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:layout_gravity="center"
+                android:contentDescription="@string/desc_app_logo"
+                android:src="@drawable/ic_fox_logo" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/space_4"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/app_name"
+                android:textAppearance="?attr/textAppearanceTitleLarge"
+                android:textColor="?attr/colorOnSurface"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_1"
+                android:text="@string/side_sheet_tagline"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+        </LinearLayout>
+    </LinearLayout>
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="@string/app_name"
-        android:textAppearance="?attr/textAppearanceHeadlineSmall"
-        android:textStyle="bold" />
+        android:layout_marginStart="@dimen/space_5"
+        android:layout_marginTop="@dimen/space_4"
+        android:layout_marginBottom="@dimen/space_2"
+        android:text="@string/drawer_navigation_section"
+        android:textAppearance="?attr/textAppearanceLabelMedium"
+        android:textColor="?attr/colorOnSurfaceVariant" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout android:id="@+id/nav_home" style="@style/StunNavDrawerRow" android:contentDescription="@string/nav_nodes">
+            <View android:id="@+id/nav_home_indicator" style="@style/StunNavDrawerIndicator" />
+            <FrameLayout style="@style/StunNavDrawerIconPlate"><ImageView style="@style/StunNavDrawerIcon" android:contentDescription="@null" android:src="@drawable/ic_menu_nodes" /></FrameLayout>
+            <TextView style="@style/StunNavDrawerLabel" android:text="@string/nav_nodes" />
+            <ImageView style="@style/StunNavDrawerChevron" android:importantForAccessibility="no" />
+        </LinearLayout>
+        <LinearLayout android:id="@+id/nav_settings" style="@style/StunNavDrawerRow" android:contentDescription="@string/action_settings">
+            <View android:id="@+id/nav_settings_indicator" style="@style/StunNavDrawerIndicator" android:visibility="invisible" />
+            <FrameLayout style="@style/StunNavDrawerIconPlate"><ImageView style="@style/StunNavDrawerIcon" android:contentDescription="@null" android:src="@drawable/ic_menu_settings" /></FrameLayout>
+            <TextView style="@style/StunNavDrawerLabel" android:text="@string/action_settings" />
+            <ImageView style="@style/StunNavDrawerChevron" android:importantForAccessibility="no" />
+        </LinearLayout>
+        <LinearLayout android:id="@+id/nav_logs" style="@style/StunNavDrawerRow" android:contentDescription="@string/action_logs">
+            <View android:id="@+id/nav_logs_indicator" style="@style/StunNavDrawerIndicator" android:visibility="invisible" />
+            <FrameLayout style="@style/StunNavDrawerIconPlate"><ImageView style="@style/StunNavDrawerIcon" android:contentDescription="@null" android:src="@drawable/ic_terminal_rounded" /></FrameLayout>
+            <TextView style="@style/StunNavDrawerLabel" android:text="@string/action_logs" />
+            <ImageView style="@style/StunNavDrawerChevron" android:importantForAccessibility="no" />
+        </LinearLayout>
+        <LinearLayout android:id="@+id/nav_about" style="@style/StunNavDrawerRow" android:contentDescription="@string/action_about">
+            <View android:id="@+id/nav_about_indicator" style="@style/StunNavDrawerIndicator" android:visibility="invisible" />
+            <FrameLayout style="@style/StunNavDrawerIconPlate"><ImageView style="@style/StunNavDrawerIcon" android:contentDescription="@null" android:src="@drawable/ic_info_rounded" /></FrameLayout>
+            <TextView style="@style/StunNavDrawerLabel" android:text="@string/action_about" />
+            <ImageView style="@style/StunNavDrawerChevron" android:importantForAccessibility="no" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <Space android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
 
     <TextView
         android:id="@+id/tv_version"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:layout_marginStart="@dimen/space_5"
+        android:layout_marginTop="@dimen/space_4"
+        android:textAppearance="?attr/textAppearanceBodySmall"
         android:textColor="?attr/colorOnSurfaceVariant"
         tools:text="v1.0.0" />
-
-</LinearLayout>
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

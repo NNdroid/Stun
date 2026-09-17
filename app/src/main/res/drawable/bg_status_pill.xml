@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 设置页 MCP / 数据库 WebUI 卡片的「运行状态」胶囊底。
+     比原来的直角色块更贴 M3 语言；颜色仍是 colorSurfaceContainer，与卡片底色分层但不抢眼。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="?attr/colorSurfaceContainer" />
+    <corners android:radius="@dimen/corner_sm" />
+</shape>

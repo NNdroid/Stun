@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ホーム画面ウィジェット：5 種類の名称/説明と、詳細ウィジェットの項目ラベル -->
+<resources>
+    <string name="widget_label_capsule">バー</string>
+    <string name="widget_label_mini">ミニ</string>
+    <string name="widget_label_standard">標準</string>
+    <string name="widget_label_detail">詳細</string>
+
+    <string name="widget_desc_capsule">ノード名、遅延、リアルタイム速度グラフ、ワンタップ切替</string>
+    <string name="widget_desc_mini">名前・遅延・現在の速度のみ表示</string>
+    <string name="widget_desc_standard">名前・状態・遅延・プロトコル・上下速度を表示</string>
+    <string name="widget_desc_detail">すべての項目とリアルタイム速度グラフを表示</string>
+
+    <string name="widget_label_uptime">接続時間</string>
+    <string name="widget_uptime_days">%1$d日%2$d時間%3$d分</string>
+    <string name="widget_uptime_hours">%1$d時間%2$d分</string>
+
+    <string name="desc_open_app">アプリを開く</string>
+    <string name="desc_widget_favorite">お気に入りのノード</string>
+    <!-- 2026-09-15: 小组件选择器 i18n 补全 -->
+    <string name="widget_label_compact">コンパクト</string>
+    <string name="widget_label_wide">タブレット / デスクトップ</string>
+    <string name="widget_desc_compact">限られたスペースに主要情報と接続操作</string>
+    <string name="widget_desc_wide">大画面向けの横長情報とリアルタイム速度チャート</string>
+</resources>

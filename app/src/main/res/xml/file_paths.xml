@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  FileProvider 的可分享路径白名单。只放行 cacheDir/logs：
+  日志导出是临时分享件，写进缓存目录、随系统回收，不进 filesDir 也不进外部存储。
+-->
+<paths>
+    <cache-path
+        name="logs"
+        path="logs/" />
+</paths>

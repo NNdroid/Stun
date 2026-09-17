@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Startbildschirm-Widgets: Namen/Beschreibungen der fünf Formate und Feldlabels des Detail-Widgets -->
+<resources>
+    <string name="widget_label_capsule">Leiste</string>
+    <string name="widget_label_mini">Mini</string>
+    <string name="widget_label_standard">Standard</string>
+    <string name="widget_label_detail">Details</string>
+
+    <string name="widget_desc_capsule">Name, Latenz, Live-Diagramme und Ein-Tipp-Schalter</string>
+    <string name="widget_desc_mini">Nur Name, Latenz und aktuelle Geschwindigkeit</string>
+    <string name="widget_desc_standard">Vollständige Infos: Name, Status, Latenz, Protokoll und Tempo</string>
+    <string name="widget_desc_detail">Alle Felder plus Live-Geschwindigkeitsdiagramm</string>
+
+    <string name="widget_label_uptime">Laufzeit</string>
+    <string name="widget_uptime_days">%1$dT %2$dStd %3$dMin</string>
+    <string name="widget_uptime_hours">%1$dStd %2$dMin</string>
+
+    <string name="desc_open_app">App öffnen</string>
+    <string name="desc_widget_favorite">Favorisierter Knoten</string>
+    <!-- 2026-09-15: 小组件选择器 i18n 补全 -->
+    <string name="widget_label_compact">Kompakt</string>
+    <string name="widget_label_wide">Tablet / Desktop</string>
+    <string name="widget_desc_compact">Kerninformationen und Verbindungsaktion auf wenig Raum</string>
+    <string name="widget_desc_wide">Breitere Informationen und Live-Tempodiagramme für große Bildschirme</string>
+</resources>

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<!--
+  订阅文件格式说明（德文）。
+
+  这份 HTML 随 APK 打包，是 SubscriptionHelpActivity 载入的离线页面。
+  三个硬约束，改的时候别破坏：
+  1. 自包含：只允许内联 CSS，不引任何外部资源、不写 JS（WebView 里 JS 是关掉的）。
+  2. 主题色占位符写成「双花括号包住的名字」，可用名字为 bg / fg / muted / accent /
+     code_bg / note_bg / note_fg / outline，由 Activity 在载入前逐个替换成当前主题色，
+     所以页面能跟着浅色/深色壁纸与动态取色走。新增名字要同步 SubscriptionHelpActivity。
+  3. 多语言是「一份语言一个目录」，不是运行时翻译：assets/help/<lang>/subscription_help.html。
+     各语言之间的小节结构要一致（测试会比对 h2 数量与占位符集合）。
+-->
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Abo-Hilfe</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 16px 16px 48px;
+      background: {{bg}};
+      color: {{fg}};
+      font-family: -apple-system, Roboto, "Segoe UI", system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.65;
+      -webkit-text-size-adjust: 100%;
+      word-wrap: break-word;
+    }
+    .lead { color: {{muted}}; margin: 0 0 4px; }
+    h2 {
+      font-size: 17px;
+      font-weight: 700;
+      color: {{accent}};
+      margin: 30px 0 10px;
+    }
+    h3 { font-size: 15px; font-weight: 600; margin: 18px 0 6px; }
+    p { margin: 0 0 12px; }
+    ul, ol { margin: 0 0 12px; padding-left: 22px; }
+    li { margin: 5px 0; }
+    code {
+      font-family: ui-monospace, "Roboto Mono", Menlo, Consolas, monospace;
+      font-size: 13px;
+      background: {{code_bg}};
+      border-radius: 6px;
+      padding: 1px 5px;
+    }
+    pre {
+      background: {{code_bg}};
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin: 0 0 14px;
+      overflow-x: auto;
+      line-height: 1.5;
+    }
+    pre code { background: none; padding: 0; font-size: 12.5px; }
+    .note {
+      background: {{note_bg}};
+      color: {{note_fg}};
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin: 0 0 14px;
+      font-size: 14px;
+    }
+    dl.meta { margin: 0 0 14px; }
+    dl.meta dt { font-weight: 600; margin-top: 16px; }
+    dl.meta dd { margin: 4px 0 0; color: {{muted}}; }
+    dl.meta dd pre { margin-top: 8px; }
+    dl.meta dd code { color: {{fg}}; }
+    .tag {
+      display: inline-block;
+      margin-left: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: {{muted}};
+      border: 1px solid {{outline}};
+      border-radius: 999px;
+      padding: 0 8px;
+      vertical-align: 1px;
+    }
+    strong { font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<p class="lead">Ein Abo ist nichts weiter als eine HTTPS-Adresse. Stun holt die Knotenliste von dort und importiert, aktualisiert oder entfernt Knoten auf diesem Gerät automatisch.</p>
+
+<h2>1. Die Adresse</h2>
+<ul>
+  <li>Nur <code>https://</code> wird akzeptiert. Reines <code>http</code>, <code>ftp</code> und <code>sftp</code> werden abgelehnt — der Abo-Inhalt bestimmt, mit welchen Servern du dich verbindest; über einen unverschlüsselten Kanal könnte ihn jeder unterwegs komplett umschreiben.</li>
+  <li>Dieselbe Adresse wird nur einmal gespeichert. Erneutes Hinzufügen aktualisiert den vorhandenen Eintrag, statt einen zweiten anzulegen.</li>
+</ul>
+
+<h2>2. Unterstützte Dateiformate</h2>
+<p>Stun probiert die folgenden Formate der Reihe nach durch und bricht beim ersten ab, das Knoten liefert. Gemischte Inhalte werden nicht unterstützt.</p>
+
+<h3>2.1 Ein <code>stun://</code>-Knoten pro Zeile</h3>
+<p>Das häufigste Format — genau der Text, den „Als Text teilen“ für einen einzelnen Knoten liefert, eine Zeile pro Knoten. Die ganze Datei teilt sich einen PIN.</p>
+<pre><code>stun://eyJ2IjoxLCJnIjoi…
+stun://eyJ2IjoxLCJnIjoi…</code></pre>
+<div class="note"><strong>Hinweis:</strong> Sobald die Datei eine Zeile enthält, die mit <code>stun://</code> oder <code>stun:</code> beginnt, nutzt Stun <em>ausschließlich</em> dieses Format. Alle anderen Zeilen werden ignoriert — auch ein danebenstehendes einfaches JSON-Array.</div>
+
+<h3>2.2 Ein einfaches JSON-Array</h3>
+<p>Ein Array aus Stun-Knotenobjekten. Jeder Eintrag braucht ein nicht leeres <code>sshAddr</code> oder <code>proxyAddr</code>; Einträge ohne beides werden übersprungen.</p>
+<pre><code>[
+  { "id": "node-1", "name": "Tokio", "sshAddr": "…", "proxyAddr": "…" },
+  { "id": "node-2", "name": "Osaka", "sshAddr": "…", "proxyAddr": "…" }
+]</code></pre>
+
+<h3>2.3 Die ganze Datei, PIN-verschlüsselt</h3>
+<p>Der Inhalt ist ein einziger verschlüsselter Umschlag (<code>{"v":1,…}</code>, von Stun erzeugt). Ohne PIN in der Abo-Zeile bricht der Import ab und sagt das auch.</p>
+
+<h3>2.4 Base64 des JSON-Arrays</h3>
+<p>Genau der Inhalt aus 2.2, Base64-kodiert. Leerzeichen und Zeilenumbrüche darin werden ignoriert.</p>
+
+<h2>3. Optionale Metadaten</h2>
+<p>Echte HTTP-Antwortheader haben Vorrang. Was sie weglassen, darf in der Datei stehen; was dann immer noch fehlt, behält seinen bisherigen Wert — eine Antwort ohne einen Header löscht also weder Abo-Namen noch Homepage-Schaltfläche.</p>
+
+<dl class="meta">
+  <dt><code>content-disposition</code><span class="tag">Name</span></dt>
+  <dd>Der in der Abo-Liste angezeigte Name. Nicht-ASCII-Namen funktionieren über die RFC-5987-Form. Eine Dateiendung am Ende wird entfernt, „Flughafen.yaml“ erscheint also als „Flughafen“.
+    <pre><code># content-disposition: filename*=UTF-8''Flughafen
+# content-disposition: filename="Flughafen.yaml"</code></pre>
+  </dd>
+
+  <dt><code>profile-web-page-url</code><span class="tag">Homepage</span></dt>
+  <dd>Fügt in der Abo-Zeile eine Schaltfläche „Homepage“ hinzu. Nur <code>http</code>/<code>https</code> werden übernommen.
+    <pre><code># profile-web-page-url: https://example.com</code></pre>
+  </dd>
+
+  <dt><code>profile-update-interval</code><span class="tag">Intervall</span></dt>
+  <dd>Wie oft dieses Abo im Hintergrund aktualisiert wird, in ganzen Stunden. Ohne Angabe gelten 24 Stunden.
+    <pre><code># profile-update-interval: 12</code></pre>
+  </dd>
+
+  <dt><code>subscription-userinfo</code><span class="tag">Traffic</span></dt>
+  <dd>Versorgt die Traffic-Karte: verbraucht / gesamt, Upload, Download und Ablaufdatum. Alle Werte sind Bytes; <code>expire</code> ist ein Unix-Zeitstempel in Sekunden. Teilangaben genügen — ein fehlendes <code>total</code> bedeutet einfach „unbegrenzt“.
+    <pre><code># subscription-userinfo: upload=123; download=456; total=1000; expire=1790000000</code></pre>
+  </dd>
+</dl>
+
+<h3>Schreibweise der Deklaration in der Datei</h3>
+<ul>
+  <li>Eine Zeile, deren erstes nicht leeres Zeichen <code>#</code> ist, gefolgt von <code>Name: Wert</code>. Leerzeichen zwischen <code>#</code> und Name sind erlaubt, Namen sind unabhängig von der Groß-/Kleinschreibung.</li>
+  <li>Kommt ein Name mehrfach vor, gewinnt der erste. Ein leerer Wert zählt als „nicht deklariert“.</li>
+  <li>Jede andere <code>#</code>-Zeile gilt als Kommentar und wird verworfen — <code># Flughafen</code> ist also unbedenklich.</li>
+</ul>
+
+<h2>4. Was eine Synchronisierung an deinen Knoten ändert</h2>
+<ul>
+  <li><strong>Zusammenführen über <code>id</code>.</strong> Ein Knoten mit bereits vorhandener <code>id</code> wird an Ort und Stelle aktualisiert, eine neue <code>id</code> wird hinzugefügt.</li>
+  <li><strong>Entfernen.</strong> Knoten, die zu diesem Abo gehören, aber in der neuesten Antwort fehlen, gelten als abgeschaltet und werden gelöscht.</li>
+  <li><strong>Zwei Ausnahmen.</strong> Favoriten und der aktuell ausgewählte Knoten werden von einer Synchronisierung nie gelöscht.</li>
+  <li><strong>Kein versehentliches Leeren.</strong> Entfernt wird erst, nachdem mindestens ein Knoten erfolgreich gelesen wurde. Eine Netzstörung oder eine leere Antwort lässt die Synchronisierung fehlschlagen, statt das Abo zu leeren.</li>
+  <li><strong>Entdopplung über Abos hinweg.</strong> Dieselbe Knoten-<code>id</code> in mehreren Abos wird nur einmal importiert.</li>
+</ul>
+
+<h2>5. PIN</h2>
+<ul>
+  <li>Ein verschlüsseltes Abo braucht seinen PIN, bevor überhaupt etwas importiert werden kann.</li>
+  <li>Fehlender und falscher PIN werden unterschiedlich gemeldet, statt still zu scheitern.</li>
+  <li>Der PIN wird pro Abo gespeichert. Nach einer Änderung synchronisiere das Abo erneut.</li>
+</ul>
+
+<h2>6. Aktualisierung im Hintergrund</h2>
+<ul>
+  <li>Der Schalter „Auto-Synchronisierung im Hintergrund“ in diesem Panel ist der Hauptschalter.</li>
+  <li>Jedes Abo wird aktualisiert, sobald sein eigenes <code>profile-update-interval</code> abgelaufen ist (24 Stunden, wenn es keines angibt).</li>
+  <li>Stun prüft alle 15 Minuten und nur, wenn ein Netz verfügbar ist — es fragt den Server nicht im festen 15-Minuten-Takt ab.</li>
+</ul>
+
+<h2>7. Was die Fehlermeldungen bedeuten</h2>
+<ul>
+  <li><strong>Geben Sie eine gültige HTTPS-Abonnement-URL ein</strong> — die Adresse ist kein <code>https://</code> oder hat keinen Host.</li>
+  <li><strong>Der Server hat einen Fehler zurückgegeben</strong> — der Status lag außerhalb von 200–299.</li>
+  <li><strong>Netzwerkanfrage fehlgeschlagen</strong> — Verbindung, Zeitüberschreitung oder TLS-Problem.</li>
+  <li><strong>Keine gültigen Knoten im Abo</strong> — der Inhalt kam an, aber kein Format konnte einen Knoten daraus lesen.</li>
+  <li><strong>Dieses Abonnement ist PIN-verschlüsselt. Bitte PIN eingeben.</strong> / <strong>Falscher PIN oder Entschlüsselung fehlgeschlagen</strong> — siehe Abschnitt 5.</li>
+</ul>
+
+</body>
+</html>

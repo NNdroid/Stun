@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 迷你版：2x2，仅名称、时延与上下行速率。
+     targetCellWidth/Height 与 maxResizeWidth/Height 是 API 31+ 属性，
+     老启动器靠 minWidth/minHeight + minResize* 兜底，因此这四条"未使用"是有意保留的。 -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:minWidth="110dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="110dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:maxResizeWidth="220dp"
+    android:maxResizeHeight="220dp"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="1800000"
+    android:description="@string/widget_desc_mini"
+    android:previewImage="@drawable/widget_preview_mini"
+    android:previewLayout="@layout/widget_stun_mini"
+    android:initialLayout="@layout/widget_stun_mini"
+    android:widgetCategory="home_screen"
+    tools:ignore="UnusedAttribute" />

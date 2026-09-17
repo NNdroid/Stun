@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 标准版（默认）：4x2，完整信息。
+     resize 区间刻意放宽到 180~680dp：原 compact(3x2) 与 wide(5x2) 的宽度档由它一档吸收，
+     这两个版式因此退役。minWidth 仍按 4 格取 250dp（70×4−30），更窄的档靠 minResizeWidth 放开。
+     targetCellWidth/Height 与 maxResizeWidth/Height 是 API 31+ 属性，
+     老启动器靠 minWidth/minHeight + minResize* 兜底，因此这四条"未使用"是有意保留的。 -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:minWidth="250dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="180dp"
+    android:minResizeHeight="110dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:maxResizeWidth="680dp"
+    android:maxResizeHeight="220dp"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="1800000"
+    android:description="@string/widget_desc_standard"
+    android:previewImage="@drawable/widget_preview_standard"
+    android:previewLayout="@layout/widget_stun_standard"
+    android:initialLayout="@layout/widget_stun_standard"
+    android:widgetCategory="home_screen"
+    tools:ignore="UnusedAttribute" />

@@ -34,12 +34,13 @@
   </div>
 </header>
 
-<!-- 导航 Tabs (5大核心页签) -->
+<!-- 导航 Tabs (6大核心页签) -->
 <nav class="tabs">
   <div id="t-tab-overview" class="tab-btn active" onclick="switchTab('overview')">📊 概览看板</div>
   <div id="t-tab-profiles" class="tab-btn" onclick="switchTab('profiles')">🚀 节点管理</div>
   <div id="t-tab-conntrack" class="tab-btn" onclick="switchTab('conntrack')">🔍 连接跟踪</div>
   <div id="t-tab-settings" class="tab-btn" onclick="switchTab('settings')">⚙️ 系统设置</div>
+  <div id="t-tab-mcp" class="tab-btn" onclick="switchTab('mcp')">🤖 MCP 智能体</div>
   <div id="t-tab-logs" class="tab-btn" onclick="switchTab('logs')">📜 实时日志</div>
 </nav>
 
@@ -47,6 +48,15 @@
 <main>
   <!-- 1. 概览看板 -->
   <section id="tab-overview" class="tab-content active">
+    <!-- 服务端 Banner：取自 SSH 握手缓存（SSH 标识 + 认证阶段 banner），无数据时整卡隐藏 -->
+    <div class="card" id="server-banner-card" style="display:none">
+      <div class="card-header">
+        <span id="t-server-banner-title" class="card-title">🖥️ 服务端 Banner</span>
+        <span id="server-banner-version" class="server-banner-version"></span>
+      </div>
+      <div id="server-banner-content" class="server-banner-content"></div>
+    </div>
+
     <div class="overview-grid">
       <div class="stat-box">
         <span id="t-stat-selected" class="stat-label">🎯 当前选中节点</span>
@@ -91,7 +101,26 @@
           <button id="t-btn-add-profile" class="btn btn-sm btn-primary" onclick="openAddModal()">➕ 导入 / 添加节点</button>
         </div>
       </div>
+      <!-- 列表筛选 tab：全部 / 收藏 / 最近（与手机端节点列表同一套语义）。标签文本由 JS 带计数渲染。 -->
+      <div id="profile-filter-row" style="display:flex;gap:8px;flex-wrap:wrap;padding:12px 0 2px">
+        <button class="btn btn-sm filter-tab active" id="pfilter-all" onclick="setProfileFilter('all')"></button>
+        <button class="btn btn-sm filter-tab" id="pfilter-fav" onclick="setProfileFilter('fav')"></button>
+        <button class="btn btn-sm filter-tab" id="pfilter-recent" onclick="setProfileFilter('recent')"></button>
+      </div>
       <div id="profiles-list" class="profile-grid"></div>
+    </div>
+
+    <!-- 订阅管理 -->
+    <div class="card">
+      <div class="card-header">
+        <span id="t-subscription-title" class="card-title">📡 订阅管理</span>
+        <button id="t-btn-sub-sync" class="btn btn-sm btn-primary" onclick="syncSubscriptionNow()">🔄 立即同步</button>
+      </div>
+      <div id="subscription-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div>
+      <button id="t-btn-sub-add" class="btn btn-sm" onclick="addSubscriptionRow()">➕ 添加订阅</button>
+      <div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted)">
+        <span id="t-label-sub-last-sync">上次同步：</span><span id="display-sub-last-sync">从未同步</span>
+      </div>
     </div>
   </section>
 
@@ -253,6 +282,51 @@
       </div>
     </div>
 
+    <!-- 3b. WebDAV 云备份 (WebDAV Cloud Backup) -->
+    <div class="card">
+      <div class="card-header">
+        <span id="t-webdav-title" class="card-title">☁️ WebDAV 云备份</span>
+        <button id="t-btn-webdav-backup" class="btn btn-sm btn-primary" onclick="webdavBackupNow()">☁️ 立即备份</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label id="t-label-webdav-url" class="form-label">WebDAV 地址：</label>
+          <input id="input-webdav-url" class="text-input" type="text" placeholder="https://dav.jianguoyun.com/dav/">
+        </div>
+        <div class="form-group">
+          <label id="t-label-webdav-user" class="form-label">账号：</label>
+          <input id="input-webdav-user" class="text-input" type="text" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label id="t-label-webdav-pass" class="form-label">密码 / 应用密码：</label>
+          <input id="input-webdav-pass" class="text-input" type="password" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label id="t-label-webdav-pin" class="form-label">备份 PIN（字母+数字，至少 4 位）：</label>
+          <input id="input-webdav-pin" class="text-input" type="password" maxlength="32">
+        </div>
+        <div class="form-group">
+          <label id="t-label-webdav-interval" class="form-label">自动备份间隔 (小时)：</label>
+          <input id="input-webdav-interval" class="text-input" type="number" min="1" max="720" placeholder="24">
+        </div>
+        <div class="form-group">
+          <label id="t-label-webdav-auto" class="form-label">每日自动备份：</label>
+          <select id="input-webdav-auto" class="text-input">
+            <option value="0" id="opt-webdav-auto-off">关闭</option>
+            <option value="1" id="opt-webdav-auto-on">开启</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label id="t-label-webdav-last" class="form-label">上次备份：</label>
+          <span id="display-webdav-last" class="stat-value" style="font-size:0.95rem;padding:8px 0">-</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button id="t-btn-webdav-save" class="btn btn-sm" onclick="webdavSaveConfig()">💾 保存配置</button>
+        <button id="t-btn-webdav-restore" class="btn btn-sm" onclick="webdavRestoreNow()">📥 从云恢复</button>
+      </div>
+    </div>
+
     <!-- 4. 全局应用分流 (App Split Tunneling) -->
     <div class="card">
       <div class="card-header">
@@ -273,6 +347,7 @@
 
       <div style="display:flex;gap:12px">
         <input id="app-search" class="app-search" type="text" placeholder="Search apps..." oninput="filterAppList()">
+        <button id="t-btn-apps-refresh" class="btn btn-sm" onclick="refreshApps()">🔄 刷新</button>
         <button id="t-btn-select-all" class="btn btn-sm" onclick="toggleSelectAllApps()">全选 / 全不选</button>
       </div>
 
@@ -347,9 +422,141 @@
         </div>
       </div>
     </div>
+
+    <!-- 7. MCP 智能体服务与认证设置 -->
+    <div class="card">
+      <div class="card-header">
+        <span id="t-settings-mcp-title" class="card-title">🤖 Model Context Protocol (MCP) 智能体服务设置</span>
+      </div>
+      <div class="form-grid">
+        <div class="form-group" style="grid-column: 1 / -1; display:flex; align-items:center; justify-content:space-between">
+          <div>
+            <div id="t-label-mcp-enable" style="font-size:0.92rem;font-weight:700">启用 MCP 智能体服务 (Enable MCP Server)</div>
+            <div id="t-desc-mcp-enable" class="setting-desc">允许 Claude Desktop、Cursor、Gemini 等 AI 智能体通过标准 MCP 协议或 Gemini Function Calling 远程控制本设备</div>
+          </div>
+          <input type="checkbox" id="switch-mcp-enabled" style="width:20px;height:20px;cursor:pointer">
+        </div>
+        <div class="form-group">
+          <label id="t-label-mcp-port" class="form-label">MCP 统一服务端口 (HTTP/HTTPS 共用)：</label>
+          <input id="input-mcp-port" class="text-input" type="number" placeholder="37180" value="37180">
+        </div>
+        <div class="form-group">
+          <label id="t-label-mcp-auth-mode" class="form-label">MCP 访问安全认证模式：</label>
+          <select id="select-mcp-auth-mode" class="select-input">
+            <option value="0" id="opt-mcp-auth-none">🟢 免认证 (局域网免密直连)</option>
+            <option value="1" id="opt-mcp-auth-apikey">🔑 API Key (Bearer Token 密钥)</option>
+            <option value="2" id="opt-mcp-auth-basic">👤 HTTP Basic (账号密码验证)</option>
+            <option value="3" id="opt-mcp-auth-oauth">🛡️ OAuth 2.0 (Token / Code 授权)</option>
+          </select>
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1">
+          <label id="t-label-mcp-secret" class="form-label">MCP 访问密钥 / 密码 (Secret / Key)：</label>
+          <input id="input-mcp-secret" class="text-input" type="text" placeholder="留空则免密或使用默认密钥">
+        </div>
+      </div>
+    </div>
   </section>
 
-  <!-- 5. 实时日志 -->
+  <!-- 5. 🤖 MCP & AI 智能体看板 -->
+  <section id="tab-mcp" class="tab-content">
+    <!-- 状态与快捷入口 -->
+    <div class="overview-grid">
+      <div class="stat-box">
+        <span id="t-mcp-stat-status" class="stat-label">📡 MCP 服务状态</span>
+        <span id="mcp-stat-status-badge" class="stat-value success">ONLINE</span>
+      </div>
+      <div class="stat-box">
+        <span id="t-mcp-stat-port" class="stat-label">🔌 统一监听端口</span>
+        <span id="mcp-stat-port-val" class="stat-value primary">37180</span>
+      </div>
+      <div class="stat-box">
+        <span id="t-mcp-stat-proto" class="stat-label">⚡ 通信协议与模式</span>
+        <span class="stat-value accent" style="font-size:1rem">Single-Port HTTP/HTTPS Mux</span>
+      </div>
+      <div class="stat-box">
+        <span id="t-mcp-stat-tools" class="stat-label">🛠️ 可用 AI 工具总数</span>
+        <span class="stat-value success">18 Tools</span>
+      </div>
+    </div>
+
+    <!-- 快捷跳转独立 Dashboard -->
+    <div class="card" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;flex-wrap:wrap;gap:12px">
+      <div>
+        <div id="t-mcp-dash-title" style="font-size:1.05rem;font-weight:700;color:var(--text)">🚀 独立 Stun MCP & Gemini 交互控制台</div>
+        <div id="t-mcp-dash-desc" style="font-size:0.82rem;color:var(--text-muted);margin-top:2px">包含 SSL CA 根证书下载、OAuth 2.0 授权、实时 SSE 监控以及多语言支持</div>
+      </div>
+      <a id="btn-open-mcp-dashboard" href="http://127.0.0.1:37180" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="text-decoration:none">🌐 打开 MCP 控制台</a>
+    </div>
+
+    <!-- Claude Desktop & Cursor 接入 -->
+    <div class="card">
+      <div class="card-header">
+        <span id="t-mcp-claude-title" class="card-title">💻 Claude Desktop / Cursor / Windsurf 接入配置</span>
+        <button id="btn-copy-mcp-config" class="btn btn-sm" onclick="copyMcpJsonConfig()">📋 复制 JSON 配置</button>
+      </div>
+      <div style="font-size:0.83rem;color:var(--text-muted);margin-bottom:8px" id="t-mcp-claude-desc">将以下内容直接粘贴至您的 <code>claude_desktop_config.json</code> 中：</div>
+      <pre id="mcp-json-snippet" style="background:var(--surface-sunken, rgba(0,0,0,0.3));padding:12px;border-radius:8px;font-family:var(--font-mono);font-size:0.82rem;overflow-x:auto;color:var(--accent)">{
+  "mcpServers": {
+    "stun-device": {
+      "type": "http",
+      "url": "http://127.0.0.1:37180/mcp"
+    }
+  }
+}</pre>
+    </div>
+
+    <!-- Google Gemini Python 接入 -->
+    <div class="card">
+      <div class="card-header">
+        <span id="t-mcp-gemini-title" class="card-title">🤖 Google Gemini 2.0 Flash / 1.5 Pro 直连 (Python)</span>
+        <button id="btn-copy-gemini-snippet" class="btn btn-sm" onclick="copyMcpGeminiSnippet()">📋 复制 Python 示例</button>
+      </div>
+      <div style="font-size:0.83rem;color:var(--text-muted);margin-bottom:8px" id="t-mcp-gemini-desc">利用原生 Function Calling 接口，3 行 Python 直接控制 Stun：</div>
+      <pre id="mcp-gemini-snippet" style="background:var(--surface-sunken, rgba(0,0,0,0.3));padding:12px;border-radius:8px;font-family:var(--font-mono);font-size:0.82rem;overflow-x:auto;color:var(--text)">import google.generativeai as genai, requests
+tools = requests.get("http://127.0.0.1:37180/gemini/declarations").json()
+genai.configure(api_key="YOUR_GEMINI_KEY")
+chat = genai.GenerativeModel("gemini-2.0-flash", tools=tools["functionDeclarations"]).start_chat(enable_automatic_function_calling=True)
+print(chat.send_message("检查 VPN 状态并测试延迟").text)</pre>
+    </div>
+
+    <!-- 18 项 AI 工具清单 -->
+    <div class="card">
+      <div class="card-header">
+        <span id="t-mcp-tools-title" class="card-title">🛠️ 已注册的 27 项 AI 核心控制能力</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:10px;padding:4px 0">
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">get_vpn_status</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">实时运行状态、节点与流量速率</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">start_vpn</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">启动 VPN 隧道 (可选 profileId)</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">stop_vpn</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">断开 VPN 隧道</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">restart_vpn</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">重启/重新连接 VPN</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">list_profiles</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">查询所有已配置节点列表</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">get_profile_detail</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">获取节点完整配置与参数</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">create_profile</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">创建新的自定义代理节点</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">update_profile</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">修改指定节点字段与规则</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">delete_profile</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">删除指定节点</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">select_profile</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">切换当前活动节点并重连</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">test_node_latency</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">节点延迟与连通性测速</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">get_app_filter_list</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">获取已安装应用与分流状态</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">set_app_filter</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">配置黑/白名单分应用代理</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">update_geodata</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">更新 GeoIP / GeoSite 规则库</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">get_settings</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">获取 DNS、UDPGW 等全局配置</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">set_settings</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">更新 DNS、路由等全局设置</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">get_logs</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">检索运行时日志与错误记录</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">get_device_info</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">设备型号、系统版本与硬件状态</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">get_webdav_config</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">获取 WebDAV 备份配置（不回显密码）</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">set_webdav_config</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">更新 WebDAV 备份配置</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">list_backups</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">列出服务器上的备份目录</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">backup_now</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">立即执行 WebDAV 备份</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">restore_backup</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">从指定备份目录恢复节点和设置</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">list_subscriptions</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">列出所有已配置订阅链接</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">sync_subscriptions</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">拉取并合并所有订阅节点</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">import_profiles</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">导入 PIN 加密 payload 或明文 JSON 节点</div></div>
+        <div style="padding:10px;border-radius:8px;background:var(--surface-sunken, rgba(0,0,0,0.15));border:1px solid var(--border-color)"><b style="color:var(--primary);font-family:var(--font-mono);font-size:0.85rem">export_profiles</b><div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">导出所有节点为 PIN 加密 share payload</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. 实时日志 -->
   <section id="tab-logs" class="tab-content">
     <div class="card" style="padding:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -405,15 +612,29 @@
     
     <div id="pin-input-group" style="display:flex;flex-direction:column;gap:6px">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <label id="t-import-pin-label" style="font-size:0.82rem;font-weight:700">🔒 6位解密 PIN 码：</label>
+        <label id="t-import-pin-label" style="font-size:0.82rem;font-weight:700">🔒 解密 PIN 码：</label>
         <span id="pin-detected-badge" style="display:none;font-size:0.72rem;color:var(--primary);font-weight:700">✓ 检测到加密数据</span>
       </div>
-      <input id="input-import-pin" class="text-input" type="text" maxlength="6" placeholder="6-digit PIN (optional)">
+      <input id="input-import-pin" class="text-input" type="text" maxlength="32" placeholder="PIN (optional)">
     </div>
 
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:4px">
       <button id="t-btn-cancel" class="btn" onclick="closeAddModal()">取消</button>
       <button id="t-btn-import-now" class="btn btn-primary" onclick="submitImportProfile()">导入</button>
+    </div>
+  </div>
+</div>
+
+<!-- WebDAV 备份恢复选择弹窗 -->
+<div id="webdav-picker-modal" class="modal-overlay">
+  <div class="modal" style="max-width:480px">
+    <div class="card-header">
+      <span id="t-webdav-picker-title" class="card-title">📥 选择要恢复的备份</span>
+      <button class="btn btn-sm" onclick="closeWebDavPicker()">✕</button>
+    </div>
+    <div id="webdav-picker-list" style="display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:12px">
+      <button id="t-btn-webdav-picker-cancel" class="btn" onclick="closeWebDavPicker()">取消</button>
     </div>
   </div>
 </div>
@@ -429,7 +650,7 @@
     <div style="display:flex;flex-direction:column;gap:6px">
       <label id="t-export-pin-label" style="font-size:0.82rem;font-weight:700">设定 6 位加密保护 PIN 码：</label>
       <div style="display:flex;gap:10px">
-        <input id="input-export-pin" class="text-input" type="text" maxlength="6" placeholder="6-digit PIN">
+        <input id="input-export-pin" class="text-input" type="text" maxlength="32" placeholder="PIN (letters/digits, min 4)">
         <button id="t-btn-gen-pin" class="btn btn-sm" onclick="generateRandomExportPin()">🎲 随机生成</button>
       </div>
     </div>
@@ -477,6 +698,19 @@
             <input id="edit-node-ssh-addr" class="text-input" type="text" placeholder="IP:Port">
           </div>
           <div class="form-group">
+            <label id="t-label-edit-note" class="form-label">备注：</label>
+            <input id="edit-node-note" class="text-input" type="text" placeholder="">
+          </div>
+          <div class="switch-row">
+            <label class="switch-label" for="edit-node-favorite">
+              <span id="t-label-edit-favorite">⭐ 收藏此节点</span>
+            </label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="edit-node-favorite">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="form-group">
             <label id="t-label-edit-auth-type" class="form-label">SSH 认证方式：</label>
             <select id="edit-node-auth-type" class="select-input" onchange="onEditAuthTypeChange()">
               <option value="password" id="opt-auth-password">密码认证 (Password)</option>
@@ -513,24 +747,20 @@
         <div class="form-group">
           <label id="t-label-edit-tunnel-type" class="form-label" style="color:var(--primary)">选择底层传输协议 (Tunnel Type)：</label>
           <select id="edit-node-tunnel-type" class="select-input" onchange="updateEditModalTunnelFields()" style="font-weight:700;border-color:var(--primary)">
-            <option value="tls" id="opt-tunnel-tls">TLS (标准 TLS 加密隧道)</option>
-            <option value="ws" id="opt-tunnel-ws">WS (WebSocket 明文)</option>
-            <option value="wss" id="opt-tunnel-wss">WSS (WebSocket over TLS)</option>
-            <option value="h2" id="opt-tunnel-h2">H2 (HTTP/2 over TLS)</option>
-            <option value="h2c" id="opt-tunnel-h2c">H2C (HTTP/2 Cleartext)</option>
+            <option value="raw" id="opt-tunnel-raw">RAW (直连 TCP，可开 TLS)</option>
+            <option value="websocket" id="opt-tunnel-websocket">WebSocket (可开 TLS)</option>
+            <option value="h2" id="opt-tunnel-h2">H2 (HTTP/2，可开 TLS)</option>
+            <option value="grpc" id="opt-tunnel-grpc">gRPC (可开 TLS)</option>
+            <option value="xhttp" id="opt-tunnel-xhttp">XHTTP (流式多路复用，可开 TLS)</option>
             <option value="http" id="opt-tunnel-http">HTTP (HTTP 代理隧道)</option>
-            <option value="base" id="opt-tunnel-base">BASE (直连 TCP 纯净隧道)</option>
             <option value="quic" id="opt-tunnel-quic">QUIC (QUIC 快速数据报)</option>
-            <option value="grpc" id="opt-tunnel-grpc">gRPC (gRPC over TLS)</option>
-            <option value="grpcc" id="opt-tunnel-grpcc">gRPCC (gRPC Cleartext)</option>
             <option value="h3" id="opt-tunnel-h3">H3 (HTTP/3 over QUIC)</option>
-            <option value="wt" id="opt-tunnel-wt">WebTransport</option>
             <option value="masque" id="opt-tunnel-masque">MASQUE (HTTP/3 IP 代理)</option>
-            <option value="xhttp" id="opt-tunnel-xhttp">XHTTP (流式多路复用 HTTP)</option>
-            <option value="xhttpc" id="opt-tunnel-xhttpc">XHTTPC (XHTTP Cleartext)</option>
+            <option value="webtransport" id="opt-tunnel-webtransport">WebTransport</option>
             <option value="dns_custom" id="opt-tunnel-dns">DNS Tunnel (SSH-over-DNS)</option>
-            <option value="kcp" id="opt-tunnel-kcp">KCP (SSH-over-KCP 抗丢包)</option>
+            <option value="kcptun" id="opt-tunnel-kcp">KCP (SSH-over-KCP 抗丢包)</option>
             <option value="udp_custom" id="opt-tunnel-udpc">UDP Custom (自定义混淆 UDP 隧道)</option>
+            <option value="icmp_custom" id="opt-tunnel-icmp">ICMP Custom (SSH-over-ICMP)</option>
           </select>
         </div>
 
@@ -540,6 +770,7 @@
           <div class="form-group" id="edit-group-proxy-addr">
             <label id="t-label-edit-proxy-addr" class="form-label">代理目标地址 (Proxy Addr)：</label>
             <input id="edit-node-proxy-addr" class="text-input" type="text" placeholder="IP:Port">
+            <span id="t-hint-proxy-range" class="helper-text" style="display:none"></span>
           </div>
 
           <!-- 伪装域名 Custom Host -->
@@ -549,6 +780,17 @@
           </div>
 
           <!-- SNI 域名 Server Name -->
+          <!-- TLS 开关（raw/websocket/h2/grpc/xhttp） -->
+          <div class="switch-row" id="edit-group-tls-toggle" style="display:none">
+            <label class="switch-label" for="edit-node-tls">
+              <span id="t-label-edit-tls">🔒 TLS 加密</span>
+            </label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="edit-node-tls" onchange="updateEditModalTunnelFields()">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
           <div class="form-group" id="edit-group-server-name">
             <label id="t-label-edit-server-name" class="form-label">SNI 域名 (Server Name)：</label>
             <input id="edit-node-server-name" class="text-input" type="text" placeholder="SNI domain">
@@ -564,12 +806,10 @@
           <div class="form-group" id="edit-group-alpn" style="display:none">
             <label id="t-label-edit-alpn" class="form-label">ALPN 协商协议：</label>
             <select id="edit-node-alpn" class="select-input">
-              <option value="h3,h2" id="opt-alpn-h3-h2">h3,h2 (H3 优先 / 自动回退)</option>
-              <option value="h2,h3" id="opt-alpn-h2-h3">h2,h3 (H2 优先 / 自动回退)</option>
-              <option value="h3" id="opt-alpn-h3">h3 (仅 HTTP/3)</option>
-              <option value="h2" id="opt-alpn-h2">h2 (仅 HTTP/2)</option>
-              <option value="http/1.1">http/1.1</option>
-              <option value="h2,http/1.1">h2,http/1.1</option>
+              <!-- 候选项由 editAlpnOptions() 按隧道类型重建，这里只是默认类型 raw 的初始值 -->
+              <option value="auto">auto</option>
+              <option value="h1">h1</option>
+              <option value="h2">h2</option>
             </select>
           </div>
         </div>
@@ -583,7 +823,7 @@ Host: [host]
 
 "></textarea>
           </div>
-          <div class="switch-row">
+          <div class="switch-row" id="edit-group-disable-status-check" style="display:none">
             <label id="t-label-edit-disable-status-check" class="switch-label" for="edit-node-disable-status-check">
               <span id="t-label-edit-disable-status-check">🚫 禁用 HTTP 200 响应状态码严格检查</span>
             </label>
@@ -615,6 +855,23 @@ Host: [host]
                 <option value="null">NULL</option>
               </select>
             </div>
+            <div class="form-group">
+              <label id="t-label-edit-dns-psk" class="form-label">DNS 隧道 PSK：</label>
+              <input id="edit-node-dns-psk" class="text-input" type="text" maxlength="64" placeholder="留空=匿名；须与服务端一致">
+            </div>
+            <div class="form-group">
+              <label id="t-label-edit-dns-marker" class="form-label">隧道标记 (Marker)：</label>
+              <input id="edit-node-dns-marker" class="text-input" type="text" maxlength="32" placeholder="留空=默认；两端须一致">
+            </div>
+          </div>
+          <div class="switch-row">
+            <label class="switch-label" for="edit-node-dns-edns0">
+              <span id="t-label-edit-dns-edns0">EDNS0 扩展（1232 字节应答，需与服务端一致）</span>
+            </label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="edit-node-dns-edns0">
+              <span class="toggle-slider"></span>
+            </label>
           </div>
         </div>
 
@@ -628,17 +885,21 @@ Host: [host]
             <div class="form-group">
               <label id="t-label-edit-kcp-crypt" class="form-label">KCP 加密方式：</label>
               <select id="edit-node-kcp-crypt" class="select-input">
+                <option value="none">none</option>
                 <option value="aes">aes</option>
                 <option value="aes-128">aes-128</option>
                 <option value="aes-192">aes-192</option>
+                <option value="aes-256">aes-256</option>
+                <option value="aes-gcm">aes-gcm</option>
                 <option value="salsa20">salsa20</option>
-                <option value="blowfish">blowfish</option>
+                <option value="sm4">sm4</option>
                 <option value="twofish">twofish</option>
+                <option value="blowfish">blowfish</option>
                 <option value="cast5">cast5</option>
                 <option value="3des">3des</option>
                 <option value="tea">tea</option>
                 <option value="xtea">xtea</option>
-                <option value="none">none</option>
+                <option value="xor">xor</option>
               </select>
             </div>
             <div class="form-group">
@@ -650,14 +911,41 @@ Host: [host]
               <input id="edit-node-kcp-parity-shards" class="text-input" type="number" placeholder="3">
             </div>
           </div>
-          <div class="switch-row">
-            <label id="t-label-edit-kcp-nodelay" class="switch-label" for="edit-node-kcp-nodelay">
-              <span id="t-label-edit-kcp-nodelay">⚡ 启用 KCP NoDelay 极速低延迟模式</span>
-            </label>
-            <label class="toggle-switch">
-              <input type="checkbox" id="edit-node-kcp-nodelay">
-              <span class="toggle-slider"></span>
-            </label>
+          <div class="form-group">
+            <label id="t-label-kcp-mode" class="form-label">KCP 模式 (fast = 默认)：</label>
+            <select id="edit-node-kcp-mode" class="text-input">
+              <option value="fast" id="opt-kcp-mode-fast">Fast (默认)</option>
+              <option value="normal" id="opt-kcp-mode-normal">Normal</option>
+              <option value="fast2" id="opt-kcp-mode-fast2">Fast2</option>
+              <option value="fast3" id="opt-kcp-mode-fast3">Fast3</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label id="t-label-kcp-sndwnd" class="form-label">发送窗口 (0 = 默认 128)：</label>
+            <input id="edit-node-kcp-sndwnd" class="text-input" type="number" min="0" placeholder="128">
+          </div>
+          <div class="form-group">
+            <label id="t-label-kcp-rcvwnd" class="form-label">接收窗口 (0 = 默认 512)：</label>
+            <input id="edit-node-kcp-rcvwnd" class="text-input" type="number" min="0" placeholder="512">
+          </div>
+          <div class="form-group">
+            <label id="t-label-kcp-mtu" class="form-label">MTU (0 = 默认 1350)：</label>
+            <input id="edit-node-kcp-mtu" class="text-input" type="number" min="0" placeholder="1350">
+          </div>
+          <div class="form-group">
+            <label id="t-label-kcp-nocomp" class="form-label">Snappy 压缩：</label>
+            <select id="edit-node-kcp-nocomp" class="text-input">
+              <option value="0" id="opt-kcp-nocomp-off">启用压缩</option>
+              <option value="1" id="opt-kcp-nocomp-on">禁用压缩</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label id="t-label-kcp-smuxver" class="form-label">SMUX 版本 (0 = 默认 2)：</label>
+            <input id="edit-node-kcp-smuxver" class="text-input" type="number" min="0" max="2" placeholder="2">
+          </div>
+          <div class="form-group">
+            <label id="t-label-kcp-keepalive" class="form-label">KeepAlive 秒 (0 = 默认 10)：</label>
+            <input id="edit-node-kcp-keepalive" class="text-input" type="number" min="0" placeholder="10">
           </div>
         </div>
 
@@ -669,8 +957,86 @@ Host: [host]
               <input id="edit-node-udp-custom-psk" class="text-input" type="password" placeholder="Pre-Shared Key">
             </div>
             <div class="form-group">
-              <label id="t-label-edit-udp-custom-magic" class="form-label">Magic 识别码 (十六进制)：</label>
-              <input id="edit-node-udp-custom-magic" class="text-input" type="text" placeholder="12345678">
+              <label id="t-label-edit-udp-custom-magic" class="form-label">Magic 识别码（4 个字符）：</label>
+              <input id="edit-node-udp-custom-magic" class="text-input" type="text" maxlength="4" placeholder="UDPC">
+            </div>
+            <div class="form-group">
+              <label id="t-label-edit-udp-custom-paths" class="form-label">远端 UDP 路径数量 (0 = 默认 32)：</label>
+              <input id="edit-node-udp-custom-paths" class="text-input" type="number" min="0" placeholder="32">
+            </div>
+            <div class="form-group">
+              <label id="t-label-edit-udp-custom-sockets" class="form-label">UDP 套接字数量 (0 = 默认 1)：</label>
+              <input id="edit-node-udp-custom-sockets" class="text-input" type="number" min="0" placeholder="1">
+            </div>
+            <div class="form-group">
+              <label id="t-label-edit-udp-custom-send-window" class="form-label">发送窗口 (0 = 默认 256)：</label>
+              <input id="edit-node-udp-custom-send-window" class="text-input" type="number" min="0" placeholder="256">
+            </div>
+            <div class="form-group">
+              <label id="t-label-edit-udp-max-pkt" class="form-label">最大载荷字节数 (0 = 默认 1450)：</label>
+              <input id="edit-node-udp-custom-max-pkt" class="text-input" type="number" min="0" placeholder="1450">
+            </div>
+            <div class="form-group">
+              <label id="t-label-edit-udp-mtu-probe" class="form-label">路径 MTU 探测：</label>
+              <select id="edit-node-udp-custom-mtu-probe" class="text-input">
+                <option value="auto" selected>auto（默认）</option>
+                <option value="on">on（强制开启）</option>
+                <option value="off">off（关闭，固定 MaxPkt）</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- XHTTP 专属配置容器 -->
+        <div id="edit-group-xhttp-chunk-container" class="dynamic-subcard" style="display:none">
+          <div class="form-grid">
+            <div class="form-group">
+              <label id="t-label-edit-xhttp-chunk" class="form-label">分块大小 KB (0 = 默认 256，范围 16-900)：</label>
+              <input id="edit-node-xhttp-chunk-size" class="text-input" type="number" min="0" placeholder="256">
+            </div>
+            <div class="form-group">
+              <label id="t-label-edit-xhttp-stream-mode" class="form-label">XHTTP 流模式：</label>
+              <select id="edit-node-xhttp-stream-mode" class="text-input">
+                <option value="auto" id="opt-stream-auto">自动（流式优先，轮询回退）</option>
+                <option value="stream" id="opt-stream-stream">流式（强制流式下行）</option>
+                <option value="poll" id="opt-stream-poll">轮询（强制轮询下行）</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 流心跳配置容器 (h2 系列隧道) -->
+        <div id="edit-group-heartbeat-container" class="dynamic-subcard" style="display:none">
+          <div class="form-grid">
+            <div class="form-group">
+              <label id="t-label-edit-heartbeat-interval" class="form-label">心跳间隔 ms (0 = 默认 25000)：</label>
+              <input id="edit-node-heartbeat-interval" class="text-input" type="number" min="0" placeholder="25000">
+            </div>
+          </div>
+        </div>
+
+        <!-- h2tunnel 出站帧最小填充（流量混淆）：h2 家族 + masque 才消费，独立于心跳显隐 -->
+        <div id="edit-group-padding-min-bytes" class="dynamic-subcard" style="display:none">
+          <div class="form-grid">
+            <div class="form-group">
+              <label id="t-label-edit-padding-min-bytes" class="form-label">最小填充字节数 (0 = 默认 1420，负数关闭)：</label>
+              <input id="edit-node-padding-min-bytes" class="text-input" type="number" placeholder="0">
+            </div>
+          </div>
+        </div>
+
+        <div id="edit-group-masque-alpn" class="dynamic-subcard" style="display:none">
+          <div class="form-grid">
+            <div class="form-group">
+              <label id="t-label-edit-masque-alpn" class="form-label">Masque ALPN（仅 masque）：</label>
+              <!-- SDK 只有 ""(auto)/"h3"/"h2" 三个取值（client_api.go 严格相等，不拆逗号）；
+                   选项标签用裸值，与上方 edit-node-alpn 同风格。已移除历史别名 h3,h2 / h2,h3
+                   （行为与 auto 完全相同，不表达任何 SDK 能力）。 -->
+              <select id="edit-node-masque-alpn" class="text-input">
+                <option value="auto" selected>auto</option>
+                <option value="h3">h3</option>
+                <option value="h2">h2</option>
+              </select>
             </div>
           </div>
         </div>
@@ -679,6 +1045,54 @@ Host: [host]
         <div id="edit-group-noise-container" class="form-group" style="display:none">
           <label id="t-label-edit-noise-public-key" class="form-label">Noise 服务端公钥 (可选，Curve25519 Hex/Base64)：</label>
           <input id="edit-node-noise-public-key" class="text-input" type="text" placeholder="Base64 or Hex public key">
+        </div>
+
+        <!-- ICMP Custom 专属配置容器 (SSH-over-ICMP) -->
+        <div id="edit-group-icmp-container" class="dynamic-subcard" style="display:none">
+          <div class="form-grid">
+            <div class="form-group">
+              <label id="t-label-icmp-psk" class="form-label">PSK（预共享密钥）：</label>
+              <input id="edit-node-icmp-psk" class="text-input" type="password" autocomplete="new-password">
+            </div>
+            <div class="form-group">
+              <label id="t-label-icmp-magic" class="form-label">Magic（8位十六进制，留空默认）：</label>
+              <input id="edit-node-icmp-magic" class="text-input" type="text" placeholder="8 hex or 0x...">
+            </div>
+            <div class="form-group">
+              <label id="t-label-icmp-family" class="form-label">IP 协议族：</label>
+              <select style="display:none" id="edit-node-icmp-family" class="text-input">
+                <option value="" id="opt-icmp-family-auto">自动</option>
+                <option value="ipv4" id="opt-icmp-family-v4">IPv4</option>
+                <option value="ipv6" id="opt-icmp-family-v6">IPv6</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label id="t-label-icmp-mtu" class="form-label">MTU 模式：</label>
+              <select id="edit-node-icmp-mtu" class="text-input">
+                <option value="" id="opt-icmp-mtu-probe">Probe（探测）</option>
+                <option value="auto" id="opt-icmp-mtu-auto">Auto</option>
+                <option value="fixed" id="opt-icmp-mtu-fixed">Fixed（固定）</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label id="t-label-icmp-max-payload" class="form-label">Max Payload (0 = 默认)：</label>
+              <input id="edit-node-icmp-max-payload" class="text-input" type="number" min="0" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label id="t-label-icmp-pace" class="form-label">发包间隔 ms (0 = 默认)：</label>
+              <input id="edit-node-icmp-pace" class="text-input" type="number" min="0" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label id="t-label-icmp-id-range" class="form-label">Echo ID 池 (如 1000-1999)：</label>
+              <input id="edit-node-icmp-id-range" class="text-input" type="text" placeholder="1000-1999">
+            </div>
+          </div>
+        </div>
+
+        <!-- 出站接口绑定 (全部隧道类型) -->
+        <div class="form-group">
+          <label id="t-label-edit-bind-interface" class="form-label">绑定网络接口 (如 wlan0，留空 = 默认)：</label>
+          <input id="edit-node-bind-interface" class="text-input" type="text" placeholder="wlan0 / rmnet0">
         </div>
       </div>
 

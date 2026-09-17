@@ -128,6 +128,11 @@ android {
         }
     }
 
+    testOptions {
+        // ExitIpProbe 等单测走 org.json / SystemClock，需要 Robolectric 载入真实框架实现
+        unitTests.isIncludeAndroidResources = true
+    }
+
     externalNativeBuild {
         ndkBuild {
             path = file("jni/Android.mk")
@@ -157,6 +162,12 @@ kotlin {
     jvmToolchain(17)
 }
 
+// Room schema 导出：每次版本变更时 KSP 会把实体 schema 快照写入 core/schemas/<版本>.json，
+// 供 AutoMigration 差分与 MigrationTestHelper 测试使用。历史版本 JSON 一经生成必须提交入库。
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 tasks.named("preBuild") {
     dependsOn(applyJniPatches)
     dependsOn(downloadRulesDat)
@@ -170,12 +181,10 @@ tasks.configureEach {
 }
 
 dependencies {
-    // For local AARs in library module, use compileOnly
-    // The consumer app MUST also include these AARs
-    compileOnly(fileTree("libs") {
-        include("*.aar", "*.jar")
-        exclude("*.debug-sources.jar", "*.release-sources.jar")
-    })
+    // myssh AAR classes for compilation; the app module provides the actual
+    // AAR with native .so at runtime. Use extracted classes.jar to avoid
+    // AGP's "local .aar dependency not supported in library module" error.
+    compileOnly(files("libs/myssh-classes.jar"))
 
     implementation(libs.libsu.core)
     implementation(libs.libsu.service)
@@ -183,10 +192,12 @@ dependencies {
     implementation(libs.rikka.shizuku.provider)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
+    api(libs.androidx.splashscreen)
     implementation(libs.material)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.gson)
+    implementation(libs.okhttp)
     implementation(libs.tink.android)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
@@ -203,4 +214,15 @@ dependencies {
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.cio)
     implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.network.tls.certificates)
+
+    // Debug 构建的网络追踪：WebDavClient 在 src/debug 源集注册
+    // DebugOverlayNetworkInterceptor（src/release 为空实现，零开销）。
+    debugImplementation(libs.debugoverlay)
+    debugImplementation(libs.debugoverlay.okhttp)
+
+    // 纯 JVM 单测（备份编解码器不依赖 Android，因此无需 Robolectric）
+    testImplementation(libs.junit)
+    // ExitIpProbe 依赖 org.json / SystemClock，必须跑在真实框架实现上
+    testImplementation(libs.robolectric)
 }

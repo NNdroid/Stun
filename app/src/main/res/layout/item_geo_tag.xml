@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 列表项：?attr/selectableItemBackground 提供整行涟漪触感，不是与窗口背景重复铺底。
+     lint 的 Overdraw 只按结构判断（根节点有背景 + 主题有 windowBackground），既不比色也不区分
+     "窗口根 / 列表项"，这里是误报；删掉会丢失点击反馈，故显式豁免。 -->
+<com.google.android.material.materialswitch.MaterialSwitch xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/switch_tag"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingHorizontal="@dimen/space_4"
+    android:paddingVertical="@dimen/space_2"
+    android:background="?attr/selectableItemBackground"
+    android:textAppearance="?attr/textAppearanceBodyMedium"
+    tools:ignore="Overdraw" />

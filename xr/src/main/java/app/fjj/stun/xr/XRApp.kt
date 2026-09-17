@@ -4,7 +4,7 @@ import android.app.Application
 import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.StunLogger
 import app.fjj.stun.repo.StunRepository
-import app.fjj.stun.util.ExecUtils
+import app.fjj.stun.util.AppBootstrap
 import app.fjj.stun.util.KeystoreUtils
 import app.fjj.stun.util.LocaleHelper
 import myssh.LogReceiver
@@ -15,26 +15,24 @@ class XRApp : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        LocaleHelper.applyLocale(this)
-
-        initLogger()
-
-        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            StunLogger.e("FATAL", "Uncaught Exception in XR App [Thread: ${thread.name}]", throwable)
-            Thread.sleep(500)
-            defaultHandler?.uncaughtException(thread, throwable)
+        // Guard every step like the phone app (StunApp) does: KeystoreUtils.init throws
+        // RuntimeException on keystore failures and native lib load throws UnsatisfiedLinkError
+        // (an Error, not an Exception) — unguarded, either one crashes the app before the
+        // first activity is ever shown.
+        runCatching { app.fjj.stun.util.CrashHandler.init(this) }
+        runCatching { LocaleHelper.applyLocale(this) }
+        runCatching { initLogger() }
+        runCatching { KeystoreUtils.init(this) }
+        runCatching {
+            StunRepository.setupLogBridge()
+            StunRepository.registerEngineCallback()
+            StunRepository.initCrashOutput(this)
         }
 
-        KeystoreUtils.init(this)
-
-        StunRepository.setupLogBridge()
-        StunRepository.registerEngineCallback()
-        StunRepository.initCrashOutput(this)
-
-        initAssets()
-
-        SettingsManager.checkAndUpdateGeoData(this)
+        // Multi-MB geo asset copies must not run on the main thread (ANR on XR hardware).
+        // 交给 AppBootstrap：IO + 判定只此一处（规则库不再看 last_update_time，见 needsDeploy），
+        // 规则库更新检查也由它在部署完成后做 —— 部署还在跑时去问「文件在不在」只会白排下载。
+        AppBootstrap.start(this)
     }
 
     private fun initLogger() {
@@ -60,26 +58,6 @@ class XRApp : Application() {
             }
         } catch (e: Exception) {
             StunLogger.e("XRApp", "Error initializing XR logger", e)
-        }
-    }
-
-    private fun initAssets() {
-        val lastUpdate = SettingsManager.getLastUpdateTime(this)
-        val apkUpdateTime = try {
-            val info = packageManager.getPackageInfo(packageName, 0)
-            info.lastUpdateTime / 1000
-        } catch (_: Exception) {
-            0L
-        }
-
-        if (lastUpdate <= 0 || apkUpdateTime > lastUpdate) {
-            StunLogger.i("XRApp", "Deploying geo assets for XR...")
-            ExecUtils.copyAssetToCache(this, "rules-dat/geoip.dat", "geoip.dat")
-            ExecUtils.copyAssetToCache(this, "rules-dat/geosite.dat", "geosite.dat")
-
-            if (lastUpdate > 0) {
-                SettingsManager.saveLastUpdateTime(this, apkUpdateTime)
-            }
         }
     }
 }

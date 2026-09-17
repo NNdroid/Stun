@@ -146,6 +146,24 @@ main{
 .stat-value.primary{color:var(--primary)}
 .stat-value.success{color:var(--success)}
 
+/* ── 服务端 Banner 卡片 ── */
+.server-banner-version{
+  font-family:var(--font-mono);font-size:0.8rem;font-weight:700;color:var(--accent);
+  background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:4px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%;
+}
+.server-banner-content{
+  font-family:var(--font-mono);font-size:0.85rem;line-height:1.6;color:var(--text-muted);
+  white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;
+  max-height:280px;overflow-y:auto;
+}
+.server-banner-content a{color:var(--primary);text-decoration:underline}
+.server-banner-content pre{
+  background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:10px 12px;overflow-x:auto;margin:0;
+}
+.server-banner-content code{font-family:var(--font-mono);background:var(--bg-input);border-radius:4px;padding:1px 5px}
+
 /* ── 表单排版规范 ── */
 .form-grid{
   display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:14px;
@@ -192,6 +210,14 @@ main{
   border-color:var(--primary);background:var(--bg-input);box-shadow:0 0 0 1.5px var(--primary);
 }
 .profile-header{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+/* 列表筛选 tab（全部/收藏/最近）：胶囊形，选中态填充主色 */
+.filter-tab{border:1px solid var(--border);background:var(--bg-card);color:var(--text-muted);border-radius:999px;font-weight:700}
+.filter-tab:hover{color:var(--text)}
+.filter-tab.active{background:var(--primary);border-color:var(--primary);color:#fff}
+/* 卡片收藏星标：无边框按钮，点亮为暖色（与手机端 connection_favorite_active 同色） */
+.fav-star{background:none;border:none;cursor:pointer;font-size:1.05rem;line-height:1;padding:2px 4px;color:var(--text-muted);flex-shrink:0}
+.fav-star.on{color:#F59E0B}
+.fav-star:hover{transform:scale(1.15)}
 .profile-name{font-size:0.95rem;font-weight:800;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .profile-badge{
   font-size:0.68rem;padding:2px 7px;border-radius:var(--radius-sm);background:var(--bg-card);
@@ -255,6 +281,22 @@ table.conns-table tr:hover td{background:var(--bg-card-hover)}
   transition:border-color .2s;font-family:var(--font-mono);
 }
 .text-input:focus{border-color:var(--primary)}
+
+/* ── 实时校验：字段级错误 / 告警 / 辅助说明 ── */
+.form-group.is-invalid > .text-input,
+.form-group.is-invalid > .select-input{border-color:var(--danger);background:rgba(239,68,68,0.06)}
+.form-group.is-invalid > .text-input:focus{border-color:var(--danger)}
+.field-error{
+  display:none;font-size:0.74rem;color:var(--danger);line-height:1.35;
+  margin-top:1px;font-weight:600;
+}
+.form-group.is-invalid > .field-error{display:block}
+.field-warn{
+  display:none;font-size:0.74rem;color:var(--warn);line-height:1.35;
+  margin-top:1px;font-weight:600;
+}
+.form-group.is-warn > .field-warn{display:block}
+.helper-text{font-size:0.74rem;color:var(--text-dim);line-height:1.4;margin-top:1px}
 
 .app-search{
   width:100%;padding:9px 14px;border-radius:var(--radius-md);background:var(--bg-input);

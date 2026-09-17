@@ -32,6 +32,7 @@ dependencyResolutionManagement {
 rootProject.name = "Stun"
 include(":core")
 include(":app")
+include(":dbwebui")
 include(":tv")
 include(":car")
 include(":wear")

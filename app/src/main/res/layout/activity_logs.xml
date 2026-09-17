@@ -3,8 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="?android:attr/colorBackground">
+    android:layout_height="match_parent">
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/app_bar"
@@ -25,8 +24,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingHorizontal="16dp"
-            android:paddingBottom="8dp">
+            android:paddingHorizontal="@dimen/space_4"
+            android:paddingBottom="@dimen/space_2">
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/layout_search_logs"
@@ -48,7 +47,7 @@
             <HorizontalScrollView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="@dimen/space_2"
                 android:scrollbars="none">
 
                 <com.google.android.material.chip.ChipGroup
@@ -102,9 +101,9 @@
         style="?attr/materialCardViewFilledStyle"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_margin="12dp"
+        android:layout_margin="@dimen/space_3"
         app:cardBackgroundColor="?attr/colorSurfaceContainerLowest"
-        app:cardCornerRadius="24dp"
+        app:cardCornerRadius="@dimen/corner_lg"
         app:strokeWidth="1dp"
         app:strokeColor="?attr/colorOutlineVariant"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
@@ -114,8 +113,8 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingHorizontal="4dp"
-            android:paddingVertical="8dp"
+            android:paddingHorizontal="@dimen/space_1"
+            android:paddingVertical="@dimen/space_2"
             android:scrollbarStyle="outsideOverlay"
             android:scrollbars="vertical"
             tools:listitem="@layout/item_log_line" />
@@ -127,7 +126,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginBottom="32dp"
+        android:layout_marginBottom="@dimen/space_7"
         android:text="@string/desc_scroll_to_bottom"
         android:visibility="gone"
         app:icon="@drawable/ic_arrow_down"

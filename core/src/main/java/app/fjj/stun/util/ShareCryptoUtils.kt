@@ -19,26 +19,57 @@ object ShareCryptoUtils {
     private const val SALT_LENGTH = 16
     private const val IV_LENGTH = 12
     private const val TAG_LENGTH = 128
-    private const val ITERATION_COUNT = 10000
     private const val KEY_LENGTH = 256
+    private val secureRandom by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { SecureRandom() }
+
+    /**
+     * 历史迭代数。v1 信封没有 `it` 字段，缺省即此值 —— **不要动它**。
+     *
+     * 二维码 / `stun://` 订阅载荷 / 蓝牙同步都是**跨版本、跨设备互换**的密文：
+     * 迭代数写死在旧版本 App 里，这里一提高，旧版本就再也解不开新载荷。
+     * 这些都是短时效、走带外信道的载荷，加码收益小、破坏面大。
+     */
+    const val ITERATIONS_LEGACY = 10000
+
+    /**
+     * 云备份用的迭代数（20× 于历史值）。
+     *
+     * 备份是长期躺在第三方网盘上的密文，PIN 又由用户自定（常见只有 4~6 位），
+     * 所以只对这条链路加码。[deriveKey] 的开销与迭代数成正比：200k 在中端机上
+     * 约 0.2~0.4s，备份/恢复各解 3 个文件也就一秒级，用户感知不到。
+     *
+     * ⚠️ 代价：**旧版本 App 读不了本版本写出的备份**（它写死 10000 迭代）。
+     * 反向兼容不受影响 —— 迭代数记在信封的 `it` 字段里，新版读旧备份照常。
+     */
+    const val ITERATIONS_BACKUP = 200_000
+
+    /**
+     * 允许的迭代数区间。
+     *
+     * 订阅载荷是**外部可控输入**（谁都能在订阅源里塞一段密文），不设上下界的话
+     * 一个 `it: 1000000000` 就能让 App 在解密时长时间卡死。低值同样夹住：
+     * 本工具从不写 < 1000 的值，读到就说明信封是伪造的。
+     */
+    private const val ITERATIONS_MIN = 1000
+    private const val ITERATIONS_MAX = 2_000_000
 
     // Generates a random 6 digit PIN
     fun generateRandomPIN(): String {
-        val random = SecureRandom()
-        val pin = random.nextInt(1000000)
+        val pin = secureRandom.nextInt(1000000)
         return String.format("%06d", pin)
     }
 
     // Encrypts plain text using the PIN and returns a Base64 encoded JSON string
-    fun encrypt(plainText: String, pin: String): String {
-        val random = SecureRandom()
+    // [iterations] 缺省用历史值，保证二维码/同步载荷与旧版本互通；云备份显式传 [ITERATIONS_BACKUP]
+    fun encrypt(plainText: String, pin: String, iterations: Int = ITERATIONS_LEGACY): String {
         val salt = ByteArray(SALT_LENGTH)
-        random.nextBytes(salt)
+        secureRandom.nextBytes(salt)
 
         val iv = ByteArray(IV_LENGTH)
-        random.nextBytes(iv)
+        secureRandom.nextBytes(iv)
 
-        val secretKey = deriveKey(pin, salt)
+        val safeIterations = iterations.coerceIn(ITERATIONS_MIN, ITERATIONS_MAX)
+        val secretKey = deriveKey(pin, salt, safeIterations)
         val cipher = Cipher.getInstance(ALGORITHM)
         val parameterSpec = GCMParameterSpec(TAG_LENGTH, iv)
 
@@ -52,8 +83,9 @@ object ShareCryptoUtils {
         val ciphertext = cipher.doFinal(dataToEncrypt)
 
         val json = JSONObject()
-        json.put("v", 1) // version
+        json.put("v", 1) // version（信封结构版本；KDF 强度由 it 单独描述，不动 v）
         json.put("g", if (useGzip) 1 else 0) // 1 = plaintext was gzipped
+        json.put("it", safeIterations) // PBKDF2 迭代数，缺省视为 ITERATIONS_LEGACY
         json.put("s", Base64.encodeToString(salt, Base64.NO_WRAP))
         json.put("i", Base64.encodeToString(iv, Base64.NO_WRAP))
         json.put("c", Base64.encodeToString(ciphertext, Base64.NO_WRAP))
@@ -70,11 +102,15 @@ object ShareCryptoUtils {
 
             if (json.optInt("v", 1) != 1) return null
 
+            // 老信封没有 it ⇒ 历史迭代数；夹在合理区间内，防外部构造的 it 拖死解密
+            val iterations = json.optInt("it", ITERATIONS_LEGACY)
+                .coerceIn(ITERATIONS_MIN, ITERATIONS_MAX)
+
             val salt = Base64.decode(json.getString("s"), Base64.DEFAULT)
             val iv = Base64.decode(json.getString("i"), Base64.DEFAULT)
             val ciphertext = Base64.decode(json.getString("c"), Base64.DEFAULT)
 
-            val secretKey = deriveKey(pin, salt)
+            val secretKey = deriveKey(pin, salt, iterations)
             val cipher = Cipher.getInstance(ALGORITHM)
             val parameterSpec = GCMParameterSpec(TAG_LENGTH, iv)
 
@@ -99,8 +135,8 @@ object ShareCryptoUtils {
         }
     }
 
-    private fun deriveKey(pin: String, salt: ByteArray): SecretKeySpec {
-        val spec = PBEKeySpec(pin.toCharArray(), salt, ITERATION_COUNT, KEY_LENGTH)
+    private fun deriveKey(pin: String, salt: ByteArray, iterations: Int): SecretKeySpec {
+        val spec = PBEKeySpec(pin.toCharArray(), salt, iterations, KEY_LENGTH)
         val factory = SecretKeyFactory.getInstance(KEY_DERIVATION_ALG)
         val secretKey = factory.generateSecret(spec)
         return SecretKeySpec(secretKey.encoded, "AES")

@@ -31,6 +31,7 @@ class WearMainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityWearMainBinding
     private lateinit var adapter: ProfileAdapterWear
     private var isVpnRunning = false
+    private var isVpnTransitioning = false
 
     private val vpnLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -68,7 +69,7 @@ class WearMainActivity : AppCompatActivity() {
         adapter = ProfileAdapterWear(
             selectedProfileId = selectedId,
             onProfileClick = { profile ->
-                if (!isVpnRunning) {
+                if (!isVpnRunning && !isVpnTransitioning) {
                     SettingsManager.setSelectedProfileId(this, profile.id)
                     loadProfiles()
                     Toast.makeText(this, getString(CoreR.string.main_selected, profile.name), Toast.LENGTH_SHORT).show()
@@ -122,18 +123,24 @@ class WearMainActivity : AppCompatActivity() {
         when (state) {
             VpnState.CONNECTED -> {
                 isVpnRunning = true
+                isVpnTransitioning = false
+                binding.btnWearPower.isEnabled = true
                 binding.ivWearPowerIcon.setImageResource(CoreR.drawable.ic_pause)
                 binding.wearStatusDot.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF4CAF50.toInt())
                 binding.tvWearStatus.text = getString(CoreR.string.main_connected)
             }
             VpnState.CONNECTING, VpnState.RECONNECTING -> {
                 isVpnRunning = false
+                isVpnTransitioning = true
+                binding.btnWearPower.isEnabled = false
                 binding.ivWearPowerIcon.setImageResource(CoreR.drawable.ic_sync)
                 binding.wearStatusDot.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFFFF9800.toInt())
                 binding.tvWearStatus.text = getString(CoreR.string.main_connecting)
             }
             else -> {
                 isVpnRunning = false
+                isVpnTransitioning = false
+                binding.btnWearPower.isEnabled = true
                 binding.ivWearPowerIcon.setImageResource(CoreR.drawable.ic_play)
                 binding.wearStatusDot.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFFF44336.toInt())
                 binding.tvWearStatus.text = getString(CoreR.string.main_disconnected)
@@ -143,10 +150,10 @@ class WearMainActivity : AppCompatActivity() {
 
     private fun handleStartStop() {
         val currentState = StunRepository.vpnState.value ?: VpnState.DISCONNECTED
-        if (currentState == VpnState.CONNECTED || currentState == VpnState.RECONNECTING) {
-            stopVpnService()
-        } else {
-            checkAndRequestNotificationPermission()
+        when (currentState) {
+            VpnState.CONNECTED -> stopVpnService()
+            VpnState.CONNECTING, VpnState.RECONNECTING -> return
+            else -> checkAndRequestNotificationPermission()
         }
     }
 
@@ -163,14 +170,14 @@ class WearMainActivity : AppCompatActivity() {
     private fun startSelectedService() {
         val mode = SettingsManager.getServiceMode(this)
         if (mode == SettingsManager.SERVICE_MODE_TPROXY) {
-            val intent = Intent(this, MyTransparentProxyService::class.java).apply { action = "START" }
+            val intent = Intent(this, MyTransparentProxyService::class.java).apply { action = MyTransparentProxyService.ACTION_START }
             ContextCompat.startForegroundService(this, intent)
         } else {
             val intent = VpnService.prepare(this)
             if (intent != null) {
                 vpnLauncher.launch(intent)
             } else {
-                val vpnIntent = Intent(this, MyVpnService::class.java).apply { action = "START" }
+                val vpnIntent = Intent(this, MyVpnService::class.java).apply { action = MyVpnService.ACTION_START }
                 ContextCompat.startForegroundService(this, vpnIntent)
             }
         }
@@ -178,12 +185,14 @@ class WearMainActivity : AppCompatActivity() {
 
     private fun stopVpnService() {
         val mode = SettingsManager.getServiceMode(this)
-        val intentClass = if (mode == SettingsManager.SERVICE_MODE_TPROXY) {
+        val isTProxy = mode == SettingsManager.SERVICE_MODE_TPROXY
+        val intentClass = if (isTProxy) {
             MyTransparentProxyService::class.java
         } else {
             MyVpnService::class.java
         }
-        val intent = Intent(this, intentClass).apply { action = "STOP" }
+        val action = if (isTProxy) MyTransparentProxyService.ACTION_STOP else MyVpnService.ACTION_STOP
+        val intent = Intent(this, intentClass).apply { this.action = action }
         ContextCompat.startForegroundService(this, intent)
     }
 }

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connection_details_expand">Verbindungsdetails anzeigen</string>
+    <string name="connection_node_details">Knotendetails</string>
+    <string name="connection_server">Server</string>
+    <string name="connection_realtime_speed">Live-Geschwindigkeit · letzte 15 Messwerte</string>
+    <string name="connection_upload">Upload</string>
+    <string name="connection_download">Download</string>
+    <string name="connection_upload_chart">Aktuelles Upload-Diagramm</string>
+    <string name="connection_download_chart">Aktuelles Download-Diagramm</string>
+    <string name="connection_auxiliary_info">Zusätzliche Informationen</string>
+    <string name="connection_total_traffic">Gesamtdatenverkehr</string>
+    <string name="connection_exit">Ausgangsadresse</string>
+    <string name="connection_exit_pending">Ausgangsadresse wird ermittelt…</string>
+    <string name="connection_last_connected">Zuletzt verbunden</string>
+    <string name="connection_magic_format">Magic: %1$s</string>
+    <string name="connection_label_protocol">Protokoll</string>
+    <string name="connection_label_magic">Magic-Marker</string>
+    <string name="connection_label_note">Notiz</string>
+    <string name="connection_label_ssh_banner">SSH-Banner</string>
+    <string name="connection_label_ssh_notice">Serverhinweis</string>
+    <string name="connection_banner_link_failed">Link konnte nicht geöffnet werden</string>
+    <string name="connection_bar_action_stop">Stopp</string>
+    <string name="connection_disconnect_action">Trennen</string>
+    <string name="connection_favorite_add">Zu Favoriten hinzufügen</string>
+    <string name="connection_favorite_remove">Aus Favoriten entfernen</string>
+    <!-- 2026-09-15: 质量分 i18n 补全 -->
+    <string name="connection_quality_format">Qualität %1$s</string>
+
+    <!-- Topologie-Globus -->
+    <string name="connection_topology">Topologie</string>
+    <string name="connection_topology_mode_desc">Sternenhimmel-Modus umschalten</string>
+    <string name="connection_globe_description">Globus der Verbindungstopologie</string>
+    <string name="connection_globe_description_counts">%1$s · %2$s</string>
+    <string name="connection_globe_empty">Noch kein Knoten lässt sich auf der Karte platzieren.</string>
+    <string name="connection_globe_need_library">Lade die Offline-Geobibliothek herunter, um Knoten auf dem Globus zu platzieren.</string>
+    <string name="connection_globe_download">Herunterladen</string>
+    <string name="connection_globe_downloading_format">Geobibliothek wird geladen… %1$d%%</string>
+    <string name="connection_globe_download_failed">Download fehlgeschlagen. Prüfe dein Netzwerk und versuche es erneut.</string>
+    <string name="connection_globe_retry">Erneut versuchen</string>
+    <string name="connection_globe_bubble_exit">Exit-Standort</string>
+    <string name="connection_globe_bubble_merged_format">%1$d Knoten hier</string>
+    <string name="connection_globe_bubble_idle">Keine aktive Verbindung</string>
+    <string name="connection_active_connections">Aktive Verbindungen</string>
+    <plurals name="connection_globe_nodes">
+        <item quantity="one">%d Knoten auf dem Globus</item>
+        <item quantity="other">%d Knoten auf dem Globus</item>
+    </plurals>
+    <plurals name="connection_globe_connections">
+        <item quantity="one">%d aktive Verbindung</item>
+        <item quantity="other">%d aktive Verbindungen</item>
+    </plurals>
+    <!-- 2026-09-16 am Entwurf ausgerichtet: Kartenuntertitel, kurze Globus-Labels, Ansicht zurücksetzen -->
+    <string name="connection_node_details_subtitle">Serververbindung und Basisinfos</string>
+    <string name="connection_auxiliary_info_subtitle">Weitere technische Details und Serverhinweise</string>
+    <string name="connection_last_connected_short">Zuletzt: %1$s</string>
+    <string name="connection_globe_reset_view">Ansicht zurücksetzen</string>
+</resources>

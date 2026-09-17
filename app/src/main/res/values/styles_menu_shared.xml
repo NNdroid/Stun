@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="StunMenuIconPlate">
+        <item name="android:layout_width">48dp</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:background">@drawable/bg_menu_icon</item>
+    </style>
+    <style name="StunMenuIcon">
+        <item name="android:layout_width">24dp</item>
+        <item name="android:layout_height">24dp</item>
+        <item name="android:layout_gravity">center</item>
+        <item name="android:tint">?attr/colorOnSecondaryContainer</item>
+        <item name="android:importantForAccessibility">no</item>
+    </style>
+</resources>

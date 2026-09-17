@@ -3,8 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="?android:attr/colorBackground">
+    android:layout_height="match_parent">
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/app_bar"
@@ -33,14 +32,14 @@
             android:layout_height="wrap_content"
             android:gravity="center_horizontal"
             android:orientation="vertical"
-            android:paddingHorizontal="24dp"
+            android:paddingHorizontal="@dimen/space_6"
             android:paddingBottom="48dp">
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="120dp"
                 android:layout_height="120dp"
-                android:layout_marginTop="32dp"
-                app:cardCornerRadius="32dp"
+                android:layout_marginTop="@dimen/space_7"
+                app:cardCornerRadius="@dimen/corner_xl"
                 app:cardElevation="0dp"
                 app:cardBackgroundColor="?attr/colorPrimaryContainer"
                 app:strokeWidth="0dp">
@@ -48,7 +47,7 @@
                 <ImageView
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:padding="24dp"
+                    android:padding="@dimen/space_6"
                     android:src="@drawable/ic_fox_logo"
                     app:tint="?attr/colorOnPrimaryContainer"
                     android:contentDescription="@string/app_name" />
@@ -57,7 +56,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="@dimen/space_4"
                 android:text="@string/app_name"
                 android:textAppearance="?attr/textAppearanceHeadlineMedium"
                 android:textStyle="bold" />
@@ -66,7 +65,7 @@
                 android:id="@+id/tv_version_info"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="@dimen/space_1"
                 tools:text="v1.0.0"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorOnSurfaceVariant" />
@@ -75,17 +74,17 @@
                 android:id="@+id/tv_package_name"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:alpha="0.6"
+                android:layout_marginTop="@dimen/space_1"
                 tools:text="app.fjj.stun"
-                android:textAppearance="?attr/textAppearanceLabelSmall" />
+                android:textAppearance="?attr/textAppearanceLabelSmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
 
             <com.google.android.material.card.MaterialCardView
                 style="?attr/materialCardViewElevatedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="32dp"
-                app:cardCornerRadius="24dp"
+                android:layout_marginTop="@dimen/space_7"
+                app:cardCornerRadius="@dimen/corner_lg"
                 app:cardElevation="1dp"
                 app:strokeWidth="0dp">
 
@@ -104,7 +103,7 @@
                         android:focusable="true"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:padding="16dp">
+                        android:padding="@dimen/space_4">
 
                         <ImageView
                             android:layout_width="24dp"
@@ -116,7 +115,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="16dp"
+                            android:layout_marginStart="@dimen/space_4"
                             android:text="@string/about_source_code"
                             android:textAppearance="?attr/textAppearanceBodyLarge" />
                     </LinearLayout>
@@ -124,7 +123,7 @@
                     <View
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
-                        android:layout_marginHorizontal="16dp"
+                        android:layout_marginHorizontal="@dimen/space_4"
                         android:background="?attr/colorSurfaceVariant" />
 
                     <!-- Feedback -->
@@ -137,7 +136,7 @@
                         android:focusable="true"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:padding="16dp">
+                        android:padding="@dimen/space_4">
 
                         <ImageView
                             android:layout_width="24dp"
@@ -149,7 +148,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="16dp"
+                            android:layout_marginStart="@dimen/space_4"
                             android:text="@string/about_feedback"
                             android:textAppearance="?attr/textAppearanceBodyLarge" />
                     </LinearLayout>
@@ -157,7 +156,7 @@
                     <View
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
-                        android:layout_marginHorizontal="16dp"
+                        android:layout_marginHorizontal="@dimen/space_4"
                         android:background="?attr/colorSurfaceVariant" />
 
                     <!-- License -->
@@ -170,7 +169,7 @@
                         android:focusable="true"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:padding="16dp">
+                        android:padding="@dimen/space_4">
 
                         <ImageView
                             android:layout_width="24dp"
@@ -182,7 +181,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="16dp"
+                            android:layout_marginStart="@dimen/space_4"
                             android:text="@string/about_license"
                             android:textAppearance="?attr/textAppearanceBodyLarge" />
                     </LinearLayout>
@@ -190,7 +189,7 @@
                     <View
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
-                        android:layout_marginHorizontal="16dp"
+                        android:layout_marginHorizontal="@dimen/space_4"
                         android:background="?attr/colorSurfaceVariant" />
 
                     <!-- Privacy -->
@@ -203,7 +202,7 @@
                         android:focusable="true"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:padding="16dp">
+                        android:padding="@dimen/space_4">
 
                         <ImageView
                             android:layout_width="24dp"
@@ -215,7 +214,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="16dp"
+                            android:layout_marginStart="@dimen/space_4"
                             android:text="@string/about_privacy_policy"
                             android:textAppearance="?attr/textAppearanceBodyLarge" />
                     </LinearLayout>

@@ -1,0 +1,13 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Big, bold, centered Fox / Stun Quick Settings Icon -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12,1 C5.92,1 1,5.92 1,12 C1,18.08 5.92,23 12,23 C18.08,23 23,18.08 23,12 C23,5.92 18.08,1 12,1 Z M12,3 C16.97,3 21,7.03 21,12 C21,16.97 16.97,21 12,21 C7.03,21 3,16.97 3,12 C3,7.03 7.03,3 12,3 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M10,8.5 L16,12 L10,15.5 Z" />
+</vector>

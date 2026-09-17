@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 地球卡身份头里的「标记魔数」标签底色：与 bg_badge_type（协议标签，tertiaryContainer）
+     成对使用，两枚标签靠不同的容器色区分，不引入新色值。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="?attr/colorSecondaryContainer" />
+    <corners android:radius="@dimen/corner_xxs" />
+</shape>

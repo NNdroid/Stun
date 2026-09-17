@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:gravity="center"
-    android:orientation="vertical"
-    android:padding="24dp">
+    android:fillViewport="true"
+    android:overScrollMode="ifContentScrolls">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="@dimen/space_6">
 
     <!-- Header: App Logo + Node Name -->
     <LinearLayout
@@ -14,7 +20,7 @@
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:layout_marginBottom="24dp">
+        android:layout_marginBottom="@dimen/space_6">
 
         <ImageView
             android:layout_width="32dp"
@@ -27,7 +33,7 @@
             android:id="@+id/tv_profile_name"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
+            android:layout_marginStart="@dimen/space_3"
             android:textAppearance="?attr/textAppearanceTitleLarge"
             android:textStyle="bold"
             android:textColor="?attr/colorOnSurface"
@@ -36,55 +42,77 @@
 
     <!-- QR Code Card: Maximum size -->
     <com.google.android.material.card.MaterialCardView
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
         app:cardBackgroundColor="@android:color/white"
-        app:cardCornerRadius="24dp"
+        app:cardCornerRadius="@dimen/corner_lg"
         app:cardElevation="0dp"
         app:strokeColor="?attr/colorOutlineVariant"
         app:strokeWidth="1dp">
 
-        <ImageView
-            android:id="@+id/iv_qr_code"
-            android:layout_width="match_parent"
+        <FrameLayout
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_margin="12dp"
-            android:adjustViewBounds="true"
-            android:scaleType="fitCenter"
-            android:contentDescription="@string/scan_qr_code"
-            tools:layout_height="250dp" />
+            android:layout_margin="@dimen/space_3">
+
+            <ImageView
+                android:id="@+id/iv_qr_code"
+                android:layout_width="240dp"
+                android:layout_height="240dp"
+                android:adjustViewBounds="true"
+                android:contentDescription="@string/scan_qr_code"
+                android:scaleType="fitCenter"
+                android:visibility="invisible"
+                tools:visibility="visible" />
+
+            <com.google.android.material.progressindicator.CircularProgressIndicator
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_gravity="center"
+                android:indeterminate="true"
+                android:tag="qr_progress" />
+        </FrameLayout>
 
     </com.google.android.material.card.MaterialCardView>
 
-    <TextView
-        android:id="@+id/tv_share_pin"
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/layout_share_pin"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:gravity="center"
-        android:textIsSelectable="true"
-        android:textAppearance="?attr/textAppearanceHeadlineMedium"
-        android:textColor="?attr/colorPrimary"
-        android:textStyle="bold"
-        android:letterSpacing="0.2"
-        tools:text="123456" />
+        android:layout_marginTop="@dimen/space_5"
+        android:layout_gravity="center_horizontal"
+        android:hint="@string/share_pin_edit_hint"
+        app:endIconMode="clear_text">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/et_share_pin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:inputType="text"
+            android:maxLength="32"
+            android:textStyle="bold"
+            android:textColor="?attr/colorPrimary"
+            tools:text="123456" />
+    </com.google.android.material.textfield.TextInputLayout>
 
     <!-- Bottom Hint -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="@dimen/space_2"
         android:text="@string/scan_prompt"
         android:textAppearance="?attr/textAppearanceLabelLarge"
-        android:textColor="?attr/colorOnSurfaceVariant"
-        android:alpha="0.6" />
+        android:textColor="?attr/colorOnSurfaceVariant" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_push_to_tv"
         style="@style/Widget.Material3.Button.TonalButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="@dimen/space_6"
         android:text="@string/action_push_to_tv"
         app:icon="@drawable/ic_sync" />
 
@@ -93,8 +121,10 @@
         style="@style/Widget.Material3.Button.TonalButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="@dimen/space_3"
         android:text="@string/copy_uri"
         app:icon="@drawable/ic_copy" />
 
-</LinearLayout>
+    </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>

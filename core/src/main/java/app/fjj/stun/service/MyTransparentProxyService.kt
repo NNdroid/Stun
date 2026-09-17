@@ -2,6 +2,7 @@ package app.fjj.stun.service
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.os.Build
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -10,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import app.fjj.stun.core.R
 import app.fjj.stun.core.BuildConfig
 import app.fjj.stun.repo.*
+import app.fjj.stun.util.AppBootstrap
 import app.fjj.stun.util.ExecUtils
 import app.fjj.stun.util.ShizukuUtils
 import kotlinx.coroutines.*
@@ -30,6 +32,7 @@ class MyTransparentProxyService : Service() {
     private var mainJob: Job? = null
     private var coreJob: Job? = null
     private val isRunning = AtomicBoolean(false)
+    @Volatile private var isForegroundStarted = false
 
     private var currentTxRate = 0L
     private var currentRxRate = 0L
@@ -115,6 +118,10 @@ class MyTransparentProxyService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         StunLogger.i(TAG, "Received intent action: ${intent?.action}")
+        // startForegroundService 启动的服务必须在系统时限内进入前台，否则超时抛
+        // ForegroundServiceDidNotStartInTimeException。isRunning 守卫和 ACTION_STOP
+        // 路径都不能跳过这一步，故在分派前无条件同步调用。
+        startForegroundNow(getString(R.string.main_connecting))
         when (intent?.action) {
             ACTION_STOP -> stopTProxy(this@MyTransparentProxyService)
             else -> startTProxy(this@MyTransparentProxyService)
@@ -147,6 +154,12 @@ class MyTransparentProxyService : Service() {
                 return@launch
             }
 
+            // TProxy 三件套（二进制 + tproxy.sh / watchdog.sh）与 geoip/geosite 都由
+            // AppBootstrap 在 IO 上部署，而紧接着的 applyRules 就要执行 cacheDir 里的
+            // tproxy.sh（还有下面 buildGlobalConfig 要交给 Go 侧的规则库路径）——
+            // 必须等它落地，否则这一步会静默失败、留一堆没人清的旧 iptables 规则。
+            AppBootstrap.awaitAssets(context)
+
             try {
                 StunLogger.i(TAG, "--- Start Sequence Initiated ---")
 
@@ -174,6 +187,7 @@ class MyTransparentProxyService : Service() {
 
                 applyRules(context, true)
 
+                ProfileManager.markConnected(context, profile.id)
                 StunRepository.vpnState.postValue(VpnState.CONNECTED)
                 updateNotification(getString(R.string.notif_text))
 
@@ -298,9 +312,13 @@ class MyTransparentProxyService : Service() {
                 updateSysInfo(cpuPercent, memAllocMB, memSysMB, goroutines)
             }
         })
+
+        app.fjj.stun.util.LatencyProber.start(this)
     }
 
     private fun stopTrafficMonitor() {
+        app.fjj.stun.util.LatencyProber.stop()
+        StunRepository.clearRateHistory()
         try { myssh.Myssh.registerTrafficCallback(null) } catch (_: Exception) {}
         try { myssh.Myssh.registerSysInfoCallback(null) } catch (_: Exception) {}
     }
@@ -322,6 +340,7 @@ class MyTransparentProxyService : Service() {
 
         StunRepository.txRate.postValue(txRate)
         StunRepository.rxRate.postValue(rxRate)
+        StunRepository.recordRateSample(txRate, rxRate)
 
         SettingsManager.getSelectedProfileId(this)?.let { id ->
             ProfileManager.addTrafficStats(this, id, deltaTx, deltaRx)
@@ -357,34 +376,58 @@ class MyTransparentProxyService : Service() {
         nm?.createNotificationChannel(channel)
     }
 
+    /** 同步进入前台：在 startForegroundService 的时限窗口内必须被调用，不能经过协程调度。 */
+    private fun startForegroundNow(content: String) {
+        if (isForegroundStarted) return
+        try {
+            val notification = buildNotification(content)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(NOTIFICATION_ID, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+            isForegroundStarted = true
+        } catch (e: Exception) {
+            StunLogger.e(TAG, "startForeground failed", e)
+        }
+    }
+
+    private fun buildNotification(content: String): android.app.Notification {
+        val stopIntent = Intent(this, MyTransparentProxyService::class.java).apply { action = ACTION_STOP }
+        val stopPendingIntent = android.app.PendingIntent.getService(
+            this, 0, stopIntent,
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val mainIntent = packageManager.getLaunchIntentForPackage(packageName)
+            ?: Intent().setClassName(this, "app.fjj.stun.ui.MainActivity")
+        val mainPendingIntent = android.app.PendingIntent.getActivity(
+            this, 0, mainIntent,
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(getString(R.string.notif_title))
+            .setContentText(content)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(content))
+            .setSubText(currentProfileName)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setContentIntent(mainPendingIntent)
+            .addAction(R.drawable.ic_pause, getString(R.string.disconnect), stopPendingIntent)
+            .build()
+    }
+
     private fun updateNotification(content: String) {
+        if (!isForegroundStarted) {
+            startForegroundNow(content)
+            return
+        }
         serviceScope.launch(Dispatchers.Main) {
-            val stopIntent = Intent(this@MyTransparentProxyService, MyTransparentProxyService::class.java).apply { action = ACTION_STOP }
-            val stopPendingIntent = android.app.PendingIntent.getService(
-                this@MyTransparentProxyService, 0, stopIntent,
-                android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
-            )
-
-            val mainIntent = Intent().setClassName(this@MyTransparentProxyService, "app.fjj.stun.ui.MainActivity")
-            val mainPendingIntent = android.app.PendingIntent.getActivity(
-                this@MyTransparentProxyService, 0, mainIntent,
-                android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
-            )
-
-            val notification = NotificationCompat.Builder(this@MyTransparentProxyService, CHANNEL_ID)
-                .setContentTitle(getString(R.string.notif_title))
-                .setContentText(content)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(content))
-                .setSubText(currentProfileName)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setCategory(NotificationCompat.CATEGORY_SERVICE)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
-                .setOngoing(true)
-                .setOnlyAlertOnce(true)
-                .setContentIntent(mainPendingIntent)
-                .addAction(R.drawable.ic_pause, getString(R.string.disconnect), stopPendingIntent)
-                .build()
-            startForeground(NOTIFICATION_ID, notification)
+            getSystemService(NotificationManager::class.java)?.notify(NOTIFICATION_ID, buildNotification(content))
         }
     }
 

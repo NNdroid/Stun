@@ -211,6 +211,7 @@ object StunLogger {
                 msgContent = json.optString("msg", json.optString("message", rawMsg))
                 finalLevel = json.optString("level", json.optString("severity", finalLevel)).uppercase()
                 val caller = json.optString("caller")
+                val loggerName = json.optString("logger").trim()
                 val pid = json.optInt("pid")
                 val uid = json.optInt("uid")
                 val version = json.optString("v", json.optString("version"))
@@ -225,6 +226,9 @@ object StunLogger {
                 // 组装元数据 (根据 Debug/Release 模式动态精简)
                 metaInfo = buildString {
                     append("[$tag")
+                    if (loggerName.isNotEmpty() && !loggerName.equals(tag, ignoreCase = true)) {
+                        append("/").append(loggerName)
+                    }
                     if (BuildConfig.DEBUG) {
                         append(" v:$version U:$uid P:$pid")
                     }

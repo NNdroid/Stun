@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="content_max_width">720dp</dimen>
+    <dimen name="modal_max_width">640dp</dimen>
+
+    <!-- ===== 间距尺度（4dp 网格）=====
+         新增 UI 一律引用这里，不要再写裸 dp。
+         仅在确有实测约束时（如底部连接坞按 360dp 宽实测的零富余妥协、
+         1dp 发丝分隔线、桌面小组件的手调间距）才写裸 dp，并加注释说明原因。 -->
+    <dimen name="space_1">4dp</dimen>
+    <dimen name="space_2">8dp</dimen>
+    <dimen name="space_3">12dp</dimen>
+    <dimen name="space_4">16dp</dimen>
+    <dimen name="space_5">20dp</dimen>
+    <dimen name="space_6">24dp</dimen>
+    <dimen name="space_7">32dp</dimen>
+
+    <!-- ===== 底部滚动留白（设置页 / 节点编辑页）=====
+         语义：页面底部的"呼吸间距"。它同时是三处口径的唯一来源 ——
+         ① activity_settings / activity_profile_edit 里 scroll_view 的 paddingBottom（布局兜底，
+            即使 insets 回调一次都没跑到，静止态也是对的）；
+         ② 键盘弹出时在 IME 高度之外额外预留的量（SettingsFragment / ProfileEditActivity）。
+         注意：底栏已从 CoordinatorLayout 悬浮叠层改成布局流内的兄弟节点，
+         所以这个值**不再**等于底栏高度（旧实现写的是 bottomBar.height，会把页面底部掏空）。 -->
+    <dimen name="bottom_scroll_breathing_room">24dp</dimen>
+
+    <!-- ===== 圆角尺度（4dp 网格）=====
+         新增 UI 一律引用这里，不要再写 dp 字面量。
+         corner_xs 小控件 / corner_sm 按钮与输入 / corner_md 次级卡片
+         corner_lg 主卡片 / corner_xl 底部弹层 -->
+    <dimen name="corner_xxs">8dp</dimen>
+    <dimen name="corner_xs">12dp</dimen>
+    <dimen name="corner_sm">16dp</dimen>
+    <dimen name="corner_md">20dp</dimen>
+    <dimen name="corner_lg">24dp</dimen>
+    <dimen name="corner_xl">28dp</dimen>
+
+    <!-- ===== 桌面小组件专用圆角（RemoteViews 面积受限，独立子尺度，勿与主尺度混用）===== -->
+    <dimen name="corner_widget_badge">6dp</dimen>
+    <dimen name="corner_widget_button">14dp</dimen>
+
+    <!-- ===== 触控热区 =====
+         Material 无障碍最小可点面积。图标按钮的「可见尺寸」由 padding 决定，
+         外框一律用这个值撑满热区 —— 不要在布局里写 40dp/48dp 字面量。 -->
+    <dimen name="touch_target_min">48dp</dimen>
+
+    <!-- ===== 卡片头部图标徽标 =====
+         外框 40dp、内嵌图标 24dp（差值 16dp 由使用处的 padding 吃掉，即四边各 8dp）。
+         目前用在设置页 MCP / 数据库 WebUI 两张卡的头部，底色 bg_icon_badge。 -->
+    <dimen name="badge_size">40dp</dimen>
+    <dimen name="badge_icon_size">24dp</dimen>
+
+    <!-- ===== 带宽测速面板专用尺度 =====
+         比例来自效果图实测（把图里的像素按内容宽折算成 dp）：
+         头部徽标与结果卡里的圆直径约为 1.37:1，所以徽标直接复用上面那套方形徽标的
+         尺寸（badge_size 40dp），结果圆取 32dp —— 再大就会把窄屏上「圆 + 数值」
+         那一行挤到折行。图表的坐标轴刻度标签需要一点左侧余量，高度 140dp 是
+         在 360dp 宽的屏上「面板 + 状态行 + 按钮」刚好一屏放得下的上限。 -->
+    <dimen name="speed_metric_circle">32dp</dimen>
+    <dimen name="speed_metric_arrow">16dp</dimen>
+    <dimen name="speed_chart_height">140dp</dimen>
+    <dimen name="speed_progress_size">18dp</dimen>
+    <dimen name="speed_action_height">48dp</dimen>
+
+    <!-- 组件外框圆角。API 31+ 会被 values-v31/dimens.xml 覆盖成系统的
+         @android:dimen/system_app_widget_background_radius，让各 ROM / 第三方启动器
+         套用自家官方圆角；这里是低版本（minSdk 28）的回落值。
+         注意 MIUI 13+ 会统一裁切小组件圆角，这条在它上面可能不生效 —— 但非 MIUI 手机需要它。 -->
+    <dimen name="widget_card_radius">22dp</dimen>
+
+    <!-- ===== 字号尺度（Material 语义，非小组件布局用）===== -->
+    <dimen name="text_label">12sp</dimen>
+    <dimen name="text_body">14sp</dimen>
+    <dimen name="text_subtitle">16sp</dimen>
+    <dimen name="text_title">20sp</dimen>
+    <dimen name="text_headline">24sp</dimen>
+
+    <!-- ===== 桌面小组件专用字号（独立子尺度：组件面积受限，不可顶到主尺度）===== -->
+    <dimen name="text_widget_xs">9sp</dimen>
+    <dimen name="text_widget_sm">10sp</dimen>
+    <dimen name="text_widget_md">11sp</dimen>
+    <dimen name="text_widget_lg">12sp</dimen>
+    <dimen name="text_widget_xl">15sp</dimen>
+    <dimen name="text_widget_2xl">16sp</dimen>
+</resources>

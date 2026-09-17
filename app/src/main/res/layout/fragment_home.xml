@@ -3,8 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="?attr/colorSurface">
+    android:layout_height="match_parent">
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/app_bar"
@@ -29,17 +28,70 @@
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
+        <!-- 节点列表筛选 tab：全部 / 收藏 / 最近。计数由 HomeFragment 在每次列表刷新时改写。 -->
+        <HorizontalScrollView
+            android:id="@+id/chip_scroll_tabs"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_2"
+            android:clipToPadding="false"
+            android:paddingHorizontal="@dimen/space_3"
+            android:fadingEdgeLength="24dp"
+            android:requiresFadingEdge="horizontal"
+            android:scrollbars="none"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chip_group_node_tabs"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:selectionRequired="true"
+                app:singleLine="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_tab_all"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    app:checkedIconVisible="false"
+                    tools:text="全部 (5)" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_tab_favorites"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:checkedIconVisible="false"
+                    app:chipIcon="@drawable/ic_star"
+                    tools:text="★ 收藏 (2)" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_tab_recent"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:checkedIconVisible="false"
+                    app:chipIcon="@drawable/ic_history"
+                    tools:text="🕐 最近 (4)" />
+            </com.google.android.material.chip.ChipGroup>
+        </HorizontalScrollView>
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rv_profiles"
             android:layout_width="0dp"
             android:layout_height="0dp"
+            android:layout_marginTop="@dimen/space_1"
             android:clipToPadding="false"
             android:paddingBottom="120dp"
             android:contentDescription="@string/desc_profile_list"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/chip_scroll_tabs"
             tools:listitem="@layout/item_profile" />
 
         <LinearLayout
@@ -66,16 +118,17 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:alpha="0.6"
+                android:layout_marginTop="@dimen/space_4"
                 android:text="@string/main_empty_profiles"
-                android:textAppearance="?attr/textAppearanceTitleMedium" />
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurfaceVariant" />
 
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:orientation="horizontal">
+                android:layout_marginTop="@dimen/space_4"
+                android:gravity="center_horizontal"
+                android:orientation="vertical">
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_empty_scan_qr"
@@ -84,114 +137,118 @@
                     android:layout_height="wrap_content"
                     android:text="@string/scan_qr"
                     app:icon="@drawable/ic_qr_code"
-                    app:cornerRadius="16dp" />
+                    app:cornerRadius="@dimen/corner_sm" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_empty_add_profile"
                     style="?attr/materialButtonTonalStyle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
+                    android:layout_marginTop="@dimen/space_2"
                     android:text="@string/add_profile"
                     app:icon="@drawable/ic_add"
-                    app:cornerRadius="16dp" />
+                    app:cornerRadius="@dimen/corner_sm" />
             </LinearLayout>
         </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <com.google.android.material.card.MaterialCardView
+    <app.fjj.stun.ui.view.ConnectionDockLayout
         android:id="@+id/bottom_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:layout_marginHorizontal="16dp"
-        android:layout_marginBottom="32dp"
         android:clickable="true"
-        android:focusable="true"
-        app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-        app:cardCornerRadius="28dp"
-        app:cardElevation="3dp"
-        app:strokeWidth="0dp">
+        android:focusable="true">
 
-        <androidx.constraintlayout.widget.ConstraintLayout
+        <LinearLayout
+            android:id="@+id/connection_dock_body"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:animateLayoutChanges="true"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="12dp"
-            android:minHeight="64dp">
+            android:orientation="vertical">
 
-            <com.google.android.material.progressindicator.LinearProgressIndicator
-                android:id="@+id/progress_bar"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:indeterminate="true"
-                android:visibility="gone"
-                app:indicatorColor="?attr/colorPrimary"
-                app:layout_constraintTop_toTopOf="parent"
-                app:trackColor="@android:color/transparent" />
+        <!-- 底部连接坞：竖向净空按实测手工调过（minHeight 58dp / 头像 48dp / 图表 27dp），
+             故此处字号刻意不全部纳入全局尺度。能与主尺度等值命中的已复用（14sp→text_body、
+             12sp→text_label）；其余 23sp/13sp/11sp 是为配合固定净空的离刻度值，请勿"顺手统一"。 -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/connection_dock_content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="@dimen/space_3"
+            android:paddingTop="22dp"
+            android:paddingBottom="10dp">
 
             <LinearLayout
                 android:id="@+id/layout_status"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
-                android:orientation="horizontal"
+                android:layout_marginEnd="@dimen/space_2"
+                android:minHeight="58dp"
                 android:gravity="center_vertical"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toStartOf="@+id/layout_traffic"
+                android:orientation="horizontal"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent">
+                app:layout_constraintEnd_toStartOf="@id/layout_traffic"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent">
 
-                <View
-                    android:id="@+id/status_dot"
-                    android:layout_width="8dp"
-                    android:layout_height="8dp"
-                    android:layout_marginEnd="8dp"
-                    android:background="@drawable/shape_status_dot"
-                    android:backgroundTint="#F44336"
-                    android:importantForAccessibility="no" />
+                <TextView
+                    android:id="@+id/tv_bottom_avatar_letter"
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:background="@drawable/bg_connection_avatar"
+                    android:gravity="center"
+                    android:importantForAccessibility="no"
+                    android:textColor="?attr/colorOnPrimaryContainer"
+                    android:textSize="23sp"
+                    android:textStyle="bold"
+                    tools:text="G" />
 
                 <LinearLayout
+                    android:id="@+id/dock_identity_text"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:focusable="true"
-                    android:contentDescription="@string/desc_connection_status">
+                    android:layout_marginStart="10dp"
+                    android:orientation="vertical">
 
                     <TextView
                         android:id="@+id/tv_status"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:ellipsize="marquee"
-                        android:marqueeRepeatLimit="marquee_forever"
-                        android:singleLine="true"
-                        android:scrollHorizontally="true"
-                        android:focusable="true"
-                        android:focusableInTouchMode="true"
+                        android:includeFontPadding="false"
                         android:text="@string/status_disconnected"
-                        android:textAppearance="?attr/textAppearanceTitleSmall"
                         android:textColor="?attr/colorOnSurface"
-                        android:importantForAccessibility="no" />
+                        android:textSize="@dimen/text_body"
+                        android:textStyle="bold"
+                        tools:text="Guangzhou Home" />
 
-                    <TextView
-                        android:id="@+id/tv_status_subtitle"
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:visibility="gone"
-                        android:ellipsize="marquee"
-                        android:marqueeRepeatLimit="marquee_forever"
-                        android:singleLine="true"
-                        android:scrollHorizontally="true"
-                        android:focusable="true"
-                        android:focusableInTouchMode="true"
-                        android:textAppearance="?attr/textAppearanceBodySmall"
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        tools:text="245 ms"
-                        android:importantForAccessibility="no" />
+                        android:layout_marginTop="7dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <View
+                            android:id="@+id/status_dot"
+                            android:layout_width="9dp"
+                            android:layout_height="9dp"
+                            android:layout_marginEnd="6dp"
+                            android:background="@drawable/shape_status_dot"
+                            android:backgroundTint="@color/connection_state_offline"
+                            android:importantForAccessibility="no" />
+
+                        <TextView
+                            android:id="@+id/tv_status_subtitle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:includeFontPadding="false"
+                            android:textColor="@color/connection_state_online"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            tools:text="-" />
+                    </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
 
@@ -199,44 +256,130 @@
                 android:id="@+id/layout_traffic"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="16dp"
-                android:orientation="vertical"
-                android:gravity="end"
+                android:layout_marginEnd="@dimen/space_2"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
                 android:visibility="gone"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toStartOf="@+id/fab_start_stop"
-                app:layout_constraintTop_toTopOf="parent">
+                app:layout_constraintEnd_toStartOf="@id/fab_start_stop"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent">
 
-                <TextView
-                    android:id="@+id/tv_up_rate"
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:id="@+id/dock_up_column"
+                    android:layout_width="68dp"
                     android:layout_height="wrap_content"
-                    tools:text="@string/traffic_up_placeholder"
-                    android:textAppearance="?attr/textAppearanceLabelSmall"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
-
-                <TextView
-                    android:id="@+id/tv_down_rate"
-                    android:layout_width="wrap_content"
+                    android:gravity="center"
+                    android:orientation="vertical">
+                    <app.fjj.stun.ui.view.TrafficBarChartView
+                        android:id="@+id/iv_compact_up_chart"
+                        android:layout_width="match_parent"
+                        android:layout_height="27dp"
+                        android:contentDescription="@string/connection_upload_chart" />
+                    <TextView
+                        android:id="@+id/tv_up_rate"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="5dp"
+                        android:gravity="center"
+                        android:includeFontPadding="false"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        tools:text="↑ 1.4 MB/s" />
+                </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/dock_down_column"
+                    android:layout_width="68dp"
                     android:layout_height="wrap_content"
-                    tools:text="@string/traffic_down_placeholder"
-                    android:textAppearance="?attr/textAppearanceLabelSmall"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
+                    android:layout_marginStart="6dp"
+                    android:gravity="center"
+                    android:orientation="vertical">
+                    <app.fjj.stun.ui.view.TrafficBarChartView
+                        android:id="@+id/iv_compact_down_chart"
+                        android:layout_width="match_parent"
+                        android:layout_height="27dp"
+                        android:contentDescription="@string/connection_download_chart" />
+                    <TextView
+                        android:id="@+id/tv_down_rate"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="5dp"
+                        android:gravity="center"
+                        android:includeFontPadding="false"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        tools:text="↓ 8.2 MB/s" />
+                </LinearLayout>
             </LinearLayout>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/fab_start_stop"
                 style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="wrap_content"
+                android:layout_width="58dp"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="4dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:minHeight="56dp"
+                android:paddingHorizontal="3dp"
+                android:paddingVertical="7dp"
                 android:text="@string/connect"
+                android:textColor="?attr/colorError"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                app:backgroundTint="?attr/colorErrorContainer"
+                app:cornerRadius="@dimen/corner_xs"
                 app:icon="@drawable/ic_play"
-                android:contentDescription="@string/desc_start_stop_button"
+                app:iconGravity="textTop"
+                app:iconPadding="4dp"
+                app:iconSize="20dp"
+                app:iconTint="?attr/colorError"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
         </androidx.constraintlayout.widget.ConstraintLayout>
-    </com.google.android.material.card.MaterialCardView>
+
+        <!-- 出口行：可见性由代码按连接状态驱动（预留位置，不随探测结果出现/消失）。
+             fallbackLineSpacing=false 是必须的：它让行高只按主字体算，否则中文占位文案会被
+             CJK 回退字体撑高约 4dp，等真实值（拉丁字母 + 国旗）回来时底栏会缩一下。 -->
+        <TextView
+            android:id="@+id/tv_bottom_exit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="@dimen/space_4"
+            android:paddingBottom="10dp"
+            android:includeFontPadding="false"
+            android:fallbackLineSpacing="false"
+            android:textSize="@dimen/text_label"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:visibility="gone"
+            tools:text="203.0.113.8 · 🇸🇬 Singapore" />
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/iv_expand_connection"
+            android:layout_width="48dp"
+            android:layout_height="24dp"
+            android:layout_gravity="top|center_horizontal"
+            android:paddingHorizontal="@dimen/space_3"
+            android:paddingTop="2dp"
+            android:paddingBottom="6dp"
+            android:src="@drawable/ic_connection_expand"
+            android:importantForAccessibility="no"
+            android:contentDescription="@string/connection_details_expand"
+            app:tint="?attr/colorOnSurfaceVariant" />
+
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:id="@+id/progress_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:layout_marginHorizontal="@dimen/space_7"
+            android:indeterminate="true"
+            android:visibility="gone"
+            app:indicatorColor="@color/widget_up_accent"
+            app:trackColor="@android:color/transparent" />
+    </app.fjj.stun.ui.view.ConnectionDockLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

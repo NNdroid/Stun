@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 最近使用（节点列表筛选 tab）：Material history 图标 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M13,3 C8.03,3 4,7.03 4,12 L1,12 L4.5,15.5 L8,12 L5,12 C5,7.58 8.58,4 13,4 C17.42,4 21,7.58 21,12 C21,16.42 17.42,20 13,20 C9.58,20 6.73,17.83 5.68,14.83 L3.87,15.54 C5.14,19.04 8.75,21.5 13,21.5 C18.25,21.5 22.5,17.25 22.5,12 C22.5,6.75 18.25,2.5 13,2.5 Z M12,8 L12,12.41 L15.29,15.71 L16.71,14.29 L13,10.59 L13,8 Z" />
+</vector>

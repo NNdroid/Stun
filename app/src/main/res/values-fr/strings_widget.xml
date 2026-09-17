@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widgets d\'écran d\'accueil : noms/descriptions des cinq formats et libellés du widget détaillé -->
+<resources>
+    <string name="widget_label_capsule">Barre</string>
+    <string name="widget_label_mini">Mini</string>
+    <string name="widget_label_standard">Standard</string>
+    <string name="widget_label_detail">Détails</string>
+
+    <string name="widget_desc_capsule">Nom, latence, graphiques en direct et interrupteur rapide</string>
+    <string name="widget_desc_mini">Nom, latence et débits actuels uniquement</string>
+    <string name="widget_desc_standard">Infos complètes : nom, état, latence, protocole et débits</string>
+    <string name="widget_desc_detail">Tous les champs et un graphique de débit en direct</string>
+
+    <string name="widget_label_uptime">Durée</string>
+    <string name="widget_uptime_days">%1$dj %2$dh %3$dmin</string>
+    <string name="widget_uptime_hours">%1$dh %2$dmin</string>
+
+    <string name="desc_open_app">Ouvrir l\'application</string>
+    <string name="desc_widget_favorite">Nœud favori</string>
+    <!-- 2026-09-15: 小组件选择器 i18n 补全 -->
+    <string name="widget_label_compact">Compacte</string>
+    <string name="widget_label_wide">Tablette / bureau</string>
+    <string name="widget_desc_compact">Informations essentielles et action de connexion dans un espace réduit</string>
+    <string name="widget_desc_wide">Informations étendues et graphiques de vitesse en direct pour grands écrans</string>
+</resources>

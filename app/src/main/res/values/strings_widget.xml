@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 桌面小组件：四档版式的名称/说明，以及展开详情用到的字段标签 -->
+<resources>
+    <!-- previewLayout 的示例数据；运行时均由 Provider 覆盖。 -->
+    <string name="widget_preview_name" translatable="false">France Office</string>
+    <string name="widget_preview_latency" translatable="false">32 ms</string>
+    <string name="widget_preview_address" translatable="false">185.248.33.40:443</string>
+    <string name="widget_preview_speed_up_short" translatable="false">12.4M</string>
+    <string name="widget_preview_speed_down_short" translatable="false">8.7M</string>
+    <string name="widget_preview_last" translatable="false">2 days ago</string>
+    <string name="widget_preview_uptime" translatable="false">1 day 12 hours</string>
+    <string name="widget_placeholder_latency" translatable="false">-- ms</string>
+    <string name="widget_placeholder_speed" translatable="false">-- B/s</string>
+    <string name="widget_placeholder_speed_short" translatable="false">--</string>
+    <string name="widget_label_capsule">Quick bar</string>
+    <string name="widget_label_mini">Mini</string>
+    <string name="widget_label_compact">Compact</string>
+    <string name="widget_label_standard">Standard</string>
+    <string name="widget_label_wide">Tablet / desktop</string>
+    <string name="widget_label_detail">Details</string>
+
+    <string name="widget_desc_capsule">Name, latency, live speed charts and one-tap switch</string>
+    <string name="widget_desc_mini">Name, latency and current speeds only</string>
+    <string name="widget_desc_compact">Core information and a connection action in limited space</string>
+    <string name="widget_desc_standard">Full info: name, status, latency, protocol and speeds</string>
+    <string name="widget_desc_wide">Wider information and live speed charts for large screens</string>
+    <string name="widget_desc_detail">All fields plus a live speed chart</string>
+
+    <string name="widget_label_uptime">Uptime</string>
+    <string name="widget_uptime_days">%1$dd %2$dh %3$dm</string>
+    <string name="widget_uptime_hours">%1$dh %2$dm</string>
+
+    <!-- 协议术语，不翻译 -->
+    <string name="widget_label_sni" translatable="false">SNI</string>
+    <string name="widget_label_host" translatable="false">Host</string>
+
+    <string name="desc_open_app">Open app</string>
+    <string name="desc_widget_favorite">Favorited node</string>
+</resources>

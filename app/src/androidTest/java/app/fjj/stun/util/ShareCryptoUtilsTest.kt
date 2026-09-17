@@ -41,7 +41,7 @@ class ShareCryptoUtilsTest {
             sshAddr = "1.2.3.4:22",
             user = "u",
             pass = "p",
-            tunnelType = Profile.TUNNEL_TYPE_TLS
+            tunnelType = Profile.TUNNEL_TYPE_RAW
         )
         val json = gson.toJson(profile)
         val payload = ShareCryptoUtils.encrypt(json, pin)
@@ -55,6 +55,32 @@ class ShareCryptoUtilsTest {
         val restored = gson.fromJson(decrypted, Profile::class.java)
         // 序列化往返应与原始对象完全一致（含 id 字段）
         assertEquals(profile, restored)
+    }
+
+    @Test
+    fun roundTrip_preservesIndependentSdkFields() {
+        val profile = Profile(
+            name = "SDK fields",
+            tunnelType = Profile.TUNNEL_TYPE_UDP_CUSTOM,
+            dnsTunnelPublicKey = "dns-key",
+            udpCustomPublicKey = "udp-key",
+            udpCustomPaths = 17,
+            udpCustomSockets = 3,
+            udpCustomSendWindow = 384,
+            xhttpChunkSizeKB = 512,
+            heartbeatIntervalMs = 12_000
+        )
+
+        val payload = ShareCryptoUtils.encrypt(gson.toJson(profile), pin)!!
+        val restored = gson.fromJson(ShareCryptoUtils.decrypt(payload, pin), Profile::class.java)
+
+        assertEquals("dns-key", restored.dnsTunnelPublicKey)
+        assertEquals("udp-key", restored.udpCustomPublicKey)
+        assertEquals(17, restored.udpCustomPaths)
+        assertEquals(3, restored.udpCustomSockets)
+        assertEquals(384, restored.udpCustomSendWindow)
+        assertEquals(512, restored.xhttpChunkSizeKB)
+        assertEquals(12_000, restored.heartbeatIntervalMs)
     }
 
     @Test

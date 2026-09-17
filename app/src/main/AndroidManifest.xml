@@ -15,8 +15,10 @@
         android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
 
-    <uses-feature android:name="android.hardware.touchscreen" android:required="true" />
-    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <!-- touchscreen required=false：放宽到无触摸屏设备也可安装（lint UnsupportedTvHardware）。
+         leanback 特性声明已删：本模块是手机端，TV 端由独立的 tv 模块承载
+         （声明了 leanback 却没有 LEANBACK_LAUNCHER 会报 MissingLeanbackLauncher）。 -->
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
     <application
         android:name=".StunApp"
@@ -34,8 +36,6 @@
             android:theme="@style/Theme.App.Starting"
             android:exported="true"
             android:windowSoftInputMode="adjustResize" >
-            <!-- Opt-out of universal resizability on large screens for now (Android 16 compat) -->
-            <property android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY" android:value="true" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -50,6 +50,11 @@
 
                 <data android:scheme="stun" />
             </intent-filter>
+
+            <!-- Gemini / Google Assistant App Actions & Launcher Shortcuts -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
 
         <activity
@@ -57,6 +62,99 @@
             android:label="@string/edit_profile"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+
+        <!-- 订阅说明页：订阅面板标题后的问号进入。
+             纯静态本地页面，不导出、不接受外部 Intent。 -->
+        <activity
+            android:name=".ui.SubscriptionHelpActivity"
+            android:label="@string/subscription_help_title"
+            android:exported="false" />
+
+        <!-- 快捷方式/小组件/磁贴的无界面启动与断开入口。
+             exported=true 是 launcher 启动动态快捷方式目标所必需；
+             只响应内部定义的两个 action，真正的 VPN 建立仍受系统授权约束。 -->
+        <activity
+            android:name=".ui.VpnQuickActionActivity"
+            android:theme="@style/Theme.Stun.QuickAction"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity="" />
+
+        <!-- 桌面小组件：六档版式独立可选；连接状态只改变内容，不改变规格。 -->
+        <receiver
+            android:name=".widget.CapsuleStunWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_label_capsule">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="app.fjj.stun.widget.ACTION_TOGGLE_VPN" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_stun_capsule_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.MiniStunWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_label_mini">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="app.fjj.stun.widget.ACTION_TOGGLE_VPN" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_stun_mini_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.StunAppWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_label_standard">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="app.fjj.stun.widget.ACTION_TOGGLE_VPN" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_stun_standard_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.CompactStunWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_label_compact">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="app.fjj.stun.widget.ACTION_TOGGLE_VPN" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_stun_compact_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.WideStunWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_label_wide">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="app.fjj.stun.widget.ACTION_TOGGLE_VPN" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_stun_wide_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.DetailStunWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_label_detail">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="app.fjj.stun.widget.ACTION_TOGGLE_VPN" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_stun_detail_info" />
+        </receiver>
 
         <activity
             android:name="com.journeyapps.barcodescanner.CaptureActivity"
@@ -91,7 +189,7 @@
 
         <service
             android:name=".service.StunTileService"
-            android:icon="@drawable/ic_notification"
+            android:icon="@drawable/ic_fox_logo"
             android:label="@string/app_name"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
             android:exported="true">
@@ -116,6 +214,18 @@
             android:enabled="true"
             android:exported="true"
             android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+
+        <!-- 日志以文件形式分享：把 cacheDir/logs 下的临时导出文件暴露成一个可读 URI，
+             避免大日志塞进 EXTRA_TEXT 触发剪贴板/Intent 的大小上限。 -->
+        <provider
+            android:name="app.fjj.stun.util.LogShareFileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>

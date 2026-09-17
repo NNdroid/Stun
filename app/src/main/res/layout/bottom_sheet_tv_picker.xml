@@ -6,8 +6,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:paddingBottom="24dp"
-    android:background="?attr/colorSurfaceContainer">
+    android:paddingBottom="@dimen/space_6"
+    android:background="@drawable/bg_bottom_sheet">
 
     <!-- Drag Handle -->
     <com.google.android.material.bottomsheet.BottomSheetDragHandleView
@@ -21,28 +21,29 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingHorizontal="20dp"
-        android:paddingBottom="8dp">
+        android:paddingHorizontal="@dimen/space_5"
+        android:paddingBottom="@dimen/space_2">
 
         <ImageView
             android:layout_width="28dp"
             android:layout_height="28dp"
             android:src="@drawable/ic_tv"
             app:tint="?attr/colorPrimary"
-            android:contentDescription="@string/tv_picker_title" />
+            android:contentDescription="@null"
+            android:importantForAccessibility="no" />
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="12dp"
+            android:layout_marginStart="@dimen/space_3"
             android:orientation="vertical">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/tv_picker_title"
-                android:textSize="18sp"
+                android:textSize="@dimen/text_title"
                 android:textStyle="bold"
                 android:textColor="?attr/colorOnSurface" />
 
@@ -51,15 +52,15 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/tv_picker_scanning"
-                android:textSize="12sp"
+                android:textSize="@dimen/text_label"
                 android:textColor="?attr/colorOnSurfaceVariant" />
         </LinearLayout>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_refresh"
             style="@style/Widget.Material3.Button.IconButton"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             app:icon="@drawable/ic_sync"
             app:iconTint="?attr/colorPrimary"
             android:contentDescription="@string/refresh" />
@@ -69,7 +70,7 @@
         android:id="@+id/tab_device_type"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="16dp"
+        android:layout_marginHorizontal="@dimen/space_4"
         app:tabIndicatorFullWidth="false"
         app:tabMode="fixed">
 
@@ -101,7 +102,7 @@
         android:orientation="vertical"
         android:gravity="center"
         android:paddingVertical="36dp"
-        android:paddingHorizontal="32dp"
+        android:paddingHorizontal="@dimen/space_7"
         android:visibility="gone"
         tools:visibility="visible">
 
@@ -111,16 +112,17 @@
             android:src="@drawable/ic_tv"
             android:alpha="0.4"
             app:tint="?attr/colorOnSurfaceVariant"
-            android:contentDescription="@string/tv_picker_no_devices" />
+            android:contentDescription="@null"
+            android:importantForAccessibility="no" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/tv_picker_no_devices"
             android:textAlignment="center"
-            android:textSize="14sp"
+            android:textSize="@dimen/text_body"
             android:textColor="?attr/colorOnSurfaceVariant"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="@dimen/space_3"
             android:lineSpacingExtra="4dp" />
     </LinearLayout>
 
@@ -128,8 +130,12 @@
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_devices"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:nestedScrollingEnabled="false"
-        android:layout_marginTop="8dp" />
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:nestedScrollingEnabled="true"
+        android:overScrollMode="ifContentScrolls"
+        android:clipToPadding="false"
+        android:paddingBottom="@dimen/space_4"
+        android:layout_marginTop="@dimen/space_2" />
 
 </LinearLayout>

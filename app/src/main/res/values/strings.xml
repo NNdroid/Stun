@@ -1,3 +1,61 @@
 <resources>
-    <string name="dummy" translatable="false">dummy</string>
+    <string name="drawer_navigation_section">Navigation</string>
+    <string name="connection_details_expand">Show connection details</string>
+    <string name="connection_node_details">Node details</string>
+    <string name="connection_server">Server</string>
+    <string name="connection_realtime_speed">Live speed · last 15 samples</string>
+    <string name="connection_upload">Upload</string>
+    <string name="connection_download">Download</string>
+    <string name="connection_upload_chart">Recent upload speed chart</string>
+    <string name="connection_download_chart">Recent download speed chart</string>
+    <string name="connection_auxiliary_info">Additional information</string>
+    <string name="connection_total_traffic">Total traffic</string>
+    <string name="connection_exit">Exit address</string>
+    <string name="connection_exit_pending">Fetching exit address…</string>
+    <string name="connection_last_connected">Last connected</string>
+    <string name="connection_magic_format">Magic: %1$s</string>
+    <string name="connection_label_protocol">Protocol</string>
+    <string name="connection_label_magic">Magic marker</string>
+    <string name="connection_label_note">Note</string>
+    <string name="connection_label_ssh_banner">SSH banner</string>
+    <string name="connection_label_ssh_notice">Server notice</string>
+    <string name="connection_banner_link_failed">Couldn\'t open this link</string>
+    <string name="connection_quality_format">Quality %1$s</string>
+    <string name="connection_bar_action_stop">Stop</string>
+    <string name="connection_disconnect_action">Disconnect</string>
+    <string name="connection_favorite_add">Add to favorites</string>
+    <string name="connection_favorite_remove">Remove from favorites</string>
+
+    <!-- 拓扑地球（连接详情面板） -->
+    <string name="connection_topology">Topology</string>
+    <string name="connection_topology_mode_desc">Toggle starry mode</string>
+    <string name="connection_globe_description">Connection topology globe</string>
+    <string name="connection_globe_description_counts">%1$s · %2$s</string>
+    <string name="connection_globe_empty">No node could be placed on the map yet.</string>
+    <string name="connection_globe_need_library">Download the offline geo library to place nodes on the globe.</string>
+    <string name="connection_globe_download">Download</string>
+    <string name="connection_globe_downloading_format">Downloading geo library… %1$d%%</string>
+    <string name="connection_globe_download_failed">Download failed. Check your network and try again.</string>
+    <string name="connection_globe_retry">Retry</string>
+    <!-- 点选气泡：纯出口落点没有节点名时的标题兜底；多节点聚合落点的副标题；无活跃连接的状态行 -->
+    <string name="connection_globe_bubble_exit">Exit location</string>
+    <string name="connection_globe_bubble_merged_format">%1$d nodes here</string>
+    <string name="connection_globe_bubble_idle">No active connection</string>
+    <!-- 拓扑卡下方连接统计条的列标签（数值为纯计数） -->
+    <string name="connection_active_connections">Active connections</string>
+    <plurals name="connection_globe_nodes">
+        <item quantity="one">%d node on the globe</item>
+        <item quantity="other">%d nodes on the globe</item>
+    </plurals>
+    <plurals name="connection_globe_connections">
+        <item quantity="one">%d active connection</item>
+        <item quantity="other">%d active connections</item>
+    </plurals>
+
+    <!-- 连接详情面板版式（2026-09-16 对齐效果图）：
+         卡片头的副标题、地球卡身份头里的短标签、右下角复位视角的无障碍名称。 -->
+    <string name="connection_node_details_subtitle">Server connection &amp; basic info</string>
+    <string name="connection_auxiliary_info_subtitle">Other technical details &amp; server notices</string>
+    <string name="connection_last_connected_short">Last: %1$s</string>
+    <string name="connection_globe_reset_view">Reset view</string>
 </resources>

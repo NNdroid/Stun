@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  订阅说明页：一条工具栏 + 一个 WebView。
+
+  为什么不用 Custom Tabs / 系统浏览器：说明页是随 APK 打包的离线资源，
+  Chrome 拒绝打开 file:// 的本地文件（Custom Tabs 只吃 http/https）。
+  要用系统 Chrome 就得把 6 份 HTML 挂到公网，而「隧道连不上时想查订阅规则」
+  恰恰是最需要看这页的场景 —— 所以选内置 WebView，代价只是换成同一个 Blink 内核算。
+
+  WebView 的背景在代码里设成与页面同色（主题 colorSurface），
+  否则首帧会在深色主题下闪一下白底。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/help_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/app_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/colorSurface"
+        app:elevation="0dp">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:navigationIcon="@drawable/ic_back"
+            app:title="@string/subscription_help_title"
+            app:titleCentered="true" />
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <!-- 高度由代码里的 insets 监听决定（底部留出导航栏），所以这里只吃掉剩余空间。 -->
+    <WebView
+        android:id="@+id/web_view"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+</LinearLayout>

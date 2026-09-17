@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Material arrow_downward（实心：竖杆 + 三角箭头）。带宽测速面板「下载」结果卡里用。
+     注意别和 ic_arrow_down 混：那个是折叠指示用的细三角（M7,10l5,5l5,-5z），
+     当 KPI 图标太轻，压不住 44dp 的实心圆底。
+     与仓库其余图标同一约定：矢量画白色，落在谁身上由使用处的 app:tint 决定。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M20,12l-1.41,-1.41L13,16.17V4h-2v12.17l-5.58,-5.59L4,12l8,8 8,-8z" />
+</vector>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  订阅管理面板：整页单滚动。
+
+  历史结构是「固定区块 / 矮滚动列表 / 固定区块」的三段式 —— 标题、流量卡、底部三个按钮
+  常年占掉面板约 2/3 高度（面板高度本身锁在屏高 90%），留给订阅列表的只有一条缝。
+  而单张展开后的订阅卡（URL + PIN + 名称 + 更新间隔 + 删除/保存）比那条缝还高，
+  于是「滑不动、看不见、一弹键盘更没地方」。
+
+  现在只有拖拽条固定，其余全部由 rv_subscription_list 承载并一起滚动：
+  头部（标题/开关/流量卡，item_subscription_header）→ N 个订阅行（item_subscription_row）
+  → 底部操作区（item_subscription_actions）。整页只有一个纵向滚动系统，
+  键盘避让见 SubscriptionBottomSheet.onViewCreated（padding 加在列表自身 + clipToPadding=false）。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/bg_bottom_sheet"
+    android:paddingStart="@dimen/space_6"
+    android:paddingEnd="@dimen/space_6"
+    android:paddingBottom="@dimen/space_7">
+
+    <!-- 唯一固定的元素：拖拽收起面板的手势锚点 -->
+    <com.google.android.material.bottomsheet.BottomSheetDragHandleView
+        android:id="@+id/drag_handle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <!-- 整页唯一的滚动容器。clipToPadding=false 是键盘避让的前提：
+         底部内边距随输入法增高时，内容要能滚进这块留白里，而不是被裁掉。 -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_subscription_list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:overScrollMode="ifContentScrolls"
+        android:paddingBottom="@dimen/space_2" />
+
+</LinearLayout>

@@ -34,6 +34,7 @@
 
     <string name="profile_name">ノード名</string>
     <string name="ssh_address">SSH アドレス (IP:ポート)</string>
+    <string name="profile_note">メモ（任意）</string>
     <string name="username">ユーザー名</string>
     <string name="password">パスワード</string>
     <string name="private_key">秘密鍵</string>
@@ -45,6 +46,7 @@
     <string name="http_payload">HTTPペイロード</string>
     <string name="proxy_address">プロキシアドレス (IP:ポート)</string>
     <string name="proxy_addr_udp_custom_hint">UDP Custom：ポート範囲を入力できます（例：1.1.1.1:1024-23000,25000-30000）。ポートごとのUDPレート制限を回避するため、各パケットは異なる宛先ポートに送信されます。サーバー側でこの範囲をリッスンポートにDNATする必要があります。</string>
+        <string name="proxy_addr_icmp_hint">ICMP 接続先 IP（ポート不要）</string>
     <string name="custom_host">カスタムホスト</string>
     <string name="server_name">サーバー名 (SNI)</string>
     <string name="custom_path">パス</string>
@@ -75,6 +77,54 @@
     <string name="direct_routing">ルーティング規則</string>
     <string name="geosite_direct">GeoSite ダイレクト (例: cn,apple)</string>
     <string name="geoip_direct">GeoIP ダイレクト (例: cn,private)</string>
+    <string name="geo_tag_picker_title">Geo タグを選択</string>
+    <string name="geo_tag_search_hint">タグを検索…</string>
+    <string name="geo_tag_selected_count">%1$d 件選択中</string>
+    <string name="geo_tag_loading">ルールファイルからタグを読み込み中…</string>
+    <string name="geo_tag_clear">クリア</string>
+    <string name="geo_tag_select_all">すべて選択</string>
+    <string name="geo_tag_invert">反転</string>
+    <string name="geo_tag_filter_selected">選択中のみ</string>
+    <string name="geo_tag_load_failed">タグの読み込みに失敗：%1$s</string>
+    <string name="geo_tag_empty">タグが見つかりません。先に GeoData を更新してください。</string>
+    <string name="icmp_custom_psk">PSK（事前共有キー）</string>
+    <string name="icmp_custom_magic">Magic（8桁の16進数、空 = デフォルト）</string>
+    <string name="icmp_custom_family">IP ファミリー</string>
+    <string name="icmp_custom_mtu_mode">MTU モード</string>
+    <string name="icmp_custom_max_payload">最大ペイロード（0 = デフォルト）</string>
+    <string name="icmp_custom_pace_ms">送信間隔 ms（0 = デフォルト）</string>
+    <string name="icmp_custom_id_range">Echo ID プール（例: 1000-1999）</string>
+    <string name="tunnel_tls">TLS 暗号化</string>
+    <string name="webdav_title">WebDAV クラウドバックアップ</string>
+    <string name="webdav_url_hint">WebDAV URL</string>
+    <string name="webdav_desc">ノード、全体設定、購読リストと通信量はバックアップ PIN で暗号化され、サーバー上の Stun フォルダに保存されます。最新 5 世代が自動的に保持されます。</string>
+    <string name="webdav_section_settings">全体設定</string>
+    <string name="webdav_section_subscription">購読リスト</string>
+    <string name="webdav_section_subscription_usage">購読の通信量</string>
+    <string name="webdav_section_joiner">、</string>
+    <string name="webdav_url_example">例：https://dav.jianguoyun.com/dav/</string>
+    <string name="webdav_user_hint">アカウント</string>
+    <string name="webdav_pass_hint">パスワード / アプリパスワード</string>
+    <string name="webdav_pin_hint">バックアップ PIN</string>
+    <string name="webdav_pin_helper">ランダムな PIN が自動生成されました（上の欄を参照）。変更可能（4 文字以上）。復元時にこの PIN が必要です</string>
+    <string name="webdav_interval">バックアップ間隔（時間）</string>
+    <string name="desc_backup_status">クラウドバックアップ状態</string>
+    <string name="webdav_auto">毎日自動バックアップ</string>
+    <string name="webdav_backup_now">今すぐバックアップ</string>
+    <string name="webdav_restore">復元</string>
+    <string name="webdav_last">前回のバックアップ：%1$s</string>
+    <string name="webdav_ok">✓ WebDAV バックアップ完了（%1$d ノード；%2$s）</string>
+    <string name="webdav_failed">✕ WebDAV バックアップに失敗：%1$s</string>
+    <string name="webdav_restore_ok">✓ WebDAV から %1$d ノードを復元しました</string>
+    <string name="webdav_restore_ok_full">✓ WebDAV から %1$d ノードと %2$s を復元しました</string>
+    <string name="webdav_restore_pick_title">復元するバックアップを選択</string>
+    <string name="webdav_no_backups">サーバー上にバックアップがありません</string>
+    <string name="webdav_err_config">WebDAV の設定が不完全です。URL・アカウント・パスワード・バックアップ PIN を入力してください</string>
+    <string name="webdav_err_pin">バックアップ PIN が正しくないため復号できません</string>
+    <string name="webdav_err_missing">このバックアップはサーバー上に見つかりません</string>
+    <string name="webdav_pin_too_short">バックアップ PIN は 4 文字以上必要です</string>
+    <string name="webdav_restore_confirm">選択したバックアップは現在の設定を上書きし、ノードを ID でマージします。この端末で削除したノードや購読が戻ってくる場合があります。元に戻せません。続行しますか？</string>
+    <string name="geo_tag_no_match">フィルタに一致するタグがありません</string>
     <string name="save_settings">設定を保存</string>
 
     <string name="language">表示言語</string>
@@ -87,8 +137,12 @@
     <string name="lang_ja">日本語</string>
 
     <string name="clear_logs">クリア</string>
+    <string name="clear_logs_confirm">すべてのログを消去しますか？この操作は元に戻せません。</string>
+    <string name="logs_empty">表示できるログはありません</string>
     <string name="copy">コピー</string>
-    <string name="copy_uri">URIをコピー</string>
+    <string name="copy_uri">Stun URI をコピー</string>
+    <string name="import_from_clipboard">クリップボードから URI をインポート</string>
+    <string name="clipboard_empty">クリップボードが空です</string>
     <string name="copy_success">クリップボードにコピーしました</string>
     <string name="close">閉じる</string>
     <string name="app_logs">アプリログ</string>
@@ -97,6 +151,8 @@
     <string name="logs_share_subject">Stun 診断ログ</string>
 
     <string name="action_tools">ツール</string>
+    <string name="side_sheet_tagline">高速で安全な SSH トンネリング</string>
+    <string name="side_sheet_general">一般</string>
     <string name="action_import_export">バックアップと復元</string>
     <string name="action_export">設定をエクスポート</string>
     <string name="action_import">設定をインポート</string>
@@ -105,6 +161,9 @@
     <string name="push_failed">送信失敗。TVアプリが開いているか確認してください。</string>
 
     <string name="nav_nodes">ノード</string>
+    <string name="node_tab_all">すべて (%1$d)</string>
+    <string name="node_tab_favorites">お気に入り (%1$d)</string>
+    <string name="node_tab_recent">最近 (%1$d)</string>
     <string name="main_disconnected">未接続</string>
     <string name="main_connected">接続済み</string>
     <string name="main_connected_with_latency">%1$s (%2$s)</string>
@@ -149,6 +208,7 @@
     <string name="invalid_qr">無効なQRコード形式です</string>
     <string name="vpn_permission_denied">VPN 権限が拒否されました</string>
     <string name="notification_permission_required">安定稼働には通知権限が必要です。</string>
+    <string name="notification_permission_denied_continue">通知は無効ですが、通知の詳細なしで接続を続行します。</string>
     <string name="error_root_required">透明プロキシには Root 権限が必要です。</string>
     <string name="settings_saved">設定を保存しました</string>
     <string name="profile_saved">設定を保存しました</string>
@@ -160,6 +220,35 @@
     <string name="connection_complete">接続完了</string>
     <string name="error_invalid_private_key">無効な秘密鍵形式です</string>
     <string name="error_invalid_address">無効なアドレス形式です (ホスト:ポート または ホスト:ポート範囲)</string>
+
+        <string name="dns_tunnel_psk_hint">DNS トンネル PSK</string>
+
+        <string name="dns_tunnel_psk_helper">空欄 = 匿名。サーバー側の設定と一致する必要があります</string>
+
+        <string name="dns_tunnel_marker_hint">トンネルマーカー</string>
+
+        <string name="dns_tunnel_marker_helper">カスタムラベル。サーバー側の設定と一致する必要があります</string>
+
+        <string name="icmp_custom_magic_helper">16 進 8 桁（0x 接頭辞可）、例 49434D31；空欄 = デフォルト</string>
+
+        <string name="error_invalid_host_only">ホストまたは IP を入力（ポート不要）</string>
+
+        <string name="error_invalid_server_name">SNI に空白は使えません</string>
+
+    <string name="error_invalid_ssh_fingerprint">無効な SSH フィンガープリント（SHA256:Base64 または 64 桁の16進数）</string>
+    <string name="error_invalid_fingerprint">無効な証明書 SHA-256 フィンガープリント（16進64桁、コロン区切り可）</string>
+
+        <string name="error_invalid_dns_servers">DNS サーバーを 1 つ以上入力（host[:port] または udp:// tls:// https:// 接頭辞）</string>
+
+        <string name="error_invalid_marker">マーカーに空白は使えません（最大 32 文字）</string>
+
+        <string name="error_icmp_magic">マジックは 16 進 8 桁または 0x 接頭辞で入力</string>
+
+        <string name="error_invalid_number">0 または許容範囲の整数を入力</string>
+
+        <string name="warn_psk_short">PSK が 16 文字未満だと総当たりに弱いです</string>
+
+        <string name="warn_xhttp_no_fingerprint">証明書フィンガープリント未設定は MITM のリスクがあります</string>
     <string name="error_invalid_address_single_port">無効なアドレス形式です (ホスト:ポート)。このプロトコルではポート範囲はサポートされていません。</string>
     <string name="error_invalid_port">無効なポート番号です (1-65535)</string>
     <string name="geodata_success">Geoデータが更新されました</string>
@@ -172,7 +261,7 @@
     <string name="loading">読み込み中...</string>
     <string name="error_license_load">ライセンスの読み込みに失敗しました: %1$s</string>
     <string name="error_no_profile_selected">ノードを選択してください</string>
-    <string name="pin_hint">PIN (6桁の数字)</string>
+    <string name="pin_hint">PIN（英数字4文字以上）</string>
     <string name="enter_pin_title">解読用PINを入力</string>
     <string name="pin_new_hint">新しいPINを設定してください</string>
     <string name="encrypt_backup_title">バックアップを暗号化</string>
@@ -213,6 +302,7 @@
     <string name="desc_nav_view">サイドドロワー</string>
     <string name="desc_share_profile">共有</string>
     <string name="desc_edit_profile_action">編集</string>
+    <string name="desc_profile_actions">ノード操作</string>
     <string name="desc_delete_profile">削除</string>
     <string name="desc_save_profile">設定を保存</string>
     <string name="desc_profile_name_input">ノード名を入力</string>
@@ -275,9 +365,10 @@
     <string name="tv_push_rejected">転送が拒否されました</string>
     <string name="accept">受信</string>
     <string name="reject">拒否</string>
-    <string name="tv_picker_title">テレビを選択</string>
-    <string name="tv_picker_scanning">Stun TV を検索中…</string>
-    <string name="tv_picker_no_devices">テレビが見つかりません。\n同じWi-Fiに接続されているか確認してください。</string>
+    <string name="tv_picker_title">ネットワークデバイスを選択</string>
+    <string name="tv_picker_scanning">ローカルネットワーク内の Stun デバイスを検索中…</string>
+    <string name="tv_picker_no_devices">オンラインのデバイスが見つかりません。\n同じWi-Fiに接続され、Stun が起動していることを確認してください。</string>
+    <string name="device_found_count">%1$d 台のデバイスを検出</string>
     <string name="tv_push_success">%1$s への転送に成功しました</string>
     <string name="tv_push_rejected_by_tv">テレビ側で拒否されました</string>
     <string name="tv_push_timeout">タイムアウト（テレビ側の応答なし）</string>
@@ -298,14 +389,43 @@
     <string name="tv_remote_traffic_live">リアルタイム通信量</string>
     <string name="tv_remote_public_ip_title">テレビのパブリックIP</string>
     <string name="tv_remote_loading">ステータス取得中…</string>
+    <string name="remote_device_unavailable">デバイスに接続できません</string>
+    <string name="remote_command_failed">リモート操作に失敗しました。デバイスの接続を確認して再試行してください。</string>
     <string name="tv_remote_no_profiles">テレビに利用可能なノードがありません</string>
     <string name="tv_remote_node_switched">ノードを切り替えました: %1$s</string>
     <string name="tv_waiting_confirmation">テレビ側の確認を待機中…</string>
+    <string name="mcp_server_title">MCP エージェントサーバー</string>
+    <string name="mcp_server_summary">Codex、Claude Code などの MCP クライアントから VPN 操作やノード照会を許可</string>
+    <string name="mcp_server_port">MCP ポート</string>
+    <string name="mcp_server_copy_config">Codex / Claude Code 設定をコピー</string>
+    <string name="mcp_server_config_copied">MCP 設定をクリップボードにコピーしました</string>
+    <string name="db_web_title">データベース Web UI</string>
+    <string name="db_web_summary">LAN 上の Web コンソールで本アプリの SQLite データベースを閲覧・編集できます。ログインが必要です。</string>
+    <string name="db_web_port">ポート</string>
+    <string name="db_web_user">ログインユーザー名</string>
+    <string name="db_web_pass">ログインパスワード</string>
+    <string name="db_web_stopped">停止中</string>
+    <string name="db_web_started">起動中：%1$s</string>
+    <string name="db_web_copy_url">アクセス URL をコピー</string>
+    <string name="db_web_url_copied">アクセス URL をコピーしました</string>
+    <string name="mcp_server_running_format">実行中: http://%1$s:%2$d/mcp</string>
+    <string name="mcp_server_stopped">停止中</string>
+    <string name="mcp_auth_mode">MCP セキュリティと認証</string>
+    <string name="mcp_auth_none">無効 (ローカル直接アクセス)</string>
+    <string name="mcp_auth_api_key">API キー / Bearer トークン</string>
+    <string name="mcp_auth_basic">HTTP Basic (ユーザー名/パスワード)</string>
+    <string name="mcp_auth_oauth">OAuth 2.0 (トークン / 認可コード)</string>
+    <string name="mcp_auth_secret_hint">トークン / シークレット (任意)</string>
+    <string name="mcp_basic_password_hint">パスワード（ユーザー：admin）</string>
+    <string name="mcp_oauth_secret_hint">クライアントシークレット（client_id: stun-client）</string>
     <string name="show_notification_speed">通知バーに速度を表示</string>
     <string name="dns_tunnel_record_type">DNSレコードタイプ</string>
     <string name="dns_tunnel_domain_hint">権威ドメイン (例: tunnel.example.com)</string>
     <string name="dns_tunnel_servers_hint">DNSサーバー (例: 8.8.8.8:53)</string>
     <string name="noise_public_key">Noise 公開鍵 (任意)</string>
+    <string name="desc_noise_encrypted">Noise 暗号化トンネル</string>
+    <string name="desc_key_auth">SSH 鍵認証</string>
+    <string name="last_connected_fmt">最終接続：%1$s</string>
     <string name="noise_public_key_hint">サーバーの Noise 公開鍵 (Hex / Base64)</string>
     <string name="refresh">更新</string>
     <string name="error_prefix">エラー: %1$s</string>
@@ -354,6 +474,40 @@
     <string name="udp_custom_psk">UDP Custom PSK</string>
     <string name="udp_custom_magic">Magic 文字列 (デフォルト: UDPC)</string>
     <string name="udp_custom_psk_hint">認証キーを入力（未設定は空欄）</string>
+    <string name="dns_tunnel_edns0">EDNS0（1232バイト応答、サーバー側と一致が必要）</string>
+    <string name="udp_custom_sockets">UDPソケット数 (0 = デフォルト 1)</string>
+    <string name="udp_custom_send_window">送信ウィンドウ (0 = デフォルト 256)</string>
+    <string name="udp_custom_paths">UDP マルチパス同時実行数（ランダム宛先ポート、0 = デフォルト 32）</string>
+    <string name="error_invalid_noise_public_key">64 文字の 16 進数または 32 バイト Base64 の公開鍵を入力してください</string>
+    <string name="error_dns_noise_record_type">Noise 暗号化では A/AAAA レコードを使用できません。TXT、NULL、CNAME、MX、SRV、NS から選択してください</string>
+    <string name="error_udp_custom_magic">Magic は 4 UTF-8 バイトちょうどである必要があります（例：UDPC）</string>
+    <string name="error_invalid_mtu_probe">MTUプローブは auto, on, off のいずれか</string>
+    <string name="error_invalid_masque_alpn">Masque ALPN は (空), auto, h3, h2 のいずれか</string>
+    <string name="udp_custom_max_pkt_hint">最大ペイロードバイト数</string>
+    <string name="udp_custom_max_pkt_helper">0 = SDK デフォルト 1450</string>
+    <string name="udp_custom_mtu_probe_hint">パス MTU プローブ</string>
+    <string name="padding_min_bytes_hint">最小パディングバイト数</string>
+    <string name="padding_min_bytes_helper">0 = myssh デフォルト 1420、負でオフ</string>
+    <string name="masque_alpn_hint">Masque ALPN 選択</string>
+    <string name="error_xhttp_chunk_size">デフォルトは 0、または 16〜900 KB の値を入力してください</string>
+    <string name="error_heartbeat_interval">デフォルトは 0、または 5000〜300000 ms の値を入力してください</string>
+    <string name="kcp_data_shards">データシャード（0 = デフォルト 10）</string>
+    <string name="kcp_parity_shards">パリティシャード（0 = デフォルト 3）</string>
+    <string name="kcp_mode">KCP モード（fast = デフォルト）</string>
+    <string name="share_pin_edit_hint">カスタム PIN（英数字、最低 4 文字）</string>
+    <string name="kcp_sndwnd">送信ウィンドウ（0 = デフォルト 128）</string>
+    <string name="kcp_rcvwnd">受信ウィンドウ（0 = デフォルト 512）</string>
+    <string name="kcp_mtu">MTU（0 = デフォルト 1350）</string>
+    <string name="kcp_nocomp">Snappy 圧縮を無効化</string>
+    <string name="kcp_smuxver">SMUX バージョン（0 = デフォルト 2）</string>
+    <string name="kcp_keepalive">KeepAlive 秒（0 = デフォルト 10）</string>
+    <string name="xhttp_stream_mode">XHTTP ストリームモード</string>
+    <string name="opt_stream_auto">自動（ストリーミング＋ポーリングフォールバック）</string>
+    <string name="opt_stream_stream">Stream（ストリーミング強制）</string>
+    <string name="opt_stream_poll">Poll（ポーリング強制）</string>
+    <string name="bind_interface">インターフェースバインド（例：wlan0、空 = デフォルト）</string>
+    <string name="xhttp_chunk_size_kb">チャンクサイズ KB (0 = デフォルト 256、範囲 16-900)</string>
+    <string name="heartbeat_interval_ms">ハートビート間隔 ms (0 = デフォルト 25000)</string>
     <string name="search">検索</string>
     <string name="share">共有</string>
     <string name="scan_qr">QRコードをスキャン</string>
@@ -404,6 +558,7 @@
     <string name="car_dashboard_title">車載ダッシュボード</string>
     <string name="car_power_button_connect">接続</string>
     <string name="car_power_button_disconnect">切断</string>
+    <string name="car_vpn_consent_required">VPN 承認が必要です — まずこの端末で Stun を開き、接続許可を与えてください</string>
     <string name="car_status_protected">保護中</string>
     <string name="car_status_unprotected">未保護</string>
     <string name="car_bt_sync_on">Bluetooth同期：オン</string>
@@ -412,13 +567,14 @@
     <string name="car_bt_select_device">車載Bluetooth機器を選択</string>
     <string name="car_bt_scanning">Bluetooth機器をスキャン中…</string>
     <string name="car_bt_no_devices">ペアリング済みのBluetooth機器が見つかりません。</string>
+    <string name="bluetooth_permission_denied">Bluetooth 権限が拒否されました。このタブを使用するには付近のデバイスへのアクセスを許可してください。</string>
     <string name="car_push_success">Bluetooth経由でノードを送信しました</string>
     <string name="car_remote_success">Bluetoothコマンドを送信しました</string>
     <string name="device_picker_wifi_tab">Wi-Fi (LAN)</string>
     <string name="device_picker_bt_tab">Bluetooth (車載)</string>
     <string name="desc_car_power_button">接続切り替え</string>
 
-    <!-- Wear OS & XR Specific -->
+    <!-- Wear&OS & XR Specific -->
     <string name="wear_app_name">Stun ウェア</string>
     <string name="wear_tile_title">Stun ショートカット</string>
     <string name="wear_tile_connected">VPN 有効</string>
@@ -427,4 +583,111 @@
     <string name="xr_spatial_dashboard">空間ダッシュボード</string>
     <string name="xr_spatial_status_connected">空間保護 有効</string>
     <string name="xr_spatial_status_disconnected">空間保護 无効</string>
+
+    <!-- Sh&rtcuts & Gemini App Actions -->
+    <string name="shortcut_start_vpn">接続</string>
+    <string name="shortcut_stop_vpn">切断</string>
+    <string name="shortcut_switch_node">ノード切替</string>
+    <string name="shortcut_remote_tv">TV遠隔操作</string>
+
+    <!-- Subscription Management -->
+    <string name="subscription_title">ノード購読</string>
+    <string name="subscription_url_hint">HTTPS 購読URLを入力</string>
+    <string name="error_invalid_subscription_url">有効な HTTPS 購読URLを入力してください</string>
+    <string name="subscription_home_page">ホームページ</string>
+    <string name="subscription_sync_now">今すぐ同期</string>
+    <string name="subscription_sync_success">同期成功：%d 個のノードを更新しました</string>
+    <string name="subscription_sync_error">購読の同期に失敗しました: %s</string>
+    <string name="subscription_last_sync">最終同期: %s</string>
+    <string name="subscription_never_synced">未同期</string>
+    <string name="subscription_pin_hint">PIN（任意、暗号化された購読用）</string>
+    <string name="subscription_pin_required">この購読はPINで暗号化されています。PINを入力してください</string>
+    <string name="subscription_pin_invalid">PINが違うか、復号に失敗しました</string>
+    <string name="subscription_add">購読を追加</string>
+    <string name="subscription_pin_short">PIN</string>
+    <string name="subscription_sync_partial">%1$d/%2$d 件の購読を同期、%3$d ノードをインポート</string>
+    <string name="paste_from_clipboard">クリップボードから貼り付け</string>
+    <string name="widget_tap_select_node">タップしてノードを選択</string>
+    <string name="widget_uplink">上り</string>
+    <string name="widget_downlink">下り</string>
+    <string name="widget_latency_format" translatable="false">%1$d ms</string>
+    <string name="error_unknown">不明なエラー</string>
+
+    <!-- App Crash Dialog -->
+    <string name="app_crash_dialog_title">⚠️ 前回アプリが異常終了しました</string>
+    <string name="app_crash_dialog_msg">前回実行中に予期せぬエラーが発生しました。ログをコピーまたは共有して診断に役立ててください：</string>
+    <string name="app_crash_dialog_copy">ログをコピー</string>
+    <string name="app_crash_dialog_copied">クラッシュログをクリップボードにコピーしました</string>
+    <string name="app_crash_dialog_share">共有</string>
+    <string name="app_crash_dialog_dismiss">閉じる</string>
+
+    <!-- 2026-09-15: 帯域幅テスト + 購読通信量 i18n 補完 -->
+    <string name="action_bandwidth_test">帯域幅テスト</string>
+    <string name="bandwidth_download">ダウンロード</string>
+    <string name="bandwidth_upload">アップロード</string>
+    <string name="bandwidth_test_done">ダウンロード %1$s · アップロード %2$s</string>
+    <string name="bandwidth_test_downloading">ノード経由でダウンロードを測定中…</string>
+    <string name="bandwidth_test_hint">ノードトンネル経由の実際のダウンロード/アップロード スループットを測定します。先に VPN に接続してください。</string>
+    <string name="bandwidth_test_need_vpn">先に VPN に接続してから速度テストを実行してください。</string>
+    <string name="bandwidth_test_idle">タップしてテストを開始します。</string>
+    <string name="bandwidth_test_running">測定中…</string>
+    <string name="bandwidth_test_start">テスト開始</string>
+    <string name="bandwidth_test_uploading">ダウンロード完了 · アップロードを測定中…</string>
+    <string name="subscription_usage_expire">%1$s に期限切れ（残り %2$d 日）</string>
+    <string name="subscription_usage_expire_none">無期限</string>
+    <string name="subscription_usage_expired">%1$s に期限切れ</string>
+    <string name="subscription_usage_expiring_body">あと %1$d 日で期限切れです（%2$s）。</string>
+    <string name="subscription_usage_expiring_title">購読の期限が近づいています</string>
+    <string name="subscription_usage_month">今月 +%1$s</string>
+    <string name="subscription_usage_none">使用量データがありません</string>
+    <string name="subscription_usage_over_quota_body">プランの %1$d%% を使用しました（%2$s / %3$s）。</string>
+    <string name="subscription_usage_over_quota_title">通信量がまもなく上限に達します</string>
+    <string name="subscription_usage_percent">%1$d%%</string>
+    <string name="subscription_usage_title">通信量の使用状況</string>
+    <string name="subscription_usage_today">今日 +%1$s</string>
+    <string name="subscription_usage_trend">使用量の推移（同期ごと）</string>
+    <string name="subscription_usage_unlimited">無制限プラン</string>
+    <string name="value_dash">—</string>
+    <!-- 2026-09-15: 訂閱行信息 i18n 補全 -->
+    <string name="subscription_nodes_count">%1$d ノード</string>
+    <string name="subscription_auto_interval">%1$d 時間ごとに自動更新</string>
+    <string name="subscription_synced_at">同期済み %1$s</string>
+    <string name="subscription_usage_alerts_channel_desc">契約のトラフィック上限と期限切れアラート</string>
+    <string name="subscription_empty_hint">登録がありません。追加するとノードを自動で取り込みます。</string>
+    <string name="subscription_row_sync">この登録を同期</string>
+    <string name="subscription_row_more">その他の操作</string>
+    <string name="subscription_action_edit">編集</string>
+    <string name="subscription_action_copy_url">URL をコピー</string>
+    <string name="subscription_delete_title">この登録を削除しますか？</string>
+    <string name="subscription_delete_also_nodes">取り込んだ %1$d 個のノードも削除</string>
+    <string name="subscription_result_counts">追加 %1$d · 更新 %2$d · 削除 %3$d</string>
+    <string name="subscription_auto_sync">バックグラウンド自動同期</string>
+    <string name="subscription_interval_label">更新間隔</string>
+    <string name="subscription_name_hint">登録名（任意）</string>
+    <string name="subscription_err_http">サーバーがエラーを返しました</string>
+    <string name="subscription_err_network">ネットワーク要求に失敗しました</string>
+    <string name="subscription_err_no_valid_nodes">登録に有効なノードがありません</string>
+    <string name="subscription_save">保存</string>
+    <!-- 2026-09-17: 订阅面板按设计稿重排（编辑区分区标题 / 用量趋势开关 / 复制用量） -->
+    <string name="subscription_settings">登録設定</string>
+    <string name="subscription_usage_used_of">%1$s / %2$s 使用</string>
+    <string name="subscription_usage_trend_label">使用量の推移</string>
+    <string name="subscription_usage_copy">使用状況をコピー</string>
+    <!-- 2026-09-17: 購読パネルのタイトル横の「?」→ 内蔵 HTML 説明ページ（SubscriptionHelpActivity）。
+         本文はすべて assets/help/<lang>/subscription_help.html 側。ここはタイトルと読み上げ用のみ。 -->
+    <string name="subscription_help_title">購読の説明</string>
+    <string name="subscription_help">購読ファイルの形式について</string>
+
+    <!-- Main menu sheet: section title + per-tile descriptions -->
+    <string name="side_sheet_quick_add">クイック追加</string>
+    <string name="menu_desc_add_manual">サーバー情報を入力</string>
+    <string name="menu_desc_scan_qr">QRコードをスキャンして即座に追加</string>
+    <string name="menu_desc_import_clipboard">複数のリンク形式に対応</string>
+    <string name="menu_desc_subscription">サブスクリプションリンクからノードを取得</string>
+    <string name="menu_desc_speed_test">ノードのネットワーク遅延を測定</string>
+    <string name="menu_desc_bandwidth_test">アップロード・ダウンロード速度を測定</string>
+    <string name="menu_desc_tv_remote">LAN機器を検出して選択</string>
+    <string name="menu_desc_import">ファイルからノード設定をインポート</string>
+    <string name="menu_desc_export">現在のノード設定をエクスポート</string>
+    <string name="menu_desc_settings">アプリの設定と環境</string>
 </resources>

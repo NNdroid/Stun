@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 地球右下角「复位视角」按钮的底：浮在球面上的圆形承载面 + 圆形水波。
+     刻意不用纯白/纯黑 —— 球在星空模式下是近黑、扁平模式下是米色，只有容器色在两套配色下都稳。
+     包一层 ripple（而不是裸 shape）是为了让点按有反馈：mask 画成同尺寸的圆，
+     水波才被裁进圆形里，不会溢出成一个方块。 -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="?attr/colorControlHighlight">
+    <item android:id="@android:id/mask">
+        <shape android:shape="oval">
+            <solid android:color="@android:color/white" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="?attr/colorSurfaceContainerHigh" />
+        </shape>
+    </item>
+</ripple>

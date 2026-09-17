@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 展开详情：5x3 横向卡片，完整字段与实时速率图。
+     targetCellWidth/Height 与 maxResizeWidth/Height 是 API 31+ 属性，
+     老启动器靠 minWidth/minHeight + minResize* 兜底，因此这四条"未使用"是有意保留的。 -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:minWidth="320dp"
+    android:minHeight="180dp"
+    android:minResizeWidth="320dp"
+    android:minResizeHeight="180dp"
+    android:targetCellWidth="5"
+    android:targetCellHeight="3"
+    android:maxResizeWidth="680dp"
+    android:maxResizeHeight="320dp"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="1800000"
+    android:description="@string/widget_desc_detail"
+    android:previewImage="@drawable/widget_preview_detail"
+    android:previewLayout="@layout/widget_stun_detail"
+    android:initialLayout="@layout/widget_stun_detail"
+    android:widgetCategory="home_screen"
+    tools:ignore="UnusedAttribute" />

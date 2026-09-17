@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 带宽测速面板头部圆形徽标的图形：四根递增的信号条。
+     刻意用「圆头描边」而不是填充矩形 —— 填充的方头在深色圆底上会显得硬，
+     效果图里的条是圆头的。描边宽 3.6、圆帽会在两端各外扩 1.8，
+     所以四根的底端视觉上是齐平的（都在 y=21.8 附近）。
+     与仓库其余图标同一约定：矢量画白色，落在谁身上由使用处的 app:tint 决定。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="3.6"
+        android:strokeLineCap="round"
+        android:pathData="M4.2,16 L4.2,20" />
+    <path
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="3.6"
+        android:strokeLineCap="round"
+        android:pathData="M9.4,12.4 L9.4,20" />
+    <path
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="3.6"
+        android:strokeLineCap="round"
+        android:pathData="M14.6,8.8 L14.6,20" />
+    <path
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="3.6"
+        android:strokeLineCap="round"
+        android:pathData="M19.8,5.2 L19.8,20" />
+</vector>

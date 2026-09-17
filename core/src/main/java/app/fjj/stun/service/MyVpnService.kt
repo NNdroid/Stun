@@ -19,6 +19,7 @@ import app.fjj.stun.core.BuildConfig
 import kotlinx.coroutines.*
 import hev.htp.TTunnelService
 import app.fjj.stun.repo.*
+import app.fjj.stun.util.AppBootstrap
 import app.fjj.stun.util.ShizukuUtils
 import myssh.SysInfoCallback
 import myssh.TrafficCallback
@@ -55,6 +56,17 @@ class MyVpnService : VpnService() {
     @Volatile private var userRequestedStop = false
     @Volatile private var isForegroundStarted = false
 
+    /**
+     * 会话循环的**唯一权威存活信号**。`vpnState` 是异步 postValue 的 LiveData，
+     * 比循环的实际启停滞后 —— 拿它当"有没有会话在跑"的闸门，会在旧循环收尾期间放进
+     * 第二个循环，两个循环共享 vpnInterface、Go proxy 与状态流，产生
+     * "UI 显示未连接但 VPN 图标还亮着"的僵尸态。只在主线程读写。
+     */
+    private var loopJob: Job? = null
+
+    /** 旧会话正在收尾时收到的启动意图，等循环退出后自动补发。只在主线程读写。 */
+    private var pendingStart = false
+
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
     private var connectivityManager: ConnectivityManager? = null
@@ -73,6 +85,9 @@ class MyVpnService : VpnService() {
         const val CHANNEL_ID = "StunVpnChannel"
         const val NOTIFICATION_ID = 1001
         const val VPN_MTU = 1500
+
+        /** 断开后等待循环自行退出的上限，超时才强制停服务（见 stopVpnService 的看门狗）。 */
+        const val STOP_WATCHDOG_MS = 5000L
     }
 
     override fun attachBaseContext(newBase: android.content.Context) {
@@ -80,6 +95,10 @@ class MyVpnService : VpnService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // startForegroundService 启动的服务必须在系统时限内进入前台，否则超时抛
+        // ForegroundServiceDidNotStartInTimeException。必须同步调用：会话守卫
+        // （loopJob 还活着时跳过/排队启动）和 ACTION_STOP 路径都不能例外。
+        startForegroundNow(getString(R.string.main_connecting))
         when (intent?.action) {
             ACTION_STOP -> handleStopRequest()
             else -> handleStartRequest()
@@ -89,6 +108,8 @@ class MyVpnService : VpnService() {
 
     private fun handleStopRequest() {
         userRequestedStop = true
+        // 显式断开要作废排队中的重连意图（断开后用户又快速点过连接的情况）
+        pendingStart = false
         reconnectTrigger?.complete(Unit)
         serviceScope.launch {
             stopVpnService()
@@ -96,16 +117,39 @@ class MyVpnService : VpnService() {
     }
 
     private fun handleStartRequest() {
-        val currentState = StunRepository.vpnState.value ?: VpnState.DISCONNECTED
-        if (currentState == VpnState.DISCONNECTED || currentState == VpnState.ERROR) {
-            userRequestedStop = false
-            updateNotification(getString(R.string.main_connecting))
-            StunRepository.vpnState.postValue(VpnState.CONNECTING)
-            acquireLocks()
-            registerNetworkCallback()
-            serviceScope.launch {
-                startVpnServiceLoop()
+        // 闸门只认循环协程的存活，不认滞后的 vpnState：循环还活着（含收尾）时，
+        // 若已在停止流程则记下意图、循环退出后自动重连；否则视为重复点击，忽略。
+        if (loopJob?.isActive == true) {
+            if (userRequestedStop) pendingStart = true
+            return
+        }
+        pendingStart = false
+        userRequestedStop = false
+        StunRepository.vpnState.postValue(VpnState.CONNECTING)
+        acquireLocks()
+        registerNetworkCallback()
+        loopJob = serviceScope.launch {
+            startVpnServiceLoop()
+            onSessionLoopExited()
+        }
+    }
+
+    /**
+     * 循环退出后的统一收尾（跑在循环协程自己的尾部，此时旧会话的资源已全部释放）：
+     * 有排队意图就原地重开，没有才真正停服务。stopForeground/stopSelf 放在这里而不是
+     * ACTION_STOP 路径里，是为了让排队重连不被上一会话的 stopSelf 打断。
+     */
+    private suspend fun onSessionLoopExited() {
+        withContext(Dispatchers.Main) {
+            loopJob = null // 腾位置：handleStartRequest 的闸门此刻必须放行
+            if (pendingStart) {
+                pendingStart = false
+                handleStartRequest()
+                return@withContext
             }
+            isForegroundStarted = false
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
         }
     }
 
@@ -205,6 +249,10 @@ class MyVpnService : VpnService() {
     }
 
     private suspend fun startVpnServiceLoop() {
+        // 规则库（geosite/geoip）路径要交给 Go 侧，而这几份资产已随启动优化挪到 IO 上部署 ——
+        // 进循环前等就绪，别把还不存在的路径下发下去（Go 侧会静默按无规则启动）。
+        AppBootstrap.awaitAssets(this)
+
         var currentBackoff = INITIAL_RECONNECT_DELAY
         while (!userRequestedStop) {
             try {
@@ -231,6 +279,7 @@ class MyVpnService : VpnService() {
 
                 startHevTunnelEngine(fd)
 
+                ProfileManager.markConnected(this, profile.id)
                 StunRepository.vpnState.postValue(VpnState.CONNECTED)
                 currentBackoff = INITIAL_RECONNECT_DELAY // Reset backoff on success
                 updateUnderlyingNetworks()
@@ -316,6 +365,8 @@ class MyVpnService : VpnService() {
     }
 
     private fun cleanupNativeResources() {
+        app.fjj.stun.util.LatencyProber.stop()
+        StunRepository.clearRateHistory()
         try { myssh.Myssh.registerTrafficCallback(null) } catch (_: Exception) {}
         try { myssh.Myssh.registerSysInfoCallback(null) } catch (_: Exception) {}
         try { myssh.Myssh.registerProtector(null) } catch (_: Exception) {}
@@ -329,13 +380,23 @@ class MyVpnService : VpnService() {
     }
 
     private fun stopVpnService() {
-        isForegroundStarted = false
         releaseLocks()
         unregisterNetworkCallback()
         serviceScope.launch {
             saveFinalTrafficStats()
+            // cleanupNativeResources 在这里跑一遍是为了 unblock 循环里阻塞的 wgWait；
+            // 循环 finally 还会再清一遍，两步都幂等。
             cleanupNativeResources()
-            withContext(Dispatchers.Main) {
+        }
+        // 收尾统一交给 onSessionLoopExited（stopForeground/stopSelf + 排队重连）。
+        // 看门狗兜底：wgWait 万一卡死，循环永远不退出，服务就会赖在前台 ——
+        // 这是旧代码"无条件 stopSelf"能掩盖、但改回按循环退出停服后必须补上的安全网。
+        serviceScope.launch(Dispatchers.Main) {
+            delay(STOP_WATCHDOG_MS)
+            if (loopJob?.isActive == true && !pendingStart) {
+                StunLogger.w(TAG, "Session loop did not exit after stop request; forcing service stop")
+                loopJob?.cancel()
+                isForegroundStarted = false
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
@@ -356,50 +417,64 @@ class MyVpnService : VpnService() {
         currentRxTotal = 0L
     }
 
-    private fun updateNotification(contentText: String? = null) {
-        serviceScope.launch(Dispatchers.Main) {
-            val nm = getSystemService(NotificationManager::class.java)
-            nm?.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, getString(R.string.service_mode_vpn), NotificationManager.IMPORTANCE_LOW)
-            )
-
-            val stopIntent = Intent(this@MyVpnService, MyVpnService::class.java).apply { action = ACTION_STOP }
-            val stopPendingIntent = android.app.PendingIntent.getService(
-                this@MyVpnService, 0, stopIntent,
-                android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
-            )
-
-            val mainIntent = Intent().setClassName(this@MyVpnService, "app.fjj.stun.ui.MainActivity")
-            val mainPendingIntent = android.app.PendingIntent.getActivity(
-                this@MyVpnService, 0, mainIntent,
-                android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
-            )
-
-            val notificationBuilder = NotificationCompat.Builder(this@MyVpnService, CHANNEL_ID)
-                .setContentTitle(getString(R.string.notif_title))
-                .setContentText(contentText ?: getString(R.string.notif_text))
-                .setStyle(NotificationCompat.BigTextStyle().bigText(contentText ?: getString(R.string.notif_text)))
-                .setSubText(currentProfileName)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setCategory(NotificationCompat.CATEGORY_SERVICE)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
-                .setOngoing(true)
-                .setOnlyAlertOnce(true)
-                .setContentIntent(mainPendingIntent)
-                .addAction(R.drawable.ic_pause, getString(R.string.disconnect), stopPendingIntent)
-
-            val notification = notificationBuilder.build()
-
-            if (!isForegroundStarted) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                    startForeground(NOTIFICATION_ID, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-                } else {
-                    startForeground(NOTIFICATION_ID, notification)
-                }
-                isForegroundStarted = true
+    /** 同步进入前台：在 startForegroundService 的时限窗口内必须被调用，不能经过协程调度。 */
+    private fun startForegroundNow(contentText: String) {
+        if (isForegroundStarted) return
+        try {
+            val notification = buildNotification(contentText)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(NOTIFICATION_ID, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
             } else {
-                nm?.notify(NOTIFICATION_ID, notification)
+                startForeground(NOTIFICATION_ID, notification)
             }
+            isForegroundStarted = true
+        } catch (e: Exception) {
+            StunLogger.e(TAG, "startForeground failed", e)
+        }
+    }
+
+    private fun buildNotification(contentText: String): android.app.Notification {
+        val nm = getSystemService(NotificationManager::class.java)
+        nm?.createNotificationChannel(
+            NotificationChannel(CHANNEL_ID, getString(R.string.service_mode_vpn), NotificationManager.IMPORTANCE_LOW)
+        )
+
+        val stopIntent = Intent(this, MyVpnService::class.java).apply { action = ACTION_STOP }
+        val stopPendingIntent = android.app.PendingIntent.getService(
+            this, 0, stopIntent,
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val mainIntent = packageManager.getLaunchIntentForPackage(packageName)
+            ?: Intent().setClassName(this, "app.fjj.stun.ui.MainActivity")
+        val mainPendingIntent = android.app.PendingIntent.getActivity(
+            this, 0, mainIntent,
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(getString(R.string.notif_title))
+            .setContentText(contentText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
+            .setSubText(currentProfileName)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setContentIntent(mainPendingIntent)
+            .addAction(R.drawable.ic_pause, getString(R.string.disconnect), stopPendingIntent)
+            .build()
+    }
+
+    private fun updateNotification(contentText: String? = null) {
+        val text = contentText ?: getString(R.string.notif_text)
+        if (!isForegroundStarted) {
+            startForegroundNow(text)
+            return
+        }
+        serviceScope.launch(Dispatchers.Main) {
+            getSystemService(NotificationManager::class.java)?.notify(NOTIFICATION_ID, buildNotification(text))
         }
     }
 
@@ -415,6 +490,8 @@ class MyVpnService : VpnService() {
                 updateSysInfo(cpuPercent, memAllocMB, memSysMB, goroutines)
             }
         })
+
+        app.fjj.stun.util.LatencyProber.start(this)
     }
 
     private fun updateStats(txRate: Long, rxRate: Long, txTotal: Long, rxTotal: Long, activeConns: Long, totalConns: Long) {
@@ -442,6 +519,7 @@ class MyVpnService : VpnService() {
         StunRepository.rxRate.postValue(rxRate)
         StunRepository.txTotal.postValue(txTotal)
         StunRepository.rxTotal.postValue(rxTotal)
+        StunRepository.recordRateSample(txRate, rxRate)
 
         refreshNotification()
     }
@@ -477,12 +555,14 @@ class MyVpnService : VpnService() {
         userRequestedStop = true
         releaseLocks()
         unregisterNetworkCallback()
-        runBlocking {
-            withContext(Dispatchers.IO) {
-                saveFinalTrafficStats()
-                cleanupNativeResources()
-            }
-        }
+        // 收尾不再让主线程无界等待：统计落库有界等（Room 不允许主线程访问，只能留在 IO），
+        // 原生资源释放彻底异步。契约与取值依据见 VpnTeardown。
+        val blockedMs = VpnTeardown.run(
+            flushStats = { saveFinalTrafficStats() },
+            cleanupNative = { cleanupNativeResources() },
+            onError = { what, t -> StunLogger.w(TAG, "Teardown $what failed: ${t.message}") },
+        )
+        StunLogger.i(TAG, "Teardown: main thread blocked ${blockedMs}ms")
         serviceScope.cancel()
         super.onDestroy()
     }

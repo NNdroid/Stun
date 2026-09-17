@@ -1,18 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface">
+    android:orientation="vertical">
 
+    <!-- 顶栏 / 滚动内容 / 底栏 三段式纵向排列。底栏是布局流内的兄弟节点，不是 CoordinatorLayout
+         的悬浮叠层 —— 结构上就不存在"页面内容被保存按钮盖住"的可能。
+         代价是失去 CoordinatorLayout 的 liftOnScroll：内容不再从顶栏下面穿过，滚动时不需要抬升阴影。 -->
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/app_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="?attr/colorSurface"
-        app:elevation="0dp"
-        app:liftOnScroll="true">
+        app:elevation="0dp">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
@@ -23,29 +25,31 @@
             app:titleCentered="true" />
     </com.google.android.material.appbar.AppBarLayout>
 
-    <!-- Content Area -->
+    <!-- layout_weight=1 撑满顶栏与底栏之间的全部高度；paddingBottom 是布局兜底（静止态的正确留白），
+         键盘弹出时会被 ProfileEditActivity 改成 IME 高度 + 同一份呼吸间距。 -->
     <androidx.core.widget.NestedScrollView
         android:id="@+id/scroll_view"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:clipToPadding="false"
-        android:paddingBottom="88dp"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+        android:fillViewport="true"
+        android:paddingBottom="@dimen/bottom_scroll_breathing_room">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:animateLayoutChanges="true"
             android:orientation="vertical"
-            android:paddingHorizontal="16dp">
+            android:paddingHorizontal="@dimen/space_4">
 
             <!-- Section: Connection -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="8dp"
+                android:layout_marginStart="@dimen/space_4"
+                android:layout_marginTop="@dimen/space_6"
+                android:layout_marginBottom="@dimen/space_2"
                 android:alpha="0.7"
                 android:text="@string/status_connected"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
@@ -58,14 +62,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-                app:cardCornerRadius="24dp"
+                app:cardCornerRadius="@dimen/corner_lg"
                 app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="@dimen/space_4">
 
                     <com.google.android.material.textfield.TextInputLayout
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
@@ -88,7 +92,7 @@
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/ssh_address"
                         app:endIconMode="clear_text"
                         app:startIconDrawable="@drawable/ic_info">
@@ -100,6 +104,23 @@
                             android:singleLine="true"
                             android:inputType="text" />
                     </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_note"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:hint="@string/profile_note"
+                        app:endIconMode="clear_text">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_note"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:imeOptions="actionDone"
+                            android:inputType="text"
+                            android:maxLines="3" />
+                    </com.google.android.material.textfield.TextInputLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -107,9 +128,9 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="8dp"
+                android:layout_marginStart="@dimen/space_4"
+                android:layout_marginTop="@dimen/space_6"
+                android:layout_marginBottom="@dimen/space_2"
                 android:alpha="0.7"
                 android:text="@string/auth_type"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
@@ -122,14 +143,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-                app:cardCornerRadius="24dp"
+                app:cardCornerRadius="@dimen/corner_lg"
                 app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="@dimen/space_4">
 
                     <com.google.android.material.textfield.TextInputLayout
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
@@ -148,7 +169,7 @@
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/username"
                         app:endIconMode="clear_text"
                         app:startIconDrawable="@drawable/ic_person">
@@ -166,7 +187,7 @@
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/password"
                         app:endIconMode="password_toggle"
                         app:startIconDrawable="@drawable/ic_lock">
@@ -184,7 +205,7 @@
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/private_key"
                         android:visibility="gone"
                         app:startIconDrawable="@drawable/ic_code">
@@ -202,7 +223,7 @@
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/key_password"
                         android:visibility="gone"
                         app:endIconMode="password_toggle"
@@ -219,48 +240,65 @@
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
+                        android:layout_marginTop="@dimen/space_3"
+                        android:orientation="vertical">
 
-                        <TextView
-                            android:layout_width="0dp"
+                        <LinearLayout
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/verify_ssh_fingerprint"
-                            android:textAppearance="?attr/textAppearanceBodyMedium"
-                            android:textColor="?attr/colorOnSurface" />
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/verify_ssh_fingerprint"
+                                android:textAppearance="?attr/textAppearanceBodyMedium"
+                                android:textColor="?attr/colorOnSurface" />
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switch_verify_ssh_fingerprint"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:contentDescription="@string/verify_ssh_fingerprint" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_1"
+                            android:orientation="horizontal">
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btn_details_ssh"
                             style="@style/Widget.Material3.Button.OutlinedButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="36dp"
-                            android:layout_marginEnd="6dp"
-                            android:paddingHorizontal="8dp"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_marginEnd="@dimen/space_1"
+                            android:layout_weight="1"
+                            android:paddingHorizontal="@dimen/space_2"
                             android:paddingVertical="0dp"
                             android:text="@string/btn_details"
-                            android:textSize="12sp"
+                            android:textSize="@dimen/text_label"
                             app:icon="@drawable/ic_info"
                             app:iconSize="14dp" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btn_fetch_ssh_fingerprint"
                             style="@style/Widget.Material3.Button.TonalButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="36dp"
-                            android:layout_marginEnd="8dp"
-                            android:paddingHorizontal="8dp"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_marginStart="@dimen/space_1"
+                            android:layout_weight="1"
+                            android:paddingHorizontal="@dimen/space_2"
                             android:paddingVertical="0dp"
                             android:text="@string/btn_fetch_fingerprint"
-                            android:textSize="12sp"
+                            android:textSize="@dimen/text_label"
                             app:icon="@drawable/ic_sync"
                             app:iconSize="14dp" />
 
-                        <com.google.android.material.materialswitch.MaterialSwitch
-                            android:id="@+id/switch_verify_ssh_fingerprint"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
+                        </LinearLayout>
                     </LinearLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
@@ -268,7 +306,7 @@
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
+                        android:layout_marginTop="@dimen/space_2"
                         android:hint="@string/ssh_fingerprint"
                         android:visibility="gone">
                         <com.google.android.material.textfield.TextInputEditText
@@ -284,9 +322,9 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="8dp"
+                android:layout_marginStart="@dimen/space_4"
+                android:layout_marginTop="@dimen/space_6"
+                android:layout_marginBottom="@dimen/space_2"
                 android:alpha="0.7"
                 android:text="@string/tunnel_type"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
@@ -299,14 +337,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-                app:cardCornerRadius="24dp"
+                app:cardCornerRadius="@dimen/corner_lg"
                 app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="@dimen/space_4">
 
                     <com.google.android.material.textfield.TextInputLayout
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
@@ -326,7 +364,7 @@
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/proxy_address"
                         app:endIconMode="clear_text">
                         <com.google.android.material.textfield.TextInputEditText
@@ -343,7 +381,7 @@
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/custom_host"
                         app:endIconMode="clear_text">
                         <com.google.android.material.textfield.TextInputEditText
@@ -355,12 +393,23 @@
                             android:inputType="text" />
                     </com.google.android.material.textfield.TextInputLayout>
 
+                    <!-- TLS 开关（raw/websocket/h2/grpc/xhttp） -->
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switch_tunnel_tls"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:checked="true"
+                        android:text="@string/tunnel_tls"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:visibility="gone" />
+
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/layout_server_name"
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/server_name"
                         android:visibility="gone"
                         app:endIconMode="clear_text">
@@ -378,7 +427,7 @@
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/alpn"
                         android:visibility="gone">
                         <com.google.android.material.textfield.MaterialAutoCompleteTextView
@@ -393,7 +442,7 @@
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/dns_tunnel_servers_hint"
                         android:visibility="gone">
                         <com.google.android.material.textfield.TextInputEditText
@@ -408,7 +457,7 @@
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/dns_tunnel_domain_hint"
                         android:visibility="gone">
                         <com.google.android.material.textfield.TextInputEditText
@@ -423,7 +472,7 @@
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/dns_tunnel_record_type"
                         android:visibility="gone">
                         <com.google.android.material.textfield.MaterialAutoCompleteTextView
@@ -433,12 +482,57 @@
                             android:inputType="none" />
                     </com.google.android.material.textfield.TextInputLayout>
 
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switch_dns_tunnel_edns0"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:text="@string/dns_tunnel_edns0"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:visibility="gone" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_dns_tunnel_psk"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:hint="@string/dns_tunnel_psk_hint"
+                        app:helperText="@string/dns_tunnel_psk_helper"
+                        android:visibility="gone">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_dns_tunnel_psk"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="text"
+                            android:maxLength="64"
+                            android:singleLine="true" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_dns_tunnel_marker"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:hint="@string/dns_tunnel_marker_hint"
+                        app:helperText="@string/dns_tunnel_marker_helper"
+                        android:visibility="gone">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_dns_tunnel_marker"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="text"
+                            android:maxLength="32"
+                            android:singleLine="true" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/layout_noise_public_key"
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/noise_public_key"
                         app:helperText="@string/noise_public_key_hint"
                         app:endIconMode="clear_text"
@@ -455,7 +549,7 @@
                         android:id="@+id/switch_enable_custom_path"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:text="@string/enable_custom_path"
                         android:textAppearance="?attr/textAppearanceBodyMedium"
                         android:visibility="gone" />
@@ -465,7 +559,7 @@
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
+                        android:layout_marginTop="@dimen/space_2"
                         android:hint="@string/custom_path"
                         android:visibility="gone">
                         <com.google.android.material.textfield.TextInputEditText
@@ -480,7 +574,7 @@
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/http_payload"
                         android:visibility="gone">
                         <com.google.android.material.textfield.TextInputEditText
@@ -493,104 +587,235 @@
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <!-- KCP Specific Options -->
+                    <ViewStub
+                        android:id="@+id/stub_kcp_container"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout="@layout/view_profile_kcp_options" />
+
+
+                    <!-- UDP Custom Specific Options -->
+                    <ViewStub
+                        android:id="@+id/stub_udp_custom_container"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout="@layout/view_profile_udp_custom_options" />
+
+
+                    <!-- XHTTP Specific Options -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_xhttp_chunk_size"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:hint="@string/xhttp_chunk_size_kb"
+                        android:visibility="gone"
+                        app:endIconMode="clear_text">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_xhttp_chunk_size"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
+                            android:inputType="number" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- XHTTP downlink transport mode (stream / poll / auto) -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_xhttp_stream_mode"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:hint="@string/xhttp_stream_mode"
+                        android:visibility="gone">
+                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                            android:id="@+id/spinner_xhttp_stream_mode"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="none" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- ICMP Custom Specific Options -->
                     <LinearLayout
-                        android:id="@+id/layout_kcp_container"
+                        android:id="@+id/layout_icmp_custom_container"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
                         android:visibility="gone">
 
                         <com.google.android.material.textfield.TextInputLayout
-                            android:id="@+id/layout_kcp_password"
+                            android:id="@+id/layout_icmp_psk"
                             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
-                            android:hint="@string/kcp_password"
-                            app:passwordToggleEnabled="true">
+                            android:layout_marginTop="@dimen/space_3"
+                            android:hint="@string/icmp_custom_psk"
+                            app:endIconMode="password_toggle">
                             <com.google.android.material.textfield.TextInputEditText
-                                android:id="@+id/et_kcp_password"
+                                android:id="@+id/et_icmp_psk"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:inputType="textPassword" />
+                                android:inputType="textPassword"
+                                android:singleLine="true" />
                         </com.google.android.material.textfield.TextInputLayout>
 
                         <com.google.android.material.textfield.TextInputLayout
-                            android:id="@+id/layout_kcp_crypt"
+                            android:id="@+id/layout_icmp_magic"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_2"
+                            android:hint="@string/icmp_custom_magic"
+                            app:helperText="@string/icmp_custom_magic_helper">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/et_icmp_magic"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:singleLine="true" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <!-- ICMP family 已从 myssh 152c556 ProxyConfig 删除，spinner 移除 -->
+
+                        <com.google.android.material.textfield.TextInputLayout
                             style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
-                            android:hint="@string/kcp_crypt">
+                            android:layout_marginTop="@dimen/space_2"
+                            android:hint="@string/icmp_custom_mtu_mode">
                             <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                                android:id="@+id/spinner_kcp_crypt"
+                                android:id="@+id/spinner_icmp_mtu"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:inputType="none" />
                         </com.google.android.material.textfield.TextInputLayout>
 
-                        <com.google.android.material.materialswitch.MaterialSwitch
-                            android:id="@+id/switch_kcp_nodelay"
+                        <com.google.android.material.textfield.TextInputLayout
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
-                            android:checked="true"
-                            android:text="@string/kcp_nodelay"
-                            android:textAppearance="?attr/textAppearanceBodyMedium" />
+                            android:layout_marginTop="@dimen/space_2"
+                            android:hint="@string/icmp_custom_max_payload">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/et_icmp_max_payload"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="number"
+                                android:singleLine="true" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_2"
+                            android:hint="@string/icmp_custom_pace_ms">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/et_icmp_pace_ms"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="number"
+                                android:singleLine="true" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_2"
+                            android:hint="@string/icmp_custom_id_range">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/et_icmp_id_range"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:singleLine="true" />
+                        </com.google.android.material.textfield.TextInputLayout>
                     </LinearLayout>
 
-                    <!-- UDP Custom Specific Options -->
-                    <LinearLayout
-                        android:id="@+id/layout_udp_custom_container"
+                    <!-- Stream Heartbeat (h2 family tunnels) -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_heartbeat_interval"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:hint="@string/heartbeat_interval_ms"
+                        android:visibility="gone"
+                        app:endIconMode="clear_text">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_heartbeat_interval"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
+                            android:inputType="number" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- myssh 152c556: h2tunnel 出站帧最小填充字节（流量混淆） -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_padding_min_bytes"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:hint="@string/padding_min_bytes_hint"
+                        app:helperText="@string/padding_min_bytes_helper"
+                        android:visibility="gone"
+                        app:endIconMode="clear_text">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_padding_min_bytes"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
+                            android:inputType="numberSigned" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- myssh 152c556: masque 独有 ALPN 选择 -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_masque_alpn"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:hint="@string/masque_alpn_hint"
                         android:visibility="gone">
-
-                        <com.google.android.material.textfield.TextInputLayout
-                            android:id="@+id/layout_udp_custom_psk"
-                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                            android:id="@+id/spinner_masque_alpn"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
-                            android:hint="@string/udp_custom_psk"
-                            app:endIconMode="password_toggle"
-                            app:startIconDrawable="@drawable/ic_lock">
-                            <com.google.android.material.textfield.TextInputEditText
-                                android:id="@+id/et_udp_custom_psk"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:imeOptions="actionNext"
-                                android:singleLine="true"
-                                android:inputType="textPassword" />
-                        </com.google.android.material.textfield.TextInputLayout>
+                            android:inputType="none" />
+                    </com.google.android.material.textfield.TextInputLayout>
 
-                        <com.google.android.material.textfield.TextInputLayout
-                            android:id="@+id/layout_udp_custom_magic"
-                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    <!--
+                        Hidden on Android: myssh cannot use SO_BINDTODEVICE in an
+                        unprivileged app process. The model field remains intact so
+                        imported and remotely managed profiles keep their value.
+                    -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_bind_interface"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:hint="@string/bind_interface"
+                        android:visibility="gone"
+                        app:endIconMode="clear_text">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_bind_interface"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
-                            android:hint="@string/udp_custom_magic"
-                            app:endIconMode="clear_text"
-                            app:helperText="Default: UDPC (Max 4 chars)"
-                            app:startIconDrawable="@drawable/ic_code">
-                            <com.google.android.material.textfield.TextInputEditText
-                                android:id="@+id/et_udp_custom_magic"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:imeOptions="actionNext"
-                                android:singleLine="true"
-                                android:maxLength="4"
-                                android:inputType="text" />
-                        </com.google.android.material.textfield.TextInputLayout>
-                    </LinearLayout>
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
+                            android:inputType="text" />
+                    </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/switch_disable_status_check"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:text="@string/disable_status_check"
                         android:textAppearance="?attr/textAppearanceBodyMedium"
                         android:visibility="gone" />
@@ -599,7 +824,7 @@
                         android:id="@+id/switch_auth_required"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:text="@string/proxy_auth_required"
                         android:textAppearance="?attr/textAppearanceBodyMedium"
                         android:visibility="gone" />
@@ -609,7 +834,7 @@
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
+                        android:layout_marginTop="@dimen/space_2"
                         android:hint="@string/proxy_auth_token"
                         android:visibility="gone"
                         app:endIconMode="password_toggle">
@@ -625,7 +850,7 @@
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
+                        android:layout_marginTop="@dimen/space_2"
                         android:hint="@string/proxy_auth_user"
                         android:visibility="gone">
                         <com.google.android.material.textfield.TextInputEditText
@@ -640,7 +865,7 @@
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
+                        android:layout_marginTop="@dimen/space_2"
                         android:hint="@string/proxy_auth_pass"
                         android:visibility="gone"
                         app:endIconMode="password_toggle">
@@ -655,49 +880,66 @@
                         android:id="@+id/layout_row_verify_cert_fingerprint"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:orientation="vertical"
                         android:visibility="gone">
 
-                        <TextView
-                            android:layout_width="0dp"
+                        <LinearLayout
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/verify_cert_fingerprint"
-                            android:textAppearance="?attr/textAppearanceBodyMedium"
-                            android:textColor="?attr/colorOnSurface" />
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/verify_cert_fingerprint"
+                                android:textAppearance="?attr/textAppearanceBodyMedium"
+                                android:textColor="?attr/colorOnSurface" />
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switch_verify_cert_fingerprint"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:contentDescription="@string/verify_cert_fingerprint" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_1"
+                            android:orientation="horizontal">
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btn_details_cert"
                             style="@style/Widget.Material3.Button.OutlinedButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="36dp"
-                            android:layout_marginEnd="6dp"
-                            android:paddingHorizontal="8dp"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_marginEnd="@dimen/space_1"
+                            android:layout_weight="1"
+                            android:paddingHorizontal="@dimen/space_2"
                             android:paddingVertical="0dp"
                             android:text="@string/btn_details"
-                            android:textSize="12sp"
+                            android:textSize="@dimen/text_label"
                             app:icon="@drawable/ic_info"
                             app:iconSize="14dp" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btn_fetch_cert_fingerprint"
                             style="@style/Widget.Material3.Button.TonalButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="36dp"
-                            android:layout_marginEnd="8dp"
-                            android:paddingHorizontal="8dp"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_marginStart="@dimen/space_1"
+                            android:layout_weight="1"
+                            android:paddingHorizontal="@dimen/space_2"
                             android:paddingVertical="0dp"
                             android:text="@string/btn_fetch_fingerprint"
-                            android:textSize="12sp"
+                            android:textSize="@dimen/text_label"
                             app:icon="@drawable/ic_sync"
                             app:iconSize="14dp" />
 
-                        <com.google.android.material.materialswitch.MaterialSwitch
-                            android:id="@+id/switch_verify_cert_fingerprint"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
+                        </LinearLayout>
                     </LinearLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
@@ -705,7 +947,7 @@
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
+                        android:layout_marginTop="@dimen/space_2"
                         android:hint="@string/cert_fingerprint"
                         android:visibility="gone">
                         <com.google.android.material.textfield.TextInputEditText
@@ -721,9 +963,9 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="8dp"
+                android:layout_marginStart="@dimen/space_4"
+                android:layout_marginTop="@dimen/space_6"
+                android:layout_marginBottom="@dimen/space_2"
                 android:alpha="0.7"
                 android:text="@string/override_dns_routing"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
@@ -736,14 +978,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-                app:cardCornerRadius="24dp"
+                app:cardCornerRadius="@dimen/corner_lg"
                 app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="@dimen/space_4">
 
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/switch_dns_override"
@@ -763,7 +1005,7 @@
                             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
+                            android:layout_marginTop="@dimen/space_3"
                             android:hint="@string/remote_dns">
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/et_remote_dns"
@@ -776,7 +1018,7 @@
                             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
+                            android:layout_marginTop="@dimen/space_3"
                             android:hint="@string/local_dns">
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/et_local_dns"
@@ -789,7 +1031,7 @@
                             style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
+                            android:layout_marginTop="@dimen/space_3"
                             android:hint="@string/udpgw_version">
                             <com.google.android.material.textfield.MaterialAutoCompleteTextView
                                 android:id="@+id/spinner_udpgw_version"
@@ -802,7 +1044,7 @@
                             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
+                            android:layout_marginTop="@dimen/space_3"
                             android:hint="@string/udpgw_addr">
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/et_udpgw_addr"
@@ -812,11 +1054,15 @@
                         </com.google.android.material.textfield.TextInputLayout>
 
                         <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/layout_geosite_direct"
                             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
-                            android:hint="@string/geosite_direct">
+                            android:layout_marginTop="@dimen/space_3"
+                            android:hint="@string/geosite_direct"
+                            app:endIconDrawable="@drawable/ic_search"
+                            app:endIconContentDescription="@string/geo_tag_picker_title"
+                            app:endIconMode="custom">
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/et_geosite_direct"
                                 android:layout_width="match_parent"
@@ -825,11 +1071,15 @@
                         </com.google.android.material.textfield.TextInputLayout>
 
                         <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/layout_geoip_direct"
                             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
-                            android:hint="@string/geoip_direct">
+                            android:layout_marginTop="@dimen/space_3"
+                            android:hint="@string/geoip_direct"
+                            app:endIconDrawable="@drawable/ic_search"
+                            app:endIconContentDescription="@string/geo_tag_picker_title"
+                            app:endIconMode="custom">
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/et_geoip_direct"
                                 android:layout_width="match_parent"
@@ -841,13 +1091,13 @@
                     <com.google.android.material.divider.MaterialDivider
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp" />
+                        android:layout_marginTop="@dimen/space_4" />
 
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/switch_app_filter_override"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
+                        android:layout_marginTop="@dimen/space_4"
                         android:text="@string/override_app_filtering"
                         android:textAppearance="?attr/textAppearanceTitleMedium" />
 
@@ -862,7 +1112,7 @@
                             style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
+                            android:layout_marginTop="@dimen/space_3"
                             android:hint="@string/filter_mode">
                             <com.google.android.material.textfield.MaterialAutoCompleteTextView
                                 android:id="@+id/spinner_filter_mode"
@@ -875,7 +1125,7 @@
                             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
+                            android:layout_marginTop="@dimen/space_3"
                             android:hint="@string/filter_apps_hint"
                             app:startIconDrawable="@drawable/ic_filter">
                             <com.google.android.material.textfield.TextInputEditText
@@ -899,13 +1149,13 @@
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
-    <!-- Fixed Bottom Bar for Save Button -->
+    <!-- 底部操作栏。布局流内的兄弟节点（不是悬浮叠层），键盘弹出时整体隐藏、把高度让给内容，
+         详见 ProfileEditActivity 的 insets 处理。 -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
         android:background="?attr/colorSurface"
-        android:padding="16dp">
+        android:padding="@dimen/space_4">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_save"
@@ -913,7 +1163,9 @@
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:text="@string/save_configuration"
-            app:cornerRadius="16dp" />
+            app:cornerRadius="@dimen/corner_sm"
+            app:icon="@drawable/ic_save"
+            app:iconGravity="textStart" />
     </FrameLayout>
 
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+</LinearLayout>

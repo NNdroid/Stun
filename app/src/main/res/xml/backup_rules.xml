@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-   Sample backup rules file; uncomment and customize as necessary.
-   See https://developer.android.com/guide/topics/data/autobackup
-   for details.
-   Note: This file is ignored for devices older than API 31
-   See https://developer.android.com/about/versions/12/backup-restore
+   云备份规则（API < 31），语义同 data_extraction_rules。
 -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <exclude domain="sharedpref" path="stun_prefs.xml" />
+    <!-- domain="database" 本身就指 databases/ 目录，path="." 即整目录；
+         再写 path="databases/" 会被 lint 判 Fatal（database 域不允许子目录路径）。 -->
+    <exclude domain="database" path="." />
+    <exclude domain="file" path="." />
+    <exclude domain="external" path="." />
 </full-backup-content>

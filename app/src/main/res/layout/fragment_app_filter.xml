@@ -4,13 +4,13 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface">
+    android:background="@drawable/bg_bottom_sheet">
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/app_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorSurface"
+        android:background="@drawable/bg_bottom_sheet"
         app:elevation="0dp">
 
         <com.google.android.material.appbar.MaterialToolbar
@@ -26,7 +26,7 @@
                 android:layout_gravity="end"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingEnd="8dp">
+                android:layout_marginEnd="@dimen/space_2">
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_done"
@@ -42,10 +42,10 @@
             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginBottom="12dp"
+            android:layout_marginHorizontal="@dimen/space_4"
+            android:layout_marginBottom="@dimen/space_3"
             android:hint="@string/search_apps"
-            app:startIconDrawable="@drawable/ic_edit"
+            app:startIconDrawable="@drawable/ic_search"
             app:endIconMode="clear_text"
             app:shapeAppearanceOverlay="@style/ShapeAppearance.Stun.Rounded">
 
@@ -60,35 +60,38 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:paddingHorizontal="16dp"
-            android:paddingBottom="8dp">
+            android:orientation="vertical"
+            android:paddingHorizontal="@dimen/space_4"
+            android:paddingBottom="@dimen/space_2">
 
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chip_select_all"
-                style="@style/Widget.Material3.Chip.Assist"
-                android:layout_width="wrap_content"
+            <com.google.android.material.chip.ChipGroup
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/action_add"
-                android:layout_marginEnd="8dp" />
+                app:chipSpacingHorizontal="8dp"
+                app:chipSpacingVertical="4dp"
+                app:singleLine="false">
 
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chip_filter_selected"
-                style="@style/Widget.Material3.Chip.Filter"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/filter_selected" />
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_select_all"
+                    style="@style/Widget.Material3.Chip.Assist"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/action_add" />
 
-            <View
-                android:layout_width="0dp"
-                android:layout_height="1dp"
-                android:layout_weight="1" />
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_filter_selected"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/filter_selected" />
+            </com.google.android.material.chip.ChipGroup>
 
             <TextView
                 android:id="@+id/tv_count"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical"
+                android:layout_marginTop="@dimen/space_1"
+                android:gravity="end"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 android:textColor="?attr/colorOutline"
                 tools:text="12 selected" />
@@ -100,7 +103,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
-        android:paddingBottom="16dp"
+        android:paddingBottom="@dimen/space_4"
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
         tools:listitem="@layout/item_app" />
 

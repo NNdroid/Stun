@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  订阅面板头部（单滚动列表的第一项）：标题 + 后台自动同步 + 上次同步 + 流量卡 + 空态提示。
+
+  这些内容原先固定在 bottom_sheet_subscription.xml 里、常年占掉面板约 2/3 高度，
+  把订阅列表压成一条缝（展开的编辑器比滚动视口还高，滑不动也编辑不了）。
+  单滚动改造后它们随列表一起滚走，键盘弹出时能给正在编辑的订阅让出空间。
+
+  2026-09-17 按设计稿重排的三点：
+  · 上次同步那行前置日历图标（tv_last_sync 的 drawableStart）；
+  · 流量卡标题行右侧挂两个动作：btn_usage_trend（文字 + 柱状图图标，切换趋势图显隐）
+    与 btn_usage_copy（复制用途信息）；
+  · 用量主数值收成一行读完的"已用 X / Y"（tv_usage_amount），
+    不再拆成"X" + 单独一行的"of Y"两处。
+
+  2026-09-17 追加：标题「节点订阅」后面挂一个问号（btn_subscription_help），
+  点击打开订阅文件格式说明（HTML，见 SubscriptionHelpActivity + assets/help/）。
+
+  注意：流量卡（含趋势图）与开关状态全部由 SubscriptionBottomSheet.HeaderVH.bind 重放，
+  不能依赖一次性 findViewById —— header 在 RecyclerView 里会被回收重建。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <!-- 标题 + 说明入口 + 后台自动同步开关 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <!-- 标题与问号必须是"贴着的一对"，所以由这个容器整体吃 weight。
+             若把 weight 留在标题上、问号排到开关左边，问号会飘到行尾，
+             看起来像开关的附属按钮而不是标题的说明入口。
+             容器宽度取 wrap_content 会与开关抢位置（长标题机型文字会被压），
+             因此仍取 0dp + weight，只把标题自身收成 wrap_content。 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/subscription_title"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="@dimen/text_title"
+                android:textStyle="bold" />
+
+            <!-- 点击打开内置的订阅说明 HTML（SubscriptionHelpActivity）。
+                 尺寸走 touch_target_min 撑满热区，可见的问号靠 padding 收小。 -->
+            <ImageButton
+                android:id="@+id/btn_subscription_help"
+                android:layout_width="@dimen/touch_target_min"
+                android:layout_height="@dimen/touch_target_min"
+                android:layout_marginStart="@dimen/space_1"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/subscription_help"
+                android:padding="@dimen/space_3"
+                android:src="@drawable/ic_help_outline"
+                app:tint="?attr/colorOnSurfaceVariant" />
+        </LinearLayout>
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/sw_auto_sync"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="@string/subscription_auto_sync"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="?attr/colorOnSurfaceVariant" />
+    </LinearLayout>
+
+    <!-- 上次同步：文案仍是静态的"从未同步"，与改造前行为一致 -->
+    <TextView
+        android:id="@+id/tv_last_sync"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_1"
+        android:layout_marginBottom="@dimen/space_4"
+        android:drawableStart="@drawable/ic_calendar"
+        android:drawablePadding="@dimen/space_2"
+        android:drawableTint="?attr/colorOnSurfaceVariant"
+        android:text="@string/subscription_never_synced"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="@dimen/text_body" />
+
+    <!-- 订阅流量卡片：来自 subscription-userinfo 响应头（账户级累计 upload/download/total/expire） -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/card_subscription_usage"
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/space_4"
+        android:visibility="gone"
+        app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+        app:cardCornerRadius="@dimen/corner_md"
+        app:strokeColor="?attr/colorOutlineVariant"
+        app:strokeWidth="1dp"
+        tools:visibility="visible">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="@dimen/space_4">
+
+            <!-- 标题行：分区标题 + 用量趋势开关 + 复制用量。
+                 内边距保持四边一致 —— 进度条与文字行都跟标题左对齐，右侧统一收到 16dp，
+                 动作按钮靠自身 8dp 内边距把图标视觉上推近边缘。 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/subscription_usage_title"
+                    android:textAppearance="?attr/textAppearanceTitleSmall"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textStyle="bold" />
+
+                <TextView
+                android:id="@+id/btn_usage_trend"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:drawableStart="@drawable/ic_bar_chart"
+                android:drawablePadding="@dimen/space_1"
+                android:drawableTint="?attr/colorPrimary"
+                android:focusable="true"
+                android:minHeight="@dimen/touch_target_min"
+                    android:paddingStart="@dimen/space_2"
+                    android:paddingTop="@dimen/space_1"
+                    android:paddingEnd="@dimen/space_2"
+                    android:paddingBottom="@dimen/space_1"
+                    android:text="@string/subscription_usage_trend_label"
+                    android:textColor="?attr/colorPrimary"
+                    android:textSize="@dimen/text_label" />
+
+                <ImageButton
+                android:id="@+id/btn_usage_copy"
+                android:layout_width="@dimen/touch_target_min"
+                android:layout_height="@dimen/touch_target_min"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/subscription_usage_copy"
+                android:padding="@dimen/space_3"
+                    android:src="@drawable/ic_copy"
+                    app:tint="?attr/colorOnSurfaceVariant" />
+            </LinearLayout>
+
+            <!-- 这份流量快照来自哪条订阅（多订阅时不再张冠李戴），无来源时隐藏。 -->
+            <TextView
+                android:id="@+id/tv_usage_source"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:textAppearance="?attr/textAppearanceLabelSmall"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:visibility="gone"
+                tools:text="机场 A"
+                tools:visibility="visible" />
+
+            <!-- 有数据时显示明细；无数据回落到 tv_usage_empty -->
+            <LinearLayout
+                android:id="@+id/ll_usage_detail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_3"
+                android:orientation="vertical">
+
+                <!-- 用量主数值：一行读完"已用 12.3 GB / 100 GB"，右侧跟百分比 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tv_usage_amount"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textStyle="bold"
+                        tools:text="已用 12.3 GB / 100 GB" />
+
+                    <TextView
+                        android:id="@+id/tv_usage_percent"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_2"
+                        android:textAppearance="?attr/textAppearanceLabelLarge"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        tools:text="12%" />
+                </LinearLayout>
+
+                <com.google.android.material.progressindicator.LinearProgressIndicator
+                    android:id="@+id/progress_usage"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_2"
+                    android:max="100"
+                    android:progress="0" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_2"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tv_usage_today"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        tools:text="Today +1.2 GB" />
+
+                    <TextView
+                        android:id="@+id/tv_usage_month"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="end"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        tools:text="This month +8.4 GB" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_usage_expire"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_1"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    tools:text="Expires 2026-12-31 (107 days left)" />
+
+                <!-- 默认收起，点标题行的"用量趋势"展开；仍由 bind 依数据重放显隐。 -->
+                <app.fjj.stun.ui.view.TrafficBarChartView
+                    android:id="@+id/iv_usage_trend"
+                    android:layout_width="match_parent"
+                    android:layout_height="64dp"
+                    android:layout_marginTop="@dimen/space_3"
+                    android:contentDescription="@string/subscription_usage_trend"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_usage_empty"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_2"
+                android:text="@string/subscription_usage_none"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:visibility="gone" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- 一条订阅都没有时的提示。原先作为浮层居中叠在滚动区上（会穿透编辑器），
+         现在回归内容流：就落在订阅卡本该出现的位置，且跟着一起滚。 -->
+    <TextView
+        android:id="@+id/tv_subscription_empty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:padding="@dimen/space_6"
+        android:text="@string/subscription_empty_hint"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:visibility="gone"
+        tools:visibility="visible" />
+
+</LinearLayout>

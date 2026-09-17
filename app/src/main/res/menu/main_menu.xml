@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  节点列表页签右上角工具栏。
+
+  2026-09-17：「从剪贴板导入」图标从这里移除 —— 工具栏位置留给搜索/筛选与统一配置，
+  导入入口统一收敛到「统一配置」面板（bottom_sheet_main_menu / side_sheet_main /
+  side_sheet_main_wide 里的 item_import_clipboard），以及系统分享/文件导入。
+  剪贴板的自动识别（粘贴 stun:// 后弹导入提示）不受影响，见 HomeFragment.checkClipboardForImport。
+-->
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item

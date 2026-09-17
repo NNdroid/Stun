@@ -1,17 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface">
+    android:orientation="vertical">
 
+    <!-- 顶栏 / 滚动内容 / 底栏 三段式纵向排列。底栏是布局流内的兄弟节点，不是 CoordinatorLayout
+         的悬浮叠层 —— 结构上就不存在"页面内容被保存按钮盖住"的可能。
+         代价是失去 CoordinatorLayout 的 liftOnScroll：内容不再从顶栏下面穿过，滚动时不需要抬升阴影。 -->
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/app_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="?attr/colorSurface"
-        app:elevation="0dp"
-        app:liftOnScroll="true">
+        app:elevation="0dp">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
@@ -22,28 +24,31 @@
             app:titleCentered="true" />
     </com.google.android.material.appbar.AppBarLayout>
 
+    <!-- layout_weight=1 撑满顶栏与底栏之间的全部高度；paddingBottom 是布局兜底（静止态的正确留白），
+         键盘弹出时会被 SettingsFragment 改成 IME 高度 + 同一份呼吸间距。 -->
     <androidx.core.widget.NestedScrollView
         android:id="@+id/scroll_view"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:clipToPadding="false"
-        android:paddingBottom="88dp"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+        android:fillViewport="true"
+        android:paddingBottom="@dimen/bottom_scroll_breathing_room">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingHorizontal="16dp"
-            android:paddingBottom="16dp">
+            android:paddingHorizontal="@dimen/space_4"
+            android:paddingBottom="@dimen/space_4">
 
             <!-- Section: Core -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="8dp"
+                android:layout_marginStart="@dimen/space_4"
+                android:layout_marginTop="@dimen/space_6"
+                android:layout_marginBottom="@dimen/space_2"
                 android:text="@string/unified_config"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 android:textAllCaps="true"
@@ -56,14 +61,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-                app:cardCornerRadius="24dp"
+                app:cardCornerRadius="@dimen/corner_lg"
                 app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="@dimen/space_4">
 
                     <com.google.android.material.textfield.TextInputLayout
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
@@ -82,7 +87,7 @@
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/language"
                         app:startIconDrawable="@drawable/ic_person">
                         <com.google.android.material.textfield.MaterialAutoCompleteTextView
@@ -96,7 +101,7 @@
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/log_level"
                         app:startIconDrawable="@drawable/ic_logs">
                         <com.google.android.material.textfield.MaterialAutoCompleteTextView
@@ -110,7 +115,7 @@
                         style="?attr/textInputOutlinedStyle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/remote_dns"
                         app:endIconMode="clear_text">
                         <com.google.android.material.textfield.TextInputEditText
@@ -127,7 +132,7 @@
                         style="?attr/textInputOutlinedStyle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/local_dns"
                         app:endIconMode="clear_text">
                         <com.google.android.material.textfield.TextInputEditText
@@ -144,7 +149,7 @@
                         android:id="@+id/switch_show_notification_speed"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
+                        android:layout_marginTop="@dimen/space_4"
                         android:text="@string/show_notification_speed"
                         android:textAppearance="?attr/textAppearanceBodyLarge" />
                 </LinearLayout>
@@ -154,9 +159,9 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="8dp"
+                android:layout_marginStart="@dimen/space_4"
+                android:layout_marginTop="@dimen/space_6"
+                android:layout_marginBottom="@dimen/space_2"
                 android:text="@string/udpgw_version"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 android:textAllCaps="true"
@@ -169,14 +174,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-                app:cardCornerRadius="24dp"
+                app:cardCornerRadius="@dimen/corner_lg"
                 app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="@dimen/space_4">
 
                     <com.google.android.material.textfield.TextInputLayout
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
@@ -194,7 +199,7 @@
                         style="?attr/textInputOutlinedStyle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/udpgw_addr"
                         app:endIconMode="clear_text">
                         <com.google.android.material.textfield.TextInputEditText
@@ -213,9 +218,9 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="8dp"
+                android:layout_marginStart="@dimen/space_4"
+                android:layout_marginTop="@dimen/space_6"
+                android:layout_marginBottom="@dimen/space_2"
                 android:text="@string/geo_data_config"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 android:textAllCaps="true"
@@ -228,14 +233,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-                app:cardCornerRadius="24dp"
+                app:cardCornerRadius="@dimen/corner_lg"
                 app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="@dimen/space_4">
 
                     <com.google.android.material.textfield.TextInputLayout
                         style="?attr/textInputOutlinedStyle"
@@ -256,7 +261,7 @@
                         style="?attr/textInputOutlinedStyle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/geoip_url"
                         app:endIconMode="clear_text">
                         <com.google.android.material.textfield.TextInputEditText
@@ -272,7 +277,7 @@
                         style="?attr/textInputOutlinedStyle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/update_interval"
                         app:endIconMode="clear_text">
                         <com.google.android.material.textfield.TextInputEditText
@@ -287,7 +292,7 @@
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
+                        android:layout_marginTop="@dimen/space_4"
                         android:gravity="center_vertical"
                         android:orientation="horizontal">
 
@@ -315,9 +320,9 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="8dp"
+                android:layout_marginStart="@dimen/space_4"
+                android:layout_marginTop="@dimen/space_6"
+                android:layout_marginBottom="@dimen/space_2"
                 android:text="@string/custom_direct_routing"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 android:textAllCaps="true"
@@ -330,21 +335,24 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-                app:cardCornerRadius="24dp"
+                app:cardCornerRadius="@dimen/corner_lg"
                 app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="@dimen/space_4">
 
                     <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_geosite_direct"
                         style="?attr/textInputOutlinedStyle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:hint="@string/geosite_direct"
-                        app:endIconMode="clear_text">
+                        app:endIconDrawable="@drawable/ic_search"
+                        app:endIconContentDescription="@string/geo_tag_picker_title"
+                        app:endIconMode="custom">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_geosite_direct"
                             android:layout_width="match_parent"
@@ -356,12 +364,15 @@
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_geoip_direct"
                         style="?attr/textInputOutlinedStyle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/geoip_direct"
-                        app:endIconMode="clear_text">
+                        app:endIconDrawable="@drawable/ic_search"
+                        app:endIconContentDescription="@string/geo_tag_picker_title"
+                        app:endIconMode="custom">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_geoip_direct"
                             android:layout_width="match_parent"
@@ -374,13 +385,165 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- Section: WebDAV Cloud Backup -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/space_4"
+                android:layout_marginTop="@dimen/space_6"
+                android:layout_marginBottom="@dimen/space_2"
+                android:text="@string/webdav_title"
+                android:textAppearance="?attr/textAppearanceLabelLarge"
+                android:textAllCaps="true"
+                android:alpha="0.7"
+                android:textColor="?attr/colorPrimary"
+                android:textStyle="bold" />
+
+            <com.google.android.material.card.MaterialCardView
+                style="?attr/materialCardViewFilledStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+                app:cardCornerRadius="@dimen/corner_lg"
+                app:strokeWidth="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_4">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/webdav_desc"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="?attr/textInputOutlinedStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:hint="@string/webdav_url_hint"
+                        app:helperText="@string/webdav_url_example">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_webdav_url"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textUri"
+                            android:singleLine="true" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="?attr/textInputOutlinedStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_2"
+                        android:hint="@string/webdav_user_hint">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_webdav_user"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="text"
+                            android:singleLine="true" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="?attr/textInputOutlinedStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_2"
+                        android:hint="@string/webdav_pass_hint"
+                        app:endIconMode="password_toggle">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_webdav_pass"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textPassword"
+                            android:singleLine="true" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/til_webdav_pin"
+                        style="?attr/textInputOutlinedStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_2"
+                        android:hint="@string/webdav_pin_hint"
+                        app:helperText="@string/webdav_pin_helper">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_webdav_pin"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="text"
+                            android:maxLength="32"
+                            android:singleLine="true" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="?attr/textInputOutlinedStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_2"
+                        android:hint="@string/webdav_interval">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_webdav_interval"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="number"
+                            android:singleLine="true" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switch_webdav_auto"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:text="@string/webdav_auto" />
+
+                    <TextView
+                        android:id="@+id/tv_webdav_last"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_2"
+                        android:textAppearance="?attr/textAppearanceLabelMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_webdav_backup"
+                            style="@style/Widget.Material3.Button.TonalButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="@dimen/space_2"
+                            android:layout_weight="1"
+                            android:text="@string/webdav_backup_now" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_webdav_restore"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_2"
+                            android:layout_weight="1"
+                            android:text="@string/webdav_restore" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
             <!-- Section: App Filtering -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="8dp"
+                android:layout_marginStart="@dimen/space_4"
+                android:layout_marginTop="@dimen/space_6"
+                android:layout_marginBottom="@dimen/space_2"
                 android:text="@string/app_filtering"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 android:textAllCaps="true"
@@ -393,14 +556,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-                app:cardCornerRadius="24dp"
+                app:cardCornerRadius="@dimen/corner_lg"
                 app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="@dimen/space_4">
 
                     <com.google.android.material.textfield.TextInputLayout
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
@@ -418,7 +581,7 @@
                         style="?attr/textInputOutlinedStyle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/filter_apps_hint"
                         app:startIconDrawable="@drawable/ic_filter">
                         <com.google.android.material.textfield.TextInputEditText
@@ -434,7 +597,293 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Bottom Spacer -->
+            <!-- Section: MCP Server (Model Context Protocol)
+                 这里原本有一个 "MCP AGENT SERVER" 的小节标签，与卡片自己的标题逐字重复，已删掉；
+                 小节间距移到卡片自己的 layout_marginTop 上。 -->
+            <com.google.android.material.card.MaterialCardView
+                style="?attr/materialCardViewFilledStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_6"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+                app:cardCornerRadius="@dimen/corner_lg"
+                app:strokeWidth="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_4">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <ImageView
+                            android:id="@+id/badge_mcp_server"
+                            android:layout_width="@dimen/badge_size"
+                            android:layout_height="@dimen/badge_size"
+                            android:background="@drawable/bg_icon_badge"
+                            android:contentDescription="@null"
+                            android:padding="@dimen/space_2"
+                            android:src="@drawable/ic_mcp"
+                            app:tint="?attr/colorOnSecondaryContainer" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_3"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/mcp_server_title"
+                                android:textAppearance="?attr/textAppearanceTitleMedium"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/space_1"
+                                android:text="@string/mcp_server_summary"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:alpha="0.7" />
+                        </LinearLayout>
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/switch_mcp_server"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_2" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tv_mcp_server_status"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:background="@drawable/bg_status_pill"
+                        android:drawableStart="@drawable/ic_widget_globe"
+                        android:drawablePadding="@dimen/space_2"
+                        android:drawableTint="?attr/colorOnSurfaceVariant"
+                        android:fontFamily="monospace"
+                        android:paddingHorizontal="@dimen/space_3"
+                        android:paddingVertical="@dimen/space_2"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="?attr/colorPrimary"
+                        android:text="@string/mcp_server_stopped" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="?attr/textInputOutlinedStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:hint="@string/mcp_server_port"
+                        app:endIconMode="clear_text"
+                        app:startIconDrawable="@drawable/ic_port">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_mcp_server_port"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
+                            android:inputType="number" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- MCP Security & Auth Mode -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="?attr/textInputOutlinedExposedDropdownMenuStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:hint="@string/mcp_auth_mode"
+                        app:startIconDrawable="@drawable/ic_shield">
+                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                            android:id="@+id/spinner_mcp_auth_mode"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="none" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_mcp_auth_secret"
+                        style="?attr/textInputOutlinedStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:hint="@string/mcp_auth_secret_hint"
+                        app:endIconMode="password_toggle"
+                        app:startIconDrawable="@drawable/ic_lock">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_mcp_auth_secret"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:imeOptions="actionDone"
+                            android:singleLine="true"
+                            android:inputType="textPassword" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_copy_mcp_config"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:text="@string/mcp_server_copy_config"
+                        app:icon="@drawable/ic_copy"
+                        app:iconGravity="textStart" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Section: Database WebUI (:dbwebui module)
+                 同上：与卡片标题重复的小节标签已删除，小节间距移到卡片自身。 -->
+            <com.google.android.material.card.MaterialCardView
+                style="?attr/materialCardViewFilledStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_6"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+                app:cardCornerRadius="@dimen/corner_lg"
+                app:strokeWidth="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_4">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <ImageView
+                            android:id="@+id/badge_db_web"
+                            android:layout_width="@dimen/badge_size"
+                            android:layout_height="@dimen/badge_size"
+                            android:background="@drawable/bg_icon_badge"
+                            android:contentDescription="@null"
+                            android:padding="@dimen/space_2"
+                            android:src="@drawable/ic_database"
+                            app:tint="?attr/colorOnSecondaryContainer" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_3"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/db_web_title"
+                                android:textAppearance="?attr/textAppearanceTitleMedium"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/space_1"
+                                android:text="@string/db_web_summary"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:alpha="0.7" />
+                        </LinearLayout>
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/switch_db_web"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_2" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tv_db_web_status"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:background="@drawable/bg_status_pill"
+                        android:drawableStart="@drawable/ic_widget_globe"
+                        android:drawablePadding="@dimen/space_2"
+                        android:drawableTint="?attr/colorOnSurfaceVariant"
+                        android:fontFamily="monospace"
+                        android:paddingHorizontal="@dimen/space_3"
+                        android:paddingVertical="@dimen/space_2"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="?attr/colorPrimary"
+                        android:text="@string/db_web_stopped" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="?attr/textInputOutlinedStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:hint="@string/db_web_port"
+                        app:endIconMode="clear_text"
+                        app:startIconDrawable="@drawable/ic_port">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_db_web_port"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
+                            android:inputType="number" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="?attr/textInputOutlinedStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:hint="@string/db_web_user"
+                        app:endIconMode="clear_text"
+                        app:startIconDrawable="@drawable/ic_person">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_db_web_user"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
+                            android:inputType="text"
+                            android:autofillHints="username" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_db_web_pass"
+                        style="?attr/textInputOutlinedStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:hint="@string/db_web_pass"
+                        app:endIconMode="password_toggle"
+                        app:startIconDrawable="@drawable/ic_lock">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_db_web_pass"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:imeOptions="actionDone"
+                            android:singleLine="true"
+                            android:inputType="textPassword"
+                            android:autofillHints="password" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_copy_db_web_url"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:text="@string/db_web_copy_url"
+                        app:icon="@drawable/ic_copy"
+                        app:iconGravity="textStart" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
             <View
                 android:layout_width="match_parent"
                 android:layout_height="16dp" />
@@ -442,13 +891,13 @@
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
-    <!-- Fixed Bottom Bar for Save Button -->
+    <!-- 底部操作栏。布局流内的兄弟节点（不是悬浮叠层），键盘弹出时整体隐藏、把高度让给内容，
+         详见 SettingsFragment 的 insets 处理。 -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
         android:background="?attr/colorSurface"
-        android:padding="16dp">
+        android:padding="@dimen/space_4">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_save"
@@ -456,7 +905,9 @@
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:text="@string/save_settings"
-            app:cornerRadius="16dp" />
+            app:cornerRadius="@dimen/corner_sm"
+            app:icon="@drawable/ic_save"
+            app:iconGravity="textStart" />
     </FrameLayout>
 
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+</LinearLayout>

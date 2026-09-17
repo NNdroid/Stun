@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 带宽测速面板里「实时速率曲线」与「状态行」共用的承载面。
+     两处都是「贴在弹层底色上的一块浅色圆角面板」，形状完全一致，所以只留一份
+     —— 分成两个同名同形的 drawable 只会让人以为它们以后要各走各的配色。
+     比弹层底（colorSurfaceContainer）浅一档，靠亮度差分层，不加描边也不糊。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="?attr/colorSurfaceContainerLow" />
+    <corners android:radius="@dimen/corner_lg" />
+</shape>

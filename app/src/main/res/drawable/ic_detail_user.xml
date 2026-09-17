@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 连接详情面板「用户名」行图标：人物轮廓。与面板其余行图标同一族（24dp / 1.8 描边 / 圆头圆角）。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="@android:color/white"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.8"
+        android:pathData="M8.2,8 A3.8,3.8 0 0 1,15.8,8 A3.8,3.8 0 0 1,8.2,8 Z" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="@android:color/white"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.8"
+        android:pathData="M5.2,20.6 C5.2,17.2 8.2,14.8 12,14.8 C15.8,14.8 18.8,17.2 18.8,20.6" />
+</vector>

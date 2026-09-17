@@ -27,7 +27,6 @@
     <color name="md_theme_light_inverseOnSurface">#FBEEE8</color>
     <color name="md_theme_light_inverseSurface">#352F2B</color>
     <color name="md_theme_light_inversePrimary">#FFB77B</color>
-    <color name="md_theme_light_surfaceTint">#904D00</color>
     <color name="md_theme_light_surfaceContainerLowest">#FFFFFF</color>
     <color name="md_theme_light_surfaceContainerLow">#FEF1EA</color>
     <color name="md_theme_light_surfaceContainer">#F8EBE4</color>
@@ -35,44 +34,73 @@
     <color name="md_theme_light_surfaceContainerHighest">#EDDFD8</color>
 
     <!-- Dark Theme Tokens -->
+
+    <!-- Legacy / Manual references if still needed -->
+
+    <!-- Splash Screen Icon Plate Background -->
+    <!-- Desktop widget palette (light) -->
+    <color name="widget_card_bg">#FFFDF9</color>
+    <color name="widget_card_stroke">#1F000000</color>
+    <color name="widget_text_primary">#1F2430</color>
+    <color name="widget_text_secondary">#6B7280</color>
+    <color name="widget_placeholder">#9CA3AF</color>
+    <color name="widget_up_accent">#2563EB</color>
+    <color name="widget_down_accent">#0E9F6E</color>
+    <color name="widget_up_pill_bg">#E8F0FE</color>
+    <color name="widget_down_pill_bg">#E3F5EC</color>
+    <color name="widget_logo_bg">#FFE9D9</color>
+    <color name="widget_badge_bg">#D6F0E1</color>
+    <color name="widget_button_connect_bg">#FFFFECEB</color>
+    <color name="widget_button_disconnect_bg">#FFFFE4E6</color>
+    <color name="widget_button_pending_bg">#FFE8F0FE</color>
+    <color name="widget_button_danger_stroke">#55EF4444</color>
+
+    <!-- 连接详情面板星标（浅色） -->
+    <color name="connection_favorite_active">#F59E0B</color>
+    <color name="connection_favorite_inactive">#6B7280</color>
+
+    <!-- 连接状态语义色：之前误用 ?attr/colorPrimary 当"成功色"，
+         在橙色主题下会渲染成棕色圆点，与设计稿的绿色指示灯不符。 -->
+    <color name="connection_state_online">#10B981</color>
+    <color name="connection_state_pending">#F59E0B</color>
+    <color name="connection_state_offline">#EF4444</color>
+
+    <!-- 「服务器提示」虚线框（浅色）。它框的是**外部输入**（服务端 MOTD），需要与普通字段值
+         一眼分开，所以借 error 语义色的柔化版而不是中性描边。-->
+    <color name="detail_notice_outline">#D98C86</color>
+    <color name="detail_notice_fill">#FFF8F7</color>
+
+    <!-- M3 夜间调色板的**默认声明**：lint MissingDefaultResource 要求 night 资源在基础 values 里也有。
+         这些值只在 values-night/themes.xml 里被引用，基础侧声明不会被浅色模式取用。 -->
     <color name="md_theme_dark_primary">#FFB77B</color>
-    <color name="md_theme_dark_onPrimary">#4D2700</color>
-    <color name="md_theme_dark_primaryContainer">#6E3900</color>
+    <color name="md_theme_dark_onPrimary">#4D2800</color>
+    <color name="md_theme_dark_primaryContainer">#6A3A00</color>
     <color name="md_theme_dark_onPrimaryContainer">#FFDCC2</color>
-    <color name="md_theme_dark_secondary">#E3C0A4</color>
-    <color name="md_theme_dark_onSecondary">#422B18</color>
-    <color name="md_theme_dark_secondaryContainer">#5B412D</color>
+    <color name="md_theme_dark_secondary">#E3BFA4</color>
+    <color name="md_theme_dark_onSecondary">#422B15</color>
+    <color name="md_theme_dark_secondaryContainer">#5A412A</color>
     <color name="md_theme_dark_onSecondaryContainer">#FFDCBE</color>
-    <color name="md_theme_dark_tertiary">#C6CA95</color>
-    <color name="md_theme_dark_onTertiary">#2F330B</color>
-    <color name="md_theme_dark_tertiaryContainer">#45491F</color>
+    <color name="md_theme_dark_tertiary">#C7CE94</color>
+    <color name="md_theme_dark_onTertiary">#303300</color>
+    <color name="md_theme_dark_tertiaryContainer">#474A20</color>
     <color name="md_theme_dark_onTertiaryContainer">#E2E6AF</color>
     <color name="md_theme_dark_error">#FFB4AB</color>
     <color name="md_theme_dark_errorContainer">#93000A</color>
     <color name="md_theme_dark_onError">#690005</color>
     <color name="md_theme_dark_onErrorContainer">#FFDAD6</color>
     <color name="md_theme_dark_background">#201A17</color>
-    <color name="md_theme_dark_onBackground">#EBE0DA</color>
+    <color name="md_theme_dark_onBackground">#EDE0DA</color>
     <color name="md_theme_dark_surface">#201A17</color>
-    <color name="md_theme_dark_onSurface">#EBE0DA</color>
+    <color name="md_theme_dark_onSurface">#EDE0DA</color>
     <color name="md_theme_dark_surfaceVariant">#51443B</color>
-    <color name="md_theme_dark_onSurfaceVariant">#D6C3B6</color>
-    <color name="md_theme_dark_outline">#9E8D82</color>
-    <color name="md_theme_dark_inverseOnSurface">#201A17</color>
-    <color name="md_theme_dark_inverseSurface">#EBE0DA</color>
+    <color name="md_theme_dark_onSurfaceVariant">#D7C4B9</color>
+    <color name="md_theme_dark_outline">#9F8F84</color>
+    <color name="md_theme_dark_inverseOnSurface">#352F2B</color>
+    <color name="md_theme_dark_inverseSurface">#EDE0DA</color>
     <color name="md_theme_dark_inversePrimary">#904D00</color>
-    <color name="md_theme_dark_surfaceTint">#FFB77B</color>
-    <color name="md_theme_dark_surfaceContainerLowest">#140E0A</color>
-    <color name="md_theme_dark_surfaceContainerLow">#201A17</color>
-    <color name="md_theme_dark_surfaceContainer">#241E1A</color>
-    <color name="md_theme_dark_surfaceContainerHigh">#2F2825</color>
-    <color name="md_theme_dark_surfaceContainerHighest">#3A332F</color>
-
-    <!-- Legacy / Manual references if still needed -->
-    <color name="primary">#FF9800</color>
-    <color name="primary_dark">#F57C00</color>
-    <color name="primary_light">#FFE0B2</color>
-    <color name="accent">#FF5722</color>
-    <color name="white">#FFFFFFFF</color>
-    <color name="black">#FF000000</color>
+    <color name="md_theme_dark_surfaceContainerLowest">#150F0C</color>
+    <color name="md_theme_dark_surfaceContainerLow">#282220</color>
+    <color name="md_theme_dark_surfaceContainer">#2C2623</color>
+    <color name="md_theme_dark_surfaceContainerHigh">#37302D</color>
+    <color name="md_theme_dark_surfaceContainerHighest">#423B38</color>
 </resources>

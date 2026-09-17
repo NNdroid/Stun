@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 带宽测速面板「下载」卡里的圆形箭头底：实心下行绿。
+     语义色刻意保留字面量（与桌面小组件的 bg_widget_circle_down 同一族），
+     不跟动态取色变 —— 上行/下行用颜色区分是这套 UI 的固定语言。
+     注意：是实心强调色，不是 widget_down_pill_bg 那种淡底（那个是给深色字用的）。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="@color/widget_down_accent" />
+</shape>

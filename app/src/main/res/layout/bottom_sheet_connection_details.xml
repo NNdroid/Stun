@@ -1,0 +1,729 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  连接详情面板（底栏上划后展开）。版式对齐设计稿：
+  顶部操作条（关闭 / 更多）→ 身份头部（头像 + 节点名 + 时延 + 收藏）
+  →「实时速率」图表卡（带坐标刻度）
+  →「拓扑」地球卡（卡内身份头 + 海岸线 + 全节点落点 + hub 弧线 + 右下角复位视角）
+  →「节点详情」字段卡 →「辅助信息」字段卡 → 整宽断开按钮。
+
+  两张字段卡共用同一套版式语言：卡头（圆形图标 + 标题 + 副标题）取代卡片外的分区标题，
+  行首再各给一个圆形图标。标题进卡之后，卡片边界就是分区边界，不需要靠留白去暗示归属。
+-->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/connection_details_sheet"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_bottom_sheet"
+    android:clipToPadding="false"
+    android:overScrollMode="ifContentScrolls">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="@dimen/space_5"
+        android:paddingEnd="@dimen/space_5"
+        android:paddingBottom="@dimen/space_5">
+
+        <com.google.android.material.bottomsheet.BottomSheetDragHandleView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="@dimen/space_1" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/btn_detail_close"
+                android:layout_width="@dimen/touch_target_min"
+                android:layout_height="@dimen/touch_target_min"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/close"
+                android:padding="@dimen/space_3"
+                android:src="@drawable/ic_close"
+                app:tint="?attr/colorOnSurfaceVariant" />
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <ImageButton
+                android:id="@+id/btn_detail_more"
+                android:layout_width="@dimen/touch_target_min"
+                android:layout_height="@dimen/touch_target_min"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/desc_profile_actions"
+                android:padding="@dimen/space_3"
+                android:src="@drawable/ic_more_vert"
+                app:tint="?attr/colorOnSurfaceVariant" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_2"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="58dp"
+                android:layout_height="58dp"
+                app:cardBackgroundColor="?attr/colorPrimaryContainer"
+                app:cardCornerRadius="@dimen/corner_xl"
+                app:cardElevation="0dp">
+                <TextView
+                    android:id="@+id/tv_detail_avatar_letter"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:textColor="?attr/colorOnPrimaryContainer"
+                    android:textSize="@dimen/text_headline"
+                    android:textStyle="bold"
+                    tools:text="G" />
+            </com.google.android.material.card.MaterialCardView>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/space_4"
+                android:layout_weight="1"
+                android:orientation="vertical">
+                <TextView
+                    android:id="@+id/tv_detail_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textStyle="bold"
+                    tools:text="Guangzhou Home" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_1"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+                    <View
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:layout_marginEnd="@dimen/space_2"
+                        android:background="@drawable/shape_status_dot"
+                        android:backgroundTint="@color/status_connected" />
+
+                    <TextView
+                        android:id="@+id/tv_detail_latency"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="@color/status_connected"
+                        android:textStyle="bold"
+                        tools:text="-" />
+
+                    <!-- 连接质量综合评分：星级 + 颜色（绿/琥珀/红），由 HomeFragment.renderQuality 填充 -->
+                    <TextView
+                        android:id="@+id/tv_detail_quality"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_2"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textStyle="bold"
+                        android:visibility="gone"
+                        tools:text="Quality ★★★★☆"
+                        tools:visibility="visible" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/btn_detail_favorite"
+                android:layout_width="@dimen/touch_target_min"
+                android:layout_height="@dimen/touch_target_min"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/connection_favorite_add"
+                android:padding="@dimen/space_3"
+                android:src="@drawable/ic_star_border"
+                app:tint="?attr/colorOnSurfaceVariant" />
+        </LinearLayout>
+
+        <TextView
+            style="@style/StunConnectionSectionTitle"
+            android:text="@string/connection_realtime_speed" />
+
+        <com.google.android.material.card.MaterialCardView
+            style="?attr/materialCardViewFilledStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+            app:cardCornerRadius="@dimen/corner_md"
+            app:strokeColor="?attr/colorOutlineVariant"
+            app:strokeWidth="1dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="@dimen/space_4">
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/connection_upload" android:textAppearance="?attr/textAppearanceLabelLarge" android:textColor="@color/widget_up_accent" />
+                    <!-- 面板图表带坐标轴：由 HomeFragment 在渲染时置 showAxes（与 slots 同处设置） -->
+                    <app.fjj.stun.ui.view.TrafficBarChartView android:id="@+id/iv_detail_up_chart" android:layout_width="match_parent" android:layout_height="88dp" android:layout_marginTop="@dimen/space_2" android:contentDescription="@string/connection_upload_chart" />
+                    <TextView android:id="@+id/tv_detail_up_rate" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_2" android:textAppearance="?attr/textAppearanceTitleMedium" android:textColor="?attr/colorOnSurface" android:textStyle="bold" tools:text="↑ 133.3 MB/s" />
+                </LinearLayout>
+                <View android:layout_width="1dp" android:layout_height="match_parent" android:layout_marginHorizontal="@dimen/space_3" android:background="?attr/colorOutlineVariant" />
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/connection_download" android:textAppearance="?attr/textAppearanceLabelLarge" android:textColor="@color/widget_down_accent" />
+                    <app.fjj.stun.ui.view.TrafficBarChartView android:id="@+id/iv_detail_down_chart" android:layout_width="match_parent" android:layout_height="88dp" android:layout_marginTop="@dimen/space_2" android:contentDescription="@string/connection_download_chart" />
+                    <TextView android:id="@+id/tv_detail_down_rate" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_2" android:textAppearance="?attr/textAppearanceTitleMedium" android:textColor="?attr/colorOnSurface" android:textStyle="bold" tools:text="↓ 1.5 GB/s" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 拓扑标题行：标题 + 右侧"星空模式"切换按钮（选择持久化在 SettingsManager）。 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/connection_topology"
+                android:textAppearance="?attr/textAppearanceTitleSmall"
+                android:textColor="?attr/colorOnSurface"
+                android:textStyle="bold" />
+
+            <ImageButton
+                android:id="@+id/btn_topology_mode"
+                android:layout_width="@dimen/touch_target_min"
+                android:layout_height="@dimen/touch_target_min"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/connection_topology_mode_desc"
+                android:padding="@dimen/space_3"
+                android:src="@drawable/ic_starry_mode"
+                app:tint="?attr/colorOnSurfaceVariant" />
+        </LinearLayout>
+
+        <com.google.android.material.card.MaterialCardView
+            style="?attr/materialCardViewFilledStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+            app:cardCornerRadius="@dimen/corner_md"
+            app:strokeColor="?attr/colorOutlineVariant"
+            app:strokeWidth="1dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+                <!-- 卡内身份头：效果图里拓扑卡自带"这是谁在连"的上下文 —— 面板滚到地球这一段时，
+                     不必再往回翻才想起自己看的是哪个节点。内容刻意精简：头像/节点名、落地服务器、
+                     协议与标记魔数两枚标签、时延 · 上次连接 · 累计收发。用户名/备注等字段
+                     仍只在下方「节点详情」卡里出现，不在这里重复第二遍。 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="@dimen/space_4"
+                    android:paddingEnd="@dimen/space_1"
+                    android:paddingTop="@dimen/space_4"
+                    android:paddingBottom="@dimen/space_3">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        app:cardBackgroundColor="?attr/colorPrimaryContainer"
+                        app:cardCornerRadius="@dimen/corner_xl"
+                        app:cardElevation="0dp">
+                        <TextView
+                            android:id="@+id/tv_globe_avatar_letter"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:gravity="center"
+                            android:textColor="?attr/colorOnPrimaryContainer"
+                            android:textSize="@dimen/text_subtitle"
+                            android:textStyle="bold"
+                            tools:text="G" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_3"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tv_globe_name"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:textAppearance="?attr/textAppearanceTitleSmall"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textStyle="bold"
+                            tools:text="Guangzhou Home" />
+
+                        <TextView
+                            android:id="@+id/tv_globe_server"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_1"
+                            android:ellipsize="end"
+                            android:maxLines="2"
+                            android:textAppearance="?attr/textAppearanceBodySmall"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            tools:text="43.138.143.71:25000-26000 → 43.138.143.71:22" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_2"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/tv_globe_protocol_chip"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:background="@drawable/bg_badge_type"
+                                android:paddingStart="@dimen/space_2"
+                                android:paddingEnd="@dimen/space_2"
+                                android:paddingTop="2dp"
+                                android:paddingBottom="2dp"
+                                android:textAppearance="?attr/textAppearanceLabelSmall"
+                                android:textColor="?attr/colorOnTertiaryContainer"
+                                android:textStyle="bold"
+                                tools:text="UDP_CUSTOM" />
+
+                            <!-- 标记魔数只对自定义隧道有意义，为空时整枚标签收起（不占位、不写占位符） -->
+                            <TextView
+                                android:id="@+id/tv_globe_magic_chip"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="@dimen/space_2"
+                                android:background="@drawable/bg_badge_secondary"
+                                android:paddingStart="@dimen/space_2"
+                                android:paddingEnd="@dimen/space_2"
+                                android:paddingTop="2dp"
+                                android:paddingBottom="2dp"
+                                android:textAppearance="?attr/textAppearanceLabelSmall"
+                                android:textColor="?attr/colorOnSecondaryContainer"
+                                android:textStyle="bold"
+                                tools:text="Magic: UDPC" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_2"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/tv_globe_latency"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textAppearance="?attr/textAppearanceLabelMedium"
+                                android:textColor="@color/connection_state_online"
+                                android:textStyle="bold"
+                                tools:text="810 ms" />
+
+                            <TextView
+                                android:id="@+id/tv_globe_last"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="@dimen/space_2"
+                                android:layout_weight="1"
+                                android:ellipsize="end"
+                                android:maxLines="1"
+                                android:textAppearance="?attr/textAppearanceLabelMedium"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                tools:text="Last: 0 min ago" />
+
+                            <TextView
+                                android:id="@+id/tv_globe_traffic"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textAppearance="?attr/textAppearanceLabelMedium"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                tools:text="↑ 153.5 MB ↓ 1.6 GB" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- 与顶栏那枚 ⋮ 同源（同一份菜单）：卡片自己也有"对当前节点做点什么"的入口，
+                         面板滚到下半截时不必再滚回顶部。 -->
+                    <ImageButton
+                        android:id="@+id/btn_globe_more"
+                        android:layout_width="@dimen/touch_target_min"
+                        android:layout_height="@dimen/touch_target_min"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/desc_profile_actions"
+                        android:padding="@dimen/space_3"
+                        android:src="@drawable/ic_more_vert"
+                        app:tint="?attr/colorOnSurfaceVariant" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?attr/colorOutlineVariant" />
+                <!-- 方形自适应：高度由 GlobeView.onMeasure 取宽度，这里必须写 wrap_content，
+                     否则卡片会跟着屏幕比例变成一个被拉长的椭圆。
+                     外包一层 FrameLayout 是给点选气泡当定位坐标系 —— 气泡用 translationX/Y
+                     钉在选中落点附近，随相机一起被夹在球面方形内。 -->
+                <FrameLayout
+                    android:id="@+id/globe_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <app.fjj.stun.ui.view.GlobeView
+                        android:id="@+id/globe_topology"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/connection_globe_description" />
+
+                    <!-- 复位视角：双指放大过、或把球拖走之后，一键回到「对准当前节点 + 默认倍率」。
+                         压在球的右下角（球本身占满这个方形），默认倍率下压暗 —— 那时它没有可复位的东西。
+                         alpha 写在 XML 里而不是只由代码设：默认态由布局定死，接线没跑到时也不会亮着骗人。
+                         放在气泡之前，保证点选气泡仍画在最上层。 -->
+                    <ImageButton
+                        android:id="@+id/btn_globe_reset"
+                        android:layout_width="@dimen/touch_target_min"
+                        android:layout_height="@dimen/touch_target_min"
+                        android:layout_gravity="bottom|end"
+                        android:layout_marginEnd="@dimen/space_2"
+                        android:layout_marginBottom="@dimen/space_2"
+                        android:alpha="0.55"
+                        android:background="@drawable/bg_globe_reset_button"
+                        android:contentDescription="@string/connection_globe_reset_view"
+                        android:elevation="3dp"
+                        android:padding="@dimen/space_3"
+                        android:src="@drawable/ic_detail_zoom_reset"
+                        app:tint="?attr/colorOnSurfaceVariant" />
+
+                    <!-- 点选气泡：默认 GONE，点中落点/弧线时由 HomeFragment 填三行文案并定位。
+                         定位用 translationX/Y，所以这里不写任何 gravity —— 默认就是 top|start 零偏移。 -->
+                    <LinearLayout
+                        android:id="@+id/bubble_globe_detail"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:background="@drawable/bg_globe_bubble"
+                        android:elevation="8dp"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:visibility="gone"
+                        tools:visibility="visible">
+
+                        <TextView
+                            android:id="@+id/tv_globe_bubble_title"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:maxWidth="220dp"
+                            android:singleLine="true"
+                            android:ellipsize="end"
+                            android:textAppearance="?attr/textAppearanceTitleSmall"
+                            android:textColor="#FFFFFF"
+                            tools:text="Tokyo · 节点备注" />
+
+                        <TextView
+                            android:id="@+id/tv_globe_bubble_subtitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:maxWidth="220dp"
+                            android:singleLine="true"
+                            android:ellipsize="end"
+                            android:textAppearance="?attr/textAppearanceBodySmall"
+                            android:textColor="#CCFFFFFF"
+                            tools:text="203.0.113.7:22" />
+
+                        <TextView
+                            android:id="@+id/tv_globe_bubble_status"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:maxWidth="220dp"
+                            android:textAppearance="?attr/textAppearanceBodySmall"
+                            android:textColor="#99FFFFFF"
+                            tools:text="1 条活跃连接 · 2.4 MB/s" />
+                    </LinearLayout>
+                </FrameLayout>
+                <!-- 连接统计条：活跃连接数 + 这些连接生命周期内的累计收发。
+                     方向口径与 Go connInfoExport 一致：write=上行、read=下行。
+                     放在地球与状态行之间，地理库缺失时统计照样可用。 -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?attr/colorOutlineVariant" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:baselineAligned="false"
+                    android:orientation="horizontal"
+                    android:paddingStart="@dimen/space_4"
+                    android:paddingEnd="@dimen/space_4"
+                    android:paddingTop="@dimen/space_3"
+                    android:paddingBottom="@dimen/space_4">
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/connection_active_connections"
+                            android:textAppearance="?attr/textAppearanceLabelMedium"
+                            android:textColor="?attr/colorOnSurfaceVariant" />
+                        <TextView
+                            android:id="@+id/tv_conn_stat_count"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_1"
+                            android:textAppearance="?attr/textAppearanceTitleMedium"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textStyle="bold"
+                            tools:text="12" />
+                    </LinearLayout>
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/connection_upload"
+                            android:textAppearance="?attr/textAppearanceLabelMedium"
+                            android:textColor="@color/widget_up_accent" />
+                        <TextView
+                            android:id="@+id/tv_conn_stat_up"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_1"
+                            android:textAppearance="?attr/textAppearanceTitleMedium"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textStyle="bold"
+                            tools:text="3.2 MB" />
+                    </LinearLayout>
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/connection_download"
+                            android:textAppearance="?attr/textAppearanceLabelMedium"
+                            android:textColor="@color/widget_down_accent" />
+                        <TextView
+                            android:id="@+id/tv_conn_stat_down"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_1"
+                            android:textAppearance="?attr/textAppearanceTitleMedium"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textStyle="bold"
+                            tools:text="18.7 MB" />
+                    </LinearLayout>
+                </LinearLayout>
+                <!-- 状态行：只在「还没下地理库」或「库在但一个点都没定位到」时出现。
+                     与上面的地球同处一张卡，避免 CTA 盖在球体上导致海岸线把文字背景搅花。 -->
+                <LinearLayout
+                    android:id="@+id/row_globe_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="@dimen/space_2"
+                    android:paddingTop="@dimen/space_2"
+                    android:paddingBottom="@dimen/space_3"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+                    <TextView
+                        android:id="@+id/tv_globe_status"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        tools:text="Download the offline geo library to place nodes on the globe" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_globe_download"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_2"
+                        android:minWidth="0dp"
+                        android:text="@string/connection_globe_download"
+                        android:visibility="gone"
+                        tools:visibility="visible" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            style="?attr/materialCardViewFilledStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+            app:cardCornerRadius="@dimen/corner_md"
+            app:strokeColor="?attr/colorOutlineVariant"
+            app:strokeWidth="1dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                <!-- 卡头：图标 + 标题 + 副标题。原先卡片外那行「节点详情」分区标题已移除 —— 标题进卡后
+                     标题与它管辖的行共享同一个边界，不再有"这段留白算谁的"的歧义。 -->
+                <LinearLayout style="@style/StunConnectionCardHeader">
+                    <ImageView style="@style/StunConnectionCardHeaderIcon" android:src="@drawable/ic_menu_nodes" app:tint="?attr/colorOnSecondaryContainer" />
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_3"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+                        <TextView style="@style/StunConnectionCardHeaderTitle" android:text="@string/connection_node_details" />
+                        <TextView style="@style/StunConnectionCardHeaderSubtitle" android:text="@string/connection_node_details_subtitle" />
+                    </LinearLayout>
+                </LinearLayout>
+                <LinearLayout style="@style/StunConnectionDetailRow">
+                    <ImageView style="@style/StunConnectionDetailRowIcon" android:src="@drawable/ic_menu_nodes" app:tint="?attr/colorOnSecondaryContainer" />
+                    <TextView style="@style/StunConnectionDetailLabel" android:text="@string/connection_server" />
+                    <TextView android:id="@+id/tv_detail_server" style="@style/StunConnectionDetailValue" tools:text="43.138.143.71:25000-26000 → 43.138.143.71:22" />
+                </LinearLayout>
+                <View style="@style/StunConnectionDetailDividerIcon" />
+                <LinearLayout style="@style/StunConnectionDetailRow">
+                    <ImageView style="@style/StunConnectionDetailRowIcon" android:src="@drawable/ic_detail_user" app:tint="?attr/colorOnSecondaryContainer" />
+                    <TextView style="@style/StunConnectionDetailLabel" android:text="@string/username" />
+                    <TextView android:id="@+id/tv_detail_user" style="@style/StunConnectionDetailValue" tools:text="root" />
+                </LinearLayout>
+                <View style="@style/StunConnectionDetailDividerIcon" />
+                <LinearLayout style="@style/StunConnectionDetailRow">
+                    <ImageView style="@style/StunConnectionDetailRowIcon" android:src="@drawable/ic_detail_clock" app:tint="?attr/colorOnSecondaryContainer" />
+                    <TextView style="@style/StunConnectionDetailLabel" android:text="@string/connection_last_connected" />
+                    <TextView android:id="@+id/tv_detail_last_connected" style="@style/StunConnectionDetailValue" tools:text="0 minutes ago" />
+                </LinearLayout>
+                <View style="@style/StunConnectionDetailDividerIcon" />
+                <LinearLayout style="@style/StunConnectionDetailRow">
+                    <ImageView style="@style/StunConnectionDetailRowIcon" android:src="@drawable/ic_detail_doc" app:tint="?attr/colorOnSecondaryContainer" />
+                    <TextView style="@style/StunConnectionDetailLabel" android:text="@string/connection_label_protocol" />
+                    <TextView android:id="@+id/tv_detail_protocol" style="@style/StunConnectionDetailValue" tools:text="UDP_CUSTOM" />
+                </LinearLayout>
+                <View style="@style/StunConnectionDetailDividerIcon" />
+                <LinearLayout style="@style/StunConnectionDetailRow">
+                    <ImageView style="@style/StunConnectionDetailRowIcon" android:src="@drawable/ic_detail_pin" app:tint="?attr/colorOnSecondaryContainer" />
+                    <TextView style="@style/StunConnectionDetailLabel" android:text="@string/connection_exit" />
+                    <TextView android:id="@+id/tv_detail_exit" style="@style/StunConnectionDetailValue" tools:text="203.0.113.8 · 🇸🇬 Singapore" />
+                </LinearLayout>
+                <View style="@style/StunConnectionDetailDividerIcon" />
+                <LinearLayout style="@style/StunConnectionDetailRow">
+                    <ImageView style="@style/StunConnectionDetailRowIcon" android:src="@drawable/ic_detail_doc" app:tint="?attr/colorOnSecondaryContainer" />
+                    <TextView style="@style/StunConnectionDetailLabel" android:text="@string/connection_label_note" />
+                    <TextView android:id="@+id/tv_detail_note" style="@style/StunConnectionDetailValue" tools:text="—" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            style="?attr/materialCardViewFilledStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_4"
+            app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+            app:cardCornerRadius="@dimen/corner_md"
+            app:strokeColor="?attr/colorOutlineVariant"
+            app:strokeWidth="1dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                <LinearLayout style="@style/StunConnectionCardHeader">
+                    <ImageView style="@style/StunConnectionCardHeaderIcon" android:src="@drawable/ic_info_rounded" app:tint="?attr/colorOnSecondaryContainer" />
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_3"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+                        <TextView style="@style/StunConnectionCardHeaderTitle" android:text="@string/connection_auxiliary_info" />
+                        <TextView style="@style/StunConnectionCardHeaderSubtitle" android:text="@string/connection_auxiliary_info_subtitle" />
+                    </LinearLayout>
+                </LinearLayout>
+                <!-- SSH 服务器标识（版本标识行 SSH-2.0-xxx）：由 Go 引擎在真实握手时记录；
+                     面板打开时填充，从未连过该地址则显示占位符 -->
+                <LinearLayout android:id="@+id/row_detail_ssh_banner" style="@style/StunConnectionDetailRow">
+                    <ImageView style="@style/StunConnectionDetailRowIcon" android:src="@drawable/ic_detail_key" app:tint="?attr/colorOnSecondaryContainer" />
+                    <TextView style="@style/StunConnectionDetailLabel" android:text="@string/connection_label_ssh_banner" />
+                    <TextView android:id="@+id/tv_detail_ssh_banner" style="@style/StunConnectionDetailValue" tools:text="SSH-2.0-OpenSSH_9.6" />
+                </LinearLayout>
+                <View android:id="@+id/divider_detail_ssh_banner" style="@style/StunConnectionDetailDividerIcon" />
+                <!-- 认证阶段服务器提示（MOTD / 登录告知）：服务端未配置时整行连同分隔线隐藏。
+                     文案是**服务端可控文本**（可含 ANSI 颜色与链接，由 SshBannerRenderer 消毒渲染），
+                     所以给它一个虚线框 —— 一眼看出"这段是服务器说的，不是我们的字段值"。 -->
+                <LinearLayout android:id="@+id/row_detail_ssh_notice" style="@style/StunConnectionDetailRow" android:visibility="gone" tools:visibility="visible">
+                    <ImageView style="@style/StunConnectionDetailRowIcon" android:src="@drawable/ic_terminal_rounded" app:tint="?attr/colorOnSecondaryContainer" />
+                    <TextView style="@style/StunConnectionDetailLabel" android:text="@string/connection_label_ssh_notice" />
+                    <TextView
+                        android:id="@+id/tv_detail_ssh_notice"
+                        style="@style/StunConnectionDetailValueHtml"
+                        android:background="@drawable/bg_detail_notice"
+                        android:gravity="center_horizontal"
+                        android:paddingStart="@dimen/space_3"
+                        android:paddingEnd="@dimen/space_3"
+                        android:paddingTop="@dimen/space_2"
+                        android:paddingBottom="@dimen/space_2"
+                        tools:text="Authorized users only" />
+                </LinearLayout>
+                <View android:id="@+id/divider_detail_ssh_notice" style="@style/StunConnectionDetailDividerIcon" />
+                <LinearLayout style="@style/StunConnectionDetailRow">
+                    <ImageView style="@style/StunConnectionDetailRowIcon" android:src="@drawable/ic_detail_globe" app:tint="?attr/colorOnSecondaryContainer" />
+                    <TextView style="@style/StunConnectionDetailLabel" android:text="@string/widget_label_sni" />
+                    <TextView android:id="@+id/tv_detail_sni" style="@style/StunConnectionDetailValue" tools:text="edge.example.com" />
+                </LinearLayout>
+                <View style="@style/StunConnectionDetailDividerIcon" />
+                <LinearLayout style="@style/StunConnectionDetailRow">
+                    <ImageView style="@style/StunConnectionDetailRowIcon" android:src="@drawable/ic_detail_layers" app:tint="?attr/colorOnSecondaryContainer" />
+                    <TextView style="@style/StunConnectionDetailLabel" android:text="@string/widget_label_host" />
+                    <TextView android:id="@+id/tv_detail_host" style="@style/StunConnectionDetailValue" tools:text="edge.example.com" />
+                </LinearLayout>
+                <View style="@style/StunConnectionDetailDividerIcon" />
+                <LinearLayout style="@style/StunConnectionDetailRow">
+                    <ImageView style="@style/StunConnectionDetailRowIcon" android:src="@drawable/ic_detail_traffic" app:tint="?attr/colorOnSecondaryContainer" />
+                    <TextView style="@style/StunConnectionDetailLabel" android:text="@string/connection_total_traffic" />
+                    <TextView android:id="@+id/tv_detail_total" style="@style/StunConnectionDetailValue" tools:text="↑ 1.2 GB  ↓ 8.4 GB" />
+                </LinearLayout>
+                <View style="@style/StunConnectionDetailDividerIcon" />
+                <LinearLayout style="@style/StunConnectionDetailRow">
+                    <ImageView style="@style/StunConnectionDetailRowIcon" android:src="@drawable/ic_detail_clock" app:tint="?attr/colorOnSecondaryContainer" />
+                    <TextView style="@style/StunConnectionDetailLabel" android:text="@string/widget_label_uptime" />
+                    <TextView android:id="@+id/tv_detail_uptime" style="@style/StunConnectionDetailValue" tools:text="2h 5m" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_detail_disconnect"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="@dimen/space_5"
+            android:text="@string/connection_disconnect_action"
+            android:textColor="?attr/colorOnErrorContainer"
+            app:backgroundTint="?attr/colorErrorContainer"
+            app:cornerRadius="@dimen/corner_md"
+            app:icon="@drawable/ic_stop_rounded"
+            app:iconGravity="textStart"
+            app:iconTint="?attr/colorOnErrorContainer" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

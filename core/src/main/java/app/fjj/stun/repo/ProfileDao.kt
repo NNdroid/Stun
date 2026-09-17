@@ -31,5 +31,8 @@ interface ProfileDao {
 
     @Query("UPDATE profiles SET totalTx = :tx, totalRx = :rx WHERE id = :id")
     fun updateTrafficStats(id: String, tx: Long, rx: Long)
+
+    @Query("UPDATE profiles SET lastConnectedAt = :epochMs WHERE id = :id")
+    fun updateLastConnectedAt(id: String, epochMs: Long)
 }
 

@@ -16,7 +16,9 @@ class ProfileTest {
     @Test
     fun getAllTunnelTypes_containsExtendedTypes() {
         val types = Profile.getAllTunnelTypes()
-        assertTrue("应包含 TLS 基础类型", types.contains(Profile.TUNNEL_TYPE_TLS))
+        assertTrue("应包含 RAW 基础类型", types.contains(Profile.TUNNEL_TYPE_RAW))
+        assertTrue("应包含 websocket 合并类型", types.contains(Profile.TUNNEL_TYPE_WEBSOCKET))
+        assertTrue("应包含 webtransport 改名类型", types.contains(Profile.TUNNEL_TYPE_WEBTRANSPORT))
         assertTrue("应包含 DNS 隧道类型 dns_custom", types.contains(Profile.TUNNEL_TYPE_DNS))
         assertTrue("应包含 KCP 类型", types.contains(Profile.TUNNEL_TYPE_KCP))
         assertTrue("应包含 UDP-Custom 类型", types.contains(Profile.TUNNEL_TYPE_UDP_CUSTOM))

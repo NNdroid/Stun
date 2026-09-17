@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      注意：这里只定义「与连接状态无关」的快捷方式。
+      启动/断开 toggle 由 DynamicShortcutManager 按实际 VPN 状态单源维护
+      （id: dynamic_toggle_vpn，随状态显示 连接 或 断开）。
+      静态再写一份会与动态并集展示，导致长按菜单出现「一个启动两个断开」。
+    -->
+
+    <!-- Shortcut 1: Switch Node -->
+    <shortcut
+        android:shortcutId="shortcut_switch_node"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_switch"
+        android:shortcutShortLabel="@string/shortcut_switch_node"
+        android:shortcutLongLabel="@string/shortcut_switch_node">
+        <intent
+            android:action="app.fjj.stun.ACTION_SHORTCUT_SWITCH_NODE"
+            android:targetPackage="app.fjj.stun"
+            android:targetClass="app.fjj.stun.ui.MainActivity" />
+    </shortcut>
+
+    <!-- Shortcut 2: Remote Control TV -->
+    <shortcut
+        android:shortcutId="shortcut_remote_tv"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_tv"
+        android:shortcutShortLabel="@string/shortcut_remote_tv"
+        android:shortcutLongLabel="@string/shortcut_remote_tv">
+        <intent
+            android:action="app.fjj.stun.ACTION_SHORTCUT_REMOTE_TV"
+            android:targetPackage="app.fjj.stun"
+            android:targetClass="app.fjj.stun.ui.MainActivity" />
+    </shortcut>
+
+</shortcuts>

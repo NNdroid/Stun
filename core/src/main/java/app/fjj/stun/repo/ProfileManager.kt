@@ -56,6 +56,13 @@ object ProfileManager {
         AppDatabase.getDatabase(context).profileDao().addTrafficStats(id, deltaTx, deltaRx)
     }
 
+    fun markConnected(context: Context, id: String) {
+        if (id.isBlank()) return
+        try {
+            AppDatabase.getDatabase(context).profileDao().updateLastConnectedAt(id, System.currentTimeMillis())
+        } catch (_: Exception) {}
+    }
+
     fun updateProfileIndices(context: Context, profiles: List<Profile>) {
         val dao = AppDatabase.getDatabase(context).profileDao()
         profiles.forEachIndexed { index, profile ->

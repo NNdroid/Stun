@@ -1,0 +1,523 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 23,
+    "identityHash": "0064cc386b86e172db2e95088c56c7bb",
+    "entities": [
+      {
+        "tableName": "profiles",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `sshAddr` TEXT NOT NULL, `user` TEXT NOT NULL, `pass` TEXT NOT NULL, `authType` TEXT NOT NULL, `privateKey` TEXT NOT NULL, `tunnelType` TEXT NOT NULL, `tunnelTlsEnabled` INTEGER NOT NULL, `icmpCustomPsk` TEXT NOT NULL, `icmpCustomMagic` TEXT NOT NULL, `icmpCustomPublicKey` TEXT NOT NULL, `icmpCustomMtuMode` TEXT NOT NULL, `icmpCustomMaxPayload` INTEGER NOT NULL, `icmpCustomPaceMS` INTEGER NOT NULL, `icmpCustomIdRange` TEXT NOT NULL, `proxyAddr` TEXT NOT NULL, `customHost` TEXT NOT NULL, `serverName` TEXT NOT NULL, `customPath` TEXT NOT NULL, `enableCustomPath` INTEGER NOT NULL, `proxyAuthRequired` INTEGER NOT NULL, `proxyAuthToken` TEXT NOT NULL, `proxyAuthUser` TEXT NOT NULL, `proxyAuthPass` TEXT NOT NULL, `httpPayload` TEXT NOT NULL, `type` TEXT NOT NULL, `dnsOverride` INTEGER NOT NULL, `remoteDns` TEXT NOT NULL, `localDns` TEXT NOT NULL, `udpgwVersion` TEXT NOT NULL, `udpgwAddr` TEXT NOT NULL, `geositeDirect` TEXT NOT NULL, `geoipDirect` TEXT NOT NULL, `appFilterOverride` INTEGER NOT NULL, `filterApps` TEXT NOT NULL, `filterMode` INTEGER NOT NULL, `disableStatusCheck` INTEGER NOT NULL, `verifyFingerprint` INTEGER NOT NULL, `serverFingerprint` TEXT NOT NULL, `verifyCertFingerprint` INTEGER NOT NULL, `serverCertFingerprint` TEXT NOT NULL, `alpn` TEXT NOT NULL, `keyPass` TEXT NOT NULL, `dnsTunnelDomain` TEXT NOT NULL, `dnsTunnelServers` TEXT NOT NULL, `dnsTunnelType` TEXT NOT NULL, `dnsTunnelPublicKey` TEXT NOT NULL, `dnsTunnelEDNS0` INTEGER NOT NULL, `dnsTunnelPsk` TEXT NOT NULL, `dnsTunnelMarker` TEXT NOT NULL, `kcpPassword` TEXT NOT NULL, `kcpCrypt` TEXT NOT NULL, `kcpMode` TEXT NOT NULL, `kcpDataShards` INTEGER NOT NULL, `kcpParityShards` INTEGER NOT NULL, `kcpSndWnd` INTEGER NOT NULL, `kcpRcvWnd` INTEGER NOT NULL, `kcpMtu` INTEGER NOT NULL, `kcpNoComp` INTEGER NOT NULL, `kcpSmuxVer` INTEGER NOT NULL, `kcpKeepAlive` INTEGER NOT NULL, `udpCustomPsk` TEXT NOT NULL, `udpCustomMagic` TEXT NOT NULL, `udpCustomPublicKey` TEXT NOT NULL, `udpCustomPaths` INTEGER NOT NULL, `udpCustomSockets` INTEGER NOT NULL, `udpCustomSendWindow` INTEGER NOT NULL, `udpCustomMaxPkt` INTEGER NOT NULL, `udpCustomMtuProbe` TEXT NOT NULL, `noisePublicKey` TEXT NOT NULL, `xhttpChunkSizeKB` INTEGER NOT NULL, `xhttpStreamMode` TEXT NOT NULL, `bindInterface` TEXT NOT NULL, `lastConnectedAt` INTEGER NOT NULL, `heartbeatIntervalMs` INTEGER NOT NULL, `paddingMinBytes` INTEGER NOT NULL, `masqueAlpn` TEXT NOT NULL, `totalTx` INTEGER NOT NULL, `totalRx` INTEGER NOT NULL, `sortIndex` INTEGER NOT NULL, `note` TEXT NOT NULL, `favorite` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sshAddr",
+            "columnName": "sshAddr",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "user",
+            "columnName": "user",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pass",
+            "columnName": "pass",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "authType",
+            "columnName": "authType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "privateKey",
+            "columnName": "privateKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tunnelType",
+            "columnName": "tunnelType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tunnelTlsEnabled",
+            "columnName": "tunnelTlsEnabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "icmpCustomPsk",
+            "columnName": "icmpCustomPsk",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "icmpCustomMagic",
+            "columnName": "icmpCustomMagic",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "icmpCustomPublicKey",
+            "columnName": "icmpCustomPublicKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "icmpCustomMtuMode",
+            "columnName": "icmpCustomMtuMode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "icmpCustomMaxPayload",
+            "columnName": "icmpCustomMaxPayload",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "icmpCustomPaceMS",
+            "columnName": "icmpCustomPaceMS",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "icmpCustomIdRange",
+            "columnName": "icmpCustomIdRange",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "proxyAddr",
+            "columnName": "proxyAddr",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "customHost",
+            "columnName": "customHost",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverName",
+            "columnName": "serverName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "customPath",
+            "columnName": "customPath",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "enableCustomPath",
+            "columnName": "enableCustomPath",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "proxyAuthRequired",
+            "columnName": "proxyAuthRequired",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "proxyAuthToken",
+            "columnName": "proxyAuthToken",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "proxyAuthUser",
+            "columnName": "proxyAuthUser",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "proxyAuthPass",
+            "columnName": "proxyAuthPass",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "httpPayload",
+            "columnName": "httpPayload",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dnsOverride",
+            "columnName": "dnsOverride",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "remoteDns",
+            "columnName": "remoteDns",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "localDns",
+            "columnName": "localDns",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "udpgwVersion",
+            "columnName": "udpgwVersion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "udpgwAddr",
+            "columnName": "udpgwAddr",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "geositeDirect",
+            "columnName": "geositeDirect",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "geoipDirect",
+            "columnName": "geoipDirect",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appFilterOverride",
+            "columnName": "appFilterOverride",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "filterApps",
+            "columnName": "filterApps",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "filterMode",
+            "columnName": "filterMode",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "disableStatusCheck",
+            "columnName": "disableStatusCheck",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "verifyFingerprint",
+            "columnName": "verifyFingerprint",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverFingerprint",
+            "columnName": "serverFingerprint",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "verifyCertFingerprint",
+            "columnName": "verifyCertFingerprint",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverCertFingerprint",
+            "columnName": "serverCertFingerprint",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "alpn",
+            "columnName": "alpn",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "keyPass",
+            "columnName": "keyPass",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dnsTunnelDomain",
+            "columnName": "dnsTunnelDomain",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dnsTunnelServers",
+            "columnName": "dnsTunnelServers",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dnsTunnelType",
+            "columnName": "dnsTunnelType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dnsTunnelPublicKey",
+            "columnName": "dnsTunnelPublicKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dnsTunnelEDNS0",
+            "columnName": "dnsTunnelEDNS0",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dnsTunnelPsk",
+            "columnName": "dnsTunnelPsk",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dnsTunnelMarker",
+            "columnName": "dnsTunnelMarker",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kcpPassword",
+            "columnName": "kcpPassword",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kcpCrypt",
+            "columnName": "kcpCrypt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kcpMode",
+            "columnName": "kcpMode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kcpDataShards",
+            "columnName": "kcpDataShards",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kcpParityShards",
+            "columnName": "kcpParityShards",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kcpSndWnd",
+            "columnName": "kcpSndWnd",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kcpRcvWnd",
+            "columnName": "kcpRcvWnd",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kcpMtu",
+            "columnName": "kcpMtu",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kcpNoComp",
+            "columnName": "kcpNoComp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kcpSmuxVer",
+            "columnName": "kcpSmuxVer",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kcpKeepAlive",
+            "columnName": "kcpKeepAlive",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "udpCustomPsk",
+            "columnName": "udpCustomPsk",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "udpCustomMagic",
+            "columnName": "udpCustomMagic",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "udpCustomPublicKey",
+            "columnName": "udpCustomPublicKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "udpCustomPaths",
+            "columnName": "udpCustomPaths",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "udpCustomSockets",
+            "columnName": "udpCustomSockets",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "udpCustomSendWindow",
+            "columnName": "udpCustomSendWindow",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "udpCustomMaxPkt",
+            "columnName": "udpCustomMaxPkt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "udpCustomMtuProbe",
+            "columnName": "udpCustomMtuProbe",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "noisePublicKey",
+            "columnName": "noisePublicKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "xhttpChunkSizeKB",
+            "columnName": "xhttpChunkSizeKB",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "xhttpStreamMode",
+            "columnName": "xhttpStreamMode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bindInterface",
+            "columnName": "bindInterface",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastConnectedAt",
+            "columnName": "lastConnectedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "heartbeatIntervalMs",
+            "columnName": "heartbeatIntervalMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "paddingMinBytes",
+            "columnName": "paddingMinBytes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "masqueAlpn",
+            "columnName": "masqueAlpn",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalTx",
+            "columnName": "totalTx",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalRx",
+            "columnName": "totalRx",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortIndex",
+            "columnName": "sortIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "favorite",
+            "columnName": "favorite",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0064cc386b86e172db2e95088c56c7bb')"
+    ]
+  }
+}

@@ -6,9 +6,9 @@
 
     <group
         android:pivotX="54"
-        android:pivotY="54"
-        android:scaleX="0.8"
-        android:scaleY="0.8">
+        android:pivotY="60"
+        android:scaleX="1.05"
+        android:scaleY="1.05">
 
         <!-- Ears - Left (Rounded Peak) -->
         <path

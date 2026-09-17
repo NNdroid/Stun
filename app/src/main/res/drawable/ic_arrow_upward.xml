@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Material arrow_upward（实心）。带宽测速面板「上传」结果卡里用，
+     与 ic_arrow_downward 严格镜像 —— 两个图标必须同款同重，否则左右两张卡不平衡。
+     与仓库其余图标同一约定：矢量画白色，落在谁身上由使用处的 app:tint 决定。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M4,12l1.41,1.41L11,7.83V20h2V7.83l5.58,5.59L20,12l-8,-8 -8,8z" />
+</vector>

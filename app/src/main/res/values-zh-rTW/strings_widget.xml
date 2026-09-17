@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 桌面小工具：五種版式的名稱/說明，以及展開詳情用到的欄位標籤 -->
+<resources>
+    <string name="widget_label_capsule">快捷列</string>
+    <string name="widget_label_mini">迷你版</string>
+    <string name="widget_label_standard">標準版</string>
+    <string name="widget_label_detail">展開詳情</string>
+
+    <string name="widget_desc_capsule">節點名稱、延遲、即時速率圖與一鍵開關</string>
+    <string name="widget_desc_mini">僅顯示名稱、延遲與目前速率</string>
+    <string name="widget_desc_standard">顯示完整資訊：名稱、狀態、延遲、協定與上下行速率</string>
+    <string name="widget_desc_detail">顯示完整欄位與即時速率圖</string>
+
+    <string name="widget_label_uptime">執行時間</string>
+    <string name="widget_uptime_days">%1$d天%2$d小時%3$d分鐘</string>
+    <string name="widget_uptime_hours">%1$d小時%2$d分鐘</string>
+
+    <string name="desc_open_app">開啟應用程式</string>
+    <string name="desc_widget_favorite">已收藏節點</string>
+    <!-- 2026-09-15: 小组件选择器 i18n 补全 -->
+    <string name="widget_label_compact">緊湊版</string>
+    <string name="widget_label_wide">平板 / 桌面版</string>
+    <string name="widget_desc_compact">有限空間內顯示核心資訊與連線操作</string>
+    <string name="widget_desc_wide">適合大螢幕的橫向資訊與即時速率圖</string>
+</resources>

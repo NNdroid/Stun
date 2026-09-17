@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="StunNavDrawerRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:background">@drawable/bg_nav_drawer_item</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:foreground">?attr/selectableItemBackground</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:minHeight">68dp</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:paddingEnd">12dp</item>
+    </style>
+    <style name="StunNavDrawerIndicator">
+        <item name="android:layout_width">4dp</item>
+        <item name="android:layout_height">40dp</item>
+        <item name="android:layout_marginEnd">10dp</item>
+        <item name="android:background">@drawable/bg_nav_drawer_indicator</item>
+    </style>
+    <style name="StunNavDrawerIconPlate" parent="StunMenuIconPlate">
+        <item name="android:duplicateParentState">true</item>
+    </style>
+    <style name="StunNavDrawerIcon" parent="StunMenuIcon">
+        <item name="android:duplicateParentState">true</item>
+    </style>
+    <style name="StunNavDrawerLabel">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginStart">14dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:paddingVertical">10dp</item>
+        <item name="android:duplicateParentState">true</item>
+        <item name="android:importantForAccessibility">no</item>
+        <item name="android:textAppearance">?attr/textAppearanceBodyLarge</item>
+        <item name="android:textColor">@color/menu_navigation_text</item>
+    </style>
+    <style name="StunNavDrawerChevron">
+        <item name="android:layout_width">20dp</item>
+        <item name="android:layout_height">20dp</item>
+        <item name="android:contentDescription">@null</item>
+        <item name="android:src">@drawable/ic_chevron_right</item>
+        <item name="android:tint">?attr/colorOnSurfaceVariant</item>
+    </style>
+</resources>

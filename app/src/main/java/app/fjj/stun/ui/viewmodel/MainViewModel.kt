@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import app.fjj.stun.repo.Profile
 import app.fjj.stun.repo.ProfileManager
 import app.fjj.stun.repo.SettingsManager
+import app.fjj.stun.repo.SubscriptionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -18,6 +19,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _selectedProfile = MutableLiveData<Profile?>()
     val selectedProfile: LiveData<Profile?> = _selectedProfile
+
+    init {
+        // 节点卡片的"来源订阅"徽标要按 URL 查订阅名。名字快照是懒加载的，若等列表第一次
+        // bind 时才在主线程序列化订阅表，首帧就会多一次读盘。这里提前在 IO 上把它焐热。
+        viewModelScope.launch(Dispatchers.IO) {
+            SubscriptionManager.warmSubscriptionNameCache(getApplication())
+        }
+    }
 
     fun loadSelectedProfile(callback: ((Profile) -> Unit)? = null) {
         viewModelScope.launch {

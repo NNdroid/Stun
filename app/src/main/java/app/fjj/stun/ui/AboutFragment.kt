@@ -11,19 +11,26 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import app.fjj.stun.R
 import app.fjj.stun.core.R as CoreR
 import app.fjj.stun.databinding.ActivityAboutBinding
 import app.fjj.stun.repo.StunLogger
 import app.fjj.stun.util.AppUtils
 import java.io.File
+import java.net.HttpURLConnection
 import java.net.URL
-import kotlin.concurrent.thread
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class AboutFragment : Fragment() {
 
     private var _binding: ActivityAboutBinding? = null
     private val binding get() = _binding!!
+    private var licenseDialog: AlertDialog? = null
+    private var licenseJob: Job? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = ActivityAboutBinding.inflate(inflater, container, false)
@@ -73,35 +80,56 @@ class AboutFragment : Fragment() {
     }
 
     private fun showLicenseDialog() {
-        val builder = AlertDialog.Builder(requireContext())
-        builder.setTitle(CoreR.string.about_license)
-        builder.setMessage(getString(CoreR.string.loading))
-        val dialog = builder.create()
+        licenseDialog?.dismiss()
+        val dialog = AlertDialog.Builder(requireContext())
+            .setTitle(CoreR.string.about_license)
+            .setMessage(getString(CoreR.string.loading))
+            .setNegativeButton(CoreR.string.close, null)
+            .create()
+        licenseDialog = dialog
         dialog.show()
 
-        val cacheFile = File(requireContext().cacheDir, "license_cache.txt")
-        thread {
-            try {
-                val licenseText = URL("https://raw.githubusercontent.com/NNdroid/Stun/refs/heads/main/LICENSE.txt").readText()
-                cacheFile.writeText(licenseText)
-                activity?.runOnUiThread {
-                    dialog.setMessage(licenseText)
-                }
-            } catch (e: Exception) {
-                StunLogger.e("AboutFragment", "Failed to load license from network", e)
-                activity?.runOnUiThread {
-                    if (cacheFile.exists()) {
-                        dialog.setMessage(cacheFile.readText())
-                    } else {
-                        val msg = e.localizedMessage ?: e.message ?: "Unknown"
-                        dialog.setMessage(activity?.getString(CoreR.string.error_license_load, msg) ?: msg)
+        val appContext = requireContext().applicationContext
+        val cacheFile = File(appContext.cacheDir, "license_cache.txt")
+        licenseJob?.cancel()
+        licenseJob = viewLifecycleOwner.lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val connection = URL("https://raw.githubusercontent.com/NNdroid/Stun/refs/heads/main/LICENSE.txt")
+                        .openConnection() as HttpURLConnection
+                    try {
+                        connection.connectTimeout = 8000
+                        connection.readTimeout = 8000
+                        connection.setRequestProperty("User-Agent", "Stun-Android")
+                        if (connection.responseCode !in 200..299) {
+                            error("HTTP ${connection.responseCode}")
+                        }
+                        connection.inputStream.bufferedReader().use { it.readText() }
+                            .also { cacheFile.writeText(it) }
+                    } finally {
+                        connection.disconnect()
                     }
+                }.recoverCatching { error ->
+                    StunLogger.e("AboutFragment", "Failed to load license from network", error)
+                    if (cacheFile.exists()) cacheFile.readText() else throw error
                 }
             }
+            if (!dialog.isShowing) return@launch
+            result.fold(
+                onSuccess = { dialog.setMessage(it) },
+                onFailure = { error ->
+                    val msg = error.localizedMessage ?: error.message ?: getString(CoreR.string.error_unknown)
+                    dialog.setMessage(getString(CoreR.string.error_license_load, msg))
+                }
+            )
         }
     }
 
     override fun onDestroyView() {
+        licenseJob?.cancel()
+        licenseJob = null
+        licenseDialog?.dismiss()
+        licenseDialog = null
         super.onDestroyView()
         _binding = null
     }

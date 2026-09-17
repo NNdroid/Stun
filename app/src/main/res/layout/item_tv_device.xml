@@ -5,19 +5,22 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginHorizontal="16dp"
-    android:layout_marginVertical="6dp"
-    app:cardCornerRadius="16dp"
+    android:layout_marginHorizontal="@dimen/space_4"
+    android:layout_marginVertical="@dimen/space_2"
+    app:cardCornerRadius="@dimen/corner_sm"
     app:cardElevation="0dp"
     app:strokeWidth="1dp"
     app:strokeColor="?attr/colorOutlineVariant"
-    app:cardBackgroundColor="?attr/colorSurfaceContainerLow">
+    app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="@dimen/space_4">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -26,26 +29,28 @@
             android:gravity="center_vertical">
 
             <ImageView
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:id="@+id/iv_device_icon"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
                 android:src="@drawable/ic_tv"
-                android:padding="8dp"
+                android:padding="@dimen/space_3"
                 android:background="@drawable/bg_badge_type"
                 app:tint="?attr/colorPrimary"
-                android:contentDescription="@string/tv_picker_title" />
+                android:contentDescription="@null"
+                android:importantForAccessibility="no" />
 
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="12dp"
+                android:layout_marginStart="@dimen/space_3"
                 android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/tv_device_name"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="16sp"
+                    android:textSize="@dimen/text_subtitle"
                     android:textStyle="bold"
                     android:textColor="?attr/colorOnSurface"
                     tools:text="StunTV - MiBox 4K" />
@@ -54,9 +59,9 @@
                     android:id="@+id/tv_device_address"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="13sp"
+                    android:textSize="@dimen/text_body"
                     android:textColor="?attr/colorOnSurfaceVariant"
-                    android:layout_marginTop="2dp"
+                    android:layout_marginTop="@dimen/space_1"
                     tools:text="192.168.1.105:51820" />
             </LinearLayout>
 
@@ -71,30 +76,36 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="12dp"
-            android:gravity="end">
+            android:orientation="vertical"
+            android:layout_marginTop="@dimen/space_3"
+            android:gravity="center_horizontal">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_remote_control"
                 style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/tv_remote_control"
-                android:textSize="13sp"
-                app:cornerRadius="10dp"
-                android:paddingHorizontal="12dp" />
+                android:textSize="@dimen/text_body"
+                app:icon="@drawable/ic_settings"
+                app:iconSize="16dp"
+                app:iconPadding="6dp"
+                app:cornerRadius="@dimen/corner_xs"
+                android:paddingHorizontal="@dimen/space_3" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_push_profile"
                 style="@style/Widget.Material3.Button"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginTop="@dimen/space_2"
                 android:text="@string/tv_action_push"
-                android:textSize="13sp"
-                app:cornerRadius="10dp"
-                android:paddingHorizontal="12dp" />
+                android:textSize="@dimen/text_body"
+                app:icon="@drawable/ic_send"
+                app:iconSize="16dp"
+                app:iconPadding="6dp"
+                app:cornerRadius="@dimen/corner_xs"
+                android:paddingHorizontal="@dimen/space_3" />
         </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

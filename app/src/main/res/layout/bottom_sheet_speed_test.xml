@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 带宽测速面板。
+     层级是「弹层底 → 浅色承载面 → 最亮卡片」三段：曲线和状态行共用中间那层
+     （bg_speed_panel），下载/上传两张结果卡浮到最亮那层（bg_metric_card）。
+     刻意不做的两件事，别当成漏了：
+     ① 标题右侧不再放「通过节点隧道测试」胶囊 —— 它和副标题是同一句话的两种说法，
+        同屏出现两次属于噪音；
+     ② 底部不再有左侧那个圆形「历史」按钮 —— 本项目没有测速历史功能，
+        放了就是个点不动的死控件，所以「开始测试」独占整行。 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_main_menu_sheet"
+    android:orientation="vertical"
+    android:paddingStart="@dimen/space_5"
+    android:paddingEnd="@dimen/space_5"
+    android:paddingBottom="@dimen/space_5">
+
+    <com.google.android.material.bottomsheet.BottomSheetDragHandleView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="@dimen/space_2" />
+
+    <!-- 头部：圆形徽标 + 「标题 / 副标题」两段式 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:baselineAligned="false"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <FrameLayout
+            android:id="@+id/badge_speed_test"
+            android:layout_width="@dimen/badge_size"
+            android:layout_height="@dimen/badge_size"
+            android:background="@drawable/bg_icon_circle">
+
+            <ImageView
+                android:layout_width="@dimen/badge_icon_size"
+                android:layout_height="@dimen/badge_icon_size"
+                android:layout_gravity="center"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_signal_bars"
+                app:tint="?attr/colorOnSecondaryContainer" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/space_4"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/action_bandwidth_test"
+                android:textAppearance="?attr/textAppearanceHeadlineSmall"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_1"
+                android:text="@string/bandwidth_test_hint"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- 实时速率曲线。坐标轴在渲染时打开（showAxes），刻度单位由 SpeedTestBottomSheet 推进来。 -->
+    <app.fjj.stun.ui.view.TrafficBarChartView
+        android:id="@+id/chart_speed"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/speed_chart_height"
+        android:layout_marginTop="@dimen/space_4"
+        android:background="@drawable/bg_speed_panel"
+        android:paddingStart="@dimen/space_3"
+        android:paddingTop="@dimen/space_3"
+        android:paddingEnd="@dimen/space_3"
+        android:paddingBottom="@dimen/space_2" />
+
+    <!-- 下载 / 上传两张结果卡 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_3"
+        android:baselineAligned="false"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/bg_metric_card"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="@dimen/space_3">
+
+            <FrameLayout
+                android:id="@+id/metric_circle_down"
+                android:layout_width="@dimen/speed_metric_circle"
+                android:layout_height="@dimen/speed_metric_circle"
+                android:background="@drawable/bg_metric_circle_down">
+
+                <ImageView
+                    android:layout_width="@dimen/speed_metric_arrow"
+                    android:layout_height="@dimen/speed_metric_arrow"
+                    android:layout_gravity="center"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_arrow_downward"
+                    app:tint="@android:color/white" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/space_3"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/bandwidth_download"
+                    android:textAppearance="?attr/textAppearanceLabelLarge"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <!-- 数值与单位靠基线对齐：大字号的数字和小一号的 Mbps 共用一条基线，
+                     比给单位写 paddingBottom 猜一个偏移量稳（也不会因为字号缩放跑偏）。
+                     单位是写死在布局里的带宽单位串（translatable=false），运行时只换数字。 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_1"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tv_down_value"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:maxLines="1"
+                        android:text="@string/value_dash"
+                        android:textAppearance="?attr/textAppearanceHeadlineSmall"
+                        android:textStyle="bold"
+                        tools:text="8.4" />
+
+                    <TextView
+                        android:id="@+id/tv_down_unit"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_1"
+                        android:text="@string/bandwidth_unit_mbps"
+                        android:textAppearance="?attr/textAppearanceLabelMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/space_2"
+            android:layout_weight="1"
+            android:background="@drawable/bg_metric_card"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="@dimen/space_3">
+
+            <FrameLayout
+                android:id="@+id/metric_circle_up"
+                android:layout_width="@dimen/speed_metric_circle"
+                android:layout_height="@dimen/speed_metric_circle"
+                android:background="@drawable/bg_metric_circle_up">
+
+                <ImageView
+                    android:layout_width="@dimen/speed_metric_arrow"
+                    android:layout_height="@dimen/speed_metric_arrow"
+                    android:layout_gravity="center"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_arrow_upward"
+                    app:tint="@android:color/white" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/space_3"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/bandwidth_upload"
+                    android:textAppearance="?attr/textAppearanceLabelLarge"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_1"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tv_up_value"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:maxLines="1"
+                        android:text="@string/value_dash"
+                        android:textAppearance="?attr/textAppearanceHeadlineSmall"
+                        android:textStyle="bold"
+                        tools:text="5.5" />
+
+                    <TextView
+                        android:id="@+id/tv_up_unit"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_1"
+                        android:text="@string/bandwidth_unit_mbps"
+                        android:textAppearance="?attr/textAppearanceLabelMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- 状态行：跑起来才亮进度圈，静止态只剩一行字 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_3"
+        android:background="@drawable/bg_speed_panel"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/space_3"
+        android:paddingTop="@dimen/space_2"
+        android:paddingEnd="@dimen/space_3"
+        android:paddingBottom="@dimen/space_2">
+
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/progress_speed"
+            android:layout_width="@dimen/speed_progress_size"
+            android:layout_height="@dimen/speed_progress_size"
+            android:layout_marginEnd="@dimen/space_3"
+            android:indeterminate="true"
+            android:visibility="gone"
+            app:indicatorColor="?attr/colorPrimary"
+            app:indicatorSize="@dimen/speed_progress_size"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_speed_status"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/bandwidth_test_idle"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            tools:text="下载完成 · 正在测试上传…" />
+    </LinearLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_start_speed_test"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/speed_action_height"
+        android:layout_marginTop="@dimen/space_4"
+        android:text="@string/bandwidth_test_start"
+        app:icon="@drawable/ic_speed"
+        app:iconGravity="textStart"
+        app:iconTint="?attr/colorOnPrimary" />
+
+</LinearLayout>

@@ -114,7 +114,7 @@ object ShizukuUtils {
             executeShellCommandSafely(command)
         } else {
             // Android 6.0 以下没有此机制，直接跳过
-            StunLogger.i("ShizukuUtils", "系统版本低于 Android 6.0，无需添加电池白名单")
+            StunLogger.i("ShizukuUtils", "Android < 6.0, battery whitelist not needed")
         }
     }
 
@@ -127,7 +127,7 @@ object ShizukuUtils {
             executeShellCommandSafely(command)
         } else {
             // Android 9.0 以下没有此机制，直接跳过
-            StunLogger.i("ShizukuUtils", "系统版本低于 Android 9.0，无需设置活跃桶")
+            StunLogger.i("ShizukuUtils", "Android < 9.0, standby bucket not needed")
         }
     }
 
@@ -163,12 +163,12 @@ object ShizukuUtils {
                 val exitCode = remoteProcess?.waitFor() ?: -1
 
                 if (exitCode == 0) {
-                    StunLogger.i(TAG, "✅ 成功执行: ${command.joinToString(" ")}")
+                    StunLogger.i(TAG, "✅ Executed: ${command.joinToString(" ")}")
                 } else {
-                    StunLogger.e(TAG, "❌ 执行失败 (ExitCode $exitCode): ${command.joinToString(" ")}")
+                    StunLogger.e(TAG, "❌ Execution failed (exit code $exitCode): ${command.joinToString(" ")}")
                 }
             } catch (e: Exception) {
-                StunLogger.e(TAG, "执行 Shizuku 命令时发生异常: ${command.joinToString(" ")}", e)
+                StunLogger.e(TAG, "Exception while running Shizuku command: ${command.joinToString(" ")}", e)
             } finally {
                 remoteProcess?.destroy()
             }

@@ -1,250 +1,214 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  侧栏主菜单（窄侧栏形态，320dp）。与手机底部菜单同一套卡片语言：
+  品牌卡 →「快速添加」两列磁贴 →「工具」→「备份与还原」→「通用」整宽卡。
+  侧栏是一张"纸"：colorSurfaceContainer 刻意与页面底色不同，并非重叠铺底，
+  lint 的 Overdraw 只按结构判断、不比色，此处为误报，故显式豁免。
+-->
 <androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="320dp"
     android:layout_height="match_parent"
     android:background="?attr/colorSurfaceContainer"
-    android:fillViewport="true">
+    android:clipToPadding="false"
+    android:fillViewport="true"
+    android:scrollbars="vertical"
+    tools:ignore="Overdraw">
 
     <LinearLayout
+        android:id="@+id/side_sheet_content"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:paddingStart="@dimen/space_4"
+        android:paddingTop="@dimen/space_4"
+        android:paddingEnd="@dimen/space_4"
+        android:paddingBottom="@dimen/space_5">
 
-        <!-- Section: Add Node -->
-        <TextView
+        <!-- Brand header card -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:layout_marginBottom="12dp"
-            android:layout_marginStart="8dp"
-            android:text="@string/add_profile"
-            android:textAppearance="?attr/textAppearanceTitleSmall"
-            android:textColor="?attr/colorPrimary"
-            android:textStyle="bold" />
+            android:background="@drawable/bg_menu_brand"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="@dimen/space_3">
 
-        <com.google.android.material.card.MaterialCardView
-            style="?attr/materialCardViewFilledStyle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardCornerRadius="20dp"
-            app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-            app:strokeWidth="0dp">
+            <FrameLayout
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:background="@drawable/bg_icon_circle">
+
+                <ImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@string/app_name"
+                    android:src="@drawable/ic_fox_logo" />
+            </FrameLayout>
 
             <LinearLayout
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/space_3"
+                android:layout_weight="1"
                 android:orientation="vertical">
 
-                <LinearLayout
-                    android:id="@+id/item_add_manual"
+                <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="?attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="16dp">
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@drawable/ic_edit"
-                        android:contentDescription="@string/main_add_manually"
-                        app:tint="?attr/colorPrimary" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="16dp"
-                        android:text="@string/main_add_manually"
-                        android:textAppearance="?attr/textAppearanceBodyLarge" />
-                </LinearLayout>
+                    android:text="@string/app_name"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textColor="?attr/colorOnPrimaryContainer"
+                    android:textStyle="bold" />
 
-                <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginHorizontal="16dp" android:background="?attr/colorOutlineVariant" />
-
-                <LinearLayout
-                    android:id="@+id/item_scan_qr"
+                <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="?attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="16dp">
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@drawable/ic_code"
-                        android:contentDescription="@string/main_scan_qr"
-                        app:tint="?attr/colorPrimary" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="16dp"
-                        android:text="@string/main_scan_qr"
-                        android:textAppearance="?attr/textAppearanceBodyLarge" />
-                </LinearLayout>
-
+                    android:layout_marginTop="2dp"
+                    android:text="@string/side_sheet_tagline"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnPrimaryContainer" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_close_main_menu"
+                style="?attr/materialIconButtonFilledStyle"
+                android:layout_width="@dimen/touch_target_min"
+                android:layout_height="@dimen/touch_target_min"
+                android:contentDescription="@string/close"
+                app:icon="@drawable/ic_close" />
+        </LinearLayout>
+
+        <!-- Section: Quick add -->
+        <TextView
+            style="@style/StunMainMenuSectionLabel"
+            android:text="@string/side_sheet_quick_add" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+            <LinearLayout android:id="@+id/item_add_manual"
+                android:contentDescription="@string/main_add_manually" style="@style/StunMainMenuAction" android:layout_width="0dp" android:layout_weight="1">
+                <FrameLayout style="@style/StunMainMenuActionIcon"><ImageView style="@style/StunMainMenuActionIconImage" android:importantForAccessibility="no" android:src="@drawable/ic_menu_add" /></FrameLayout>
+                <TextView style="@style/StunMainMenuActionLabel" android:text="@string/main_add_manually" />
+                <TextView style="@style/StunMainMenuActionDesc" android:text="@string/menu_desc_add_manual" />
+            </LinearLayout>
+            <LinearLayout android:id="@+id/item_scan_qr"
+                android:contentDescription="@string/main_scan_qr" style="@style/StunMainMenuAction" android:layout_width="0dp" android:layout_weight="1">
+                <FrameLayout style="@style/StunMainMenuActionIcon"><ImageView style="@style/StunMainMenuActionIconImage" android:importantForAccessibility="no" android:src="@drawable/ic_menu_scan" /></FrameLayout>
+                <TextView style="@style/StunMainMenuActionLabel" android:text="@string/main_scan_qr" />
+                <TextView style="@style/StunMainMenuActionDesc" android:text="@string/menu_desc_scan_qr" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+            <LinearLayout android:id="@+id/item_import_clipboard"
+                android:contentDescription="@string/import_from_clipboard" style="@style/StunMainMenuAction" android:layout_width="0dp" android:layout_weight="1">
+                <FrameLayout style="@style/StunMainMenuActionIcon"><ImageView style="@style/StunMainMenuActionIconImage" android:importantForAccessibility="no" android:src="@drawable/ic_menu_uri" /></FrameLayout>
+                <TextView style="@style/StunMainMenuActionLabel" android:text="@string/import_from_clipboard" />
+                <TextView style="@style/StunMainMenuActionDesc" android:text="@string/menu_desc_import_clipboard" />
+            </LinearLayout>
+            <LinearLayout android:id="@+id/item_subscription"
+                android:contentDescription="@string/subscription_title" style="@style/StunMainMenuAction" android:layout_width="0dp" android:layout_weight="1">
+                <FrameLayout style="@style/StunMainMenuActionIcon"><ImageView style="@style/StunMainMenuActionIconImage" android:importantForAccessibility="no" android:src="@drawable/ic_menu_subscription" /></FrameLayout>
+                <TextView style="@style/StunMainMenuActionLabel" android:text="@string/subscription_title" />
+                <TextView style="@style/StunMainMenuActionDesc" android:text="@string/menu_desc_subscription" />
+            </LinearLayout>
+        </LinearLayout>
 
         <!-- Section: Tools -->
         <TextView
+            style="@style/StunMainMenuSectionLabel"
+            android:text="@string/action_tools" />
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:layout_marginBottom="12dp"
-            android:layout_marginStart="8dp"
-            android:text="@string/action_tools"
-            android:textAppearance="?attr/textAppearanceTitleSmall"
-            android:textColor="?attr/colorPrimary"
-            android:textStyle="bold" />
-
-        <com.google.android.material.card.MaterialCardView
-            style="?attr/materialCardViewFilledStyle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardCornerRadius="20dp"
-            app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-            app:strokeWidth="0dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <LinearLayout
-                    android:id="@+id/item_speed_test"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="?attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="16dp">
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@drawable/ic_speed"
-                        android:contentDescription="@string/action_speed_test"
-                        app:tint="?attr/colorPrimary" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="16dp"
-                        android:text="@string/action_speed_test"
-                        android:textAppearance="?attr/textAppearanceBodyLarge" />
-                </LinearLayout>
-
-                <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginHorizontal="16dp" android:background="?attr/colorOutlineVariant" />
-
-                <LinearLayout
-                    android:id="@+id/item_tv_remote"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="?attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="16dp">
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@drawable/ic_tv"
-                        android:contentDescription="@string/tv_picker_title"
-                        app:tint="?attr/colorPrimary" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="16dp"
-                        android:text="@string/tv_picker_title"
-                        android:textAppearance="?attr/textAppearanceBodyLarge" />
-                </LinearLayout>
-
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+            <LinearLayout android:id="@+id/item_speed_test"
+                android:contentDescription="@string/action_speed_test" style="@style/StunMainMenuAction" android:layout_width="0dp" android:layout_weight="1">
+                <FrameLayout style="@style/StunMainMenuActionIcon"><ImageView style="@style/StunMainMenuActionIconImage" android:importantForAccessibility="no" android:src="@drawable/ic_menu_latency" /></FrameLayout>
+                <TextView style="@style/StunMainMenuActionLabel" android:text="@string/action_speed_test" />
+                <TextView style="@style/StunMainMenuActionDesc" android:text="@string/menu_desc_speed_test" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+            <LinearLayout android:id="@+id/item_bandwidth_test"
+                android:contentDescription="@string/action_bandwidth_test" style="@style/StunMainMenuAction" android:layout_width="0dp" android:layout_weight="1">
+                <FrameLayout style="@style/StunMainMenuActionIcon"><ImageView style="@style/StunMainMenuActionIconImage" android:importantForAccessibility="no" android:src="@drawable/ic_speed" /></FrameLayout>
+                <TextView style="@style/StunMainMenuActionLabel" android:text="@string/action_bandwidth_test" />
+                <TextView style="@style/StunMainMenuActionDesc" android:text="@string/menu_desc_bandwidth_test" />
+            </LinearLayout>
+        </LinearLayout>
 
-        <!-- Section: Import/Export -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+            <LinearLayout android:id="@+id/item_tv_remote"
+                android:contentDescription="@string/tv_picker_title" style="@style/StunMainMenuAction" android:layout_width="0dp" android:layout_weight="1">
+                <FrameLayout style="@style/StunMainMenuActionIcon"><ImageView style="@style/StunMainMenuActionIconImage" android:importantForAccessibility="no" android:src="@drawable/ic_menu_devices" /></FrameLayout>
+                <TextView style="@style/StunMainMenuActionLabel" android:text="@string/tv_picker_title" />
+                <TextView style="@style/StunMainMenuActionDesc" android:text="@string/menu_desc_tv_remote" />
+            </LinearLayout>
+            <Space android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+        </LinearLayout>
+
+        <!-- Section: Backup & restore -->
         <TextView
+            style="@style/StunMainMenuSectionLabel"
+            android:text="@string/action_import_export" />
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:layout_marginBottom="12dp"
-            android:layout_marginStart="8dp"
-            android:text="@string/action_import_export"
-            android:textAppearance="?attr/textAppearanceTitleSmall"
-            android:textColor="?attr/colorPrimary"
-            android:textStyle="bold" />
-
-        <com.google.android.material.card.MaterialCardView
-            style="?attr/materialCardViewFilledStyle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardCornerRadius="20dp"
-            app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-            app:strokeWidth="0dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <LinearLayout
-                    android:id="@+id/item_import"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="?attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="16dp">
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@drawable/ic_add"
-                        android:contentDescription="@string/action_import"
-                        app:tint="?attr/colorPrimary" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="16dp"
-                        android:text="@string/action_import"
-                        android:textAppearance="?attr/textAppearanceBodyLarge" />
-                </LinearLayout>
-
-                <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginHorizontal="16dp" android:background="?attr/colorOutlineVariant" />
-
-                <LinearLayout
-                    android:id="@+id/item_export"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="?attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="16dp">
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@drawable/ic_send"
-                        android:contentDescription="@string/action_export"
-                        app:tint="?attr/colorPrimary" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="16dp"
-                        android:text="@string/action_export"
-                        android:textAppearance="?attr/textAppearanceBodyLarge" />
-                </LinearLayout>
-
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+            <LinearLayout android:id="@+id/item_import"
+                android:contentDescription="@string/action_import" style="@style/StunMainMenuAction" android:layout_width="0dp" android:layout_weight="1">
+                <FrameLayout style="@style/StunMainMenuActionIcon"><ImageView style="@style/StunMainMenuActionIconImage" android:importantForAccessibility="no" android:src="@drawable/ic_menu_import" /></FrameLayout>
+                <TextView style="@style/StunMainMenuActionLabel" android:text="@string/action_import" />
+                <TextView style="@style/StunMainMenuActionDesc" android:text="@string/menu_desc_import" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+            <LinearLayout android:id="@+id/item_export"
+                android:contentDescription="@string/action_export" style="@style/StunMainMenuAction" android:layout_width="0dp" android:layout_weight="1">
+                <FrameLayout style="@style/StunMainMenuActionIcon"><ImageView style="@style/StunMainMenuActionIconImage" android:importantForAccessibility="no" android:src="@drawable/ic_menu_export" /></FrameLayout>
+                <TextView style="@style/StunMainMenuActionLabel" android:text="@string/action_export" />
+                <TextView style="@style/StunMainMenuActionDesc" android:text="@string/menu_desc_export" />
+            </LinearLayout>
+        </LinearLayout>
 
+        <!-- Section: General -->
+        <TextView
+            style="@style/StunMainMenuSectionLabel"
+            android:text="@string/side_sheet_general" />
+
+        <LinearLayout
+            android:id="@+id/item_settings"
+            android:contentDescription="@string/action_settings"
+            style="@style/StunMainMenuWideCard">
+            <FrameLayout style="@style/StunMainMenuActionIcon">
+                <ImageView style="@style/StunMainMenuActionIconImage" android:importantForAccessibility="no" android:src="@drawable/ic_menu_settings" />
+            </FrameLayout>
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/space_4"
+                android:layout_weight="1"
+                android:orientation="vertical">
+                <TextView style="@style/StunMainMenuWideCardTitle" android:text="@string/action_settings" />
+                <TextView style="@style/StunMainMenuWideCardDesc" android:text="@string/menu_desc_settings" />
+            </LinearLayout>
+        </LinearLayout>
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

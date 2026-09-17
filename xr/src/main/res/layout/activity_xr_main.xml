@@ -54,7 +54,7 @@
             android:id="@+id/btn_xr_ping_all"
             style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
+            android:layout_height="48dp"
             android:text="@string/action_speed_test"
             app:icon="@drawable/ic_speed" />
     </LinearLayout>
@@ -87,7 +87,7 @@
                 android:gravity="center"
                 android:orientation="vertical"
                 app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toStartOf="@+id/area_xr_nodes"
+                app:layout_constraintEnd_toStartOf="@id/rv_xr_nodes"
                 app:layout_constraintHorizontal_weight="0.4"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent">

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 服务器提示（MOTD / 登录告知）的虚线框：效果图里这一类"服务器说了什么"的内容
+     与普通字段值分开呈现 —— 它是外部文本，可能带 ANSI 颜色，方框给它一个明确的边界。
+     虚线色走主题角色 colorError 的柔化版（见 values/colors.xml 的 detail_notice_outline）。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/detail_notice_fill" />
+    <stroke
+        android:width="1dp"
+        android:color="@color/detail_notice_outline"
+        android:dashWidth="4dp"
+        android:dashGap="3dp" />
+    <corners android:radius="@dimen/corner_xs" />
+</shape>

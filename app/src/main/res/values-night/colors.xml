@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Desktop widget palette (dark) -->
+    <color name="widget_card_bg">#1A2234</color>
+    <color name="widget_card_stroke">#2E3D59</color>
+    <color name="widget_text_primary">#F8FAFC</color>
+    <color name="widget_text_secondary">#94A3B8</color>
+    <color name="widget_placeholder">#64748B</color>
+    <color name="widget_up_accent">#60A5FA</color>
+    <color name="widget_down_accent">#34D399</color>
+    <color name="widget_up_pill_bg">#16324F</color>
+    <color name="widget_down_pill_bg">#0F3527</color>
+    <color name="widget_logo_bg">#3A2A1E</color>
+    <color name="widget_badge_bg">#12352A</color>
+    <color name="widget_button_connect_bg">#3D2024</color>
+    <color name="widget_button_disconnect_bg">#491F29</color>
+    <color name="widget_button_pending_bg">#172B4D</color>
+    <color name="widget_button_danger_stroke">#88FB7185</color>
+
+    <!-- 连接详情面板星标（深色） -->
+    <color name="connection_favorite_active">#FBBF24</color>
+    <color name="connection_favorite_inactive">#94A3B8</color>
+
+    <!-- 「服务器提示」虚线框（深色）：描边压暗、底色向暖黑靠，避免深色下白得刺眼 -->
+    <color name="detail_notice_outline">#B07C77</color>
+    <color name="detail_notice_fill">#2A1F1E</color>
+
+    <!-- M3 夜间调色板（2026-09-15 补齐）：与 values/colors.xml 的 light 种子（#904D00 橙棕）
+         同 hue 的暗色 tonal 映射。dark primary = light inversePrimary、
+         dark primaryContainer = light primaryContainer（M3 的标准镜像关系）。
+         作用域：无动态取色设备（Android 11-）的深色模式；Android 12+ 仍由 DynamicColors 覆盖。 -->
+    <color name="md_theme_dark_primary">#FFB77B</color>
+    <color name="md_theme_dark_onPrimary">#4D2800</color>
+    <color name="md_theme_dark_primaryContainer">#6A3A00</color>
+    <color name="md_theme_dark_onPrimaryContainer">#FFDCC2</color>
+    <color name="md_theme_dark_secondary">#E3BFA4</color>
+    <color name="md_theme_dark_onSecondary">#422B15</color>
+    <color name="md_theme_dark_secondaryContainer">#5A412A</color>
+    <color name="md_theme_dark_onSecondaryContainer">#FFDCBE</color>
+    <color name="md_theme_dark_tertiary">#C7CE94</color>
+    <color name="md_theme_dark_onTertiary">#303300</color>
+    <color name="md_theme_dark_tertiaryContainer">#474A20</color>
+    <color name="md_theme_dark_onTertiaryContainer">#E2E6AF</color>
+    <color name="md_theme_dark_error">#FFB4AB</color>
+    <color name="md_theme_dark_errorContainer">#93000A</color>
+    <color name="md_theme_dark_onError">#690005</color>
+    <color name="md_theme_dark_onErrorContainer">#FFDAD6</color>
+    <color name="md_theme_dark_background">#201A17</color>
+    <color name="md_theme_dark_onBackground">#EDE0DA</color>
+    <color name="md_theme_dark_surface">#201A17</color>
+    <color name="md_theme_dark_onSurface">#EDE0DA</color>
+    <color name="md_theme_dark_surfaceVariant">#51443B</color>
+    <color name="md_theme_dark_onSurfaceVariant">#D7C4B9</color>
+    <color name="md_theme_dark_outline">#9F8F84</color>
+    <color name="md_theme_dark_inverseOnSurface">#352F2B</color>
+    <color name="md_theme_dark_inverseSurface">#EDE0DA</color>
+    <color name="md_theme_dark_inversePrimary">#904D00</color>
+    <color name="md_theme_dark_surfaceContainerLowest">#150F0C</color>
+    <color name="md_theme_dark_surfaceContainerLow">#282220</color>
+    <color name="md_theme_dark_surfaceContainer">#2C2623</color>
+    <color name="md_theme_dark_surfaceContainerHigh">#37302D</color>
+    <color name="md_theme_dark_surfaceContainerHighest">#423B38</color>
+</resources>

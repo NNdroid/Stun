@@ -46,13 +46,17 @@ class ProfileEditViewModel(application: Application) : AndroidViewModel(applicat
 
     fun saveProfile(profile: Profile, isEdit: Boolean) {
         viewModelScope.launch(Dispatchers.IO) {
-            val context = getApplication<Application>()
-            if (isEdit) {
-                ProfileManager.updateProfile(context, profile)
-            } else {
-                ProfileManager.addProfile(context, profile)
+            try {
+                val context = getApplication<Application>()
+                if (isEdit) {
+                    ProfileManager.updateProfile(context, profile)
+                } else {
+                    ProfileManager.addProfile(context, profile)
+                }
+                _saveResult.postValue(true)
+            } catch (_: Exception) {
+                _saveResult.postValue(false)
             }
-            _saveResult.postValue(true)
         }
     }
 }

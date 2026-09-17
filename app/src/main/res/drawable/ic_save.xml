@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 底部「保存」按钮图标：软盘（右上角切角 + 上方滑盖 + 下方标签）。
+     与 ic_mcp / ic_port / ic_shield 同一工艺（24dp / 1.8 描边 / 圆头圆角）。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorControlNormal">
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M6.6,3.6 L16.4,3.6 L20.4,7.6 L20.4,17.6 Q20.4,20.4 17.6,20.4 L6.4,20.4 Q3.6,20.4 3.6,17.6 L3.6,6.4 Q3.6,3.6 6.6,3.6 Z" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M8.4,3.6 L15.6,3.6 L15.6,9.8 L8.4,9.8 Z" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M7.8,14.2 L16.2,14.2 L16.2,20.4" />
+</vector>

@@ -1,19 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+   云备份规则（API 31+）。
+   关键排除项：stun_prefs（Tink keyset，被 Android Keystore 主钥包裹）与
+   databases/（Room，敏感字段为 Keystore 加密文）。Keystore 主钥不可迁移，
+   恢复到新设备后这两样无法解密且会导致 KeystoreUtils 初始化失败。
+   敏感数据请用 WebDAV/PIN 加密备份（WebDavBackupManager）。
 -->
 <data-extraction-rules>
+    <!-- domain="database" 本身就指 databases/ 目录，path="." 即整目录；
+         再写 path="databases/" 会被 lint 判 Fatal（database 域不允许子目录路径）。 -->
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="sharedpref" path="stun_prefs.xml" />
+        <exclude domain="database" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="external" path="." />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="sharedpref" path="stun_prefs.xml" />
+        <exclude domain="database" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="external" path="." />
     </device-transfer>
-    -->
 </data-extraction-rules>

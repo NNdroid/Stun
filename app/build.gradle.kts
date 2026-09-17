@@ -10,8 +10,8 @@ val gitHash = providers.exec {
     isIgnoreExitValue = true
 }.standardOutput.asText.map { it.trim() }.getOrElse("unknown")
 
-val baseVersionName = "1.11"
-val baseVersionCode = 12
+val baseVersionName = "1.12"
+val baseVersionCode = 13
 
 android {
     namespace = "app.fjj.stun"
@@ -82,6 +82,10 @@ android {
         buildConfig = true
     }
 
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
     lint {
         checkReleaseBuilds = false
         abortOnError = false
@@ -94,18 +98,17 @@ kotlin {
 
 dependencies {
     implementation(project(":core"))
-    
-    // Include local AARs from :core as they are compileOnly there
-    implementation(fileTree("../core/libs") {
-        include("*.aar", "*.jar")
-        exclude("*.debug.aar", "*.release.aar", "*.debug-sources.jar", "*.release-sources.jar")
-    })
-    debugImplementation(fileTree("../core/libs") {
-        include("*.debug-sources.jar", "*.debug.aar")
-    })
-    releaseImplementation(fileTree("../core/libs") {
-        include("*.release-sources.jar", "*.release.aar")
-    })
+    implementation(project(":dbwebui"))
+
+    // 清单里声明的 rikka.shizuku.ShizukuProvider 类来自这个包。core 以 implementation
+    // 引入不对外可见 → app 必须自己依赖，否则 lint MissingClass（Fatal 级误报之外的真缺类）。
+    implementation(libs.rikka.shizuku.provider)
+
+    // myssh classes.jar for compilation; slim AAR (empty classes.jar, native .so only)
+    // for runtime. The extracted classes.jar avoids AGP's duplicate-class error.
+    implementation(files("../core/libs/myssh-classes.jar"))
+    debugImplementation(files("../core/libs/myssh.debug-slim.aar"))
+    releaseImplementation(files("../core/libs/myssh.release-slim.aar"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
@@ -130,6 +133,7 @@ dependencies {
     debugImplementation(libs.debugoverlay.timber)
 
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }

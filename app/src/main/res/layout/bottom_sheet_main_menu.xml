@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  主菜单（手机竖屏形态）。版式对齐设计稿：
+  品牌卡（图标 + 名称 + tagline + 圆形关闭钮）→「快速添加」四宫格
+  →「工具」三宫格 →「备份与还原」两宫格 →「通用」整宽卡。
+  每张磁贴 = 圆形图标 + 粗体标题 + 灰色副文案；分组之间用标题间距分隔，不再画分隔线。
+-->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/main_menu_bottom_sheet"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_main_menu_sheet"
+    android:clipToPadding="false"
+    android:fillViewport="false"
+    android:overScrollMode="ifContentScrolls"
+    android:scrollbars="vertical">
+
+    <LinearLayout
+        android:id="@+id/main_menu_content"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="@dimen/space_5"
+        android:paddingEnd="@dimen/space_5"
+        android:paddingBottom="@dimen/space_5">
+
+        <com.google.android.material.bottomsheet.BottomSheetDragHandleView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="@dimen/space_2" />
+
+        <!-- Brand header card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_menu_brand"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="@dimen/space_3">
+
+            <FrameLayout
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:background="@drawable/bg_icon_circle">
+
+                <ImageView
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@string/app_name"
+                    android:src="@drawable/ic_fox_logo" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/space_4"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/app_name"
+                    android:textAppearance="?attr/textAppearanceTitleLarge"
+                    android:textColor="?attr/colorOnPrimaryContainer"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_1"
+                    android:text="@string/side_sheet_tagline"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnPrimaryContainer" />
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_close_main_menu"
+                style="?attr/materialIconButtonFilledStyle"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:contentDescription="@string/close"
+                app:icon="@drawable/ic_close" />
+        </LinearLayout>
+
+        <!-- Section: Quick add -->
+        <TextView
+            style="@style/StunMainMenuSectionLabel"
+            android:text="@string/side_sheet_quick_add" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:id="@+id/item_add_manual"
+                android:contentDescription="@string/main_add_manually"
+                style="@style/StunMainMenuAction"
+                android:layout_width="0dp"
+                android:layout_weight="1">
+                <FrameLayout style="@style/StunMainMenuActionIcon">
+                    <ImageView style="@style/StunMainMenuActionIconImage" android:importantForAccessibility="no" android:src="@drawable/ic_menu_add" />
+                </FrameLayout>
+                <TextView style="@style/StunMainMenuActionLabel" android:text="@string/main_add_manually" />
+                <TextView style="@style/StunMainMenuActionDesc" android:text="@string/menu_desc_add_manual" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/item_scan_qr"
+                android:contentDescription="@string/main_scan_qr"
+                style="@style/StunMainMenuAction"
+                android:layout_width="0dp"
+                android:layout_weight="1">
+                <FrameLayout style="@style/StunMainMenuActionIcon">
+                    <ImageView style="@style/StunMainMenuActionIconImage" android:importantForAccessibility="no" android:src="@drawable/ic_menu_scan" />
+                </FrameLayout>
+                <TextView style="@style/StunMainMenuActionLabel" android:text="@string/main_scan_qr" />
+                <TextView style="@style/StunMainMenuActionDesc" android:text="@string/menu_desc_scan_qr" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/item_import_clipboard"
+                android:contentDescription="@string/import_from_clipboard"
+                style="@style/StunMainMenuAction"
+                android:layout_width="0dp"
+                android:layout_weight="1">
+                <FrameLayout style="@style/StunMainMenuActionIcon">
+                    <ImageView style="@style/StunMainMenuActionIconImage" android:importantForAccessibility="no" android:src="@drawable/ic_menu_uri" />
+                </FrameLayout>
+                <TextView style="@style/StunMainMenuActionLabel" android:text="@string/import_from_clipboard" />
+                <TextView style="@style/StunMainMenuActionDesc" android:text="@string/menu_desc_import_clipboard" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/item_subscription"
+                android:contentDescription="@string/subscription_title"
+                style="@style/StunMainMenuAction"
+                android:layout_width="0dp"
+                android:layout_weight="1">
+                <FrameLayout style="@style/StunMainMenuActionIcon">
+                    <ImageView style="@style/StunMainMenuActionIconImage" android:importantForAccessibility="no" android:src="@drawable/ic_menu_subscription" />
+                </FrameLayout>
+                <TextView style="@style/StunMainMenuActionLabel" android:text="@string/subscription_title" />
+                <TextView style="@style/StunMainMenuActionDesc" android:text="@string/menu_desc_subscription" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Section: Tools -->
+        <TextView
+            style="@style/StunMainMenuSectionLabel"
+            android:text="@string/action_tools" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+            <LinearLayout android:id="@+id/item_speed_test"
+                android:contentDescription="@string/action_speed_test" style="@style/StunMainMenuAction" android:layout_width="0dp" android:layout_weight="1">
+                <FrameLayout style="@style/StunMainMenuActionIcon"><ImageView style="@style/StunMainMenuActionIconImage" android:importantForAccessibility="no" android:src="@drawable/ic_menu_latency" /></FrameLayout>
+                <TextView style="@style/StunMainMenuActionLabel" android:text="@string/action_speed_test" />
+                <TextView style="@style/StunMainMenuActionDesc" android:text="@string/menu_desc_speed_test" />
+            </LinearLayout>
+            <LinearLayout android:id="@+id/item_bandwidth_test"
+                android:contentDescription="@string/action_bandwidth_test" style="@style/StunMainMenuAction" android:layout_width="0dp" android:layout_weight="1">
+                <FrameLayout style="@style/StunMainMenuActionIcon"><ImageView style="@style/StunMainMenuActionIconImage" android:importantForAccessibility="no" android:src="@drawable/ic_speed" /></FrameLayout>
+                <TextView style="@style/StunMainMenuActionLabel" android:text="@string/action_bandwidth_test" />
+                <TextView style="@style/StunMainMenuActionDesc" android:text="@string/menu_desc_bandwidth_test" />
+            </LinearLayout>
+            <LinearLayout android:id="@+id/item_tv_remote"
+                android:contentDescription="@string/tv_picker_title" style="@style/StunMainMenuAction" android:layout_width="0dp" android:layout_weight="1">
+                <FrameLayout style="@style/StunMainMenuActionIcon"><ImageView style="@style/StunMainMenuActionIconImage" android:importantForAccessibility="no" android:src="@drawable/ic_menu_devices" /></FrameLayout>
+                <TextView style="@style/StunMainMenuActionLabel" android:text="@string/tv_picker_title" />
+                <TextView style="@style/StunMainMenuActionDesc" android:text="@string/menu_desc_tv_remote" />
+            </LinearLayout>
+            <Space android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+        </LinearLayout>
+
+        <!-- Section: Backup & restore -->
+        <TextView
+            style="@style/StunMainMenuSectionLabel"
+            android:text="@string/action_import_export" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+            <LinearLayout android:id="@+id/item_import"
+                android:contentDescription="@string/action_import" style="@style/StunMainMenuAction" android:layout_width="0dp" android:layout_weight="1">
+                <FrameLayout style="@style/StunMainMenuActionIcon"><ImageView style="@style/StunMainMenuActionIconImage" android:importantForAccessibility="no" android:src="@drawable/ic_menu_import" /></FrameLayout>
+                <TextView style="@style/StunMainMenuActionLabel" android:text="@string/action_import" />
+                <TextView style="@style/StunMainMenuActionDesc" android:text="@string/menu_desc_import" />
+            </LinearLayout>
+            <LinearLayout android:id="@+id/item_export"
+                android:contentDescription="@string/action_export" style="@style/StunMainMenuAction" android:layout_width="0dp" android:layout_weight="1">
+                <FrameLayout style="@style/StunMainMenuActionIcon"><ImageView style="@style/StunMainMenuActionIconImage" android:importantForAccessibility="no" android:src="@drawable/ic_menu_export" /></FrameLayout>
+                <TextView style="@style/StunMainMenuActionLabel" android:text="@string/action_export" />
+                <TextView style="@style/StunMainMenuActionDesc" android:text="@string/menu_desc_export" />
+            </LinearLayout>
+            <Space android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+            <Space android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+        </LinearLayout>
+
+        <!-- Section: General -->
+        <TextView
+            style="@style/StunMainMenuSectionLabel"
+            android:text="@string/side_sheet_general" />
+
+        <LinearLayout
+            android:id="@+id/item_settings"
+            android:contentDescription="@string/action_settings"
+            style="@style/StunMainMenuWideCard">
+            <FrameLayout style="@style/StunMainMenuActionIcon">
+                <ImageView style="@style/StunMainMenuActionIconImage" android:importantForAccessibility="no" android:src="@drawable/ic_menu_settings" />
+            </FrameLayout>
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/space_4"
+                android:layout_weight="1"
+                android:orientation="vertical">
+                <TextView style="@style/StunMainMenuWideCardTitle" android:text="@string/action_settings" />
+                <TextView style="@style/StunMainMenuWideCardDesc" android:text="@string/menu_desc_settings" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

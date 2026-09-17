@@ -2,6 +2,9 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Theme.Stun" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- SideSheetDialog 主题：缺省回退到 Material3 Light 变体，深色模式下
+             侧边面板会变成亮色且 insets 行为不一致。显式指到 DayNight 变体。 -->
+        <item name="sideSheetDialogTheme">@style/Theme.Stun.SideSheetDialog</item>
         <!-- Primary brand color. -->
         <item name="colorPrimary">@color/md_theme_light_primary</item>
         <item name="colorOnPrimary">@color/md_theme_light_onPrimary</item>
@@ -46,7 +49,7 @@
 
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">?android:attr/colorBackground</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_fox_logo</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
         <item name="postSplashScreenTheme">@style/Theme.Stun</item>
     </style>
 
@@ -66,4 +69,7 @@
         <item name="android:windowIsFloating">false</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
     </style>
+    <!-- SideSheetDialog 主题（跟随 DayNight）：深色模式下面板用深色配色，
+         insets 由 Material 对话框自身处理。 -->
+    <style name="Theme.Stun.SideSheetDialog" parent="Theme.Material3.DayNight.SideSheetDialog" />
 </resources>

@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import app.fjj.stun.repo.SettingsManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class SettingsState(
     val logLevel: String = SettingsManager.DEFAULT_LOG_LEVEL,
@@ -24,7 +25,16 @@ data class SettingsState(
     val updateInterval: Long = SettingsManager.DEFAULT_UPDATE_INTERVAL,
     val geositeDirect: String = SettingsManager.DEFAULT_GEOSITE_DIRECT_FLAGS,
     val geoipDirect: String = SettingsManager.DEFAULT_GEOIP_DIRECT_FLAGS,
-    val lastUpdateTime: Long = 0L
+    val lastUpdateTime: Long = 0L,
+    val showNotificationSpeed: Boolean = true,
+    val mcpServerEnabled: Boolean = false,
+    val mcpServerPort: Int = SettingsManager.DEFAULT_MCP_SERVER_PORT,
+    val mcpAuthMode: Int = SettingsManager.MCP_AUTH_MODE_NONE,
+    val mcpAuthSecret: String = "",
+    val dbWebEnabled: Boolean = false,
+    val dbWebPort: Int = SettingsManager.DEFAULT_DB_WEB_PORT,
+    val dbWebUser: String = "admin",
+    val dbWebPass: String = ""
 )
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -35,6 +45,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun loadSettings() {
         viewModelScope.launch(Dispatchers.IO) {
             val context = getApplication<Application>()
+            val mcpAuthMode = SettingsManager.getMcpAuthMode(context)
+            val mcpAuthSecret = when (mcpAuthMode) {
+                SettingsManager.MCP_AUTH_MODE_API_KEY -> SettingsManager.getMcpApiKey(context)
+                SettingsManager.MCP_AUTH_MODE_BASIC -> SettingsManager.getMcpBasicPass(context)
+                SettingsManager.MCP_AUTH_MODE_OAUTH -> SettingsManager.getMcpOAuthClientSecret(context)
+                else -> ""
+            }
             val state = SettingsState(
                 logLevel = SettingsManager.getLogLevel(context),
                 remoteDns = SettingsManager.getRemoteDnsServer(context),
@@ -50,29 +67,57 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 updateInterval = SettingsManager.getUpdateInterval(context),
                 geositeDirect = SettingsManager.getGeositeDirect(context),
                 geoipDirect = SettingsManager.getGeoipDirect(context),
-                lastUpdateTime = SettingsManager.getLastUpdateTime(context)
+                lastUpdateTime = SettingsManager.getLastUpdateTime(context),
+                showNotificationSpeed = SettingsManager.getShowNotificationSpeed(context),
+                mcpServerEnabled = SettingsManager.isMcpServerEnabled(context),
+                mcpServerPort = SettingsManager.getMcpServerPort(context),
+                mcpAuthMode = mcpAuthMode,
+                mcpAuthSecret = mcpAuthSecret,
+                dbWebEnabled = SettingsManager.isDbWebEnabled(context),
+                dbWebPort = SettingsManager.getDbWebPort(context),
+                dbWebUser = SettingsManager.getDbWebUser(context),
+                dbWebPass = SettingsManager.getDbWebPass(context)
             )
             _settingsState.postValue(state)
         }
     }
 
-    fun saveSettings(state: SettingsState) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val context = getApplication<Application>()
-            SettingsManager.saveServiceMode(context, state.serviceMode)
-            SettingsManager.saveLogLevel(context, state.logLevel)
-            SettingsManager.saveRemoteDnsServer(context, state.remoteDns)
-            SettingsManager.saveLocalDnsServer(context, state.localDns)
-            SettingsManager.saveUdpgwVersion(context, state.udpgwVersion)
-            SettingsManager.saveUdpgwAddr(context, state.udpgwAddr)
-            SettingsManager.saveGeositeUrl(context, state.geositeUrl)
-            SettingsManager.saveGeoipUrl(context, state.geoipUrl)
-            SettingsManager.saveUpdateInterval(context, state.updateInterval)
-            SettingsManager.saveGeositeDirect(context, state.geositeDirect)
-            SettingsManager.saveGeoipDirect(context, state.geoipDirect)
-            SettingsManager.saveFilterMode(context, state.filterMode)
-            SettingsManager.saveFilterApps(context, state.filterApps)
-            // Language is handled specially in Activity for recreation
+    fun saveSettings(state: SettingsState, onComplete: (Throwable?) -> Unit) {
+        viewModelScope.launch {
+            val error = withContext(Dispatchers.IO) {
+                runCatching {
+                    val context = getApplication<Application>()
+                    SettingsManager.saveServiceMode(context, state.serviceMode)
+                    SettingsManager.saveLogLevel(context, state.logLevel)
+                    SettingsManager.saveRemoteDnsServer(context, state.remoteDns)
+                    SettingsManager.saveLocalDnsServer(context, state.localDns)
+                    SettingsManager.saveUdpgwVersion(context, state.udpgwVersion)
+                    SettingsManager.saveUdpgwAddr(context, state.udpgwAddr)
+                    SettingsManager.saveGeositeUrl(context, state.geositeUrl)
+                    SettingsManager.saveGeoipUrl(context, state.geoipUrl)
+                    SettingsManager.saveUpdateInterval(context, state.updateInterval)
+                    SettingsManager.saveGeositeDirect(context, state.geositeDirect)
+                    SettingsManager.saveGeoipDirect(context, state.geoipDirect)
+                    SettingsManager.saveFilterMode(context, state.filterMode)
+                    SettingsManager.saveFilterApps(context, state.filterApps)
+                    SettingsManager.saveShowNotificationSpeed(context, state.showNotificationSpeed)
+                    SettingsManager.setMcpServerEnabled(context, state.mcpServerEnabled)
+                    SettingsManager.setMcpServerPort(context, state.mcpServerPort)
+                    SettingsManager.setMcpAuthMode(context, state.mcpAuthMode)
+                    when (state.mcpAuthMode) {
+                        SettingsManager.MCP_AUTH_MODE_API_KEY -> SettingsManager.setMcpApiKey(context, state.mcpAuthSecret)
+                        SettingsManager.MCP_AUTH_MODE_BASIC -> SettingsManager.setMcpBasicPass(context, state.mcpAuthSecret)
+                        SettingsManager.MCP_AUTH_MODE_OAUTH -> SettingsManager.setMcpOAuthClientSecret(context, state.mcpAuthSecret)
+                    }
+                    // Database WebUI (:dbwebui): enable / port / login credentials.
+                    SettingsManager.setDbWebEnabled(context, state.dbWebEnabled)
+                    SettingsManager.setDbWebPort(context, state.dbWebPort)
+                    SettingsManager.setDbWebUser(context, state.dbWebUser)
+                    if (state.dbWebPass.isNotBlank()) SettingsManager.setDbWebPass(context, state.dbWebPass)
+                    // Language is handled specially in Fragment for recreation.
+                }.exceptionOrNull()
+            }
+            onComplete(error)
         }
     }
 }

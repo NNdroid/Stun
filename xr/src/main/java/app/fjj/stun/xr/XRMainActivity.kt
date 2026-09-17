@@ -1,16 +1,10 @@
 package app.fjj.stun.xr
 
-import android.Manifest
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.VpnService
-import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import app.fjj.stun.core.R as CoreR
@@ -18,10 +12,10 @@ import app.fjj.stun.repo.ProfileManager
 import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.StunRepository
 import app.fjj.stun.repo.VpnState
-import app.fjj.stun.service.MyTransparentProxyService
-import app.fjj.stun.service.MyVpnService
 import app.fjj.stun.service.VpnConfigBuilder
+import app.fjj.stun.service.VpnControls
 import app.fjj.stun.util.AppUtils
+import app.fjj.stun.util.PingResults
 import app.fjj.stun.xr.databinding.ActivityXrMainBinding
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +29,7 @@ class XRMainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityXrMainBinding
     private lateinit var adapter: ProfileAdapterXR
     private var isVpnRunning = false
+    private var isVpnTransitioning = false
 
     private val vpnLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -72,7 +67,7 @@ class XRMainActivity : AppCompatActivity() {
         adapter = ProfileAdapterXR(
             selectedProfileId = selectedId,
             onProfileClick = { profile ->
-                if (!isVpnRunning) {
+                if (!isVpnRunning && !isVpnTransitioning) {
                     SettingsManager.setSelectedProfileId(this, profile.id)
                     loadProfiles()
                     Toast.makeText(this, getString(CoreR.string.main_selected, profile.name), Toast.LENGTH_SHORT).show()
@@ -135,6 +130,8 @@ class XRMainActivity : AppCompatActivity() {
         when (state) {
             VpnState.CONNECTED -> {
                 isVpnRunning = true
+                isVpnTransitioning = false
+                binding.btnXrPower.isEnabled = true
                 binding.ivXrPowerIcon.setImageResource(CoreR.drawable.ic_pause)
                 binding.xrStatusDot.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF4CAF50.toInt())
                 binding.tvXrStatus.text = getString(CoreR.string.xr_spatial_status_connected)
@@ -142,6 +139,8 @@ class XRMainActivity : AppCompatActivity() {
             }
             VpnState.CONNECTING, VpnState.RECONNECTING -> {
                 isVpnRunning = false
+                isVpnTransitioning = true
+                binding.btnXrPower.isEnabled = false
                 binding.ivXrPowerIcon.setImageResource(CoreR.drawable.ic_sync)
                 binding.xrStatusDot.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFFFF9800.toInt())
                 binding.tvXrStatus.text = getString(CoreR.string.main_connecting)
@@ -149,6 +148,8 @@ class XRMainActivity : AppCompatActivity() {
             }
             else -> {
                 isVpnRunning = false
+                isVpnTransitioning = false
+                binding.btnXrPower.isEnabled = true
                 binding.ivXrPowerIcon.setImageResource(CoreR.drawable.ic_play)
                 binding.xrStatusDot.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFFF44336.toInt())
                 binding.tvXrStatus.text = getString(CoreR.string.xr_spatial_status_disconnected)
@@ -157,51 +158,19 @@ class XRMainActivity : AppCompatActivity() {
         }
     }
 
-    private fun handleStartStop() {
-        val currentState = StunRepository.vpnState.value ?: VpnState.DISCONNECTED
-        if (currentState == VpnState.CONNECTED || currentState == VpnState.RECONNECTING) {
-            stopVpnService()
-        } else {
-            checkAndRequestNotificationPermission()
-        }
-    }
+    private fun handleStartStop() =
+        VpnControls.handleStartStop(this) { checkAndRequestNotificationPermission() }
 
     private fun checkAndRequestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                return
-            }
-        }
-        startSelectedService()
-    }
-
-    private fun startSelectedService() {
-        val mode = SettingsManager.getServiceMode(this)
-        if (mode == SettingsManager.SERVICE_MODE_TPROXY) {
-            val intent = Intent(this, MyTransparentProxyService::class.java).apply { action = "START" }
-            ContextCompat.startForegroundService(this, intent)
+        if (VpnControls.needsNotificationPermission(this)) {
+            notificationPermissionLauncher.launch(VpnControls.notificationPermission)
         } else {
-            val intent = VpnService.prepare(this)
-            if (intent != null) {
-                vpnLauncher.launch(intent)
-            } else {
-                val vpnIntent = Intent(this, MyVpnService::class.java).apply { action = "START" }
-                ContextCompat.startForegroundService(this, vpnIntent)
-            }
+            startSelectedService()
         }
     }
 
-    private fun stopVpnService() {
-        val mode = SettingsManager.getServiceMode(this)
-        val intentClass = if (mode == SettingsManager.SERVICE_MODE_TPROXY) {
-            MyTransparentProxyService::class.java
-        } else {
-            MyVpnService::class.java
-        }
-        val intent = Intent(this, intentClass).apply { action = "STOP" }
-        ContextCompat.startForegroundService(this, intent)
-    }
+    private fun startSelectedService() =
+        VpnControls.start(this) { vpnLauncher.launch(it) }
 
     private fun pingAllNodes() {
         lifecycleScope.launch(Dispatchers.IO) {
@@ -219,7 +188,7 @@ class XRMainActivity : AppCompatActivity() {
                     reqArray.put(JSONObject().put("id", p.id).put("config", JSONObject(configJson)))
                 }
                 val jsonResStr = StunRepository.proxy.pingNodes(reqArray.toString(), "http://cp.cloudflare.com/generate_204", 8000L)
-                val results = parsePingResults(jsonResStr)
+                val results = PingResults.parse(this@XRMainActivity, jsonResStr)
 
                 withContext(Dispatchers.Main) {
                     profiles.forEach { p ->
@@ -233,23 +202,5 @@ class XRMainActivity : AppCompatActivity() {
                 }
             }
         }
-    }
-
-    private fun parsePingResults(jsonStr: String): Map<String, String> {
-        val map = mutableMapOf<String, String>()
-        try {
-            val arr = JSONArray(jsonStr)
-            for (i in 0 until arr.length()) {
-                val obj = arr.getJSONObject(i)
-                val id = obj.optString("id", "")
-                if (id.isEmpty()) continue
-                if (obj.optBoolean("ok", false)) {
-                    map[id] = "${obj.optLong("latencyMs", 0)} ms"
-                } else {
-                    map[id] = getString(CoreR.string.latency_network_error)
-                }
-            }
-        } catch (_: Exception) {}
-        return map
     }
 }

@@ -46,8 +46,18 @@
 
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">?android:attr/colorBackground</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_fox_logo</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
         <item name="postSplashScreenTheme">@style/Theme.Stun</item>
+    </style>
+
+    <!-- 快捷方式/小组件透明执行页：完全不可见，仅用于无界面地驱动服务 -->
+    <style name="Theme.Stun.QuickAction" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
     </style>
 
     <style name="ShapeAppearance.Stun.Rounded" parent="ShapeAppearance.Material3.MediumComponent">
@@ -55,15 +65,4 @@
         <item name="cornerSize">24dp</item>
     </style>
     
-    <style name="ShapeAppearance.Stun.Pill" parent="ShapeAppearance.Material3.Corner.Full">
-        <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">50%</item>
-    </style>
-
-    <!-- BottomSheet Style for transparent background behind rounded corners -->
-    <style name="Theme.App.BottomSheetDialog" parent="Theme.Material3.DayNight.BottomSheetDialog">
-        <item name="android:windowBackground">@android:color/transparent</item>
-        <item name="android:windowIsFloating">false</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
-    </style>
 </resources>

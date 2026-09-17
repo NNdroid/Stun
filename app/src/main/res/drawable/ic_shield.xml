@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 设置页「MCP 安全与鉴权」下拉框前置图标：盾牌。
+     与 ic_mcp / ic_port 同一工艺（24dp / 1.8 描边 / 圆头圆角）。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorControlNormal">
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M12,3.4 L18.8,6.1 L18.8,11.3 Q18.8,17.2 12,20.6 Q5.2,17.2 5.2,11.3 L5.2,6.1 Z" />
+</vector>

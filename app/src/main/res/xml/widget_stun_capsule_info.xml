@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 快捷条：4x1，头像、节点、双向速率图和独立连接按钮。
+     resizeMode 只开 horizontal —— 一行高的条没有纵向可拉伸的余地。
+     targetCellWidth/Height 与 maxResizeWidth/Height 是 API 31+ 属性，
+     老启动器靠 minWidth/minHeight + minResize* 兜底，因此这四条"未使用"是有意保留的。 -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:minWidth="250dp"
+    android:minHeight="50dp"
+    android:minResizeWidth="250dp"
+    android:minResizeHeight="40dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="1"
+    android:maxResizeWidth="340dp"
+    android:maxResizeHeight="70dp"
+    android:resizeMode="horizontal"
+    android:updatePeriodMillis="1800000"
+    android:description="@string/widget_desc_capsule"
+    android:previewImage="@drawable/widget_preview_capsule"
+    android:previewLayout="@layout/widget_stun_capsule"
+    android:initialLayout="@layout/widget_stun_capsule"
+    android:widgetCategory="home_screen"
+    tools:ignore="UnusedAttribute" />

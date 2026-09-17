@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connection_details_expand">接続の詳細を表示</string>
+    <string name="connection_node_details">ノードの詳細</string>
+    <string name="connection_server">サーバー</string>
+    <string name="connection_realtime_speed">リアルタイム速度 · 直近 15 サンプル</string>
+    <string name="connection_upload">アップロード</string>
+    <string name="connection_download">ダウンロード</string>
+    <string name="connection_upload_chart">直近のアップロード速度グラフ</string>
+    <string name="connection_download_chart">直近のダウンロード速度グラフ</string>
+    <string name="connection_auxiliary_info">補足情報</string>
+    <string name="connection_total_traffic">総通信量</string>
+    <string name="connection_exit">出口アドレス</string>
+    <string name="connection_exit_pending">出口アドレスを取得中…</string>
+    <string name="connection_last_connected">前回の接続</string>
+    <string name="connection_magic_format">マジック値：%1$s</string>
+    <string name="connection_label_protocol">プロトコル</string>
+    <string name="connection_label_magic">マジック値</string>
+    <string name="connection_label_note">メモ</string>
+    <string name="connection_label_ssh_banner">SSH バナー</string>
+    <string name="connection_label_ssh_notice">サーバー通知</string>
+    <string name="connection_banner_link_failed">リンクを開けませんでした</string>
+    <string name="connection_bar_action_stop">停止</string>
+    <string name="connection_disconnect_action">切断</string>
+    <string name="connection_favorite_add">お気に入りに追加</string>
+    <string name="connection_favorite_remove">お気に入りから削除</string>
+    <!-- 2026-09-15: 质量分 i18n 补全 -->
+    <string name="connection_quality_format">品質 %1$s</string>
+
+    <!-- トポロジー地球 -->
+    <string name="connection_topology">トポロジー</string>
+    <string name="connection_topology_mode_desc">星空モードに切替</string>
+    <string name="connection_globe_description">接続トポロジーの地球</string>
+    <string name="connection_globe_description_counts">%1$s · %2$s</string>
+    <string name="connection_globe_empty">まだ地図上に配置できるノードがありません。</string>
+    <string name="connection_globe_need_library">オフライン地理ライブラリをダウンロードすると、ノードを地球上に配置できます。</string>
+    <string name="connection_globe_download">ダウンロード</string>
+    <string name="connection_globe_downloading_format">地理ライブラリをダウンロード中… %1$d%%</string>
+    <string name="connection_globe_download_failed">ダウンロードに失敗しました。ネットワークを確認して再試行してください。</string>
+    <string name="connection_globe_retry">再試行</string>
+    <string name="connection_globe_bubble_exit">出口位置</string>
+    <string name="connection_globe_bubble_merged_format">この地点に %1$d ノード</string>
+    <string name="connection_globe_bubble_idle">アクティブな接続なし</string>
+    <string name="connection_active_connections">アクティブな接続</string>
+    <plurals name="connection_globe_nodes">
+        <item quantity="other">地球上に %d ノード</item>
+    </plurals>
+    <plurals name="connection_globe_connections">
+        <item quantity="other">%d 件のアクティブ接続</item>
+    </plurals>
+    <!-- 2026-09-16 デザイン案に合わせて追加：カード見出しの副題・地球カードの短いラベル・視点リセット -->
+    <string name="connection_node_details_subtitle">サーバー接続と基本情報</string>
+    <string name="connection_auxiliary_info_subtitle">その他の技術情報とサーバー通知</string>
+    <string name="connection_last_connected_short">前回：%1$s</string>
+    <string name="connection_globe_reset_view">視点をリセット</string>
+</resources>

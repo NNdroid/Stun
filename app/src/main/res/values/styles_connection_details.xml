@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="StunConnectionSectionTitle">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">18dp</item>
+        <item name="android:layout_marginBottom">8dp</item>
+        <item name="android:textAppearance">?attr/textAppearanceTitleSmall</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="StunConnectionDetailRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:minHeight">46dp</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:paddingStart">14dp</item>
+        <item name="android:paddingEnd">14dp</item>
+    </style>
+    <style name="StunConnectionDetailLabel">
+        <item name="android:layout_width">92dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textAppearance">?attr/textAppearanceBodyMedium</item>
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
+    </style>
+    <style name="StunConnectionDetailValue">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:textAppearance">?attr/textAppearanceBodyMedium</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:textIsSelectable">true</item>
+    </style>
+    <!-- banner 富文本（可能含 ANSI 颜色与 <a> 链接）：链接需要能点，故关掉选中态——
+         textIsSelectable=true 会让 TextView 走选中手势，链接点击被吞掉。 -->
+    <style name="StunConnectionDetailValueHtml" parent="StunConnectionDetailValue">
+        <item name="android:textIsSelectable">false</item>
+        <item name="android:lineSpacingExtra">2dp</item>
+    </style>
+    <style name="StunConnectionDetailDivider">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">1dp</item>
+        <item name="android:layout_marginStart">14dp</item>
+        <item name="android:layout_marginEnd">14dp</item>
+        <item name="android:background">?attr/colorOutlineVariant</item>
+    </style>
+
+    <!-- ===== 卡片头（圆形图标 + 标题 + 副标题）=====
+         版式对齐效果图：分区标题不再浮在卡片外，而是**收进卡片**并带一个图标与一句副标题。
+         好处是标题与它管辖的行在视觉上成为一个整体（卡片边界 = 分区边界），
+         也消掉了"卡片外一行标题 + 卡片内第一行内容"之间那段说不清归谁的留白。 -->
+    <style name="StunConnectionCardHeader">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_gravity">center_vertical</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:paddingStart">@dimen/space_4</item>
+        <item name="android:paddingEnd">@dimen/space_4</item>
+        <item name="android:paddingTop">@dimen/space_4</item>
+        <item name="android:paddingBottom">@dimen/space_3</item>
+    </style>
+
+    <!-- 卡片头图标：底色用 colorSecondaryContainer 的圆形色块（bg_icon_circle），
+         与主菜单/抽屉头像是同一套语言，浅深两套主题下都不刺眼。 -->
+    <style name="StunConnectionCardHeaderIcon">
+        <item name="android:layout_width">36dp</item>
+        <item name="android:layout_height">36dp</item>
+        <item name="android:background">@drawable/bg_icon_circle</item>
+        <item name="android:importantForAccessibility">no</item>
+        <item name="android:padding">@dimen/space_2</item>
+        <item name="android:scaleType">fitCenter</item>
+    </style>
+
+    <style name="StunConnectionCardHeaderTitle">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textAppearance">?attr/textAppearanceTitleSmall</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="StunConnectionCardHeaderSubtitle">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">@dimen/space_1</item>
+        <item name="android:textAppearance">?attr/textAppearanceBodySmall</item>
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
+    </style>
+
+    <!-- ===== 信息行前置图标 =====
+         32dp 圆形色块 + 24dp 图标（内边距 4dp）。它把"这一行说的是什么"从文字里
+         提前到视觉上，长值（如服务器地址）扫读时不必逐字看标签列。
+         图标是**装饰**：内容已由标签与值表达，读屏不该多念一个没有名字的图形。 -->
+    <style name="StunConnectionDetailRowIcon">
+        <item name="android:layout_width">32dp</item>
+        <item name="android:layout_height">32dp</item>
+        <item name="android:layout_marginEnd">@dimen/space_3</item>
+        <item name="android:background">@drawable/bg_icon_circle</item>
+        <item name="android:importantForAccessibility">no</item>
+        <item name="android:padding">@dimen/space_1</item>
+        <item name="android:scaleType">fitCenter</item>
+    </style>
+
+    <!-- 图标行的分隔线：缩进到**标签列**的起点（行内边距 14 + 图标 32 + 间距 12 = 58），
+         让图标列看上去是"贯穿整卡的一列"而不是被线切碎。 -->
+    <style name="StunConnectionDetailDividerIcon" parent="StunConnectionDetailDivider">
+        <item name="android:layout_marginStart">58dp</item>
+    </style>
+</resources>

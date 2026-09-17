@@ -72,4 +72,7 @@
     <color name="status_connected">#2E7D32</color> <!-- Dark Green -->
     <color name="status_disconnected">#C62828</color> <!-- Dark Red -->
     <color name="status_connecting">#EF6C00</color> <!-- Dark Orange -->
+
+    <!-- Splash Screen Icon Plate Background -->
+    <color name="splash_icon_bg">#F0F3F1</color>
 </resources>

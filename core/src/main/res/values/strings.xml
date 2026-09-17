@@ -5,6 +5,23 @@
     <string name="action_filter">Filter</string>
     <string name="action_logs">Logs</string>
     <string name="action_speed_test">Test Latency</string>
+    <string name="action_bandwidth_test">Bandwidth Test</string>
+    <string name="bandwidth_test_hint">Measures real download/upload throughput through the node tunnel. Connect the VPN first.</string>
+    <!-- 测速面板状态行的「未连接」提示。刻意与上面的副标题分开：副标题解释「测的是什么」，
+         这句只说「现在为什么不能测」。两者共用一条串会让同一句话在一屏里出现两次。 -->
+    <string name="bandwidth_test_need_vpn">Connect the VPN first to run a speed test.</string>
+    <!-- 速率单位。不翻译（各语言的「Mbit/s」写法差异不值得为它开一套翻译，
+         且与 Go 侧返回的 Mbps 数值口径必须一致）。 -->
+    <string name="bandwidth_unit_mbps" translatable="false">Mbps</string>
+    <string name="bandwidth_download">Download</string>
+    <string name="bandwidth_upload">Upload</string>
+    <string name="value_dash">—</string>
+    <string name="bandwidth_test_idle">Tap start to run a speed test.</string>
+    <string name="bandwidth_test_start">Start Test</string>
+    <string name="bandwidth_test_running">Testing…</string>
+    <string name="bandwidth_test_downloading">Testing download through the node…</string>
+    <string name="bandwidth_test_uploading">Download complete · testing upload…</string>
+    <string name="bandwidth_test_done">Down %1$s · Up %2$s</string>
     <string name="action_about">About</string>
     <string name="action_settings">Settings</string>
     <string name="about_source_code">Source code</string>
@@ -34,6 +51,7 @@
 
     <string name="profile_name">Node Name</string>
     <string name="ssh_address">SSH Address (IP:Port)</string>
+    <string name="profile_note">Note (optional)</string>
     <string name="username">Username</string>
     <string name="password">Password</string>
     <string name="private_key">Private Key</string>
@@ -45,6 +63,7 @@
     <string name="http_payload">HTTP Payload</string>
     <string name="proxy_address">Proxy Address (IP:Port)</string>
     <string name="proxy_addr_udp_custom_hint">UDP Custom: you can enter a port range, e.g. 1.1.1.1:1024-23000,25000-30000. Each packet is sent to a different destination port to bypass per-port UDP rate limits. The server must DNAT the range onto its listen port.</string>
+        <string name="proxy_addr_icmp_hint">ICMP Peer IP (no port)</string>
     <string name="custom_host">Custom Host</string>
     <string name="server_name">Server Name (SNI)</string>
     <string name="custom_path">Path</string>
@@ -75,6 +94,55 @@
     <string name="direct_routing">Routing Rules</string>
     <string name="geosite_direct">GeoSite Direct (e.g. cn,apple)</string>
     <string name="geoip_direct">GeoIP Direct (e.g. cn,private)</string>
+    <string name="geo_tag_picker_title">Select Geo Tags</string>
+    <string name="geo_tag_search_hint">Search tags…</string>
+    <string name="geo_tag_selected_count">%1$d selected</string>
+    <string name="geo_tag_loading">Loading tags from rule files…</string>
+    <string name="geo_tag_clear">Clear</string>
+    <string name="geo_tag_select_all">Select all</string>
+    <string name="geo_tag_invert">Invert</string>
+    <string name="geo_tag_filter_selected">Selected only</string>
+    <string name="geo_tag_load_failed">Failed to load tags: %1$s</string>
+    <string name="geo_tag_empty">No tags found. Update GeoData first.</string>
+    <string name="icmp_custom_psk">PSK (pre-shared key)</string>
+    <string name="icmp_custom_magic">Magic (8 hex chars, blank = default)</string>
+    <string name="icmp_custom_family">IP family</string>
+    <string name="icmp_custom_mtu_mode">MTU mode</string>
+    <string name="icmp_custom_max_payload">Max payload (0 = default)</string>
+    <string name="icmp_custom_pace_ms">Packet pace ms (0 = default)</string>
+    <string name="icmp_custom_id_range">Echo ID pool (e.g. 1000-1999)</string>
+    <string name="tunnel_tls">TLS encryption</string>
+    <string name="webdav_title">WebDAV Cloud Backup</string>
+    <string name="webdav_url_hint">WebDAV URL</string>
+    <string name="webdav_desc">Nodes, global settings, subscriptions and their traffic records are encrypted with your backup PIN and stored in a Stun folder on the server; the 5 most recent backups are kept.</string>
+    <string name="webdav_section_settings">global settings</string>
+    <string name="webdav_section_subscription">subscriptions</string>
+    <string name="webdav_section_subscription_usage">subscription traffic</string>
+    <!-- 值用双引号包起来：否则 aapt 会把结尾的空格吞掉，拼出来就是 "settings,subscriptions" -->
+    <string name="webdav_section_joiner">", "</string>
+    <string name="webdav_url_example">e.g. https://dav.jianguoyun.com/dav/</string>
+    <string name="webdav_user_hint">Account</string>
+    <string name="webdav_pass_hint">Password / App password</string>
+    <string name="webdav_pin_hint">Backup PIN</string>
+    <string name="webdav_pin_helper">A random PIN has been generated for you (shown above); change it if you like, but keep at least 4 characters. It is required to restore backups</string>
+    <string name="webdav_interval">Auto backup interval (hours)</string>
+    <string name="desc_backup_status">Cloud backup status</string>
+    <string name="webdav_auto">Daily auto backup</string>
+    <string name="webdav_backup_now">Back up now</string>
+    <string name="webdav_restore">Restore</string>
+    <string name="webdav_last">Last backup: %1$s</string>
+    <string name="webdav_ok">✓ WebDAV backup complete (%1$d nodes; %2$s)</string>
+    <string name="webdav_failed">✕ WebDAV backup failed: %1$s</string>
+    <string name="webdav_restore_ok">✓ Restored %1$d nodes from WebDAV</string>
+    <string name="webdav_restore_ok_full">✓ Restored %1$d nodes and %2$s from WebDAV</string>
+    <string name="webdav_restore_pick_title">Select a backup to restore</string>
+    <string name="webdav_no_backups">No backups found on the server</string>
+    <string name="webdav_err_config">WebDAV is not fully configured — fill in URL, account, password and backup PIN</string>
+    <string name="webdav_err_pin">Incorrect backup PIN — the backup could not be decrypted</string>
+    <string name="webdav_err_missing">That backup is no longer on the server</string>
+    <string name="webdav_pin_too_short">Backup PIN must be at least 4 characters</string>
+    <string name="webdav_restore_confirm">The selected backup will overwrite current settings and merge nodes by id. Nodes and subscriptions deleted on this device may come back. This cannot be undone. Restore anyway?</string>
+    <string name="geo_tag_no_match">No tags match the current filter</string>
     <string name="save_settings">Save Settings</string>
 
     <string name="language">Language</string>
@@ -87,8 +155,12 @@
     <string name="lang_ja">Japanese</string>
 
     <string name="clear_logs">Clear</string>
+    <string name="clear_logs_confirm">Clear all logs? This cannot be undone.</string>
+    <string name="logs_empty">No logs available</string>
     <string name="copy">Copy</string>
-    <string name="copy_uri">Copy URI</string>
+    <string name="copy_uri">Copy Stun URI</string>
+    <string name="import_from_clipboard">Import URI from Clipboard</string>
+    <string name="clipboard_empty">Clipboard is empty</string>
     <string name="copy_success">Copied to clipboard</string>
     <string name="close">Close</string>
     <string name="app_logs">App Logs</string>
@@ -97,6 +169,8 @@
     <string name="logs_share_subject">Stun Diagnostic Logs</string>
 
     <string name="action_tools">Tools</string>
+    <string name="side_sheet_tagline">Fast, secure SSH tunneling</string>
+    <string name="side_sheet_general">General</string>
     <string name="action_import_export">Backup &amp; Restore</string>
     <string name="action_export">Export Config</string>
     <string name="action_import">Import Config</string>
@@ -105,6 +179,9 @@
     <string name="push_failed">Failed to send profile. Ensure TV app is open and on same network.</string>
 
     <string name="nav_nodes">Node</string>
+    <string name="node_tab_all">All (%1$d)</string>
+    <string name="node_tab_favorites">Favorites (%1$d)</string>
+    <string name="node_tab_recent">Recent (%1$d)</string>
     <string name="main_disconnected">Disconnected</string>
     <string name="main_connected">Connected</string>
     <string name="main_connected_with_latency">%1$s (%2$s)</string>
@@ -149,6 +226,7 @@
     <string name="invalid_qr">Invalid QR Code format</string>
     <string name="vpn_permission_denied">VPN Permission Denied</string>
     <string name="notification_permission_required">Notification permission is required for stability.</string>
+    <string name="notification_permission_denied_continue">Notifications are off; the connection will continue without notification details.</string>
     <string name="error_root_required">Transparent Proxy requires Root access.</string>
     <string name="settings_saved">Settings saved</string>
     <string name="profile_saved">Configuration saved</string>
@@ -160,6 +238,21 @@
     <string name="connection_complete">Connection successful</string>
     <string name="error_invalid_private_key">Invalid private key format</string>
     <string name="error_invalid_address">Invalid address format (host:port or host:port-range)</string>
+        <string name="dns_tunnel_psk_hint">DNS tunnel PSK</string>
+        <string name="dns_tunnel_psk_helper">Empty = anonymous; must match the server</string>
+        <string name="dns_tunnel_marker_hint">Tunnel marker</string>
+        <string name="dns_tunnel_marker_helper">Custom label prefix; must match the server</string>
+        <string name="icmp_custom_magic_helper">8 hex digits (or 0x-prefixed), e.g. 49434D31; empty = default</string>
+        <string name="error_invalid_host_only">Enter a host or IP without a port</string>
+        <string name="error_invalid_server_name">Server name cannot contain whitespace</string>
+        <string name="error_invalid_ssh_fingerprint">Invalid SSH fingerprint (SHA256:Base64 or 64 hex digits)</string>
+        <string name="error_invalid_fingerprint">Invalid certificate SHA-256 fingerprint (64 hex digits, colons optional)</string>
+        <string name="error_invalid_dns_servers">Enter at least one DNS server (host[:port], or with udp:// tls:// https:// prefix)</string>
+        <string name="error_invalid_marker">Marker cannot contain whitespace (max 32 characters)</string>
+        <string name="error_icmp_magic">Magic must be 8 hex digits or 0x-prefixed hex</string>
+        <string name="error_invalid_number">Enter 0 or a number within the allowed range</string>
+        <string name="warn_psk_short">PSK shorter than 16 characters is vulnerable to brute force</string>
+        <string name="warn_xhttp_no_fingerprint">No certificate fingerprint pinned - MITM risk</string>
     <string name="error_invalid_address_single_port">Invalid address format (host:port). Port range not supported for this protocol.</string>
     <string name="error_invalid_port">Invalid port number (1-65535)</string>
     <string name="geodata_success">GeoData updated successfully</string>
@@ -172,7 +265,7 @@
     <string name="loading">Loading...</string>
     <string name="error_license_load">Failed to load license: %1$s</string>
     <string name="error_no_profile_selected">Please select a node first</string>
-    <string name="pin_hint">PIN (6 digits)</string>
+    <string name="pin_hint">PIN (letters + digits, min. 4)</string>
     <string name="enter_pin_title">Enter PIN to Decrypt Node</string>
     <string name="pin_new_hint">PIN (Enter a new PIN for this backup)</string>
     <string name="encrypt_backup_title">Encrypt Backup</string>
@@ -185,6 +278,10 @@
     <string name="traffic_down_placeholder">▼ 0 B/s</string>
     <string name="tv_traffic_format">↑ %1$s  ↓ %2$s</string>
     <string name="tv_traffic_total_format">↑ %1$s  ↓ %2$s</string>
+    <!-- 与语言无关的技术格式串（HOST:PORT / 蓝牙地址 / 合计符号）：不进 locale，不参与翻译 -->
+    <string name="host_port_format" translatable="false">%1$s:%2$d</string>
+    <string name="bt_address_format" translatable="false">Bluetooth: %1$s</string>
+    <string name="traffic_sum_format" translatable="false">Σ %1$s</string>
     <string name="error_key_password_required">Passphrase required for this key</string>
     <string name="error_invalid_key_password">Incorrect key passphrase</string>
     <string name="verify_ssh_fingerprint">Verify SSH Fingerprint</string>
@@ -213,6 +310,7 @@
     <string name="desc_nav_view">Drawer navigation</string>
     <string name="desc_share_profile">Share</string>
     <string name="desc_edit_profile_action">Edit</string>
+    <string name="desc_profile_actions">Node actions</string>
     <string name="desc_delete_profile">Delete</string>
     <string name="desc_save_profile">Save configuration</string>
     <string name="desc_profile_name_input">Enter node name</string>
@@ -275,9 +373,10 @@
     <string name="tv_push_rejected">Node push rejected</string>
     <string name="accept">Accept</string>
     <string name="reject">Reject</string>
-    <string name="tv_picker_title">Select TV Device</string>
-    <string name="tv_picker_scanning">Scanning local network for Stun TV…</string>
-    <string name="tv_picker_no_devices">No TV devices found.\nPlease make sure TV is on the same Wi-Fi and Stun TV is running.</string>
+    <string name="tv_picker_title">Select Network Device</string>
+    <string name="tv_picker_scanning">Scanning local network for Stun devices…</string>
+    <string name="tv_picker_no_devices">No devices found.\nPlease make sure the target device is on the same Wi-Fi and Stun is running.</string>
+    <string name="device_found_count">%1$d device(s) found</string>
     <string name="tv_push_success">Successfully pushed node to %1$s</string>
     <string name="tv_push_rejected_by_tv">TV user declined the push request</string>
     <string name="tv_push_timeout">Push timed out (no response from TV)</string>
@@ -298,14 +397,43 @@
     <string name="tv_remote_traffic_live">Live Traffic</string>
     <string name="tv_remote_public_ip_title">TV Public IP</string>
     <string name="tv_remote_loading">Loading status…</string>
+    <string name="remote_device_unavailable">Device unavailable</string>
+    <string name="remote_command_failed">Remote command failed. Check the device connection and try again.</string>
     <string name="tv_remote_no_profiles">No nodes available on TV</string>
     <string name="tv_remote_node_switched">Switched TV node to: %1$s</string>
     <string name="tv_waiting_confirmation">Waiting for TV user confirmation…</string>
+    <string name="mcp_server_title">MCP Agent Server</string>
+    <string name="mcp_server_summary">Allow Codex, Claude Code, and other MCP clients to query and control Stun</string>
+    <string name="mcp_server_port">MCP Port</string>
+    <string name="mcp_server_copy_config">Copy Codex / Claude Code Config</string>
+    <string name="mcp_server_config_copied">MCP client config copied to clipboard</string>
+    <string name="db_web_title">Database Web UI</string>
+    <string name="db_web_summary">Browse and edit this app\'s SQLite database over the LAN web console. Login required.</string>
+    <string name="db_web_port">Port</string>
+    <string name="db_web_user">Login username</string>
+    <string name="db_web_pass">Login password</string>
+    <string name="db_web_stopped">Stopped</string>
+    <string name="db_web_started">Running: %1$s</string>
+    <string name="db_web_copy_url">Copy access URL</string>
+    <string name="db_web_url_copied">Access URL copied</string>
+    <string name="mcp_server_running_format">Running on http://%1$s:%2$d/mcp</string>
+    <string name="mcp_server_stopped">Stopped</string>
+    <string name="mcp_auth_mode">MCP Security &amp; Auth</string>
+    <string name="mcp_auth_none">None (Open / Local)</string>
+    <string name="mcp_auth_api_key">API Key / Bearer Token</string>
+    <string name="mcp_auth_basic">HTTP Basic (User/Password)</string>
+    <string name="mcp_auth_oauth">OAuth 2.0 (Token / Code)</string>
+    <string name="mcp_auth_secret_hint">Token / Secret (Optional)</string>
+    <string name="mcp_basic_password_hint">Password (user: admin)</string>
+    <string name="mcp_oauth_secret_hint">Client Secret (client_id: stun-client)</string>
     <string name="show_notification_speed">Show Real-Time Speed in Notification</string>
     <string name="dns_tunnel_record_type">DNS Record Type</string>
     <string name="dns_tunnel_domain_hint">Tunnel Authority Domain (e.g. tunnel.example.com)</string>
     <string name="dns_tunnel_servers_hint">DNS Server(s) (e.g. 8.8.8.8:53, 1.1.1.1:53)</string>
     <string name="noise_public_key">Noise Public Key (Optional)</string>
+    <string name="desc_noise_encrypted">Noise-encrypted tunnel</string>
+    <string name="desc_key_auth">SSH key authentication</string>
+    <string name="last_connected_fmt">Last: %1$s</string>
     <string name="noise_public_key_hint">Server Noise Curve25519 Public Key (Hex / Base64)</string>
     <string name="refresh">Refresh</string>
     <string name="error_prefix">Error: %1$s</string>
@@ -354,6 +482,40 @@
     <string name="udp_custom_psk">UDP Custom PSK (Pre-shared Key)</string>
     <string name="udp_custom_magic">Magic String (Default: UDPC)</string>
     <string name="udp_custom_psk_hint">Enter server authentication key (leave empty if none)</string>
+    <string name="dns_tunnel_edns0">EDNS0 (1232-byte answers, server must match)</string>
+    <string name="udp_custom_sockets">UDP Sockets (0 = default 1)</string>
+    <string name="udp_custom_send_window">Send Window (0 = default 256)</string>
+    <string name="udp_custom_paths">UDP Multipath Concurrency (random destination ports, 0 = default 32)</string>
+    <string name="error_invalid_noise_public_key">Enter a 64-character hex or 32-byte Base64 public key</string>
+    <string name="error_dns_noise_record_type">Noise encryption cannot use A or AAAA records; choose TXT, NULL, CNAME, MX, SRV, or NS</string>
+    <string name="error_udp_custom_magic">Magic must contain exactly 4 UTF-8 bytes, for example UDPC</string>
+    <string name="error_invalid_mtu_probe">MTU probe must be one of: auto, on, off</string>
+    <string name="error_invalid_masque_alpn">Masque ALPN must be one of: (empty), auto, h3, h2</string>
+    <string name="udp_custom_max_pkt_hint">Max payload bytes</string>
+    <string name="udp_custom_max_pkt_helper">0 = SDK default 1450</string>
+    <string name="udp_custom_mtu_probe_hint">Path MTU probing</string>
+    <string name="padding_min_bytes_hint">Min padding bytes</string>
+    <string name="padding_min_bytes_helper">0 = myssh default 1420, negative = off</string>
+    <string name="masque_alpn_hint">Masque ALPN choice</string>
+    <string name="kcp_data_shards">Data Shards (0 = default 10)</string>
+    <string name="kcp_parity_shards">Parity Shards (0 = default 3)</string>
+    <string name="kcp_mode">KCP mode (fast = default)</string>
+    <string name="share_pin_edit_hint">Custom PIN (letters &amp; digits, min 4 chars)</string>
+    <string name="kcp_sndwnd">Send window (0 = default 128)</string>
+    <string name="kcp_rcvwnd">Receive window (0 = default 512)</string>
+    <string name="kcp_mtu">MTU (0 = default 1350)</string>
+    <string name="kcp_nocomp">Disable Snappy compression</string>
+    <string name="kcp_smuxver">SMUX version (0 = default 2)</string>
+    <string name="kcp_keepalive">KeepAlive seconds (0 = default 10)</string>
+    <string name="xhttp_stream_mode">XHTTP Stream Mode</string>
+    <string name="opt_stream_auto">Auto (streaming with polling fallback)</string>
+    <string name="opt_stream_stream">Stream (forced streaming downlink)</string>
+    <string name="opt_stream_poll">Poll (forced polling downlink)</string>
+    <string name="bind_interface">Bind Interface (e.g. wlan0, blank = default)</string>
+    <string name="xhttp_chunk_size_kb">Chunk Size KB (0 = default 256, range 16-900)</string>
+    <string name="heartbeat_interval_ms">Heartbeat Interval ms (0 = default 25000)</string>
+    <string name="error_xhttp_chunk_size">Enter 0 for the default, or a value from 16 to 900 KB</string>
+    <string name="error_heartbeat_interval">Enter 0 for the default, or a value from 5000 to 300000 ms</string>
     <string name="search">Search</string>
     <string name="share">Share</string>
     <string name="scan_qr">Scan QR Code</string>
@@ -404,6 +566,7 @@
     <string name="car_dashboard_title">Car Dashboard</string>
     <string name="car_power_button_connect">CONNECT</string>
     <string name="car_power_button_disconnect">DISCONNECT</string>
+    <string name="car_vpn_consent_required">VPN approval required — open Stun on this device and grant the connection permission first</string>
     <string name="car_status_protected">Protected</string>
     <string name="car_status_unprotected">Unprotected</string>
     <string name="car_bt_sync_on">Bluetooth Sync: ON</string>
@@ -412,13 +575,14 @@
     <string name="car_bt_select_device">Select Car Bluetooth Device</string>
     <string name="car_bt_scanning">Scanning Bluetooth devices…</string>
     <string name="car_bt_no_devices">No paired Bluetooth devices found. Please pair in system settings first.</string>
+    <string name="bluetooth_permission_denied">Bluetooth permission was denied. Allow nearby-device access to use this tab.</string>
     <string name="car_push_success">Successfully pushed node via Bluetooth</string>
     <string name="car_remote_success">Command sent via Bluetooth</string>
     <string name="device_picker_wifi_tab">Wi-Fi (LAN)</string>
     <string name="device_picker_bt_tab">Bluetooth (Car)</string>
     <string name="desc_car_power_button">Toggle Connection</string>
 
-    <!-- Wear OS & XR Specific -->
+    <!-- Wear&OS & XR Specific -->
     <string name="wear_app_name">Stun Wear</string>
     <string name="wear_tile_title">Stun Toggle</string>
     <string name="wear_tile_connected">VPN Active</string>
@@ -427,4 +591,101 @@
     <string name="xr_spatial_dashboard">Spatial Panel</string>
     <string name="xr_spatial_status_connected">Spatial Protection Active</string>
     <string name="xr_spatial_status_disconnected">Spatial Protection Off</string>
+
+    <!-- Sh&rtcuts & Gemini App Actions -->
+    <string name="shortcut_start_vpn">Connect</string>
+    <string name="shortcut_stop_vpn">Disconnect</string>
+    <string name="shortcut_switch_node">Switch Node</string>
+    <string name="shortcut_remote_tv">Remote TV</string>
+
+    <!-- Subscription Management -->
+    <string name="subscription_title">Subscription</string>
+    <string name="subscription_url_hint">Enter HTTPS subscription URL</string>
+    <string name="error_invalid_subscription_url">Enter a valid HTTPS subscription URL</string>
+    <string name="subscription_home_page">Homepage</string>
+    <string name="subscription_sync_now">Sync Now</string>
+
+    <!-- App Crash Dialog -->
+    <string name="app_crash_dialog_title">⚠️ App Crashed Previously</string>
+    <string name="app_crash_dialog_msg">The app encountered an unexpected error during the last session. You can copy or share this log to help diagnose the issue:</string>
+    <string name="app_crash_dialog_copy">Copy Log</string>
+    <string name="app_crash_dialog_copied">Crash log copied to clipboard</string>
+    <string name="app_crash_dialog_share">Share</string>
+    <string name="app_crash_dialog_dismiss">Dismiss</string>
+
+    <string name="subscription_sync_success">Sync successful: %d nodes updated</string>
+    <string name="subscription_sync_error">Subscription sync failed: %s</string>
+    <string name="subscription_last_sync">Last synced: %s</string>
+    <string name="subscription_never_synced">Never synced</string>
+
+    <!-- 订阅流量（来自响应头 subscription-userinfo，账户级累计） -->
+    <string name="subscription_usage_title">Traffic usage</string>
+    <string name="subscription_usage_percent">%1$d%%</string>
+    <string name="subscription_usage_unlimited">Unlimited plan</string>
+    <string name="subscription_usage_today">Today +%1$s</string>
+    <string name="subscription_usage_month">This month +%1$s</string>
+    <string name="subscription_usage_expire">Expires %1$s (%2$d days left)</string>
+    <string name="subscription_usage_expired">Expired %1$s</string>
+    <string name="subscription_usage_expire_none">No expiry</string>
+    <string name="subscription_usage_trend">Usage trend (per sync)</string>
+    <string name="subscription_usage_none">No usage data</string>
+    <string name="subscription_usage_over_quota_title">Traffic almost used up</string>
+    <string name="subscription_usage_over_quota_body">You\'ve used %1$d%% of your plan (%2$s of %3$s).</string>
+    <string name="subscription_usage_expiring_title">Subscription expiring soon</string>
+    <string name="subscription_usage_expiring_body">Expires in %1$d days (%2$s).</string>
+    <string name="subscription_pin_hint">PIN (optional, for encrypted subscription)</string>
+    <string name="subscription_pin_required">This subscription is PIN-encrypted. Enter the PIN.</string>
+    <string name="subscription_pin_invalid">Wrong PIN or decryption failed</string>
+    <string name="subscription_add">Add Subscription</string>
+    <string name="subscription_pin_short">PIN</string>
+    <string name="subscription_sync_partial">Synced %1$d/%2$d subscriptions, %3$d nodes imported</string>
+    <string name="paste_from_clipboard">Paste from Clipboard</string>
+    <string name="widget_tap_select_node">Tap to select a node</string>
+    <string name="widget_uplink">Uplink</string>
+    <string name="widget_downlink">Downlink</string>
+    <string name="widget_latency_format" translatable="false">%1$d ms</string>
+    <string name="error_unknown">Unknown error</string>
+    <!-- 2026-09-15: 订阅行信息 i18n -->
+    <string name="subscription_nodes_count">%1$d nodes</string>
+    <string name="subscription_auto_interval">Auto-update every %1$d h</string>
+    <string name="subscription_synced_at">Synced %1$s</string>
+    <!-- 2026-09-16: 订阅功能/界面优化新增 -->
+    <string name="subscription_usage_alerts_channel_desc">Subscription traffic quota and expiry alerts</string>
+    <string name="subscription_empty_hint">No subscriptions yet. Add one to import nodes automatically.</string>
+    <string name="subscription_row_sync">Sync this subscription</string>
+    <string name="subscription_row_more">More actions</string>
+    <string name="subscription_action_edit">Edit</string>
+    <string name="subscription_action_copy_url">Copy URL</string>
+    <string name="subscription_delete_title">Delete this subscription?</string>
+    <string name="subscription_delete_also_nodes">Also delete its %1$d imported nodes</string>
+    <string name="subscription_result_counts">Imported %1$d · Updated %2$d · Removed %3$d</string>
+    <string name="subscription_auto_sync">Background auto-sync</string>
+    <string name="subscription_interval_label">Update interval</string>
+    <string name="subscription_name_hint">Subscription name (optional)</string>
+    <string name="subscription_err_http">The server returned an error</string>
+    <string name="subscription_err_network">Network request failed</string>
+    <string name="subscription_err_no_valid_nodes">No valid nodes in the subscription</string>
+    <string name="subscription_save">Save</string>
+    <!-- 2026-09-17: 订阅面板按设计稿重排（编辑区分区标题 / 用量趋势开关 / 复制用量） -->
+    <string name="subscription_settings">Subscription settings</string>
+    <string name="subscription_usage_used_of">Used %1$s / %2$s</string>
+    <string name="subscription_usage_trend_label">Usage trend</string>
+    <string name="subscription_usage_copy">Copy usage info</string>
+    <!-- 2026-09-17: 订阅面板标题后的问号 → 内置 HTML 说明页（SubscriptionHelpActivity）。
+         正文全在 assets/help/<lang>/subscription_help.html，这里只有标题与无障碍描述。 -->
+    <string name="subscription_help_title">Subscription help</string>
+    <string name="subscription_help">About subscription files</string>
+
+    <!-- Main menu sheet: section title + per-tile descriptions -->
+    <string name="side_sheet_quick_add">Quick Add</string>
+    <string name="menu_desc_add_manual">Enter server details</string>
+    <string name="menu_desc_scan_qr">Scan a QR code to import</string>
+    <string name="menu_desc_import_clipboard">Supports multiple link formats</string>
+    <string name="menu_desc_subscription">Fetch nodes from a subscription link</string>
+    <string name="menu_desc_speed_test">Check node network latency</string>
+    <string name="menu_desc_bandwidth_test">Test upload and download speed</string>
+    <string name="menu_desc_tv_remote">Scan and select a LAN device</string>
+    <string name="menu_desc_import">Import node configs from a file</string>
+    <string name="menu_desc_export">Export current node configs</string>
+    <string name="menu_desc_settings">App settings &amp; preferences</string>
 </resources>

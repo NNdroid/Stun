@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorControlNormal">
+    <!-- 四角星芒：连接拓扑"星空模式"切换按钮，刻意区别于收藏用的五角星 ic_star。 -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M12,2 L13.6,9 L21,12 L13.6,15 L12,22 L10.4,15 L3,12 L10.4,9 Z" />
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M18.5,3.5 L19.1,5.9 L21.5,6.5 L19.1,7.1 L18.5,9.5 L17.9,7.1 L15.5,6.5 L17.9,5.9 Z" />
+</vector>

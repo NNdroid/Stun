@@ -4,17 +4,20 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.os.Build
+import android.os.SystemClock
 import android.util.Base64
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import androidx.core.content.ContextCompat
+import app.fjj.stun.backup.WebDavBackupManager
 import app.fjj.stun.repo.Profile
 import app.fjj.stun.repo.ProfileManager
 import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.StunLogger
 import app.fjj.stun.repo.StunRepository
+import app.fjj.stun.repo.SubscriptionManager
 import app.fjj.stun.service.MyVpnService
 import app.fjj.stun.service.VpnConfigBuilder
 import app.fjj.stun.util.ShareCryptoUtils
@@ -50,6 +53,60 @@ object WebServer {
     private var server: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? = null
     private val isRunning = AtomicBoolean(false)
     private val gson = Gson()
+
+    // ── 已安装应用清单缓存 ──
+    // /api/apps 每次调用都要 pm.getInstalledPackages + 逐包取 label，应用多的机器上是几百毫秒级的开销，
+    // 而 WebUI 每次切回「系统设置」页签都会打一次。这里缓存「只与安装状态有关、短时间内不变」的元数据；
+    // isSelected 依赖用户的分流配置、保存后必须立刻生效，所以不入缓存，每次请求按 Set 现算（开销可忽略）。
+    private data class InstalledAppMeta(
+        val packageName: String,
+        val appName: String,
+        val versionName: String,
+        val versionCode: Long,
+        val isSystem: Boolean
+    )
+
+    @Volatile private var appsMetaCache: List<InstalledAppMeta>? = null
+    @Volatile private var appsMetaCachedAtMs: Long = 0L
+    private const val APPS_META_TTL_MS = 60_000L
+
+    /** 需要时主动失效（例如前端点「刷新」传 refresh=1）。 */
+    private fun invalidateAppsMetaCache() {
+        appsMetaCache = null
+        appsMetaCachedAtMs = 0L
+    }
+
+    private fun loadInstalledAppsMeta(context: Context): List<InstalledAppMeta> {
+        appsMetaCache?.let { cached ->
+            if (SystemClock.elapsedRealtime() - appsMetaCachedAtMs < APPS_META_TTL_MS) return cached
+        }
+        val pm = context.packageManager
+        val list = pm.getInstalledPackages(0)
+            .filter { it.packageName != context.packageName }
+            .mapNotNull { pkg ->
+                try {
+                    val appInfo = pkg.applicationInfo ?: return@mapNotNull null
+                    InstalledAppMeta(
+                        packageName = pkg.packageName,
+                        appName = pm.getApplicationLabel(appInfo).toString(),
+                        versionName = pkg.versionName ?: "",
+                        versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                            pkg.longVersionCode
+                        } else {
+                            @Suppress("DEPRECATION")
+                            pkg.versionCode.toLong()
+                        },
+                        isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                    )
+                } catch (_: Exception) {
+                    null
+                }
+            }
+            .sortedWith(compareBy({ it.isSystem }, { it.appName.lowercase() }))
+        appsMetaCache = list
+        appsMetaCachedAtMs = SystemClock.elapsedRealtime()
+        return list
+    }
 
     var token: String = ""; private set
     var actualPort: Int = DEFAULT_PORT; private set
@@ -88,6 +145,15 @@ object WebServer {
         } else {
             "http://$ip:$port/?token=$t"
         }
+    }
+
+    private fun readWebDavConfig(context: Context): WebDavBackupManager.Config {
+        return WebDavBackupManager.Config(
+            url = SettingsManager.getWebDavUrl(context),
+            user = SettingsManager.getWebDavUser(context),
+            pass = SettingsManager.getWebDavPass(context),
+            pin = SettingsManager.getWebDavPin(context)
+        )
     }
 
     private fun parseProfilesFromJson(rawText: String): List<Profile> {
@@ -193,6 +259,11 @@ object WebServer {
                         val filterCount = if (filterAppsStr.isBlank()) 0 else filterAppsStr.split(",").filter { it.isNotBlank() }.size
                         val trafficStats = try { myssh.Myssh.getTrafficStats() } catch (_: Exception) { null }
 
+                        // SSH 服务器标识 + 认证阶段 banner：取自引擎真实握手缓存，不额外发网络请求。
+                        // 必须核对来源地址——引擎在地址无记录时会回退到「最近一次握手」，不核对就会串节点。
+                        val handshake = StunRepository.getSshHandshakeInfo(selected.sshAddr)
+                            ?.takeIf { it.address.equals(selected.sshAddr, ignoreCase = true) }
+
                         val statusMap = mapOf(
                             "vpnState" to (StunRepository.vpnState.value?.name ?: "DISCONNECTED"),
                             "selectedProfileId" to selected.id,
@@ -207,7 +278,9 @@ object WebServer {
                             "activeConns" to (trafficStats?.activeConns ?: 0L),
                             "totalConns" to (trafficStats?.totalConns ?: 0L),
                             "filterMode" to SettingsManager.getFilterMode(appContext),
-                            "filterAppsCount" to filterCount
+                            "filterAppsCount" to filterCount,
+                            "sshServerVersion" to (handshake?.serverVersion ?: ""),
+                            "sshBanner" to (handshake?.banner ?: "")
                         )
                         call.respond(HttpStatusCode.OK, statusMap)
                     }
@@ -235,6 +308,15 @@ object WebServer {
                             val existing = ProfileManager.getProfileById(appContext, id)
                                 ?: return@post call.respond(HttpStatusCode.NotFound, mapOf("error" to "Profile not found"))
 
+                            val requestedTunnelType = (body["tunnelType"] as? String) ?: existing.tunnelType
+                            val requestedCustomPath = (body["customPath"] as? String)?.trim() ?: existing.customPath
+                            val requestedEnableCustomPath = if (requestedTunnelType == Profile.TUNNEL_TYPE_MASQUE) {
+                                (body["enableCustomPath"] as? Boolean)
+                                    ?: if (body.containsKey("customPath")) requestedCustomPath.isNotBlank() else existing.enableCustomPath
+                            } else {
+                                false
+                            }
+
                             val updated = existing.copy(
                                 name = (body["name"] as? String)?.trim()?.ifBlank { existing.name } ?: existing.name,
                                 sshAddr = (body["sshAddr"] as? String)?.trim()?.ifBlank { existing.sshAddr } ?: existing.sshAddr,
@@ -243,12 +325,12 @@ object WebServer {
                                 authType = (body["authType"] as? String) ?: existing.authType,
                                 privateKey = (body["privateKey"] as? String) ?: existing.privateKey,
                                 keyPass = (body["keyPass"] as? String) ?: existing.keyPass,
-                                tunnelType = (body["tunnelType"] as? String) ?: existing.tunnelType,
+                                tunnelType = requestedTunnelType,
                                 proxyAddr = (body["proxyAddr"] as? String)?.trim() ?: existing.proxyAddr,
                                 customHost = (body["customHost"] as? String)?.trim() ?: existing.customHost,
                                 serverName = (body["serverName"] as? String)?.trim() ?: existing.serverName,
-                                customPath = (body["customPath"] as? String)?.trim() ?: existing.customPath,
-                                enableCustomPath = (body["enableCustomPath"] as? Boolean) ?: existing.enableCustomPath,
+                                customPath = requestedCustomPath,
+                                enableCustomPath = requestedEnableCustomPath,
                                 httpPayload = (body["httpPayload"] as? String)?.trim() ?: existing.httpPayload,
                                 disableStatusCheck = (body["disableStatusCheck"] as? Boolean) ?: existing.disableStatusCheck,
                                 alpn = (body["alpn"] as? String)?.trim() ?: existing.alpn,
@@ -263,13 +345,55 @@ object WebServer {
                                 dnsTunnelDomain = (body["dnsTunnelDomain"] as? String)?.trim() ?: existing.dnsTunnelDomain,
                                 dnsTunnelServers = (body["dnsTunnelServers"] as? String)?.trim() ?: existing.dnsTunnelServers,
                                 dnsTunnelType = (body["dnsTunnelType"] as? String)?.trim() ?: existing.dnsTunnelType,
+                                dnsTunnelPublicKey = (body["dnsTunnelPublicKey"] as? String)?.trim()
+                                    ?: (body["dns_tunnel_public_key"] as? String)?.trim()
+                                    ?: existing.dnsTunnelPublicKey,
+                                dnsTunnelEDNS0 = (body["dnsTunnelEDNS0"] as? Boolean) ?: existing.dnsTunnelEDNS0,
+                                dnsTunnelPsk = (body["dnsTunnelPsk"] as? String)?.trim() ?: existing.dnsTunnelPsk,
+                                dnsTunnelMarker = (body["dnsTunnelMarker"] as? String)?.trim() ?: existing.dnsTunnelMarker,
                                 kcpPassword = (body["kcpPassword"] as? String) ?: existing.kcpPassword,
                                 kcpCrypt = (body["kcpCrypt"] as? String)?.trim() ?: existing.kcpCrypt,
-                                kcpNoDelay = (body["kcpNoDelay"] as? Boolean) ?: existing.kcpNoDelay,
+                                kcpMode = (body["kcpMode"] as? String)?.trim()?.takeIf { it in listOf("normal", "fast", "fast2", "fast3") } ?: existing.kcpMode,
+                                kcpSndWnd = (body["kcpSndWnd"] as? Number)?.toInt()?.coerceAtLeast(0) ?: existing.kcpSndWnd,
+                                kcpRcvWnd = (body["kcpRcvWnd"] as? Number)?.toInt()?.coerceAtLeast(0) ?: existing.kcpRcvWnd,
+                                kcpMtu = (body["kcpMtu"] as? Number)?.toInt()?.coerceAtLeast(0) ?: existing.kcpMtu,
+                                kcpNoComp = (body["kcpNoComp"] as? Boolean) ?: existing.kcpNoComp,
+                                kcpSmuxVer = (body["kcpSmuxVer"] as? Number)?.toInt() ?: existing.kcpSmuxVer,
+                                kcpKeepAlive = (body["kcpKeepAlive"] as? Number)?.toInt()?.coerceAtLeast(0) ?: existing.kcpKeepAlive,
                                 kcpDataShards = (body["kcpDataShards"] as? Number)?.toInt() ?: existing.kcpDataShards,
                                 kcpParityShards = (body["kcpParityShards"] as? Number)?.toInt() ?: existing.kcpParityShards,
                                 udpCustomPsk = (body["udpCustomPsk"] as? String) ?: existing.udpCustomPsk,
                                 udpCustomMagic = (body["udpCustomMagic"] as? String)?.trim() ?: existing.udpCustomMagic,
+                                udpCustomPublicKey = (body["udpCustomPublicKey"] as? String)?.trim()
+                                    ?: (body["udp_custom_public_key"] as? String)?.trim()
+                                    ?: existing.udpCustomPublicKey,
+                                udpCustomPaths = (body["udpCustomPaths"] as? Number)?.toInt()?.coerceAtLeast(0)
+                                    ?: existing.udpCustomPaths,
+                                udpCustomSockets = (body["udpCustomSockets"] as? Number)?.toInt()?.coerceAtLeast(0) ?: existing.udpCustomSockets,
+                                udpCustomSendWindow = (body["udpCustomSendWindow"] as? Number)?.toInt()?.coerceAtLeast(0) ?: existing.udpCustomSendWindow,
+                                udpCustomMaxPkt = (body["udpCustomMaxPkt"] as? Number)?.toInt()?.coerceAtLeast(0) ?: existing.udpCustomMaxPkt,
+                                udpCustomMtuProbe = (body["udpCustomMtuProbe"] as? String)?.trim() ?: existing.udpCustomMtuProbe,
+                                // 2026-09-15 parity 修复：以下 8 个字段 JS payload 一直在发，
+                                // 服务端此前不受理导致静默丢弃 —— tunnelTlsEnabled 丢了会存出
+                                // 「raw+TLS 但 proxy_addr 空」的自相矛盾配置，icmpCustomPsk 丢了
+                                // 会被 VpnConfigBuilder 回退成 SSH 密码（碰巧能连，最难发现）。
+                                tunnelTlsEnabled = (body["tunnelTlsEnabled"] as? Boolean) ?: existing.tunnelTlsEnabled,
+                                icmpCustomPsk = (body["icmpCustomPsk"] as? String) ?: existing.icmpCustomPsk,
+                                icmpCustomMagic = (body["icmpCustomMagic"] as? String)?.trim() ?: existing.icmpCustomMagic,
+                                icmpCustomMtuMode = (body["icmpCustomMtuMode"] as? String)?.trim() ?: existing.icmpCustomMtuMode,
+                                icmpCustomMaxPayload = (body["icmpCustomMaxPayload"] as? Number)?.toInt()?.coerceAtLeast(0)
+                                    ?: existing.icmpCustomMaxPayload,
+                                icmpCustomPaceMS = (body["icmpCustomPaceMS"] as? Number)?.toInt()?.coerceAtLeast(0)
+                                    ?: existing.icmpCustomPaceMS,
+                                icmpCustomIdRange = (body["icmpCustomIdRange"] as? String)?.trim() ?: existing.icmpCustomIdRange,
+                                icmpCustomPublicKey = (body["icmpCustomPublicKey"] as? String)?.trim()
+                                    ?: existing.icmpCustomPublicKey,
+                                xhttpChunkSizeKB = (body["xhttpChunkSizeKB"] as? Number)?.toInt()?.coerceAtLeast(0) ?: existing.xhttpChunkSizeKB,
+                                xhttpStreamMode = (body["xhttpStreamMode"] as? String)?.trim()?.takeIf { it in listOf("auto", "stream", "poll") } ?: existing.xhttpStreamMode,
+                                bindInterface = (body["bindInterface"] as? String)?.trim() ?: existing.bindInterface,
+                                heartbeatIntervalMs = (body["heartbeatIntervalMs"] as? Number)?.toInt()?.coerceAtLeast(0) ?: existing.heartbeatIntervalMs,
+                                paddingMinBytes = (body["paddingMinBytes"] as? Number)?.toInt() ?: existing.paddingMinBytes,
+                                masqueAlpn = (body["masqueAlpn"] as? String)?.trim() ?: existing.masqueAlpn,
                                 noisePublicKey = (body["noisePublicKey"] as? String)?.trim() ?: (body["noise_public_key"] as? String)?.trim() ?: existing.noisePublicKey,
                                 dnsOverride = (body["dnsOverride"] as? Boolean) ?: existing.dnsOverride,
                                 remoteDns = (body["remoteDns"] as? String)?.trim() ?: existing.remoteDns,
@@ -280,7 +404,10 @@ object WebServer {
                                 geoipDirect = (body["geoipDirect"] as? String)?.trim() ?: existing.geoipDirect,
                                 appFilterOverride = (body["appFilterOverride"] as? Boolean) ?: existing.appFilterOverride,
                                 filterMode = (body["filterMode"] as? Number)?.toInt() ?: existing.filterMode,
-                                filterApps = (body["filterApps"] as? String)?.trim() ?: existing.filterApps
+                                filterApps = (body["filterApps"] as? String)?.trim() ?: existing.filterApps,
+                                // 手机端连接详情面板的备注/星标；webui 此前无入口且服务端不受理。
+                                note = (body["note"] as? String)?.trim() ?: existing.note,
+                                favorite = (body["favorite"] as? Boolean) ?: existing.favorite
                             )
 
                             ProfileManager.updateProfile(appContext, updated)
@@ -442,7 +569,8 @@ object WebServer {
                         if (!call.checkToken(appContext)) return@post
                         try {
                             val body = call.receive<Map<String, String>>()
-                            val content = body["content"]?.trim() ?: return@post call.respond(
+                            val content = body["content"]?.trim()
+                                ?: return@post call.respond(
                                 HttpStatusCode.BadRequest,
                                 mapOf("error" to "empty_content", "message" to "导入内容不能为空")
                             )
@@ -453,7 +581,7 @@ object WebServer {
                                 if (pin.isBlank()) {
                                     return@post call.respond(
                                         HttpStatusCode.BadRequest,
-                                        mapOf("error" to "pin_required", "message" to "检测到加密分享码/备份，请输入6位PIN码")
+                                        mapOf("error" to "pin_required", "message" to "检测到加密分享码/备份，请输入 PIN")
                                     )
                                 }
                                 val decrypted = ShareCryptoUtils.decrypt(content, pin)
@@ -574,11 +702,27 @@ object WebServer {
                         call.respond(HttpStatusCode.OK, mapOf("status" to "success", "action" to action))
                     }
 
+                    // 应用图标：打开「系统设置」会为每个应用各发一次图标请求，而取图链路
+                    // （PackageManager → Drawable → Bitmap → PNG 压缩）本身并不便宜。
+                    // 这里给足客户端缓存：ETag = 包名 + 安装包 lastUpdateTime，应用升级换图标后 ETag 自然失效。
+                    // 这样重复打开页面时这些请求基本不再落到服务端。
                     get("/api/app-icon") {
                         if (!call.checkToken(appContext)) return@get
                         val pkg = call.parameters["pkg"] ?: return@get call.respond(HttpStatusCode.BadRequest)
                         try {
                             val pm = appContext.packageManager
+                            val stamp = try {
+                                pm.getPackageInfo(pkg, 0).lastUpdateTime
+                            } catch (_: Exception) {
+                                0L
+                            }
+                            val etag = "\"appicon-$stamp-$pkg\""
+                            call.response.header("Cache-Control", "private, max-age=86400")
+                            call.response.header("ETag", etag)
+                            if (call.request.headers["If-None-Match"] == etag) {
+                                call.respond(HttpStatusCode.NotModified)
+                                return@get
+                            }
                             val iconDrawable = pm.getApplicationIcon(pkg)
                             val bitmap = drawableToBitmap(iconDrawable)
                             val stream = ByteArrayOutputStream()
@@ -591,38 +735,20 @@ object WebServer {
 
                     get("/api/apps") {
                         if (!call.checkToken(appContext)) return@get
-                        val pm = appContext.packageManager
+                        // refresh=1：前端点「刷新」时强制重建清单缓存（例如刚装完新应用）
+                        if (call.request.queryParameters["refresh"] == "1") invalidateAppsMetaCache()
                         val filterApps = SettingsManager.getFilterApps(appContext).split(",").filter { it.isNotBlank() }.toSet()
-                        val installedPackages = pm.getInstalledPackages(0)
-
-                        val appsList = installedPackages
-                            .filter { it.packageName != appContext.packageName }
-                            .mapNotNull { pkg ->
-                                try {
-                                    val appInfo = pkg.applicationInfo ?: return@mapNotNull null
-                                    val appName = pm.getApplicationLabel(appInfo).toString()
-                                    val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-                                    val versionName = pkg.versionName ?: ""
-                                    val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                                        pkg.longVersionCode
-                                    } else {
-                                        @Suppress("DEPRECATION")
-                                        pkg.versionCode.toLong()
-                                    }
-
-                                    mapOf(
-                                        "packageName" to pkg.packageName,
-                                        "appName" to appName,
-                                        "versionName" to versionName,
-                                        "versionCode" to versionCode,
-                                        "isSystem" to isSystem,
-                                        "isSelected" to filterApps.contains(pkg.packageName)
-                                    )
-                                } catch (_: Exception) {
-                                    null
-                                }
-                            }.sortedWith(compareBy({ it["isSystem"] as Boolean }, { (it["appName"] as String).lowercase() }))
-
+                        // 清单走内存缓存（TTL 60s，可被 refresh=1 立即失效）；isSelected 按最新配置现算，保存后立刻可见。
+                        val appsList = loadInstalledAppsMeta(appContext).map { meta ->
+                            mapOf(
+                                "packageName" to meta.packageName,
+                                "appName" to meta.appName,
+                                "versionName" to meta.versionName,
+                                "versionCode" to meta.versionCode,
+                                "isSystem" to meta.isSystem,
+                                "isSelected" to filterApps.contains(meta.packageName)
+                            )
+                        }
                         call.respond(HttpStatusCode.OK, appsList)
                     }
 
@@ -636,6 +762,245 @@ object WebServer {
                         SettingsManager.saveFilterApps(appContext, apps)
                         StunLogger.i(TAG, "Web console saved app filter settings: mode=$mode, count=${apps.split(",").filter { it.isNotBlank() }.size}")
                         call.respond(HttpStatusCode.OK, mapOf("status" to "success"))
+                    }
+
+                    // ── 订阅管理 API (Subscription Management, 多订阅) ──
+                    get("/api/subscription") {
+                        if (!call.checkToken(appContext)) return@get
+                        call.respond(
+                            HttpStatusCode.OK,
+                            mapOf(
+                                "subscriptions" to SubscriptionManager.getSubscriptions(appContext).map {
+                                    val meta = SubscriptionManager.getSyncMetaForUrl(appContext, it.url)
+                                    mapOf(
+                                        "url" to it.url,
+                                        "pin" to it.pin,
+                                        // 响应头解析出的元信息必须回吐：缺了它前端只能显示裸链接，
+                                        // 而且 save 回写时会把这些字段抹掉（不可逆丢数据）。
+                                        "name" to it.name,
+                                        "homePage" to it.homePage,
+                                        "updateIntervalHours" to it.updateIntervalHours,
+                                        // per-sub 同步元信息：旧版只有全局 lastSync，多订阅时无法逐行展示。
+                                        "lastSync" to (meta?.time ?: 0L),
+                                        "nodeCount" to (meta?.count ?: -1)
+                                    )
+                                },
+                                "lastSync" to SubscriptionManager.getLastSyncTime(appContext)
+                            )
+                        )
+                    }
+
+                    // 覆盖保存整个订阅列表；body: {subscriptions:[{url,pin,name?,homePage?,updateIntervalHours?}]}
+                    // name/homePage/updateIntervalHours 缺省时沿用同 URL 的已存值，避免旧前端把元信息清空。
+                    post("/api/subscription/save") {
+                        if (!call.checkToken(appContext)) return@post
+                        try {
+                            val body = call.receive<Map<String, Any?>>()
+                            val previous = SubscriptionManager.getSubscriptions(appContext)
+                                .associateBy { it.url }
+                            val subs = (body["subscriptions"] as? List<*>)?.mapNotNull { item ->
+                                (item as? Map<*, *>)?.let { m ->
+                                    val u = (m["url"] as? String)?.trim().orEmpty()
+                                    if (u.isBlank()) {
+                                        null
+                                    } else {
+                                        val prev = previous[u]
+                                        val name = (m["name"] as? String)?.trim().orEmpty()
+                                        val homePage = (m["homePage"] as? String)?.trim().orEmpty()
+                                        val interval = (m["updateIntervalHours"] as? Number)
+                                            ?.toInt()?.coerceAtLeast(0) ?: 0
+                                        SubscriptionManager.SubEntry(
+                                            url = u,
+                                            pin = (m["pin"] as? String)?.trim().orEmpty(),
+                                            name = name.ifBlank { prev?.name.orEmpty() },
+                                            homePage = homePage.ifBlank { prev?.homePage.orEmpty() },
+                                            updateIntervalHours = interval.takeIf { it > 0 }
+                                                ?: prev?.updateIntervalHours ?: 0
+                                        )
+                                    }
+                                }
+                            } ?: emptyList()
+                            if (subs.isEmpty()) {
+                                return@post call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to "empty_url", "message" to "订阅链接不能为空")
+                                )
+                            }
+                            SubscriptionManager.saveSubscriptions(appContext, subs)
+                            StunLogger.i(TAG, "Web console saved ${subs.size} subscription(s)")
+                            call.respond(HttpStatusCode.OK, mapOf("status" to "success"))
+                        } catch (e: Exception) {
+                            StunLogger.e(TAG, "Subscription save error", e)
+                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to "save_failed", "message" to (e.message ?: "保存失败")))
+                        }
+                    }
+
+                    // 同步订阅。body 可带 {subscriptions:[...]}：带上就先按 save 的口径落库再同步
+                    // （修复"控制台改了不保存"——旧实现直接忽略 body，编辑被静默丢弃）。
+                    // 不带则同步已保存列表。返回每条订阅的同步结果。
+                    post("/api/subscription/sync") {
+                        if (!call.checkToken(appContext)) return@post
+                        try {
+                            val body = runCatching { call.receive<Map<String, Any?>>() }.getOrNull()
+                            val incoming = body?.let { b ->
+                                (b["subscriptions"] as? List<*>)?.mapNotNull { item ->
+                                    (item as? Map<*, *>)?.let { m ->
+                                        val u = (m["url"] as? String)?.trim().orEmpty()
+                                        if (u.isBlank()) null else SubscriptionManager.SubEntry(
+                                            url = u,
+                                            pin = (m["pin"] as? String)?.trim().orEmpty(),
+                                            name = (m["name"] as? String)?.trim().orEmpty(),
+                                            homePage = (m["homePage"] as? String)?.trim().orEmpty(),
+                                            updateIntervalHours = (m["updateIntervalHours"] as? Number)?.toInt()?.coerceAtLeast(0) ?: 0
+                                        )
+                                    }
+                                }
+                            }
+                            val toSync = if (!incoming.isNullOrEmpty()) {
+                                SubscriptionManager.saveSubscriptions(appContext, incoming)
+                                incoming
+                            } else {
+                                SubscriptionManager.getSubscriptions(appContext)
+                            }
+                            val items = SubscriptionManager.syncAllSubscriptions(appContext, toSync)
+                            val okCount = items.count { it.success }
+                            val imported = items.sumOf { it.importedCount }
+                            val updated = items.sumOf { it.updatedCount }
+                            StunLogger.i(TAG, "Web console subscription sync: $okCount/${items.size} ok, +$imported ~$updated")
+                            call.respond(
+                                HttpStatusCode.OK,
+                                mapOf(
+                                    "status" to "success",
+                                    "importedCount" to imported,
+                                    "updatedCount" to updated,
+                                    "okCount" to okCount,
+                                    "failedCount" to (items.size - okCount),
+                                    "lastSync" to SubscriptionManager.getLastSyncTime(appContext),
+                                    "results" to items.map {
+                                        mapOf(
+                                            "url" to it.url,
+                                            "ok" to it.success,
+                                            "imported" to it.importedCount,
+                                            "updated" to it.updatedCount,
+                                            "removed" to it.removedCount,
+                                            // 上屏用 code（前端本地化），message 仅日志/兜底。
+                                            "errorCode" to it.errorCode,
+                                            "message" to it.message
+                                        )
+                                    }
+                                )
+                            )
+                        } catch (e: Exception) {
+                            StunLogger.e(TAG, "Subscription sync error", e)
+                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to "sync_failed", "message" to (e.message ?: "同步失败")))
+                        }
+                    }
+
+                    // ── WebDAV 云备份 API (WebDAV Cloud Backup) ──
+                    get("/api/webdav") {
+                        if (!call.checkToken(appContext)) return@get
+                        call.respond(
+                            HttpStatusCode.OK,
+                            mapOf(
+                                "url" to SettingsManager.getWebDavUrl(appContext),
+                                "user" to SettingsManager.getWebDavUser(appContext),
+                                "hasPass" to SettingsManager.getWebDavPass(appContext).isNotBlank(),
+                                "hasPin" to SettingsManager.getWebDavPin(appContext).isNotBlank(),
+                                "auto" to SettingsManager.isWebDavAutoBackupEnabled(appContext),
+                                "intervalHours" to SettingsManager.getWebDavBackupIntervalHours(appContext),
+                                "lastBackup" to SettingsManager.getWebDavLastBackupTime(appContext)
+                            )
+                        )
+                    }
+
+                    // 保存配置：pass/pin 留空 = 保持现有值不变
+                    post("/api/webdav/config") {
+                        if (!call.checkToken(appContext)) return@post
+                        try {
+                            val body = call.receive<Map<String, Any?>>()
+                            val url = (body["url"] as? String)?.trim() ?: SettingsManager.getWebDavUrl(appContext)
+                            val user = (body["user"] as? String)?.trim() ?: SettingsManager.getWebDavUser(appContext)
+                            val pass = (body["pass"] as? String) ?: SettingsManager.getWebDavPass(appContext)
+                            val pin = (body["pin"] as? String)?.trim() ?: SettingsManager.getWebDavPin(appContext)
+                            SettingsManager.saveWebDavConfig(appContext, url, user, pass, pin)
+                            (body["auto"] as? Boolean)?.let { SettingsManager.setWebDavAutoBackup(appContext, it) }
+                            (body["intervalHours"] as? Number)?.toInt()?.let {
+                                SettingsManager.saveWebDavBackupIntervalHours(appContext, it.toLong())
+                            }
+                            // 间隔/开关可能变化，重排 WorkManager 周期任务（未开启则取消）
+                            app.fjj.stun.worker.WebDavBackupWorker.schedule(appContext)
+                            call.respond(HttpStatusCode.OK, mapOf("status" to "success"))
+                        } catch (e: Exception) {
+                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "save failed")))
+                        }
+                    }
+
+                    // 服务器上的备份目录列表（由新到旧，UTC 时间戳名）
+                    get("/api/webdav/backups") {
+                        if (!call.checkToken(appContext)) return@get
+                        try {
+                            val backups = WebDavBackupManager.listBackups(readWebDavConfig(appContext))
+                            call.respond(HttpStatusCode.OK, mapOf("backups" to backups))
+                        } catch (e: Exception) {
+                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "list failed")))
+                        }
+                    }
+
+                    // 立即备份：使用已保存配置（webui 先调 config 端点保存再触发）
+                    post("/api/webdav/backup") {
+                        if (!call.checkToken(appContext)) return@post
+                        try {
+                            val result = WebDavBackupManager.backup(appContext, readWebDavConfig(appContext))
+                            SettingsManager.saveWebDavLastBackupTime(appContext, System.currentTimeMillis())
+                            StunLogger.i(
+                                TAG,
+                                "WebUI WebDAV backup OK: ${result.profiles} node(s), sections=${result.sections}"
+                            )
+                            call.respond(
+                                HttpStatusCode.OK,
+                                mapOf(
+                                    "status" to "success",
+                                    "count" to result.profiles,
+                                    "sections" to result.sections,
+                                    // 已本地化的分区名，WebUI 直接拼进提示语（前端不重复维护一份翻译）
+                                    "sectionsText" to WebDavBackupManager.sectionSummary(appContext, result.sections)
+                                )
+                            )
+                        } catch (e: Exception) {
+                            StunLogger.w(TAG, "WebUI WebDAV backup failed: ${e.message}")
+                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "backup failed")))
+                        }
+                    }
+
+                    // 从云端恢复（body: dir = 备份目录名；节点按 id 合并 + 设置写回）
+                    post("/api/webdav/restore") {
+                        if (!call.checkToken(appContext)) return@post
+                        try {
+                            val body = call.receive<Map<String, Any?>>()
+                            val dir = (body["dir"] as? String)?.trim().orEmpty()
+                            if (dir.isEmpty()) {
+                                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "dir required"))
+                                return@post
+                            }
+                            val result = WebDavBackupManager.restore(appContext, readWebDavConfig(appContext), dir)
+                            StunLogger.i(TAG, "WebUI WebDAV restore OK: ${result.profiles} node(s), sections=${result.sections}")
+                            if (result.settings) {
+                                // 快照可能带回新的 auto/interval 配置，重排周期备份
+                                app.fjj.stun.worker.WebDavBackupWorker.schedule(appContext)
+                            }
+                            call.respond(
+                                HttpStatusCode.OK,
+                                mapOf(
+                                    "status" to "success",
+                                    "count" to result.profiles,
+                                    "settings" to result.settings,
+                                    "sections" to result.sections,
+                                    "sectionsText" to WebDavBackupManager.sectionSummary(appContext, result.sections)
+                                )
+                            )
+                        } catch (e: Exception) {
+                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "restore failed")))
+                        }
                     }
 
                     // ── 综合系统设置 API (Core Settings) ──
@@ -666,7 +1031,12 @@ object WebServer {
                             "randomToken" to (if (token.isNotBlank()) token else SettingsManager.getWebPermanentToken(appContext)),
                             "customToken" to custom,
                             "permanentToken" to permanent,
-                            "effectiveUrl" to fullUrl
+                            "effectiveUrl" to fullUrl,
+                            "mcpServerEnabled" to SettingsManager.isMcpServerEnabled(appContext),
+                            "mcpServerPort" to SettingsManager.getMcpServerPort(appContext),
+                            "mcpAuthMode" to SettingsManager.getMcpAuthMode(appContext),
+                            "mcpAuthSecret" to SettingsManager.getMcpApiKey(appContext),
+                            "mcpIsRunning" to StunMcpServer.isRunning()
                         )
                         call.respond(HttpStatusCode.OK, settingsMap)
                     }
@@ -689,6 +1059,35 @@ object WebServer {
                             (body["geoipDirect"] as? String)?.let { SettingsManager.saveGeoipDirect(appContext, it) }
                             (body["showNotificationSpeed"] as? Boolean)?.let { SettingsManager.saveShowNotificationSpeed(appContext, it) }
 
+                            var restartMcp = false
+                            val mcpEnabled = body["mcpServerEnabled"] as? Boolean
+                            if (mcpEnabled != null && mcpEnabled != SettingsManager.isMcpServerEnabled(appContext)) {
+                                SettingsManager.setMcpServerEnabled(appContext, mcpEnabled)
+                                restartMcp = true
+                            }
+                            val mcpPort = (body["mcpServerPort"] as? Number)?.toInt()
+                            if (mcpPort != null && mcpPort != SettingsManager.getMcpServerPort(appContext)) {
+                                SettingsManager.setMcpServerPort(appContext, mcpPort)
+                                restartMcp = true
+                            }
+                            val mcpAuthMode = (body["mcpAuthMode"] as? Number)?.toInt()
+                            if (mcpAuthMode != null && mcpAuthMode != SettingsManager.getMcpAuthMode(appContext)) {
+                                SettingsManager.setMcpAuthMode(appContext, mcpAuthMode)
+                                restartMcp = true
+                            }
+                            val mcpAuthSecret = body["mcpAuthSecret"] as? String
+                            if (mcpAuthSecret != null && mcpAuthSecret != SettingsManager.getMcpApiKey(appContext)) {
+                                SettingsManager.setMcpApiKey(appContext, mcpAuthSecret)
+                                restartMcp = true
+                            }
+                            if (restartMcp) {
+                                if (SettingsManager.isMcpServerEnabled(appContext)) {
+                                    StunMcpServer.restart(appContext, SettingsManager.getMcpServerPort(appContext))
+                                } else {
+                                    StunMcpServer.stop()
+                                }
+                            }
+
                             val authMode = (body["authMode"] as? Number)?.toInt()
                             if (authMode != null) {
                                 SettingsManager.saveWebAuthMode(appContext, authMode)
@@ -708,7 +1107,8 @@ object WebServer {
                                 "randomToken" to (if (token.isNotBlank()) token else SettingsManager.getWebPermanentToken(appContext)),
                                 "customToken" to SettingsManager.getWebCustomToken(appContext),
                                 "permanentToken" to SettingsManager.getWebPermanentToken(appContext),
-                                "effectiveUrl" to newUrl
+                                "effectiveUrl" to newUrl,
+                                "mcpIsRunning" to StunMcpServer.isRunning()
                             ))
                         } catch (e: Exception) {
                             call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Save failed")))

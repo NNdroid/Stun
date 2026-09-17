@@ -34,6 +34,7 @@
 
     <string name="profile_name">Knotenname</string>
     <string name="ssh_address">SSH-Adresse (IP:Port)</string>
+    <string name="profile_note">Notiz (optional)</string>
     <string name="username">Benutzername</string>
     <string name="password">Passwort</string>
     <string name="private_key">Privater Schlüssel</string>
@@ -45,6 +46,7 @@
     <string name="http_payload">HTTP-Payload</string>
     <string name="proxy_address">Proxy-Adresse (IP:Port)</string>
     <string name="proxy_addr_udp_custom_hint">UDP Custom: Sie können einen Portbereich eingeben, z.B. 1.1.1.1:1024-23000,25000-30000. Jedes Paket wird an einen anderen Zielport gesendet, um UDP-Ratenbegrenzungen pro Port zu umgehen. Der Server muss den Bereich an seinen Listen-Port per DNAT weiterleiten.</string>
+        <string name="proxy_addr_icmp_hint">ICMP-Peer-IP (ohne Port)</string>
     <string name="custom_host">Benutzerdefinierter Host</string>
     <string name="server_name">Servername (SNI)</string>
     <string name="custom_path">Pfad</string>
@@ -75,6 +77,55 @@
     <string name="direct_routing">Routing-Regeln</string>
     <string name="geosite_direct">GeoSite Direkt (z.B. cn,apple)</string>
     <string name="geoip_direct">GeoIP Direkt (z.B. cn,private)</string>
+    <string name="geo_tag_picker_title">Geo-Tags auswählen</string>
+    <string name="geo_tag_search_hint">Tags suchen…</string>
+    <string name="geo_tag_selected_count">%1$d ausgewählt</string>
+    <string name="geo_tag_loading">Tags aus Regeldateien werden geladen…</string>
+    <string name="geo_tag_clear">Leeren</string>
+    <string name="geo_tag_select_all">Alle auswählen</string>
+    <string name="geo_tag_invert">Umkehren</string>
+    <string name="geo_tag_filter_selected">Nur ausgewählte</string>
+    <string name="geo_tag_load_failed">Tags konnten nicht geladen werden: %1$s</string>
+    <string name="geo_tag_empty">Keine Tags gefunden. Bitte zuerst GeoData aktualisieren.</string>
+    <string name="icmp_custom_psk">PSK (Pre-Shared Key)</string>
+    <string name="icmp_custom_magic">Magic (8 Hex-Zeichen, leer = Standard)</string>
+    <string name="icmp_custom_family">IP-Familie</string>
+    <string name="icmp_custom_mtu_mode">MTU-Modus</string>
+    <string name="icmp_custom_max_payload">Max. Payload (0 = Standard)</string>
+    <string name="icmp_custom_pace_ms">Sendepause ms (0 = Standard)</string>
+    <string name="icmp_custom_id_range">Echo-ID-Pool (z. B. 1000-1999)</string>
+    <string name="tunnel_tls">TLS-Verschlüsselung</string>
+    <string name="webdav_title">WebDAV-Cloud-Backup</string>
+    <string name="webdav_url_hint">WebDAV-URL</string>
+    <string name="webdav_desc">Knoten, globale Einstellungen, Abos und deren Verkehrsdaten werden per Backup-PIN verschlüsselt im Ordner Stun abgelegt; die letzten 5 Sicherungen bleiben erhalten.</string>
+    <string name="webdav_section_settings">globale Einstellungen</string>
+    <string name="webdav_section_subscription">Abos</string>
+    <string name="webdav_section_subscription_usage">Abo-Verkehrsdaten</string>
+    <!-- 值用双引号包起来：否则 aapt 会把结尾的空格吞掉，拼出来就是 "Abos,globale..." -->
+    <string name="webdav_section_joiner">", "</string>
+    <string name="webdav_url_example">z. B. https://dav.jianguoyun.com/dav/</string>
+    <string name="webdav_user_hint">Konto</string>
+    <string name="webdav_pass_hint">Passwort / App-Passwort</string>
+    <string name="webdav_pin_hint">Backup-PIN</string>
+    <string name="webdav_pin_helper">Eine zufällige PIN wurde automatisch generiert (siehe oben); gern ändern (mind. 4 Zeichen). Sie wird zum Wiederherstellen benötigt</string>
+    <string name="webdav_interval">Backup-Intervall (Stunden)</string>
+    <string name="desc_backup_status">Cloud-Backup-Status</string>
+    <string name="webdav_auto">Tägliche automatische Sicherung</string>
+    <string name="webdav_backup_now">Jetzt sichern</string>
+    <string name="webdav_restore">Wiederherstellen</string>
+    <string name="webdav_last">Letztes Backup: %1$s</string>
+    <string name="webdav_ok">✓ WebDAV-Backup abgeschlossen (%1$d Knoten; %2$s)</string>
+    <string name="webdav_failed">✕ WebDAV-Backup fehlgeschlagen: %1$s</string>
+    <string name="webdav_restore_ok">✓ %1$d Knoten aus WebDAV wiederhergestellt</string>
+    <string name="webdav_restore_ok_full">✓ %1$d Knoten und %2$s aus WebDAV wiederhergestellt</string>
+    <string name="webdav_restore_pick_title">Sicherung zum Wiederherstellen auswählen</string>
+    <string name="webdav_no_backups">Keine Sicherungen auf dem Server gefunden</string>
+    <string name="webdav_err_config">WebDAV ist nicht vollständig konfiguriert – URL, Konto, Passwort und Backup-PIN eintragen</string>
+    <string name="webdav_err_pin">Falscher Backup-PIN – die Sicherung konnte nicht entschlüsselt werden</string>
+    <string name="webdav_err_missing">Diese Sicherung ist auf dem Server nicht mehr vorhanden</string>
+    <string name="webdav_pin_too_short">Der Backup-PIN muss mindestens 4 Zeichen lang sein</string>
+    <string name="webdav_restore_confirm">Die ausgewählte Sicherung überschreibt die aktuellen Einstellungen und führt Knoten per ID zusammen. Auf diesem Gerät gelöschte Knoten und Abos können zurückkehren. Nicht rückgängig machbar. Fortfahren?</string>
+    <string name="geo_tag_no_match">Keine Treffer für den aktuellen Filter</string>
     <string name="save_settings">Einstellungen speichern</string>
 
     <string name="language">Sprache</string>
@@ -87,8 +138,12 @@
     <string name="lang_ja">日本語</string>
 
     <string name="clear_logs">Löschen</string>
+    <string name="clear_logs_confirm">Alle Protokolle löschen? Dies kann nicht rückgängig gemacht werden.</string>
+    <string name="logs_empty">Keine Protokolle verfügbar</string>
     <string name="copy">Kopieren</string>
-    <string name="copy_uri">URI kopieren</string>
+    <string name="copy_uri">Stun-URI kopieren</string>
+    <string name="import_from_clipboard">URI aus Zwischenablage importieren</string>
+    <string name="clipboard_empty">Zwischenablage ist leer</string>
     <string name="copy_success">In die Zwischenablage kopiert</string>
     <string name="close">Schließen</string>
     <string name="app_logs">App-Protokolle</string>
@@ -97,6 +152,8 @@
     <string name="logs_share_subject">Stun Diagnoseprotokolle</string>
 
     <string name="action_tools">Tools</string>
+    <string name="side_sheet_tagline">Schnelles, sicheres SSH-Tunneling</string>
+    <string name="side_sheet_general">Allgemein</string>
     <string name="action_import_export">Sichern &amp; Wiederherstellen</string>
     <string name="action_export">Konfig exportieren</string>
     <string name="action_import">Konfig importieren</string>
@@ -105,6 +162,9 @@
     <string name="push_failed">Senden fehlgeschlagen. Sicherstellen, dass die TV-App offen und im selben Netzwerk ist.</string>
 
     <string name="nav_nodes">Knoten</string>
+    <string name="node_tab_all">Alle (%1$d)</string>
+    <string name="node_tab_favorites">Favoriten (%1$d)</string>
+    <string name="node_tab_recent">Zuletzt (%1$d)</string>
     <string name="main_disconnected">Getrennt</string>
     <string name="main_connected">Verbunden</string>
     <string name="main_connected_with_latency">%1$s (%2$s)</string>
@@ -149,6 +209,7 @@
     <string name="invalid_qr">Ungültiges QR-Code-Format</string>
     <string name="vpn_permission_denied">VPN-Berechtigung verweigert</string>
     <string name="notification_permission_required">Benachrichtigungsberechtigung für Stabilität erforderlich.</string>
+    <string name="notification_permission_denied_continue">Benachrichtigungen sind deaktiviert; die Verbindung wird ohne Benachrichtigungsdetails fortgesetzt.</string>
     <string name="error_root_required">Transparenter Proxy erfordert Root-Zugriff.</string>
     <string name="settings_saved">Einstellungen gespeichert</string>
     <string name="profile_saved">Konfiguration gespeichert</string>
@@ -160,6 +221,35 @@
     <string name="connection_complete">Verbindung erfolgreich</string>
     <string name="error_invalid_private_key">Ungültiges Format für privaten Schlüssel</string>
     <string name="error_invalid_address">Ungültiges Adressformat (Host:Port oder Host:Portbereich)</string>
+
+        <string name="dns_tunnel_psk_hint">DNS-Tunnel-PSK</string>
+
+        <string name="dns_tunnel_psk_helper">Leer = anonym; muss zum Server passen</string>
+
+        <string name="dns_tunnel_marker_hint">Tunnel-Marker</string>
+
+        <string name="dns_tunnel_marker_helper">Benutzerdefiniertes Label; muss zum Server passen</string>
+
+        <string name="icmp_custom_magic_helper">8 Hex-Ziffern (oder 0x-Präfix), z. B. 49434D31; leer = Standard</string>
+
+        <string name="error_invalid_host_only">Host oder IP ohne Port eingeben</string>
+
+        <string name="error_invalid_server_name">Servername darf keine Leerzeichen enthalten</string>
+
+    <string name="error_invalid_ssh_fingerprint">Ungültiger SSH-Fingerabdruck (SHA256:Base64 oder 64 Hex-Zeichen)</string>
+    <string name="error_invalid_fingerprint">Ungültiger SHA-256-Zertifikatsfingerabdruck (64 Hex-Zeichen, Doppelpunkte optional)</string>
+
+        <string name="error_invalid_dns_servers">Mindestens einen DNS-Server angeben (host[:port] oder mit Präfix udp:// tls:// https://)</string>
+
+        <string name="error_invalid_marker">Marker darf keine Leerzeichen enthalten (max. 32 Zeichen)</string>
+
+        <string name="error_icmp_magic">Magic muss 8 Hex-Ziffern sein oder mit 0x beginnen</string>
+
+        <string name="error_invalid_number">0 oder eine Zahl im erlaubten Bereich eingeben</string>
+
+        <string name="warn_psk_short">PSK unter 16 Zeichen ist per Online-Brute-Force angreifbar</string>
+
+        <string name="warn_xhttp_no_fingerprint">Kein Zertifikats-Fingerabdruck gepinnt - MITM-Risiko</string>
     <string name="error_invalid_address_single_port">Ungültiges Adressformat (Host:Port). Portbereich wird für dieses Protokoll nicht unterstützt.</string>
     <string name="error_invalid_port">Ungültige Portnummer (1-65535)</string>
     <string name="geodata_success">Geodaten erfolgreich aktualisiert</string>
@@ -172,7 +262,7 @@
     <string name="loading">Wird geladen...</string>
     <string name="error_license_load">Fehler beim Laden der Lizenz: %1$s</string>
     <string name="error_no_profile_selected">Bitte zuerst einen Knoten wählen</string>
-    <string name="pin_hint">PIN (6 Stellen)</string>
+    <string name="pin_hint">PIN (Buchstaben/Ziffern, min. 4)</string>
     <string name="enter_pin_title">PIN zum Entschlüsseln eingeben</string>
     <string name="pin_new_hint">PIN (Neue PIN für dieses Backup)</string>
     <string name="encrypt_backup_title">Backup verschlüsseln</string>
@@ -213,6 +303,7 @@
     <string name="desc_nav_view">Seitenmenü</string>
     <string name="desc_share_profile">Teilen</string>
     <string name="desc_edit_profile_action">Bearbeiten</string>
+    <string name="desc_profile_actions">Knotenaktionen</string>
     <string name="desc_delete_profile">Löschen</string>
     <string name="desc_save_profile">Konfiguration speichern</string>
     <string name="desc_profile_name_input">Knotenname eingeben</string>
@@ -275,9 +366,10 @@
     <string name="tv_push_rejected">Knoten-Übertragung abgelehnt</string>
     <string name="accept">Akzeptieren</string>
     <string name="reject">Ablehnen</string>
-    <string name="tv_picker_title">TV-Gerät wählen</string>
-    <string name="tv_picker_scanning">Lokales Netzwerk nach Stun TV durchsuchen…</string>
-    <string name="tv_picker_no_devices">Keine TV-Geräte gefunden.\nBitte sicherstellen, dass das TV im selben WLAN ist und Stun TV läuft.</string>
+    <string name="tv_picker_title">Netzwerkgerät wählen</string>
+    <string name="tv_picker_scanning">Lokales Netzwerk nach Stun-Geräten durchsuchen…</string>
+    <string name="tv_picker_no_devices">Keine Geräte gefunden.\nBitte sicherstellen, dass das Gerät im selben WLAN ist und Stun läuft.</string>
+    <string name="device_found_count">%1$d Gerät(e) gefunden</string>
     <string name="tv_push_success">Knoten erfolgreich an %1$s gesendet</string>
     <string name="tv_push_rejected_by_tv">TV-Benutzer hat die Anfrage abgelehnt</string>
     <string name="tv_push_timeout">Zeitüberschreitung (keine Antwort vom TV)</string>
@@ -298,14 +390,43 @@
     <string name="tv_remote_traffic_live">Echtzeit-Datenverkehr</string>
     <string name="tv_remote_public_ip_title">Öffentliche TV-IP</string>
     <string name="tv_remote_loading">Status wird geladen…</string>
+    <string name="remote_device_unavailable">Gerät nicht erreichbar</string>
+    <string name="remote_command_failed">Remote-Befehl fehlgeschlagen. Prüfen Sie die Geräteverbindung und versuchen Sie es erneut.</string>
     <string name="tv_remote_no_profiles">Keine Knoten auf TV verfügbar</string>
     <string name="tv_remote_node_switched">TV-Knoten gewechselt zu: %1$s</string>
     <string name="tv_waiting_confirmation">Warte auf Bestätigung am TV…</string>
+    <string name="mcp_server_title">MCP-Agent-Server</string>
+    <string name="mcp_server_summary">Ermöglicht Codex, Claude Code und anderen MCP-Clients die VPN-Steuerung und Knotenabfrage</string>
+    <string name="mcp_server_port">MCP-Port</string>
+    <string name="mcp_server_copy_config">Codex / Claude Code-Konfiguration kopieren</string>
+    <string name="mcp_server_config_copied">MCP-Konfiguration in die Zwischenablage kopiert</string>
+    <string name="db_web_title">Datenbank-Web-UI</string>
+    <string name="db_web_summary">Durchsuchen und bearbeiten Sie die SQLite-Datenbank dieser App über die LAN-Webkonsole. Anmeldung erforderlich.</string>
+    <string name="db_web_port">Port</string>
+    <string name="db_web_user">Anmelde-Benutzername</string>
+    <string name="db_web_pass">Anmelde-Passwort</string>
+    <string name="db_web_stopped">Gestoppt</string>
+    <string name="db_web_started">Läuft: %1$s</string>
+    <string name="db_web_copy_url">Zugriffs-URL kopieren</string>
+    <string name="db_web_url_copied">Zugriffs-URL kopiert</string>
+    <string name="mcp_server_running_format">Aktiv unter http://%1$s:%2$d/mcp</string>
+    <string name="mcp_server_stopped">Gestoppt</string>
+    <string name="mcp_auth_mode">MCP-Sicherheit &amp; Authentifizierung</string>
+    <string name="mcp_auth_none">Deaktiviert (Offener lokaler Zugriff)</string>
+    <string name="mcp_auth_api_key">API-Schlüssel / Bearer-Token</string>
+    <string name="mcp_auth_basic">HTTP Basic (Benutzer/Passwort)</string>
+    <string name="mcp_auth_oauth">OAuth 2.0 (Token / Code)</string>
+    <string name="mcp_auth_secret_hint">Token / Geheimnis (Optional)</string>
+    <string name="mcp_basic_password_hint">Passwort (Benutzer: admin)</string>
+    <string name="mcp_oauth_secret_hint">Client-Secret (client_id: stun-client)</string>
     <string name="show_notification_speed">Echtzeit-Geschwindigkeit in Benachrichtigung anzeigen</string>
     <string name="dns_tunnel_record_type">DNS-Record-Typ</string>
     <string name="dns_tunnel_domain_hint">Autoritative Tunnel-Domain (z.B. tunnel.example.com)</string>
     <string name="dns_tunnel_servers_hint">DNS-Server (z.B. 8.8.8.8:53, 1.1.1.1:53)</string>
     <string name="noise_public_key">Noise Public Key (Optional)</string>
+    <string name="desc_noise_encrypted">Noise-verschlüsselter Tunnel</string>
+    <string name="desc_key_auth">SSH-Schlüssel-Authentifizierung</string>
+    <string name="last_connected_fmt">Zuletzt: %1$s</string>
     <string name="noise_public_key_hint">Server Noise Curve25519 Public Key (Hex / Base64)</string>
     <string name="refresh">Aktualisieren</string>
     <string name="error_prefix">Fehler: %1$s</string>
@@ -354,6 +475,40 @@
     <string name="udp_custom_psk">UDP Custom PSK (Pre-shared Key)</string>
     <string name="udp_custom_magic">Magic String (Standard: UDPC)</string>
     <string name="udp_custom_psk_hint">Server-Authentifizierungsschlüssel eingeben (leer lassen, falls keiner)</string>
+    <string name="dns_tunnel_edns0">EDNS0 (1232-Byte-Antworten, muss zum Server passen)</string>
+    <string name="udp_custom_sockets">UDP-Sockets (0 = Standard 1)</string>
+    <string name="udp_custom_send_window">Sendefenster (0 = Standard 256)</string>
+    <string name="udp_custom_paths">UDP-Multipath-Concurrency (zufällige Ziel-Ports, 0 = Standard 32)</string>
+    <string name="error_invalid_noise_public_key">64-stelligen Hex- oder 32-Byte-Base64-Public-Key eingeben</string>
+    <string name="error_dns_noise_record_type">Noise-Verschlüsselung kann keine A-/AAAA-Records nutzen; TXT, NULL, CNAME, MX, SRV oder NS wählen</string>
+    <string name="error_udp_custom_magic">Magic muss genau 4 UTF-8-Bytes enthalten, z. B. UDPC</string>
+    <string name="error_invalid_mtu_probe">MTU-Sonde muss auto, on oder off sein</string>
+    <string name="error_invalid_masque_alpn">Masque ALPN muss (leer), auto, h3 oder h2 sein</string>
+    <string name="udp_custom_max_pkt_hint">Max. Nutzlast-Bytes</string>
+    <string name="udp_custom_max_pkt_helper">0 = SDK-Standard 1450</string>
+    <string name="udp_custom_mtu_probe_hint">Pfad-MTU-Sonde</string>
+    <string name="padding_min_bytes_hint">Mindest-Padding-Bytes</string>
+    <string name="padding_min_bytes_helper">0 = myssh-Standard 1420, negativ = aus</string>
+    <string name="masque_alpn_hint">Masque ALPN Auswahl</string>
+    <string name="error_xhttp_chunk_size">0 für Standard eingeben, oder einen Wert von 16 bis 900 KB</string>
+    <string name="error_heartbeat_interval">0 für Standard eingeben, oder einen Wert von 5000 bis 300000 ms</string>
+    <string name="kcp_data_shards">Daten-Shards (0 = Standard 10)</string>
+    <string name="kcp_parity_shards">Paritäts-Shards (0 = Standard 3)</string>
+    <string name="kcp_mode">KCP-Modus (fast = Standard)</string>
+    <string name="share_pin_edit_hint">Eigene PIN (Buchstaben &amp; Zahlen, min. 4 Zeichen)</string>
+    <string name="kcp_sndwnd">Sendefenster (0 = Standard 128)</string>
+    <string name="kcp_rcvwnd">Empfangsfenster (0 = Standard 512)</string>
+    <string name="kcp_mtu">MTU (0 = Standard 1350)</string>
+    <string name="kcp_nocomp">Snappy-Kompression deaktivieren</string>
+    <string name="kcp_smuxver">SMUX-Version (0 = Standard 2)</string>
+    <string name="kcp_keepalive">KeepAlive Sekunden (0 = Standard 10)</string>
+    <string name="xhttp_stream_mode">XHTTP-Stream-Modus</string>
+    <string name="opt_stream_auto">Auto (Streaming mit Polling-Fallback)</string>
+    <string name="opt_stream_stream">Stream (erzwungenes Streaming)</string>
+    <string name="opt_stream_poll">Poll (erzwungenes Polling)</string>
+    <string name="bind_interface">Interface-Bindung (z. B. wlan0, leer = Standard)</string>
+    <string name="xhttp_chunk_size_kb">Chunk-Größe KB (0 = Standard 256, Bereich 16-900)</string>
+    <string name="heartbeat_interval_ms">Heartbeat-Intervall ms (0 = Standard 25000)</string>
     <string name="search">Suchen</string>
     <string name="share">Teilen</string>
     <string name="scan_qr">QR-Code scannen</string>
@@ -399,11 +554,12 @@
     <string name="crash_dialog_title">Diagnosebericht des Kernmoduls</string>
     <string name="crash_dialog_title_prev">Vorheriger Absturzbericht des Kernmoduls</string>
 
-    <!-- Car & Bluetooth Sync -->
+    <!-- &ar & Bluetooth Sync -->
     <string name="car_app_name">Stun Car</string>
     <string name="car_dashboard_title">Fahrzeug-Dashboard</string>
     <string name="car_power_button_connect">VERBINDEN</string>
     <string name="car_power_button_disconnect">TRENNEN</string>
+    <string name="car_vpn_consent_required">VPN-Genehmigung erforderlich — bitte zuerst Stun auf diesem Gerät öffnen und die Verbindungsberechtigung erteilen</string>
     <string name="car_status_protected">Geschützt</string>
     <string name="car_status_unprotected">Ungeschützt</string>
     <string name="car_bt_sync_on">Bluetooth-Sync: EIN</string>
@@ -412,13 +568,14 @@
     <string name="car_bt_select_device">Fahrzeug-Bluetooth-Gerät auswählen</string>
     <string name="car_bt_scanning">Bluetooth-Geräte werden gescannt…</string>
     <string name="car_bt_no_devices">Keine gekoppelten Bluetooth-Geräte gefunden.</string>
+    <string name="bluetooth_permission_denied">Bluetooth-Berechtigung verweigert. Erlauben Sie den Zugriff auf Geräte in der Nähe, um diesen Tab zu verwenden.</string>
     <string name="car_push_success">Knoten erfolgreich über Bluetooth übertragen</string>
     <string name="car_remote_success">Befehl über Bluetooth gesendet</string>
     <string name="device_picker_wifi_tab">WLAN (LAN)</string>
     <string name="device_picker_bt_tab">Bluetooth (Auto)</string>
     <string name="desc_car_power_button">Verbindung umschalten</string>
 
-    <!-- Wear OS & XR Specific -->
+    <!-- &ear&OS & XR Specific -->
     <string name="wear_app_name">Stun Wear</string>
     <string name="wear_tile_title">Stun Schalter</string>
     <string name="wear_tile_connected">VPN Aktiv</string>
@@ -427,4 +584,111 @@
     <string name="xr_spatial_dashboard">Raum-Panel</string>
     <string name="xr_spatial_status_connected">Räumlicher Schutz Aktiv</string>
     <string name="xr_spatial_status_disconnected">Räumlicher Schutz Aus</string>
+
+    <!-- Sh&rtcuts & Gemini App Actions -->
+    <string name="shortcut_start_vpn">Verbinden</string>
+    <string name="shortcut_stop_vpn">Trennen</string>
+    <string name="shortcut_switch_node">Knoten wechseln</string>
+    <string name="shortcut_remote_tv">TV-Steuerung</string>
+
+    <!-- Subscription Management -->
+    <string name="subscription_title">Abonnement</string>
+    <string name="subscription_url_hint">HTTPS-Abonnement-URL eingeben</string>
+    <string name="error_invalid_subscription_url">Geben Sie eine gültige HTTPS-Abonnement-URL ein</string>
+    <string name="subscription_home_page">Startseite</string>
+    <string name="subscription_sync_now">Jetzt synchronisieren</string>
+    <string name="subscription_sync_success">Synchronisierung erfolgreich: %d Knoten aktualisiert</string>
+    <string name="subscription_sync_error">Abonnement-Synchronisierung fehlgeschlagen: %s</string>
+    <string name="subscription_last_sync">Zuletzt synchronisiert: %s</string>
+    <string name="subscription_never_synced">Nie synchronisiert</string>
+    <string name="subscription_pin_hint">PIN (optional, für verschlüsseltes Abonnement)</string>
+    <string name="subscription_pin_required">Dieses Abonnement ist PIN-verschlüsselt. Bitte PIN eingeben.</string>
+    <string name="subscription_pin_invalid">Falscher PIN oder Entschlüsselung fehlgeschlagen</string>
+    <string name="subscription_add">Abonnement hinzufügen</string>
+    <string name="subscription_pin_short">PIN</string>
+    <string name="subscription_sync_partial">%1$d/%2$d Abonnements synchronisiert, %3$d Knoten importiert</string>
+    <string name="paste_from_clipboard">Aus Zwischenablage einfügen</string>
+    <string name="widget_tap_select_node">Zum Auswählen eines Knotens tippen</string>
+    <string name="widget_uplink">Upload</string>
+    <string name="widget_downlink">Download</string>
+    <string name="widget_latency_format" translatable="false">%1$d ms</string>
+    <string name="error_unknown">Unbekannter Fehler</string>
+
+    <!-- App Crash Dialog -->
+    <string name="app_crash_dialog_title">⚠️ App zuvor unerwartet beendet</string>
+    <string name="app_crash_dialog_msg">Die App hat bei der vorherigen Ausführung einen unerwarteten Fehler festgestellt. Sie können dieses Protokoll kopieren oder teilen:</string>
+    <string name="app_crash_dialog_copy">Protokoll kopieren</string>
+    <string name="app_crash_dialog_copied">Absturzprotokoll in Zwischenablage kopiert</string>
+    <string name="app_crash_dialog_share">Teilen</string>
+    <string name="app_crash_dialog_dismiss">Schließen</string>
+
+    <!-- 2026-09-15: Bandbreitentest + Abo-Traffic i18n vervollständigt -->
+    <string name="action_bandwidth_test">Bandbreitentest</string>
+    <string name="bandwidth_download">Download</string>
+    <string name="bandwidth_upload">Upload</string>
+    <string name="bandwidth_test_done">Download %1$s · Upload %2$s</string>
+    <string name="bandwidth_test_downloading">Download wird über den Knoten getestet…</string>
+    <string name="bandwidth_test_hint">Misst den echten Download-/Upload-Durchsatz durch den Knoten-Tunnel. Zuerst VPN verbinden.</string>
+    <string name="bandwidth_test_need_vpn">Bitte zuerst das VPN verbinden, um den Test zu starten.</string>
+    <string name="bandwidth_test_idle">Zum Starten des Tests tippen.</string>
+    <string name="bandwidth_test_running">Teste…</string>
+    <string name="bandwidth_test_start">Test starten</string>
+    <string name="bandwidth_test_uploading">Download abgeschlossen · Upload wird getestet…</string>
+    <string name="subscription_usage_expire">Läuft am %1$s ab (noch %2$d Tage)</string>
+    <string name="subscription_usage_expire_none">Kein Ablaufdatum</string>
+    <string name="subscription_usage_expired">Abgelaufen am %1$s</string>
+    <string name="subscription_usage_expiring_body">Läuft in %1$d Tagen ab (%2$s).</string>
+    <string name="subscription_usage_expiring_title">Abonnement läuft bald ab</string>
+    <string name="subscription_usage_month">Diesen Monat +%1$s</string>
+    <string name="subscription_usage_none">Keine Nutzungsdaten</string>
+    <string name="subscription_usage_over_quota_body">Tarif zu %1$d%% verbraucht (%2$s von %3$s).</string>
+    <string name="subscription_usage_over_quota_title">Traffic fast aufgebraucht</string>
+    <string name="subscription_usage_percent">%1$d%%</string>
+    <string name="subscription_usage_title">Traffic-Verbrauch</string>
+    <string name="subscription_usage_today">Heute +%1$s</string>
+    <string name="subscription_usage_trend">Verbrauchstrend (pro Sync)</string>
+    <string name="subscription_usage_unlimited">Unbegrenzter Tarif</string>
+    <string name="value_dash">—</string>
+    <!-- 2026-09-15: 訂閱行信息 i18n 補全 -->
+    <string name="subscription_nodes_count">%1$d Knoten</string>
+    <string name="subscription_auto_interval">Auto-Update alle %1$d h</string>
+    <string name="subscription_synced_at">Aktualisiert %1$s</string>
+    <string name="subscription_usage_alerts_channel_desc">Kontingent- und Ablaufwarnungen für Abos</string>
+    <string name="subscription_empty_hint">Noch keine Abos. Füge eines hinzu, um Knoten automatisch zu importieren.</string>
+    <string name="subscription_row_sync">Dieses Abo synchronisieren</string>
+    <string name="subscription_row_more">Weitere Aktionen</string>
+    <string name="subscription_action_edit">Bearbeiten</string>
+    <string name="subscription_action_copy_url">URL kopieren</string>
+    <string name="subscription_delete_title">Dieses Abo löschen?</string>
+    <string name="subscription_delete_also_nodes">Die %1$d importierten Knoten ebenfalls löschen</string>
+    <string name="subscription_result_counts">Importiert %1$d · Aktualisiert %2$d · Entfernt %3$d</string>
+    <string name="subscription_auto_sync">Auto-Synchronisierung im Hintergrund</string>
+    <string name="subscription_interval_label">Aktualisierungsintervall</string>
+    <string name="subscription_name_hint">Aboname (optional)</string>
+    <string name="subscription_err_http">Der Server hat einen Fehler zurückgegeben</string>
+    <string name="subscription_err_network">Netzwerkanfrage fehlgeschlagen</string>
+    <string name="subscription_err_no_valid_nodes">Keine gültigen Knoten im Abo</string>
+    <string name="subscription_save">Speichern</string>
+    <!-- 2026-09-17: 订阅面板按设计稿重排（编辑区分区标题 / 用量趋势开关 / 复制用量） -->
+    <string name="subscription_settings">Abo-Einstellungen</string>
+    <string name="subscription_usage_used_of">%1$s von %2$s genutzt</string>
+    <string name="subscription_usage_trend_label">Verbrauchstrend</string>
+    <string name="subscription_usage_copy">Nutzungsdaten kopieren</string>
+    <!-- 2026-09-17: Fragezeichen neben dem Abo-Titel → integrierte HTML-Hilfe (SubscriptionHelpActivity).
+         Der Inhalt liegt vollständig in assets/help/<lang>/subscription_help.html; hier nur Titel und Vorlesetext. -->
+    <string name="subscription_help_title">Abo-Hilfe</string>
+    <string name="subscription_help">Info zu Abonnement-Dateien</string>
+
+    <!-- Main menu sheet: section title + per-tile descriptions -->
+    <string name="side_sheet_quick_add">Schnell hinzufügen</string>
+    <string name="menu_desc_add_manual">Serverdaten eingeben</string>
+    <string name="menu_desc_scan_qr">QR-Code zum Import scannen</string>
+    <string name="menu_desc_import_clipboard">Unterstützt mehrere Linkformate</string>
+    <string name="menu_desc_subscription">Knoten per Abo-Link laden</string>
+    <string name="menu_desc_speed_test">Netzwerklatenz der Knoten prüfen</string>
+    <string name="menu_desc_bandwidth_test">Upload- und Download-Geschwindigkeit testen</string>
+    <string name="menu_desc_tv_remote">LAN-Geräte suchen und auswählen</string>
+    <string name="menu_desc_import">Knotenkonfigurationen aus Datei importieren</string>
+    <string name="menu_desc_export">Aktuelle Knoten exportieren</string>
+    <string name="menu_desc_settings">App-Einstellungen &amp; Optionen</string>
 </resources>

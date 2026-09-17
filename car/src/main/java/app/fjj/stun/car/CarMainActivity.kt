@@ -1,28 +1,26 @@
 package app.fjj.stun.car
 
 import android.Manifest
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import app.fjj.stun.car.databinding.ActivityCarMainBinding
 import app.fjj.stun.core.R as CoreR
+import app.fjj.stun.remote.BluetoothSyncManager
 import app.fjj.stun.repo.ProfileManager
 import app.fjj.stun.repo.SettingsManager
+import app.fjj.stun.repo.StunLogger
 import app.fjj.stun.repo.StunRepository
 import app.fjj.stun.repo.VpnState
-import app.fjj.stun.service.MyTransparentProxyService
-import app.fjj.stun.service.MyVpnService
 import app.fjj.stun.service.VpnConfigBuilder
+import app.fjj.stun.service.VpnControls
 import app.fjj.stun.util.AppUtils
+import app.fjj.stun.util.PingResults
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -35,6 +33,7 @@ class CarMainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityCarMainBinding
     private lateinit var adapter: ProfileAdapterCar
     private var isVpnRunning = false
+    private var isVpnTransitioning = false
 
     private val vpnLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -56,6 +55,20 @@ class CarMainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Android 12+ gates RFCOMM server creation behind the runtime BLUETOOTH_CONNECT grant, so the
+     * Bluetooth sync server can only come up after this returns. See [startBluetoothSyncServer].
+     */
+    private val btConnectPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            BluetoothSyncManager.startServer(this)
+        } else {
+            StunLogger.w("CarMainActivity", "BLUETOOTH_CONNECT denied; phone-to-car Bluetooth sync disabled")
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityCarMainBinding.inflate(layoutInflater)
@@ -65,6 +78,128 @@ class CarMainActivity : AppCompatActivity() {
         setupListeners()
         observeData()
         loadProfiles()
+        setupBluetoothRemoteCallbacks()
+        startBluetoothSyncServer()
+    }
+
+    /**
+     * 手机端「远程控制」蓝牙面板的数据来源与控制入口。
+     *
+     * 与 TV 的 `RemoteSyncManager` 回调同构：手机端解析的是同一份 [app.fjj.stun.remote.TvStatusResponse]，
+     * 控制动作（start/stop/restart/select_profile）走同一套启停语义 —— start 会经由
+     * [startSelectedService] 弹 VPN 授权/通知权限，而不是像旧 BT `toggle_vpn` 那样绕过一切直接拉服务。
+     * 车机没有 HTTP/NSD 服务器，蓝牙是它唯一的远程控制通道，所以这两个回调必须在 MainActivity 注册
+     * （只有它持有节点列表与启停入口）。
+     */
+    private fun setupBluetoothRemoteCallbacks() {
+        BluetoothSyncManager.tvStatusProvider = {
+            try {
+                val selected = ProfileManager.getSelectedProfile(this)
+                val profiles = try {
+                    ProfileManager.getProfiles(this).map {
+                        app.fjj.stun.remote.TvProfileSummary(it.id, it.name, it.tunnelType)
+                    }
+                } catch (_: Exception) {
+                    emptyList()
+                }
+                app.fjj.stun.remote.TvStatusResponse(
+                    vpnState = (StunRepository.vpnState.value ?: VpnState.DISCONNECTED).name,
+                    currentProfileName = selected.name.ifBlank { null },
+                    currentProfileId = SettingsManager.getSelectedProfileId(this),
+                    currentProfileType = if (selected.name.isNotBlank()) selected.tunnelType.uppercase() else null,
+                    currentProfileServer = if (selected.sshAddr.isNotBlank()) selected.sshAddr else null,
+                    profileCount = profiles.size,
+                    deviceName = android.os.Build.MODEL,
+                    publicIp = null,
+                    txRate = StunRepository.txRate.value ?: 0L,
+                    rxRate = StunRepository.rxRate.value ?: 0L,
+                    txTotal = StunRepository.txTotal.value ?: 0L,
+                    rxTotal = StunRepository.rxTotal.value ?: 0L,
+                    profiles = profiles
+                )
+            } catch (e: Exception) {
+                StunLogger.w("CarMainActivity", "Failed to build BT status: ${e.message}")
+                app.fjj.stun.remote.TvStatusResponse(
+                    vpnState = (StunRepository.vpnState.value ?: VpnState.DISCONNECTED).name,
+                    currentProfileName = null,
+                    currentProfileId = SettingsManager.getSelectedProfileId(this),
+                    profileCount = 0,
+                    deviceName = android.os.Build.MODEL
+                )
+            }
+        }
+
+        BluetoothSyncManager.onRemoteControlRequested = { action, profileId ->
+            withContext(Dispatchers.Main) {
+                when (action) {
+                    "start_vpn" -> {
+                        if (profileId != null) {
+                            SettingsManager.setSelectedProfileId(this@CarMainActivity, profileId)
+                            loadProfiles()
+                        }
+                        // 正在连接/重连时防抖（与本地按钮同一套状态判定）
+                        if (!isVpnRunning && !isVpnTransitioning) {
+                            startSelectedService()
+                        }
+                        true
+                    }
+                    "stop_vpn" -> {
+                        VpnControls.stop(this@CarMainActivity)
+                        true
+                    }
+                    "restart_vpn" -> {
+                        VpnControls.stop(this@CarMainActivity)
+                        lifecycleScope.launch(Dispatchers.Main) {
+                            kotlinx.coroutines.delay(600L)
+                            // P3 收尾异步化后 DISCONNECTING 可能拖过 600ms：等过渡态退出（上限 3s）
+                            // 再启动，否则 start 会撞上还在收尾的服务（本地按钮路径有防抖，这里绕过了它）。
+                            var waitedMs = 0L
+                            while (isVpnTransitioning && waitedMs < 3_000L) {
+                                kotlinx.coroutines.delay(100L)
+                                waitedMs += 100L
+                            }
+                            if (profileId != null) {
+                                SettingsManager.setSelectedProfileId(this@CarMainActivity, profileId)
+                                loadProfiles()
+                            }
+                            startSelectedService()
+                        }
+                        true
+                    }
+                    // 与本地点击同一约束：连接中不允许只切节点（切换节点请用「选择并启动」）
+                    "select_profile" -> {
+                        if (profileId == null || isVpnRunning || isVpnTransitioning) {
+                            false
+                        } else {
+                            SettingsManager.setSelectedProfileId(this@CarMainActivity, profileId)
+                            loadProfiles()
+                            true
+                        }
+                    }
+                    else -> false
+                }
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // 回调引用了 Activity（loadProfiles / launcher），销毁时必须摘除，防泄漏。
+        BluetoothSyncManager.onRemoteControlRequested = null
+        BluetoothSyncManager.tvStatusProvider = null
+    }
+
+    /**
+     * Starts the Bluetooth sync server, prompting for BLUETOOTH_CONNECT first when it has not been
+     * granted yet. The framework reads the local adapter address while creating the RFCOMM server
+     * socket, which throws SecurityException on API 31+ without the runtime grant.
+     */
+    private fun startBluetoothSyncServer() {
+        if (BluetoothSyncManager.hasBluetoothConnectPermission(this)) {
+            BluetoothSyncManager.startServer(this)
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            btConnectPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+        }
     }
 
     private fun setupRecyclerView() {
@@ -72,7 +207,7 @@ class CarMainActivity : AppCompatActivity() {
         adapter = ProfileAdapterCar(
             selectedProfileId = selectedId,
             onProfileClick = { profile ->
-                if (!isVpnRunning) {
+                if (!isVpnRunning && !isVpnTransitioning) {
                     SettingsManager.setSelectedProfileId(this, profile.id)
                     loadProfiles()
                     Toast.makeText(this, getString(CoreR.string.main_selected, profile.name), Toast.LENGTH_SHORT).show()
@@ -135,6 +270,8 @@ class CarMainActivity : AppCompatActivity() {
         when (state) {
             VpnState.CONNECTED -> {
                 isVpnRunning = true
+                isVpnTransitioning = false
+                binding.btnCarPower.isEnabled = true
                 binding.ivCarPowerIcon.setImageResource(CoreR.drawable.ic_pause)
                 binding.tvCarPowerLabel.text = getString(CoreR.string.car_power_button_disconnect)
                 binding.carStatusDot.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF4CAF50.toInt())
@@ -143,6 +280,8 @@ class CarMainActivity : AppCompatActivity() {
             }
             VpnState.CONNECTING, VpnState.RECONNECTING -> {
                 isVpnRunning = false
+                isVpnTransitioning = true
+                binding.btnCarPower.isEnabled = false
                 binding.ivCarPowerIcon.setImageResource(CoreR.drawable.ic_sync)
                 binding.tvCarPowerLabel.text = getString(CoreR.string.main_connecting)
                 binding.carStatusDot.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFFFF9800.toInt())
@@ -151,6 +290,8 @@ class CarMainActivity : AppCompatActivity() {
             }
             else -> {
                 isVpnRunning = false
+                isVpnTransitioning = false
+                binding.btnCarPower.isEnabled = true
                 binding.ivCarPowerIcon.setImageResource(CoreR.drawable.ic_play)
                 binding.tvCarPowerLabel.text = getString(CoreR.string.car_power_button_connect)
                 binding.carStatusDot.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFFF44336.toInt())
@@ -160,51 +301,19 @@ class CarMainActivity : AppCompatActivity() {
         }
     }
 
-    private fun handleStartStop() {
-        val currentState = StunRepository.vpnState.value ?: VpnState.DISCONNECTED
-        if (currentState == VpnState.CONNECTED || currentState == VpnState.RECONNECTING) {
-            stopVpnService()
-        } else {
-            checkAndRequestNotificationPermission()
-        }
-    }
+    private fun handleStartStop() =
+        VpnControls.handleStartStop(this) { checkAndRequestNotificationPermission() }
 
     private fun checkAndRequestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                return
-            }
-        }
-        startSelectedService()
-    }
-
-    private fun startSelectedService() {
-        val mode = SettingsManager.getServiceMode(this)
-        if (mode == SettingsManager.SERVICE_MODE_TPROXY) {
-            val intent = Intent(this, MyTransparentProxyService::class.java).apply { action = "START" }
-            ContextCompat.startForegroundService(this, intent)
+        if (VpnControls.needsNotificationPermission(this)) {
+            notificationPermissionLauncher.launch(VpnControls.notificationPermission)
         } else {
-            val intent = VpnService.prepare(this)
-            if (intent != null) {
-                vpnLauncher.launch(intent)
-            } else {
-                val vpnIntent = Intent(this, MyVpnService::class.java).apply { action = "START" }
-                ContextCompat.startForegroundService(this, vpnIntent)
-            }
+            startSelectedService()
         }
     }
 
-    private fun stopVpnService() {
-        val mode = SettingsManager.getServiceMode(this)
-        val intentClass = if (mode == SettingsManager.SERVICE_MODE_TPROXY) {
-            MyTransparentProxyService::class.java
-        } else {
-            MyVpnService::class.java
-        }
-        val intent = Intent(this, intentClass).apply { action = "STOP" }
-        ContextCompat.startForegroundService(this, intent)
-    }
+    private fun startSelectedService() =
+        VpnControls.start(this) { vpnLauncher.launch(it) }
 
     private fun pingAllNodes() {
         lifecycleScope.launch(Dispatchers.IO) {
@@ -222,7 +331,7 @@ class CarMainActivity : AppCompatActivity() {
                     reqArray.put(JSONObject().put("id", p.id).put("config", JSONObject(configJson)))
                 }
                 val jsonResStr = StunRepository.proxy.pingNodes(reqArray.toString(), "http://cp.cloudflare.com/generate_204", 8000L)
-                val results = parsePingResults(jsonResStr)
+                val results = PingResults.parse(this@CarMainActivity, jsonResStr)
 
                 withContext(Dispatchers.Main) {
                     profiles.forEach { p ->
@@ -237,22 +346,5 @@ class CarMainActivity : AppCompatActivity() {
             }
         }
     }
-
-    private fun parsePingResults(jsonStr: String): Map<String, String> {
-        val map = mutableMapOf<String, String>()
-        try {
-            val arr = JSONArray(jsonStr)
-            for (i in 0 until arr.length()) {
-                val obj = arr.getJSONObject(i)
-                val id = obj.optString("id", "")
-                if (id.isEmpty()) continue
-                if (obj.optBoolean("ok", false)) {
-                    map[id] = "${obj.optLong("latencyMs", 0)} ms"
-                } else {
-                    map[id] = getString(CoreR.string.latency_network_error)
-                }
-            }
-        } catch (_: Exception) {}
-        return map
-    }
 }
+

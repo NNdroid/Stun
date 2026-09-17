@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<!--
+  订阅文件格式说明（日文）。
+
+  这份 HTML 随 APK 打包，是 SubscriptionHelpActivity 载入的离线页面。
+  三个硬约束，改的时候别破坏：
+  1. 自包含：只允许内联 CSS，不引任何外部资源、不写 JS（WebView 里 JS 是关掉的）。
+  2. 主题色占位符写成「双花括号包住的名字」，可用名字为 bg / fg / muted / accent /
+     code_bg / note_bg / note_fg / outline，由 Activity 在载入前逐个替换成当前主题色，
+     所以页面能跟着浅色/深色壁纸与动态取色走。新增名字要同步 SubscriptionHelpActivity。
+  3. 多语言是「一份语言一个目录」，不是运行时翻译：assets/help/<lang>/subscription_help.html。
+     各语言之间的小节结构要一致（测试会比对 h2 数量与占位符集合）。
+-->
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>購読の説明</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 16px 16px 48px;
+      background: {{bg}};
+      color: {{fg}};
+      font-family: -apple-system, Roboto, "Segoe UI", system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.65;
+      -webkit-text-size-adjust: 100%;
+      word-wrap: break-word;
+    }
+    .lead { color: {{muted}}; margin: 0 0 4px; }
+    h2 {
+      font-size: 17px;
+      font-weight: 700;
+      color: {{accent}};
+      margin: 30px 0 10px;
+    }
+    h3 { font-size: 15px; font-weight: 600; margin: 18px 0 6px; }
+    p { margin: 0 0 12px; }
+    ul, ol { margin: 0 0 12px; padding-left: 22px; }
+    li { margin: 5px 0; }
+    code {
+      font-family: ui-monospace, "Roboto Mono", Menlo, Consolas, monospace;
+      font-size: 13px;
+      background: {{code_bg}};
+      border-radius: 6px;
+      padding: 1px 5px;
+    }
+    pre {
+      background: {{code_bg}};
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin: 0 0 14px;
+      overflow-x: auto;
+      line-height: 1.5;
+    }
+    pre code { background: none; padding: 0; font-size: 12.5px; }
+    .note {
+      background: {{note_bg}};
+      color: {{note_fg}};
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin: 0 0 14px;
+      font-size: 14px;
+    }
+    dl.meta { margin: 0 0 14px; }
+    dl.meta dt { font-weight: 600; margin-top: 16px; }
+    dl.meta dd { margin: 4px 0 0; color: {{muted}}; }
+    dl.meta dd pre { margin-top: 8px; }
+    dl.meta dd code { color: {{fg}}; }
+    .tag {
+      display: inline-block;
+      margin-left: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: {{muted}};
+      border: 1px solid {{outline}};
+      border-radius: 999px;
+      padding: 0 8px;
+      vertical-align: 1px;
+    }
+    strong { font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<p class="lead">購読とは HTTPS アドレス 1 つだけです。Stun はそこからノード一覧を取得し、端末への取り込み・更新・削除を自動で行います。</p>
+
+<h2>1. アドレスの条件</h2>
+<ul>
+  <li><code>https://</code> のみ受け付けます。平文の <code>http</code>、<code>ftp</code>、<code>sftp</code> は拒否します —— 購読の中身が接続先サーバーを決めるため、平文だと経路上で丸ごと書き換えられてしまいます。</li>
+  <li>同じアドレスは 1 件だけ保持します。再追加すると既存の項目が更新され、重複はできません。</li>
+</ul>
+
+<h2>2. 対応するファイル形式</h2>
+<p>Stun は以下の順に試し、ノードが取れた時点で打ち切ります。複数形式の混在には対応していません。</p>
+
+<h3>2.1 1 行 1 ノードの <code>stun://</code></h3>
+<p>もっとも一般的な形式です。「テキストで共有」したときの文字列をそのまま 1 行ずつ並べたもので、ファイル全体で 1 つの PIN を共有します。</p>
+<pre><code>stun://eyJ2IjoxLCJnIjoi…
+stun://eyJ2IjoxLCJnIjoi…</code></pre>
+<div class="note"><strong>注意：</strong><code>stun://</code> または <code>stun:</code> で始まる行が 1 つでもあると、Stun は<strong>この形式だけ</strong>で解析します。他の行（隣にある平文 JSON 配列も含む）はすべて無視されます。</div>
+
+<h3>2.2 平文の JSON 配列</h3>
+<p>Stun のノードオブジェクトの配列です。各要素の <code>sshAddr</code> または <code>proxyAddr</code> が空でない必要があり、どちらも空の要素は飛ばされます。</p>
+<pre><code>[
+  { "id": "node-1", "name": "東京", "sshAddr": "…", "proxyAddr": "…" },
+  { "id": "node-2", "name": "大阪", "sshAddr": "…", "proxyAddr": "…" }
+]</code></pre>
+
+<h3>2.3 ファイル全体の PIN 暗号化</h3>
+<p>本文が 1 つの暗号化エンベロープ（<code>{"v":1,…}</code>、Stun が生成）になっている形式です。購読の行に PIN を入力しないと取り込みは中断し、その旨が表示されます。</p>
+
+<h3>2.4 JSON 配列の Base64</h3>
+<p>2.2 の内容を丸ごと Base64 にしたもの。途中の空白や改行は無視されます。</p>
+
+<h2>3. 省略可能なメタ情報</h2>
+<p>実際のレスポンスヘッダが優先です。ヘッダに無い項目はファイル内に書いて補えます。どちらにも無い項目は前回保存した値がそのまま残るので、あるときヘッダが欠けても購読名やホームページボタンが消えることはありません。</p>
+
+<dl class="meta">
+  <dt><code>content-disposition</code><span class="tag">名前</span></dt>
+  <dd>購読一覧に表示される名前。日本語などの非 ASCII 名は RFC 5987 形式で書けます。末尾の拡張子は取り除かれ、「空港.yaml」は「空港」と表示されます。
+    <pre><code># content-disposition: filename*=UTF-8''空港
+# content-disposition: filename="空港.yaml"</code></pre>
+  </dd>
+
+  <dt><code>profile-web-page-url</code><span class="tag">ホームページ</span></dt>
+  <dd>購読の行に「ホームページ」ボタンを追加します。<code>http</code>/<code>https</code> のみ採用します。
+    <pre><code># profile-web-page-url: https://example.com</code></pre>
+  </dd>
+
+  <dt><code>profile-update-interval</code><span class="tag">間隔</span></dt>
+  <dd>この購読をバックグラウンドで自動更新する間隔（整数時間）。未指定なら 24 時間として扱います。
+    <pre><code># profile-update-interval: 12</code></pre>
+  </dd>
+
+  <dt><code>subscription-userinfo</code><span class="tag">通信量</span></dt>
+  <dd>通信量カードに使います：使用量 / 総量、上り、下り、有効期限。値の単位はすべてバイトで、<code>expire</code> は Unix 秒のタイムスタンプです。一部だけでも構いません —— <code>total</code> が無ければ「無制限」として表示します。
+    <pre><code># subscription-userinfo: upload=123; download=456; total=1000; expire=1790000000</code></pre>
+  </dd>
+</dl>
+
+<h3>ファイル内での宣言の書き方</h3>
+<ul>
+  <li>行の最初の非空白文字が <code>#</code> で、その後に <code>ヘッダ名: 値</code> と続けます。<code>#</code> とヘッダ名の間の空白は任意、ヘッダ名は大文字小文字を区別しません。</li>
+  <li>同じヘッダ名が複数ある場合は<strong>最初の 1 つが優先</strong>されます。値が空なら未宣言と同じ扱いです。</li>
+  <li>それ以外の <code>#</code> 行はコメントとして捨てられます —— <code># 空港</code> のように自由に書けます。</li>
+</ul>
+
+<h2>4. 同期でノード一覧がどう変わるか</h2>
+<ul>
+  <li><strong><code>id</code> でマージ。</strong> <code>id</code> が既にあればその場で更新し、新しい <code>id</code> は追加します。</li>
+  <li><strong>消えたノードの削除。</strong> この購読に属していて、今回のレスポンスに無いノードは掲載終了とみなして削除します。</li>
+  <li><strong>2 つの例外。</strong> お気に入りのノードと、現在選択中のノードは同期で削除されることはありません。</li>
+  <li><strong>空にはならない。</strong> 削除はノードを 1 つ以上正常に解析できた後だけ実行されます。通信が不安定だったり空のレスポンスだった場合は、購読を空にするのではなく同期自体が失敗します。</li>
+  <li><strong>購読をまたぐ重複排除。</strong> 同じノード <code>id</code> が複数の購読にある場合、取り込みは 1 回だけです。</li>
+</ul>
+
+<h2>5. PIN</h2>
+<ul>
+  <li>暗号化された購読は、正しい PIN を入力しないと取り込めません。</li>
+  <li>未入力と間違いは別々に通知され、黙って失敗することはありません。</li>
+  <li>PIN は購読ごとに保存されます。PIN を変更したら、その購読を再同期してください。</li>
+</ul>
+
+<h2>6. バックグラウンド自動更新</h2>
+<ul>
+  <li>パネル上の「バックグラウンド自動同期」が主スイッチです。</li>
+  <li>各購読は自分の <code>profile-update-interval</code> が経過したときだけ更新されます（未指定なら 24 時間）。</li>
+  <li>Stun は 15 分ごとに確認し、そのうちネットワークがあるときだけ実行します —— 15 分ごとにサーバーへ要求しているわけではありません。</li>
+</ul>
+
+<h2>7. エラーメッセージの意味</h2>
+<ul>
+  <li><strong>有効な HTTPS 購読URLを入力してください</strong> —— <code>https://</code> ではない、またはホスト名がありません。</li>
+  <li><strong>サーバーがエラーを返しました</strong> —— HTTP ステータスが 200〜299 の範囲外です。</li>
+  <li><strong>ネットワーク要求に失敗しました</strong> —— 接続不可、タイムアウト、または TLS 証明書の問題です。</li>
+  <li><strong>登録に有効なノードがありません</strong> —— 本文は取得できましたが、どの形式でもノードを解析できませんでした。</li>
+  <li><strong>この購読はPINで暗号化されています。PINを入力してください</strong> / <strong>PINが違うか、復号に失敗しました</strong> —— 第 5 章を参照。</li>
+</ul>
+
+</body>
+</html>

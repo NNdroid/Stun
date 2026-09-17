@@ -1,7 +1,9 @@
 package app.fjj.stun.tv
 
+import android.Manifest
 import android.content.Intent
 import android.net.VpnService
+import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
@@ -16,11 +18,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import app.fjj.stun.remote.BluetoothSyncManager
 import app.fjj.stun.remote.RemoteSyncManager
 import app.fjj.stun.remote.WebServer
 import app.fjj.stun.repo.*
 import app.fjj.stun.service.MyVpnService
 import app.fjj.stun.service.VpnConfigBuilder
+import app.fjj.stun.util.ExitIpProbe
+import app.fjj.stun.util.PingResults
 import com.google.android.material.button.MaterialButton
 import app.fjj.stun.core.R as CoreR
 import androidx.activity.OnBackPressedCallback
@@ -42,6 +47,21 @@ class MainActivity : FragmentActivity() {
             startVpn()
         } else {
             Toast.makeText(this, getString(CoreR.string.tv_vpn_permission_denied), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Android 12+ gates RFCOMM server creation behind the runtime BLUETOOTH_CONNECT grant, so the
+     * Bluetooth sync server can only come up after this returns. The Wi-Fi (HTTP) sync server is
+     * unaffected — see [startBluetoothSyncServer].
+     */
+    private val btConnectPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            BluetoothSyncManager.startServer(this)
+        } else {
+            StunLogger.w("MainActivity", "BLUETOOTH_CONNECT denied; phone-to-TV Bluetooth sync disabled")
         }
     }
 
@@ -78,6 +98,9 @@ class MainActivity : FragmentActivity() {
         
         // Auto-start sync server
         toggleSyncServer(true)
+
+        // Show crash report dialog if previous run crashed
+        app.fjj.stun.util.CrashHandler.showCrashDialogIfAny(this)
 
         // Start WebServer and show URL + QR Code on screen
         lifecycleScope.launch(Dispatchers.IO) {
@@ -191,6 +214,14 @@ class MainActivity : FragmentActivity() {
                         stopVpn()
                         lifecycleScope.launch(Dispatchers.Main) {
                             kotlinx.coroutines.delay(600L)
+                            // P3 收尾异步化后，stop 后的收尾可能拖过 600ms：等到回到 DISCONNECTED
+                            // （上限 3s）再启动，否则 start 会撞上还没收尾完的旧会话。
+                            var waitedMs = 0L
+                            while (currentVpnState != VpnState.DISCONNECTED) {
+                                if (waitedMs >= 3_000L) break
+                                kotlinx.coroutines.delay(100L)
+                                waitedMs += 100L
+                            }
                             if (profileId != null) {
                                 SettingsManager.setSelectedProfileId(this@MainActivity, profileId)
                                 adapter.updateSelectedId(profileId)
@@ -209,6 +240,13 @@ class MainActivity : FragmentActivity() {
                                 stopVpn()
                                 lifecycleScope.launch(Dispatchers.Main) {
                                     kotlinx.coroutines.delay(600L)
+                                    // 同 restart_vpn：等到 DISCONNECTED（上限 3s）再启动。
+                                    var waitedMs = 0L
+                                    while (currentVpnState != VpnState.DISCONNECTED) {
+                                        if (waitedMs >= 3_000L) break
+                                        kotlinx.coroutines.delay(100L)
+                                        waitedMs += 100L
+                                    }
                                     startVpn()
                                 }
                             }
@@ -219,6 +257,12 @@ class MainActivity : FragmentActivity() {
                 }
             }
         }
+
+        // 蓝牙通道与 HTTP 通道共用同一套状态来源与控制逻辑：
+        // 手机端对蓝牙设备的「远程控制」面板解析的就是这份 TvStatusResponse，
+        // 控制动作（start/stop/restart/select_profile）也走同一个回调，TV 侧 UI 联动保持一致。
+        BluetoothSyncManager.tvStatusProvider = RemoteSyncManager.tvStatusProvider
+        BluetoothSyncManager.onRemoteControlRequested = RemoteSyncManager.onRemoteControlRequested
 
         // Web Console callbacks
         WebServer.onVpnControlRequested = { action, profileId ->
@@ -558,97 +602,22 @@ class MainActivity : FragmentActivity() {
         binding.tvPublicIp.text = "🌐 ..."
 
         publicIpJob = lifecycleScope.launch(Dispatchers.IO) {
-            var publicIp = ""
-            var locationDesc = ""
-            
-            // ... (ip fetching logic)
-            // 1. ip-api.com
-            try {
-                val url = java.net.URL("http://ip-api.com/json")
-                val conn = url.openConnection() as java.net.HttpURLConnection
-                conn.connectTimeout = 4000
-                conn.readTimeout = 4000
-                conn.instanceFollowRedirects = true
-                conn.setRequestProperty("User-Agent", "curl/7.88.1")
-                if (conn.responseCode == 200) {
-                    val jsonText = conn.inputStream.bufferedReader().use { it.readText().trim() }
-                    val obj = JSONObject(jsonText)
-                    publicIp = obj.optString("query", "")
-                    val country = obj.optString("country", "")
-                    val countryCode = obj.optString("countryCode", "")
-                    val city = obj.optString("city", "")
-                    val flag = getCountryEmojiFlag(countryCode)
-                    
-                    val locParts = mutableListOf<String>()
-                    if (flag.isNotEmpty()) locParts.add(flag)
-                    if (city.isNotEmpty()) locParts.add(city)
-                    if (country.isNotEmpty() && country != city) locParts.add(country)
-                    locationDesc = locParts.joinToString(" ")
-                }
-            } catch (_: Exception) {}
-
-            // 2. api.ip.sb
-            if (publicIp.isEmpty()) {
-                try {
-                    val url2 = java.net.URL("https://api.ip.sb/geoip")
-                    val conn2 = url2.openConnection() as java.net.HttpURLConnection
-                    conn2.connectTimeout = 4000
-                    conn2.readTimeout = 4000
-                    conn2.setRequestProperty("User-Agent", "curl/7.88.1")
-                    if (conn2.responseCode == 200) {
-                        val jsonText = conn2.inputStream.bufferedReader().use { it.readText().trim() }
-                        val obj = JSONObject(jsonText)
-                        publicIp = obj.optString("ip", "")
-                        val country = obj.optString("country", "")
-                        val countryCode = obj.optString("country_code", "")
-                        val city = obj.optString("city", "")
-                        val flag = getCountryEmojiFlag(countryCode)
-                        
-                        val locParts = mutableListOf<String>()
-                        if (flag.isNotEmpty()) locParts.add(flag)
-                        if (city.isNotEmpty()) locParts.add(city)
-                        if (country.isNotEmpty() && country != city) locParts.add(country)
-                        locationDesc = locParts.joinToString(" ")
-                    }
-                } catch (_: Exception) {}
-            }
-
-            // 3. api64.ipify.org
-            if (publicIp.isEmpty()) {
-                try {
-                    val url3 = java.net.URL("https://api64.ipify.org")
-                    val conn3 = url3.openConnection() as java.net.HttpURLConnection
-                    conn3.connectTimeout = 4000
-                    conn3.readTimeout = 4000
-                    if (conn3.responseCode == 200) {
-                        publicIp = conn3.inputStream.bufferedReader().use { it.readText().trim() }
-                    }
-                } catch (_: Exception) {}
-            }
-
-            val ipDisplayStr = when {
-                publicIp.isNotEmpty() && locationDesc.isNotEmpty() -> "🌐 $publicIp · $locationDesc"
-                publicIp.isNotEmpty() -> "🌐 $publicIp"
-                else -> ""
-            }
+            // 与手机端共用 :core 的 ExitIpProbe（三路 HTTPS provider，按序降级）
+            val exit = ExitIpProbe().run()
 
             if (!isActive) return@launch
             withContext(Dispatchers.Main) {
-                if (currentVpnState == VpnState.CONNECTED && ipDisplayStr.isNotEmpty()) {
-                    binding.tvPublicIp.visibility = View.VISIBLE
-                    binding.tvPublicIp.text = ipDisplayStr
-                } else if (currentVpnState != VpnState.CONNECTED) {
-                    binding.tvPublicIp.visibility = View.GONE
+                when {
+                    currentVpnState != VpnState.CONNECTED -> binding.tvPublicIp.visibility = View.GONE
+                    // 三家全失败时不要停在 🌐 ... 的假加载态
+                    exit == null -> binding.tvPublicIp.visibility = View.GONE
+                    else -> {
+                        binding.tvPublicIp.visibility = View.VISIBLE
+                        binding.tvPublicIp.text = "🌐 ${exit.displayText}"
+                    }
                 }
             }
         }
-    }
-
-    private fun getCountryEmojiFlag(countryCode: String): String {
-        if (countryCode.length != 2) return ""
-        val firstLetter = Character.codePointAt(countryCode.uppercase(), 0) - 0x41 + 0x1F1E6
-        val secondLetter = Character.codePointAt(countryCode.uppercase(), 1) - 0x41 + 0x1F1E6
-        return String(Character.toChars(firstLetter)) + String(Character.toChars(secondLetter))
     }
 
     // 引擎报错提示：把 engineError 直接显示到左栏，并仅在值变化时 Toast（避免刷屏）
@@ -739,14 +708,31 @@ class MainActivity : FragmentActivity() {
     private fun toggleSyncServer(enable: Boolean) {
         if (enable) {
             RemoteSyncManager.startServer(this)
+            startBluetoothSyncServer()
             binding.tvSyncStatus.text = getString(CoreR.string.tv_sync_server_on, "StunTV")
             binding.btnToggleSync.text = getString(CoreR.string.tv_stop_sync)
             isSyncServerRunning = true
         } else {
             RemoteSyncManager.stopServer()
+            BluetoothSyncManager.stopServer()
             binding.tvSyncStatus.text = getString(CoreR.string.tv_sync_server_off)
             binding.btnToggleSync.text = getString(CoreR.string.tv_start_sync)
             isSyncServerRunning = false
+        }
+    }
+
+    /**
+     * Starts the Bluetooth sync server, prompting for BLUETOOTH_CONNECT first when it has not been
+     * granted yet. On API 31+ an RFCOMM server socket cannot be created without that runtime grant:
+     * the framework reads the local adapter address inside
+     * [BluetoothSyncManager.startServer] and throws SecurityException otherwise. The Wi-Fi (HTTP)
+     * sync server started alongside it is unaffected.
+     */
+    private fun startBluetoothSyncServer() {
+        if (BluetoothSyncManager.hasBluetoothConnectPermission(this)) {
+            BluetoothSyncManager.startServer(this)
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            btConnectPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
         }
     }
 
@@ -789,35 +775,11 @@ class MainActivity : FragmentActivity() {
     }
 
     /**
-     * 将 Go PingNodes 返回的结构化 JSON（[]PingResult）解析为 id -> 展示字符串，
-     * 逻辑与手机端 HomeFragment.parsePingResults 一致。
+     * 将 Go PingNodes 返回的结构化 JSON（[]PingResult）解析为 id -> 展示字符串。
+     * 实现已下沉到 :core 的 [PingResults]，与手机端 / car / xr 共用同一份。
      */
-    private fun parsePingResults(jsonStr: String): Map<String, String> {
-        val map = mutableMapOf<String, String>()
-        try {
-            val arr = JSONArray(jsonStr)
-            for (i in 0 until arr.length()) {
-                val obj = arr.getJSONObject(i)
-                val id = obj.optString("id", "")
-                if (id.isEmpty()) continue
-                if (obj.optBoolean("ok", false)) {
-                    map[id] = "${obj.optLong("latencyMs", 0)} ms"
-                } else {
-                    map[id] = when (obj.optString("errorType", "other")) {
-                        "timeout" -> getString(CoreR.string.latency_timeout)
-                        "connrefused" -> getString(CoreR.string.latency_conn_refused)
-                        "tls" -> getString(CoreR.string.latency_ssl_error)
-                        "dns" -> getString(CoreR.string.latency_dns_error)
-                        "http" -> "HTTP ${obj.optString("error", "")}"
-                        else -> getString(CoreR.string.latency_network_error)
-                    }
-                }
-            }
-        } catch (_: Exception) {
-            // 解析失败时返回空 map，调用方按“网络错误”兜底
-        }
-        return map
-    }
+    private fun parsePingResults(jsonStr: String): Map<String, String> =
+        PingResults.parse(this, jsonStr)
 
     override fun onDestroy() {
         super.onDestroy()
@@ -826,6 +788,10 @@ class MainActivity : FragmentActivity() {
         RemoteSyncManager.onRemoteControlRequested = null
         RemoteSyncManager.tvStatusProvider = null
         RemoteSyncManager.stopServer()
+        // BT 通道的回调与 HTTP 同源（见 setupRemoteCallbacks），销毁时一并摘除，
+        // 避免持有已销毁 Activity 的引用导致泄漏/操作已死的 View。
+        BluetoothSyncManager.onRemoteControlRequested = null
+        BluetoothSyncManager.tvStatusProvider = null
         WebServer.onVpnControlRequested = null
         WebServer.onProfileSelected = null
         WebServer.onProfileDeleted = null

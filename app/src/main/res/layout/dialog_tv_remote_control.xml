@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<androidx.core.widget.NestedScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="20dp">
+    android:fillViewport="true"
+    android:overScrollMode="ifContentScrolls">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/space_5">
 
     <!-- Header -->
     <LinearLayout
@@ -19,23 +25,24 @@
             android:layout_width="38dp"
             android:layout_height="38dp"
             android:src="@drawable/ic_tv"
-            android:padding="7dp"
+            android:padding="@dimen/space_2"
             android:background="@drawable/bg_badge_type"
             app:tint="?attr/colorPrimary"
-            android:contentDescription="@string/tv_remote_control" />
+            android:contentDescription="@null"
+            android:importantForAccessibility="no" />
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="12dp"
+            android:layout_marginStart="@dimen/space_3"
             android:orientation="vertical">
 
             <TextView
                 android:id="@+id/tv_dialog_device_name"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="17sp"
+                android:textSize="@dimen/text_subtitle"
                 android:textStyle="bold"
                 android:textColor="?attr/colorOnSurface"
                 tools:text="Box R 4K Plus (3)" />
@@ -44,7 +51,7 @@
                 android:id="@+id/tv_dialog_device_ip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="13sp"
+                android:textSize="@dimen/text_body"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 tools:text="192.168.192.30:37175" />
         </LinearLayout>
@@ -52,8 +59,8 @@
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_dialog_refresh"
             style="@style/Widget.Material3.Button.IconButton"
-            android:layout_width="38dp"
-            android:layout_height="38dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             app:icon="@drawable/ic_sync"
             app:iconTint="?attr/colorPrimary"
             android:contentDescription="@string/refresh" />
@@ -62,13 +69,13 @@
     <com.google.android.material.divider.MaterialDivider
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginVertical="12dp" />
+        android:layout_marginVertical="@dimen/space_3" />
 
     <!-- TV VPN Status & Details Card -->
     <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:cardCornerRadius="14dp"
+        app:cardCornerRadius="@dimen/corner_sm"
         app:cardElevation="0dp"
         app:strokeWidth="1dp"
         app:strokeColor="?attr/colorOutlineVariant"
@@ -78,7 +85,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="14dp">
+            android:padding="@dimen/space_4">
 
             <!-- Status Row with Dot & Badge -->
             <LinearLayout
@@ -92,7 +99,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="@string/desc_connection_status"
-                    android:textSize="13sp"
+                    android:textSize="@dimen/text_body"
                     android:textColor="?attr/colorOnSurfaceVariant" />
 
                 <LinearLayout
@@ -105,7 +112,7 @@
                         android:id="@+id/iv_dialog_status_dot"
                         android:layout_width="8dp"
                         android:layout_height="8dp"
-                        android:layout_marginEnd="6dp"
+                        android:layout_marginEnd="@dimen/space_2"
                         android:src="@drawable/shape_status_dot"
                         app:tint="@color/status_disconnected"
                         android:contentDescription="@null" />
@@ -114,7 +121,7 @@
                         android:id="@+id/tv_dialog_vpn_status"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textSize="14sp"
+                        android:textSize="@dimen/text_body"
                         android:textStyle="bold"
                         android:textColor="@color/status_disconnected"
                         android:text="@string/tv_remote_loading"
@@ -125,7 +132,7 @@
             <com.google.android.material.divider.MaterialDivider
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginVertical="8dp"
+                android:layout_marginVertical="@dimen/space_2"
                 app:dividerColor="?attr/colorOutlineVariant" />
 
             <!-- Profile Name Row -->
@@ -139,18 +146,18 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/profile_name"
-                    android:textSize="13sp"
+                    android:textSize="@dimen/text_body"
                     android:textColor="?attr/colorOnSurfaceVariant" />
 
                 <TextView
                     android:id="@+id/tv_dialog_tunnel_type"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="6dp"
-                    android:paddingHorizontal="6dp"
+                    android:layout_marginStart="@dimen/space_2"
+                    android:paddingHorizontal="@dimen/space_2"
                     android:paddingVertical="1dp"
                     android:background="@drawable/bg_badge_type"
-                    android:textSize="10sp"
+                    android:textSize="@dimen/text_label"
                     android:textStyle="bold"
                     android:textColor="?attr/colorPrimary"
                     android:visibility="gone"
@@ -163,7 +170,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:gravity="end"
-                    android:textSize="14sp"
+                    android:textSize="@dimen/text_body"
                     android:textStyle="bold"
                     android:textColor="?attr/colorOnSurface"
                     android:ellipsize="end"
@@ -179,7 +186,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginTop="6dp"
+                android:layout_marginTop="@dimen/space_2"
                 android:visibility="gone"
                 tools:visibility="visible">
 
@@ -187,7 +194,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/ssh_address"
-                    android:textSize="12sp"
+                    android:textSize="@dimen/text_label"
                     android:textColor="?attr/colorOnSurfaceVariant" />
 
                 <TextView
@@ -196,7 +203,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:gravity="end"
-                    android:textSize="12sp"
+                    android:textSize="@dimen/text_label"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:ellipsize="middle"
                     android:singleLine="true"
@@ -210,7 +217,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginTop="6dp"
+                android:layout_marginTop="@dimen/space_2"
                 android:visibility="gone"
                 tools:visibility="visible">
 
@@ -218,7 +225,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/tv_remote_public_ip_title"
-                    android:textSize="12sp"
+                    android:textSize="@dimen/text_label"
                     android:textColor="?attr/colorOnSurfaceVariant" />
 
                 <TextView
@@ -227,7 +234,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:gravity="end"
-                    android:textSize="12sp"
+                    android:textSize="@dimen/text_label"
                     android:textStyle="bold"
                     android:textColor="?attr/colorPrimary"
                     android:ellipsize="end"
@@ -241,8 +248,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:layout_marginTop="8dp"
-                android:padding="8dp"
+                android:layout_marginTop="@dimen/space_2"
+                android:padding="@dimen/space_2"
                 android:background="@drawable/bg_badge_type"
                 android:visibility="gone"
                 tools:visibility="visible">
@@ -257,14 +264,14 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/tv_remote_traffic_live"
-                        android:textSize="11sp"
+                        android:textSize="@dimen/text_label"
                         android:textColor="?attr/colorOnSurfaceVariant" />
 
                     <TextView
                         android:id="@+id/tv_dialog_traffic_total"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textSize="11sp"
+                        android:textSize="@dimen/text_label"
                         android:textColor="?attr/colorOnSurfaceVariant"
                         tools:text="Σ 166.4 MB" />
                 </LinearLayout>
@@ -273,8 +280,8 @@
                     android:id="@+id/tv_dialog_traffic_rate"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:textSize="13sp"
+                    android:layout_marginTop="@dimen/space_1"
+                    android:textSize="@dimen/text_body"
                     android:textStyle="bold"
                     android:textColor="?attr/colorOnSurface"
                     tools:text="↑ 128.0 KB/s   ↓ 2.4 MB/s" />
@@ -289,42 +296,39 @@
         style="@style/Widget.Material3.Button"
         android:layout_width="match_parent"
         android:layout_height="52dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="@dimen/space_4"
         android:text="@string/tv_remote_loading"
-        android:textSize="15sp"
+        android:textSize="@dimen/text_subtitle"
         android:textStyle="bold"
-        app:cornerRadius="12dp" />
+        app:cornerRadius="@dimen/corner_xs" />
 
     <!-- Secondary Actions Grid -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="8dp">
+        android:orientation="vertical"
+        android:layout_marginTop="@dimen/space_2">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_dialog_reconnect"
             style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="44dp"
-            android:layout_weight="1"
-            android:layout_marginEnd="4dp"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
             android:text="@string/tv_remote_reconnect"
-            android:textSize="13sp"
-            app:cornerRadius="10dp"
+            android:textSize="@dimen/text_body"
+            app:cornerRadius="@dimen/corner_xs"
             app:icon="@drawable/ic_sync"
             app:iconSize="16dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_dialog_switch_profile"
             style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="44dp"
-            android:layout_weight="1"
-            android:layout_marginStart="4dp"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="@dimen/space_2"
             android:text="@string/tv_remote_switch_node"
-            android:textSize="13sp"
-            app:cornerRadius="10dp"
+            android:textSize="@dimen/text_body"
+            app:cornerRadius="@dimen/corner_xs"
             app:icon="@drawable/ic_dashboard"
             app:iconSize="16dp" />
     </LinearLayout>
@@ -333,12 +337,12 @@
         android:id="@+id/btn_dialog_push_current"
         style="@style/Widget.Material3.Button.TonalButton"
         android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:layout_marginTop="6dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="@dimen/space_2"
         android:text="@string/tv_remote_push_and_start"
-        android:textSize="13sp"
+        android:textSize="@dimen/text_body"
         android:visibility="gone"
-        app:cornerRadius="10dp"
+        app:cornerRadius="@dimen/corner_xs"
         app:icon="@drawable/ic_share"
         app:iconSize="16dp"
         tools:visibility="visible" />
@@ -348,7 +352,9 @@
         style="@style/Widget.Material3.Button.TextButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="@dimen/space_1"
         android:text="@string/close" />
 
-</LinearLayout>
+    </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>

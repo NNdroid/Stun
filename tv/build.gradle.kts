@@ -10,8 +10,8 @@ val gitHash = providers.exec {
     isIgnoreExitValue = true
 }.standardOutput.asText.map { it.trim() }.getOrElse("unknown")
 
-val baseVersionName = "1.11"
-val baseVersionCode = 10012
+val baseVersionName = "1.12"
+val baseVersionCode = 10013
 
 android {
     namespace = "app.fjj.stun.tv"
@@ -95,17 +95,11 @@ kotlin {
 dependencies {
     implementation(project(":core"))
     
-    // Include local AARs from :core as they are compileOnly there
-    implementation(fileTree("../core/libs") {
-        include("*.aar", "*.jar")
-        exclude("*.debug.aar", "*.release.aar", "*.debug-sources.jar", "*.release-sources.jar")
-    })
-    debugImplementation(fileTree("../core/libs") {
-        include("*.debug-sources.jar", "*.debug.aar")
-    })
-    releaseImplementation(fileTree("../core/libs") {
-        include("*.release-sources.jar", "*.release.aar")
-    })
+    // myssh: extracted classes.jar for compilation; slim AAR (native .so only)
+    // for runtime. Avoids AGP duplicate-class and local-AAR-in-library errors.
+    implementation(files("../core/libs/myssh-classes.jar"))
+    debugImplementation(files("../core/libs/myssh.debug-slim.aar"))
+    releaseImplementation(files("../core/libs/myssh.release-slim.aar"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<!--
+  订阅文件格式说明（繁体中文）。
+
+  这份 HTML 随 APK 打包，是 SubscriptionHelpActivity 载入的离线页面。
+  三个硬约束，改的时候别破坏：
+  1. 自包含：只允许内联 CSS，不引任何外部资源、不写 JS（WebView 里 JS 是关掉的）。
+  2. 主题色占位符写成「双花括号包住的名字」，可用名字为 bg / fg / muted / accent /
+     code_bg / note_bg / note_fg / outline，由 Activity 在载入前逐个替换成当前主题色，
+     所以页面能跟着浅色/深色壁纸与动态取色走。新增名字要同步 SubscriptionHelpActivity。
+  3. 多语言是「一份语言一个目录」，不是运行时翻译：assets/help/<lang>/subscription_help.html。
+     各语言之间的小节结构要一致（测试会比对 h2 数量与占位符集合）。
+-->
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>訂閱說明</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 16px 16px 48px;
+      background: {{bg}};
+      color: {{fg}};
+      font-family: -apple-system, Roboto, "Segoe UI", system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.65;
+      -webkit-text-size-adjust: 100%;
+      word-wrap: break-word;
+    }
+    .lead { color: {{muted}}; margin: 0 0 4px; }
+    h2 {
+      font-size: 17px;
+      font-weight: 700;
+      color: {{accent}};
+      margin: 30px 0 10px;
+    }
+    h3 { font-size: 15px; font-weight: 600; margin: 18px 0 6px; }
+    p { margin: 0 0 12px; }
+    ul, ol { margin: 0 0 12px; padding-left: 22px; }
+    li { margin: 5px 0; }
+    code {
+      font-family: ui-monospace, "Roboto Mono", Menlo, Consolas, monospace;
+      font-size: 13px;
+      background: {{code_bg}};
+      border-radius: 6px;
+      padding: 1px 5px;
+    }
+    pre {
+      background: {{code_bg}};
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin: 0 0 14px;
+      overflow-x: auto;
+      line-height: 1.5;
+    }
+    pre code { background: none; padding: 0; font-size: 12.5px; }
+    .note {
+      background: {{note_bg}};
+      color: {{note_fg}};
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin: 0 0 14px;
+      font-size: 14px;
+    }
+    dl.meta { margin: 0 0 14px; }
+    dl.meta dt { font-weight: 600; margin-top: 16px; }
+    dl.meta dd { margin: 4px 0 0; color: {{muted}}; }
+    dl.meta dd pre { margin-top: 8px; }
+    dl.meta dd code { color: {{fg}}; }
+    .tag {
+      display: inline-block;
+      margin-left: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: {{muted}};
+      border: 1px solid {{outline}};
+      border-radius: 999px;
+      padding: 0 8px;
+      vertical-align: 1px;
+    }
+    strong { font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<p class="lead">訂閱就是一個 HTTPS 網址。Stun 從它取得節點清單，並自動在本機匯入、更新或移除節點。</p>
+
+<h2>1. 網址要求</h2>
+<ul>
+  <li>只接受 <code>https://</code>。明文 <code>http</code>、<code>ftp</code>、<code>sftp</code> 一律拒絕 —— 訂閱內容決定你連哪台伺服器，明文通道會被中間人整份改寫。</li>
+  <li>同一個網址只保留一筆訂閱。重複加入是更新既有那筆，不會產生重複項目。</li>
+</ul>
+
+<h2>2. 支援的檔案格式</h2>
+<p>Stun 依下列順序嘗試，命中一種就停止。不支援多種格式混寫。</p>
+
+<h3>2.1 每行一個 <code>stun://</code> 節點</h3>
+<p>最常見的一種 —— 就是單一節點「以文字分享」出來的那段內容，一行一個。整份檔案共用一個 PIN。</p>
+<pre><code>stun://eyJ2IjoxLCJnIjoi…
+stun://eyJ2IjoxLCJnIjoi…</code></pre>
+<div class="note"><strong>注意：</strong>只要內容出現以 <code>stun://</code> 或 <code>stun:</code> 開頭的行，Stun 就<strong>只</strong>用這一種格式解析，其餘的行（包含旁邊那份明文 JSON 陣列）全部忽略。</div>
+
+<h3>2.2 明文 JSON 陣列</h3>
+<p>由 Stun 節點物件組成的陣列。每一項的 <code>sshAddr</code> 或 <code>proxyAddr</code> 必須非空，兩者都為空的項目會被略過。</p>
+<pre><code>[
+  { "id": "node-1", "name": "東京", "sshAddr": "…", "proxyAddr": "…" },
+  { "id": "node-2", "name": "大阪", "sshAddr": "…", "proxyAddr": "…" }
+]</code></pre>
+
+<h3>2.3 整份檔案 PIN 加密</h3>
+<p>內容是一整個加密信封（<code>{"v":1,…}</code>，由 Stun 產生）。需要在訂閱列上填 PIN，否則匯入會停下來並明確提示。</p>
+
+<h3>2.4 JSON 陣列的 Base64</h3>
+<p>把 2.2 的內容整份做 Base64。中間的空白與換行會被忽略。</p>
+
+<h2>3. 選用資訊</h2>
+<p>真正的回應標頭優先。回應標頭沒給的，可以寫在檔案裡補；兩邊都沒有的項目會沿用上次已儲存的值 —— 所以某次回應少帶一個標頭，不會把訂閱名稱或首頁按鈕抹掉。</p>
+
+<dl class="meta">
+  <dt><code>content-disposition</code><span class="tag">名稱</span></dt>
+  <dd>訂閱在清單中顯示的名稱。中文等非 ASCII 名稱用 RFC 5987 寫法即可。結尾的副檔名會被去掉，「機場.yaml」就顯示成「機場」。
+    <pre><code># content-disposition: filename*=UTF-8''七星機場
+# content-disposition: filename="七星機場.yaml"</code></pre>
+  </dd>
+
+  <dt><code>profile-web-page-url</code><span class="tag">首頁</span></dt>
+  <dd>在訂閱列上加一個「首頁」按鈕。只認 <code>http</code>/<code>https</code>。
+    <pre><code># profile-web-page-url: https://example.com</code></pre>
+  </dd>
+
+  <dt><code>profile-update-interval</code><span class="tag">間隔</span></dt>
+  <dd>這筆訂閱在背景自動更新的間隔，單位是整數小時。沒有宣告時以 24 小時計。
+    <pre><code># profile-update-interval: 12</code></pre>
+  </dd>
+
+  <dt><code>subscription-userinfo</code><span class="tag">流量</span></dt>
+  <dd>提供給流量卡：已用 / 總量、上行、下行、到期時間。數值單位都是位元組，<code>expire</code> 是 Unix 秒級時間戳。可以只給一部分 —— 缺 <code>total</code> 就顯示為「不限量」。
+    <pre><code># subscription-userinfo: upload=123; download=456; total=1000; expire=1790000000</code></pre>
+  </dd>
+</dl>
+
+<h3>檔案內宣告的寫法</h3>
+<ul>
+  <li>整行第一個非空白字元是 <code>#</code>，後面接 <code>標頭名: 值</code>。<code>#</code> 與標頭名之間可以有空白，標頭名不分大小寫。</li>
+  <li>同一個標頭名出現多次時<strong>以第一筆為準</strong>；值為空視同沒宣告。</li>
+  <li>其他 <code>#</code> 行一律當成註解丟掉 —— 所以寫 <code># 七星機場</code> 是安全且建議的。</li>
+</ul>
+
+<h2>4. 一次同步會怎麼改你的節點清單</h2>
+<ul>
+  <li><strong>依 <code>id</code> 合併。</strong> <code>id</code> 已存在就原地更新，新 <code>id</code> 則新增。</li>
+  <li><strong>清掉已下架節點。</strong> 屬於這筆訂閱、但這次回應裡沒有的節點，視為已下架並刪除。</li>
+  <li><strong>兩處豁免。</strong> 已加入收藏的節點與目前選取的節點，同步永遠不會刪。</li>
+  <li><strong>不會誤清空。</strong> 只有在成功解析出至少一個節點之後才會執行清理。網路不穩或伺服器回傳空內容，這次同步會直接失敗，而不是把整筆訂閱清空。</li>
+  <li><strong>跨訂閱去重。</strong> 同一個節點 <code>id</code> 出現在多筆訂閱裡時，只會匯入一次。</li>
+</ul>
+
+<h2>5. PIN</h2>
+<ul>
+  <li>加密訂閱必須填對 PIN 才能匯入。</li>
+  <li>沒填與填錯會分別提示，不會靜默失敗。</li>
+  <li>PIN 依訂閱各自儲存。改過 PIN 之後需要重新同步這筆訂閱。</li>
+</ul>
+
+<h2>6. 背景自動更新</h2>
+<ul>
+  <li>面板上的「背景自動同步」是總開關。</li>
+  <li>每筆訂閱依自己的 <code>profile-update-interval</code> 到期才更新；沒宣告的以 24 小時計。</li>
+  <li>Stun 每 15 分鐘檢查一次，且只在有網路時檢查 —— 並不是每 15 分鐘就去請求一次伺服器。</li>
+</ul>
+
+<h2>7. 各種錯誤代表什麼</h2>
+<ul>
+  <li><strong>請輸入有效的 HTTPS 訂閱連結</strong> —— 網址不是 <code>https://</code>，或沒有主機名。</li>
+  <li><strong>伺服器回傳錯誤</strong> —— HTTP 狀態碼不在 200–299。</li>
+  <li><strong>網路請求失敗</strong> —— 連不上、逾時或 TLS 憑證問題。</li>
+  <li><strong>訂閱中沒有有效節點</strong> —— 內容取回來了，但沒有任何一種格式能解析出節點。</li>
+  <li><strong>該訂閱為 PIN 加密內容，請輸入 PIN</strong> / <strong>PIN 錯誤或解密失敗</strong> —— 見第 5 節。</li>
+</ul>
+
+</body>
+</html>

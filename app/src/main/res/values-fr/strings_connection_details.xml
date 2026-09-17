@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connection_details_expand">Afficher les détails de connexion</string>
+    <string name="connection_node_details">Détails du nœud</string>
+    <string name="connection_server">Serveur</string>
+    <string name="connection_realtime_speed">Débit en direct · 15 derniers relevés</string>
+    <string name="connection_upload">Envoi</string>
+    <string name="connection_download">Réception</string>
+    <string name="connection_upload_chart">Graphique du débit d\'envoi</string>
+    <string name="connection_download_chart">Graphique du débit de réception</string>
+    <string name="connection_auxiliary_info">Informations complémentaires</string>
+    <string name="connection_total_traffic">Trafic total</string>
+    <string name="connection_exit">Adresse de sortie</string>
+    <string name="connection_exit_pending">Récupération de l\'adresse de sortie…</string>
+    <string name="connection_last_connected">Dernière connexion</string>
+    <string name="connection_magic_format">Magique : %1$s</string>
+    <string name="connection_label_protocol">Protocole</string>
+    <string name="connection_label_magic">Marqueur magique</string>
+    <string name="connection_label_note">Note</string>
+    <string name="connection_label_ssh_banner">Bannière SSH</string>
+    <string name="connection_label_ssh_notice">Message du serveur</string>
+    <string name="connection_banner_link_failed">Impossible d\'ouvrir ce lien</string>
+    <string name="connection_bar_action_stop">Arrêter</string>
+    <string name="connection_disconnect_action">Déconnecter</string>
+    <string name="connection_favorite_add">Ajouter aux favoris</string>
+    <string name="connection_favorite_remove">Retirer des favoris</string>
+    <!-- 2026-09-15: 质量分 i18n 补全 -->
+    <string name="connection_quality_format">Qualité %1$s</string>
+
+    <!-- Globe de topologie -->
+    <string name="connection_topology">Topologie</string>
+    <string name="connection_topology_mode_desc">Basculer le mode ciel étoilé</string>
+    <string name="connection_globe_description">Globe de la topologie des connexions</string>
+    <string name="connection_globe_description_counts">%1$s · %2$s</string>
+    <string name="connection_globe_empty">Aucun nœud ne peut encore être placé sur la carte.</string>
+    <string name="connection_globe_need_library">Téléchargez la bibliothèque géo hors ligne pour placer les nœuds sur le globe.</string>
+    <string name="connection_globe_download">Télécharger</string>
+    <string name="connection_globe_downloading_format">Téléchargement de la bibliothèque géo… %1$d%%</string>
+    <string name="connection_globe_download_failed">Échec du téléchargement. Vérifiez votre réseau et réessayez.</string>
+    <string name="connection_globe_retry">Réessayer</string>
+    <string name="connection_globe_bubble_exit">Position de sortie</string>
+    <string name="connection_globe_bubble_merged_format">%1$d nœuds ici</string>
+    <string name="connection_globe_bubble_idle">Aucune connexion active</string>
+    <string name="connection_active_connections">Connexions actives</string>
+    <plurals name="connection_globe_nodes">
+        <item quantity="one">%d nœud sur le globe</item>
+        <item quantity="other">%d nœuds sur le globe</item>
+    </plurals>
+    <plurals name="connection_globe_connections">
+        <item quantity="one">%d connexion active</item>
+        <item quantity="other">%d connexions actives</item>
+    </plurals>
+    <!-- 2026-09-16 aligné sur la maquette : sous-titres des cartes, libellés courts du globe, réinitialisation -->
+    <string name="connection_node_details_subtitle">Connexion serveur et informations de base</string>
+    <string name="connection_auxiliary_info_subtitle">Autres détails techniques et messages du serveur</string>
+    <string name="connection_last_connected_short">Dernière : %1$s</string>
+    <string name="connection_globe_reset_view">Réinitialiser la vue</string>
+</resources>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 设置页卡片头部的图标徽标底：圆角方形，尺寸由使用处的 layout_width/Height（@dimen/badge_size）决定。
+     配色走主题角色 colorSecondaryContainer，跟随动态取色。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="?attr/colorSecondaryContainer" />
+    <corners android:radius="@dimen/corner_xs" />
+</shape>

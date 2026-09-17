@@ -1,0 +1,458 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 展开详情（5x3，手机横向/平板）：与原列表信息一致，展示完整字段与实时速率图。
+     这里必须用 android:tint：RemoteViews 不走 AppCompat 的 LayoutInflater 工厂，
+     app:tint 在桌面组件里不会生效，故压制 UseAppTint。 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/widget_root"
+    tools:ignore="UseAppTint"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_widget_card"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/widget_iv_logo"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:background="@drawable/bg_widget_logo"
+            android:contentDescription="@string/app_name"
+            android:padding="6dp"
+            android:src="@drawable/ic_fox_logo" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="9dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/widget_tv_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/widget_preview_name"
+                android:textColor="@color/widget_text_primary"
+                android:textSize="@dimen/text_widget_xl"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/widget_tv_status_dot"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="●"
+                    android:textColor="@color/widget_text_secondary"
+                    android:textSize="@dimen/text_widget_xs" />
+
+                <TextView
+                    android:id="@+id/widget_tv_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="@string/status_connected"
+                    android:textColor="@color/widget_text_secondary"
+                    android:textSize="@dimen/text_widget_md" />
+
+                <TextView
+                    android:id="@+id/widget_tv_latency"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="5dp"
+                    android:maxLines="1"
+                    android:text="@string/widget_preview_latency"
+                    android:textColor="@color/widget_down_accent"
+                    android:textSize="@dimen/text_widget_md"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/widget_iv_favorite"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:contentDescription="@string/desc_widget_favorite"
+            android:src="@drawable/ic_widget_star_off" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_tv_tls_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_widget_badge"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:paddingHorizontal="7dp"
+            android:paddingVertical="1dp"
+            android:text="TLS"
+            android:textColor="@color/widget_down_accent"
+            android:textSize="@dimen/text_widget_sm"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_tv_endpoint"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/widget_preview_address"
+            android:textColor="@color/widget_text_secondary"
+            android:textSize="@dimen/text_widget_sm" />
+    </LinearLayout>
+
+    <!-- 出口信息（探测到的公网出口 IP + 位置 + 国旗），仅连接态显示 -->
+    <LinearLayout
+        android:id="@+id/widget_row_exit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/widget_tv_exit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:textColor="@color/widget_text_secondary"
+            android:textSize="@dimen/text_widget_sm" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="6dp"
+        android:layout_weight="1"
+        android:baselineAligned="false"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="2.1"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:baselineAligned="false"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1.4"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView style="@style/StunWidgetDetailLabel" android:text="@string/connection_server" />
+
+                    <TextView
+                        android:id="@+id/widget_tv_addr_detail"
+                        style="@style/StunWidgetDetailValue"
+                        android:text="@string/widget_preview_address" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView style="@style/StunWidgetDetailLabel" android:text="@string/widget_label_sni" />
+
+                    <TextView
+                        android:id="@+id/widget_tv_sni"
+                        style="@style/StunWidgetDetailValue"
+                        android:text="-" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:baselineAligned="false"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1.4"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView style="@style/StunWidgetDetailLabel" android:text="@string/username" />
+
+                    <TextView
+                        android:id="@+id/widget_tv_user"
+                        style="@style/StunWidgetDetailValue"
+                        android:text="tunnel-test" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView style="@style/StunWidgetDetailLabel" android:text="@string/connection_label_magic" />
+
+                    <TextView
+                        android:id="@+id/widget_tv_magic"
+                        style="@style/StunWidgetDetailValue"
+                        android:text="-" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:baselineAligned="false"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1.4"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView style="@style/StunWidgetDetailLabel" android:text="@string/tunnel_type" />
+
+                    <TextView
+                        android:id="@+id/widget_tv_protocol"
+                        style="@style/StunWidgetDetailValue"
+                        android:text="TLS" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView style="@style/StunWidgetDetailLabel" android:text="@string/connection_last_connected" />
+
+                    <TextView
+                        android:id="@+id/widget_tv_last"
+                        style="@style/StunWidgetDetailValue"
+                        android:text="@string/widget_preview_last" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:baselineAligned="false"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1.4"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView style="@style/StunWidgetDetailLabel" android:text="@string/widget_label_host" />
+
+                    <TextView
+                        android:id="@+id/widget_tv_host"
+                        style="@style/StunWidgetDetailValue"
+                        android:text="tunnel.stun.app" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView style="@style/StunWidgetDetailLabel" android:text="@string/widget_label_uptime" />
+
+                    <TextView
+                        android:id="@+id/widget_tv_uptime"
+                        style="@style/StunWidgetDetailValue"
+                        android:text="@string/widget_preview_uptime" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/widget_pill_up"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <ImageView
+                    android:id="@+id/widget_iv_graph_up"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:contentDescription="@null"
+                    android:src="@drawable/widget_graph_preview_up"
+                    android:scaleType="fitXY" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="12dp"
+                        android:layout_height="12dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_arrow_up"
+                        android:tint="@color/widget_up_accent" />
+
+                    <TextView
+                        android:id="@+id/widget_tv_speed_up"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="3dp"
+                        android:maxLines="1"
+                        android:text="0 B/s"
+                        android:textColor="@color/widget_text_primary"
+                        android:textSize="@dimen/text_widget_sm"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/widget_pill_down"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="4dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <ImageView
+                    android:id="@+id/widget_iv_graph_down"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:contentDescription="@null"
+                    android:src="@drawable/widget_graph_preview_down"
+                    android:scaleType="fitXY" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="12dp"
+                        android:layout_height="12dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_arrow_down"
+                        android:tint="@color/widget_down_accent" />
+
+                    <TextView
+                        android:id="@+id/widget_tv_speed_down"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="3dp"
+                        android:maxLines="1"
+                        android:text="0 B/s"
+                        android:textColor="@color/widget_text_primary"
+                        android:textSize="@dimen/text_widget_sm"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/widget_btn_toggle"
+                android:layout_width="match_parent"
+                android:layout_height="30dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_widget_button_connect"
+                android:contentDescription="@string/desc_start_stop_button"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <ProgressBar
+                    android:id="@+id/widget_progress_toggle"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:indeterminate="true"
+                    android:indeterminateTint="@color/widget_up_accent"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/widget_iv_toggle"
+                    android:contentDescription="@null"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_play"
+                    android:tint="#EF4444" />
+
+                <TextView
+                    android:id="@+id/widget_tv_toggle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="3dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="@string/connect"
+                    android:textColor="#EF4444"
+                    android:textSize="@dimen/text_widget_sm"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

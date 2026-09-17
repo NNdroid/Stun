@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0B1220">
+  <title data-i18n="page_title">SQLite 管理台</title>
+  <script>
+    // 在样式表生效前预先应用主题，避免浅色系统/浅色偏好下首屏闪一下深色
+    (function(){
+      try {
+        var m = localStorage.getItem('dbweb_theme') || 'auto';
+        var light = m === 'light' || (m === 'auto' && matchMedia('(prefers-color-scheme: light)').matches);
+        document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <!-- ── 登录 ── -->
+  <div id="login-view" class="login-wrap" hidden>
+    <form id="login-form" class="login-card" autocomplete="off">
+      <div class="login-brand">🗄️ <span data-i18n="app_name">Stun 数据库管理台</span></div>
+      <label class="form-label" data-i18n="label_user">用户名</label>
+      <input id="login-user" class="text-input" type="text" autocomplete="username">
+      <label class="form-label" data-i18n="label_pass">密码</label>
+      <input id="login-pass" class="text-input" type="password" autocomplete="current-password">
+      <div id="login-err" class="login-err" hidden></div>
+      <button type="submit" class="btn btn-primary btn-block" data-i18n="btn_login">登录</button>
+    </form>
+  </div>
+
+  <!-- ── 管理台 ── -->
+  <div id="app-view" hidden>
+    <header class="topbar">
+      <div class="brand">🗄️ <span data-i18n="app_name">Stun 数据库管理台</span></div>
+      <div class="topbar-actions">
+        <span id="who" class="who"></span>
+        <select id="lang-select" class="lang-select">
+          <option value="zh-CN">中文</option>
+          <option value="zh-TW">繁體</option>
+          <option value="en">EN</option>
+          <option value="ja">日本語</option>
+          <option value="de">DE</option>
+          <option value="fr">FR</option>
+        </select>
+        <button id="theme-btn" class="icon-btn" title="Theme">🌗</button>
+        <button id="logout-btn" class="btn btn-sm" data-i18n="btn_logout">退出</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="sidebar-title" data-i18n="tables">表</div>
+        <input id="table-filter" class="text-input sidebar-filter" type="text" placeholder="Filter" data-i18n-ph="filter_tables">
+        <div id="table-list" class="table-list"></div>
+      </aside>
+
+      <main class="content">
+        <nav class="tabs">
+          <button class="tab active" data-tab="browse" data-i18n="tab_browse">浏览</button>
+          <button class="tab" data-tab="sql" data-i18n="tab_sql">SQL 控制台</button>
+          <button class="tab" data-tab="backup" data-i18n="tab_backup">备份</button>
+        </nav>
+
+        <!-- Browse -->
+        <section id="tab-browse" class="tab-panel">
+          <div class="toolbar">
+            <select id="search-col" class="select-input"></select>
+            <input id="search-term" class="text-input" type="text" placeholder="Search" data-i18n-ph="search_ph">
+            <button id="btn-search" class="btn btn-sm" data-i18n="btn_search">搜索</button>
+            <div class="spacer"></div>
+            <button id="btn-add" class="btn btn-sm btn-primary" data-i18n="btn_add_row">＋ 新增行</button>
+            <button id="btn-refresh" class="btn btn-sm" data-i18n="btn_refresh">刷新</button>
+          </div>
+          <div id="grid-wrap" class="grid-wrap"><div class="empty" data-i18n="pick_table">选择左侧表以浏览数据</div></div>
+          <div class="pager">
+            <button id="btn-prev" class="btn btn-sm" data-i18n="btn_prev">上一页</button>
+            <span id="page-info" class="page-info"></span>
+            <button id="btn-next" class="btn btn-sm" data-i18n="btn_next">下一页</button>
+            <select id="page-size" class="select-input small">
+              <option value="25">25</option><option value="50" selected>50</option>
+              <option value="100">100</option><option value="200">200</option>
+            </select>
+          </div>
+        </section>
+
+        <!-- SQL -->
+        <section id="tab-sql" class="tab-panel" hidden>
+          <textarea id="sql-input" class="sql-input" placeholder="SELECT * FROM sqlite_master WHERE type='table';"></textarea>
+          <div class="toolbar">
+            <button id="btn-run" class="btn btn-primary btn-sm" data-i18n="btn_run">执行</button>
+            <span class="danger-note" data-i18n="sql_danger">⚠ 可执行任意 SQL，含 DROP/ALTER，会破坏数据库结构，请谨慎。</span>
+          </div>
+          <div id="sql-result" class="grid-wrap"></div>
+        </section>
+
+        <!-- Backup / export / import -->
+        <section id="tab-backup" class="tab-panel" hidden>
+          <div class="toolbar">
+            <button id="btn-exp-json" class="btn btn-sm" data-i18n="btn_export_json">导出整库 JSON</button>
+            <button id="btn-exp-sql" class="btn btn-sm" data-i18n="btn_export_sql">导出整库 SQL</button>
+            <button id="btn-exp-csv" class="btn btn-sm" data-i18n="btn_export_csv">导出当前表 CSV</button>
+            <div class="spacer"></div>
+            <input id="backup-name" class="text-input" type="text" placeholder="备份名称(可选)" data-i18n-ph="backup_name_ph">
+            <button id="btn-backup-create" class="btn btn-sm btn-primary" data-i18n="btn_backup_create">创建备份</button>
+            <button id="btn-import" class="btn btn-sm" data-i18n="btn_import">导入备份文件</button>
+            <input id="import-file" type="file" accept=".json,application/json" hidden>
+          </div>
+          <div id="backup-note" class="danger-note" data-i18n="backup_note" style="margin-bottom:10px"></div>
+          <div id="backup-list" class="grid-wrap"><div class="empty" data-i18n="no_backups">暂无备份</div></div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- ── 行编辑弹窗 ── -->
+  <div id="row-modal" class="modal-overlay" hidden>
+    <div class="modal">
+      <div class="modal-head"><span id="row-modal-title"></span><button id="row-modal-x" class="icon-btn">✕</button></div>
+      <div id="row-form" class="row-form"></div>
+      <div class="modal-foot">
+        <button id="row-cancel" class="btn btn-sm" data-i18n="btn_cancel">取消</button>
+        <button id="row-save" class="btn btn-sm btn-primary" data-i18n="btn_save">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+  <script src="/app.js"></script>
+</body>
+</html>

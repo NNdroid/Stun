@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12（API 31）起，系统为桌面小组件提供了官方圆角变量：
+         system_app_widget_background_radius（默认 16dp，上限 28dp）。
+         这个值**允许被 ROM 厂商或第三方启动器覆盖** —— 小米（MIUI / HyperOS）正是靠它
+         把小组件裁成自家的大圆角。所以外框圆角改走系统变量，比硬编码一个 dp 值
+         更"与系统桌面风格一致"：一份代码，各 ROM 各得其所。
+
+         注意：MIUI 13+ 会对真实小组件做**统一裁切**，本变量在它上面可能被忽略 ——
+         但为了让非 MIUI 手机也拿到正确圆角，values/dimens.xml 里仍保留回落值。
+         内层控件（徽章 / 按钮）暂不跟随 system_app_widget_inner_radius：
+         它们是 14dp 的胶囊形按钮，套系统的 8dp 内圆角反而会破坏原有观感。 -->
+    <dimen name="widget_card_radius">@android:dimen/system_app_widget_background_radius</dimen>
+</resources>

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<!--
+  订阅文件格式说明（法文）。
+
+  这份 HTML 随 APK 打包，是 SubscriptionHelpActivity 载入的离线页面。
+  三个硬约束，改的时候别破坏：
+  1. 自包含：只允许内联 CSS，不引任何外部资源、不写 JS（WebView 里 JS 是关掉的）。
+  2. 主题色占位符写成「双花括号包住的名字」，可用名字为 bg / fg / muted / accent /
+     code_bg / note_bg / note_fg / outline，由 Activity 在载入前逐个替换成当前主题色，
+     所以页面能跟着浅色/深色壁纸与动态取色走。新增名字要同步 SubscriptionHelpActivity。
+  3. 多语言是「一份语言一个目录」，不是运行时翻译：assets/help/<lang>/subscription_help.html。
+     各语言之间的小节结构要一致（测试会比对 h2 数量与占位符集合）。
+-->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Aide sur les abonnements</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 16px 16px 48px;
+      background: {{bg}};
+      color: {{fg}};
+      font-family: -apple-system, Roboto, "Segoe UI", system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.65;
+      -webkit-text-size-adjust: 100%;
+      word-wrap: break-word;
+    }
+    .lead { color: {{muted}}; margin: 0 0 4px; }
+    h2 {
+      font-size: 17px;
+      font-weight: 700;
+      color: {{accent}};
+      margin: 30px 0 10px;
+    }
+    h3 { font-size: 15px; font-weight: 600; margin: 18px 0 6px; }
+    p { margin: 0 0 12px; }
+    ul, ol { margin: 0 0 12px; padding-left: 22px; }
+    li { margin: 5px 0; }
+    code {
+      font-family: ui-monospace, "Roboto Mono", Menlo, Consolas, monospace;
+      font-size: 13px;
+      background: {{code_bg}};
+      border-radius: 6px;
+      padding: 1px 5px;
+    }
+    pre {
+      background: {{code_bg}};
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin: 0 0 14px;
+      overflow-x: auto;
+      line-height: 1.5;
+    }
+    pre code { background: none; padding: 0; font-size: 12.5px; }
+    .note {
+      background: {{note_bg}};
+      color: {{note_fg}};
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin: 0 0 14px;
+      font-size: 14px;
+    }
+    dl.meta { margin: 0 0 14px; }
+    dl.meta dt { font-weight: 600; margin-top: 16px; }
+    dl.meta dd { margin: 4px 0 0; color: {{muted}}; }
+    dl.meta dd pre { margin-top: 8px; }
+    dl.meta dd code { color: {{fg}}; }
+    .tag {
+      display: inline-block;
+      margin-left: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: {{muted}};
+      border: 1px solid {{outline}};
+      border-radius: 999px;
+      padding: 0 8px;
+      vertical-align: 1px;
+    }
+    strong { font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<p class="lead">Un abonnement n’est rien d’autre qu’une adresse HTTPS. Stun y récupère la liste des nœuds, puis importe, met à jour ou supprime les nœuds de cet appareil automatiquement.</p>
+
+<h2>1. L’adresse</h2>
+<ul>
+  <li>Seul <code>https://</code> est accepté. <code>http</code>, <code>ftp</code> et <code>sftp</code> en clair sont refusés — le contenu de l’abonnement détermine les serveurs auxquels vous vous connectez ; sur un canal non chiffré, n’importe qui pourrait le réécrire intégralement.</li>
+  <li>Une même adresse n’est enregistrée qu’une fois. L’ajouter de nouveau met à jour l’entrée existante au lieu d’en créer une seconde.</li>
+</ul>
+
+<h2>2. Formats de fichier pris en charge</h2>
+<p>Stun essaie les formats suivants dans l’ordre et s’arrête au premier qui fournit des nœuds. Les contenus mixtes ne sont pas pris en charge.</p>
+
+<h3>2.1 Un nœud <code>stun://</code> par ligne</h3>
+<p>Le format le plus courant — exactement le texte produit par « Partager en texte » pour un nœud, une ligne par nœud. Tout le fichier partage un seul PIN.</p>
+<pre><code>stun://eyJ2IjoxLCJnIjoi…
+stun://eyJ2IjoxLCJnIjoi…</code></pre>
+<div class="note"><strong>À noter :</strong> dès que le fichier contient une ligne commençant par <code>stun://</code> ou <code>stun:</code>, Stun utilise <em>uniquement</em> ce format. Toutes les autres lignes sont ignorées — y compris un tableau JSON en clair juste à côté.</div>
+
+<h3>2.2 Un tableau JSON en clair</h3>
+<p>Un tableau d’objets nœud Stun. Chaque entrée doit avoir un <code>sshAddr</code> ou un <code>proxyAddr</code> non vide ; les entrées sans l’un ni l’autre sont ignorées.</p>
+<pre><code>[
+  { "id": "node-1", "name": "Tokyo", "sshAddr": "…", "proxyAddr": "…" },
+  { "id": "node-2", "name": "Osaka", "sshAddr": "…", "proxyAddr": "…" }
+]</code></pre>
+
+<h3>2.3 Tout le fichier, chiffré par PIN</h3>
+<p>Le corps est une unique enveloppe chiffrée (<code>{"v":1,…}</code>, produite par Stun). Sans PIN sur la ligne de l’abonnement, l’import s’arrête et le signale.</p>
+
+<h3>2.4 Le tableau JSON encodé en Base64</h3>
+<p>Exactement le contenu de 2.2, encodé en Base64. Les espaces et retours à la ligne qu’il contient sont ignorés.</p>
+
+<h2>3. Métadonnées facultatives</h2>
+<p>Les vrais en-têtes de réponse ont la priorité. Ce qu’ils omettent peut être déclaré dans le fichier ; ce qui manque encore conserve sa valeur précédente — une réponse sans un en-tête n’efface donc ni le nom de l’abonnement ni le bouton de page d’accueil.</p>
+
+<dl class="meta">
+  <dt><code>content-disposition</code><span class="tag">nom</span></dt>
+  <dd>Le nom affiché dans la liste des abonnements. Les noms non ASCII passent par la forme RFC 5987. Une extension de fichier en fin de nom est retirée : « Aéroport.yaml » s’affiche « Aéroport ».
+    <pre><code># content-disposition: filename*=UTF-8''Aéroport
+# content-disposition: filename="Aéroport.yaml"</code></pre>
+  </dd>
+
+  <dt><code>profile-web-page-url</code><span class="tag">accueil</span></dt>
+  <dd>Ajoute un bouton « Page d’accueil » sur la ligne de l’abonnement. Seuls <code>http</code>/<code>https</code> sont retenus.
+    <pre><code># profile-web-page-url: https://example.com</code></pre>
+  </dd>
+
+  <dt><code>profile-update-interval</code><span class="tag">intervalle</span></dt>
+  <dd>Fréquence de mise à jour de cet abonnement en arrière-plan, en heures entières. Sans déclaration, 24 heures s’appliquent.
+    <pre><code># profile-update-interval: 12</code></pre>
+  </dd>
+
+  <dt><code>subscription-userinfo</code><span class="tag">trafic</span></dt>
+  <dd>Alimente la carte de trafic : utilisé / total, envoi, réception et expiration. Toutes les valeurs sont en octets ; <code>expire</code> est un horodatage Unix en secondes. Les valeurs partielles suffisent — un <code>total</code> absent signifie simplement « illimité ».
+    <pre><code># subscription-userinfo: upload=123; download=456; total=1000; expire=1790000000</code></pre>
+  </dd>
+</dl>
+
+<h3>Syntaxe des déclarations dans le fichier</h3>
+<ul>
+  <li>Une ligne dont le premier caractère non blanc est <code>#</code>, suivi de <code>nom: valeur</code>. Les espaces entre <code>#</code> et le nom sont autorisés, et les noms sont insensibles à la casse.</li>
+  <li>Si un nom apparaît plusieurs fois, le premier l’emporte. Une valeur vide équivaut à « non déclaré ».</li>
+  <li>Toute autre ligne <code>#</code> est traitée comme un commentaire et supprimée — écrire <code># Aéroport</code> est donc sans risque.</li>
+</ul>
+
+<h2>4. Ce qu’une synchronisation change dans vos nœuds</h2>
+<ul>
+  <li><strong>Fusion par <code>id</code>.</strong> Un nœud dont l’<code>id</code> existe déjà est mis à jour sur place ; un nouvel <code>id</code> est ajouté.</li>
+  <li><strong>Suppression.</strong> Les nœuds qui appartiennent à cet abonnement mais sont absents de la dernière réponse sont considérés comme retirés et supprimés.</li>
+  <li><strong>Deux exceptions.</strong> Les nœuds en favori et le nœud actuellement sélectionné ne sont jamais supprimés par une synchronisation.</li>
+  <li><strong>Aucun vidage accidentel.</strong> La suppression n’a lieu qu’après la lecture réussie d’au moins un nœud. Un incident réseau ou une réponse vide fait échouer la synchronisation au lieu de vider l’abonnement.</li>
+  <li><strong>Dédoublonnage entre abonnements.</strong> Un même <code>id</code> de nœud présent dans plusieurs abonnements n’est importé qu’une fois.</li>
+</ul>
+
+<h2>5. PIN</h2>
+<ul>
+  <li>Un abonnement chiffré exige son PIN avant tout import.</li>
+  <li>PIN absent et PIN erroné sont signalés distinctement, jamais en silence.</li>
+  <li>Le PIN est enregistré par abonnement. Après l’avoir changé, resynchronisez l’abonnement.</li>
+</ul>
+
+<h2>6. Mise à jour en arrière-plan</h2>
+<ul>
+  <li>L’interrupteur « Synchronisation auto en arrière-plan » de ce panneau est l’interrupteur principal.</li>
+  <li>Chaque abonnement est mis à jour lorsque son propre <code>profile-update-interval</code> est écoulé (24 heures s’il n’en déclare aucun).</li>
+  <li>Stun vérifie toutes les 15 minutes, et uniquement lorsqu’un réseau est disponible — il n’interroge pas le serveur à cadence fixe de 15 minutes.</li>
+</ul>
+
+<h2>7. Ce que signifient les messages d’erreur</h2>
+<ul>
+  <li><strong>Saisissez une URL d’abonnement HTTPS valide</strong> — l’adresse n’est pas en <code>https://</code> ou n’a pas d’hôte.</li>
+  <li><strong>Le serveur a renvoyé une erreur</strong> — le statut sortait de la plage 200–299.</li>
+  <li><strong>Échec de la requête réseau</strong> — connexion, délai d’attente ou problème TLS.</li>
+  <li><strong>Aucun nœud valide dans l’abonnement</strong> — le contenu est bien arrivé, mais aucun format n’a pu en extraire un nœud.</li>
+  <li><strong>Cet abonnement est chiffré par PIN. Saisissez le PIN.</strong> / <strong>PIN incorrect ou échec du déchiffrement</strong> — voir la section 5.</li>
+</ul>
+
+</body>
+</html>

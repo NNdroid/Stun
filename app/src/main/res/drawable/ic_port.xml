@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 设置页「端口」输入框前置图标：插头（两根插脚朝上、下方出线）。
+     与 ic_mcp / ic_shield 同一工艺（24dp / 1.8 描边 / 圆头圆角）。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorControlNormal">
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M8,11.6 Q8,10 9.6,10 L14.4,10 Q16,10 16,11.6 L16,14.4 Q16,16 14.4,16 L9.6,16 Q8,16 8,14.4 Z" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M10.4,10 L10.4,5.4 M13.6,10 L13.6,5.4 M12,16 L12,20.6" />
+</vector>
