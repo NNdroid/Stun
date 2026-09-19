@@ -91,7 +91,7 @@ jobs:
         run: |
           mkdir -p ../../libs
           VERSION="v1.0.$(date +%Y%m%d)"
-          
+
           echo "📦 Compiling myssh.release.aar..."
           LDFLAGS="-s -w -X 'myssh.Version=$VERSION' -X 'myssh.DebugStr=false'"
           gomobile bind -v -target=android -androidapi 28 -ldflags="$LDFLAGS" -trimpath -o "../../libs/myssh.release.aar" .
@@ -99,6 +99,30 @@ jobs:
           echo "📦 Compiling myssh.debug.aar..."
           LDFLAGS="-X 'myssh.Version=$VERSION' -X 'myssh.DebugStr=true'"
           gomobile bind -v -target=android -androidapi 28 -ldflags="$LDFLAGS" -o "../../libs/myssh.debug.aar" .
+
+      # 各模块的构建脚本只认 core/libs/ 里的两个产物（该目录被 gitignore，本机手工生成、
+      # CI 必须现场复刻，否则 checkReleaseDuplicateClasses 的 transform 阶段报
+      # "File/directory does not exist"）：
+      #   myssh-classes.jar   —— 编译期 classes（release/debug 的 gomobile 绑定类相同，共享一份）
+      #   myssh.*-slim.aar    —— 运行期 AAR：原包去掉 classes.jar（避免与上面的 jar duplicate-class），
+      #                          jni/*.so 等其余条目原样保留
+      - name: Extract myssh classes.jar & build slim AARs
+        working-directory: core/libs
+        run: |
+          set -e
+          for VARIANT in release debug; do
+            AAR="myssh.${VARIANT}.aar"
+            WORK="work_${VARIANT}"
+            unzip -o -q "$AAR" -d "$WORK"
+            if [ "$VARIANT" = "release" ]; then
+              cp "$WORK/classes.jar" myssh-classes.jar
+            fi
+            rm "$WORK/classes.jar"
+            (cd "$WORK" && zip -q -r "../myssh.${VARIANT}-slim.aar" .)
+            rm -rf "$WORK"
+          done
+          echo "📦 Slim artifacts ready:"
+          ls -la myssh-classes.jar myssh.release-slim.aar myssh.debug-slim.aar
 
       - name: Cache Gradle dependencies
         uses: actions/cache@v4
@@ -131,10 +155,10 @@ jobs:
             echo "clean=${{ github.event.inputs.clean_build }}" >> $GITHUB_OUTPUT
             echo "tag=${{ github.event.inputs.custom_tag }}" >> $GITHUB_OUTPUT
           else
-            # 自动触发时（Release 发布）全量构建所有端
+            # 自动触发时（Release 发布）全量构建所有端；AAB 必须构建 —— 它是本 run 的 artifact
             echo "build_module=all" >> $GITHUB_OUTPUT
             echo "build_variant=both" >> $GITHUB_OUTPUT
-            echo "build_aab=false" >> $GITHUB_OUTPUT
+            echo "build_aab=true" >> $GITHUB_OUTPUT
             echo "sign=true" >> $GITHUB_OUTPUT
             echo "clean=false" >> $GITHUB_OUTPUT
             echo "tag=" >> $GITHUB_OUTPUT
@@ -220,7 +244,25 @@ jobs:
           echo "### 📦 Artifacts generated:" >> $GITHUB_STEP_SUMMARY
           find . -name "*.apk" -o -name "*.aab" | grep "/build/outputs/" | sed 's/.*\//- /' >> $GITHUB_STEP_SUMMARY
 
-      - name: Upload Artifacts (Action Run)
+      # tag（release 发布）触发：AAB bundle 挂到本 Action Run 的 artifact；
+      # APK 与 AAR 才是 Release 页面的资产（见下面 Upload Release Assets）。
+      # release 事件固定 build_variant=both + build_aab=true，bundle 必然存在
+      - name: Upload AAB Bundles to Action Run (tag build)
+        if: github.event_name == 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: aab-bundles-${{ github.event.release.tag_name }}
+          path: |
+            app/build/outputs/bundle/**/*.aab
+            tv/build/outputs/bundle/**/*.aab
+            car/build/outputs/bundle/**/*.aab
+            wear/build/outputs/bundle/**/*.aab
+            xr/build/outputs/bundle/**/*.aab
+          if-no-files-found: error
+
+      # 手动触发（workflow_dispatch）：全量产物照旧挂在本 run 上
+      - name: Upload Build Artifacts (manual run)
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: Stun-Build-${{ steps.options.outputs.tag || 'Artifacts' }}
@@ -244,15 +286,10 @@ jobs:
         with:
           files: |
             app/build/outputs/apk/release/*.apk
-            app/build/outputs/bundle/release/*.aab
             tv/build/outputs/apk/release/*.apk
-            tv/build/outputs/bundle/release/*.aab
             car/build/outputs/apk/release/*.apk
-            car/build/outputs/bundle/release/*.aab
             wear/build/outputs/apk/release/*.apk
-            wear/build/outputs/bundle/release/*.aab
             xr/build/outputs/apk/release/*.apk
-            xr/build/outputs/bundle/release/*.aab
             app/build/outputs/apk/debug/*.apk
             tv/build/outputs/apk/debug/*.apk
             car/build/outputs/apk/debug/*.apk
