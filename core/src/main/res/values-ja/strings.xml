@@ -615,6 +615,8 @@
     <string name="xr_app_name">Stun XR</string>
     <string name="xr_spatial_dashboard">空間ダッシュボード</string>
     <string name="xr_spatial_status_connected">空間保護 有効</string>
+    <string name="xr_spatial_status_connecting">空間プロテクション接続中...</string>
+    <string name="car_automotive_unavailable">オートモーティブ端末では VPN を確立できません。スマホアプリをご利用ください。</string>
     <string name="xr_spatial_status_disconnected">空間保護 无効</string>
 
     <!-- Sh&rtcuts & Gemini App Actions -->

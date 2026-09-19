@@ -602,6 +602,8 @@
     <string name="xr_app_name">Stun XR</string>
     <string name="xr_spatial_dashboard">Panneau Spatial</string>
     <string name="xr_spatial_status_connected">Protection Spatiale Active</string>
+    <string name="xr_spatial_status_connecting">Protection spatiale en cours de connexion...</string>
+    <string name="car_automotive_unavailable">Le VPN ne peut pas s\'établir sur cet autoradio - utilisez l\'application sur le téléphone.</string>
     <string name="xr_spatial_status_disconnected">Protection Spatiale Inactive</string>
 
     <!-- Sh&rtcuts & Gemini App Actions -->

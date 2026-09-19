@@ -69,12 +69,17 @@ class WearMainActivity : AppCompatActivity() {
         adapter = ProfileAdapterWear(
             selectedProfileId = selectedId,
             onProfileClick = { profile ->
-                if (!isVpnRunning && !isVpnTransitioning) {
-                    SettingsManager.setSelectedProfileId(this, profile.id)
-                    loadProfiles()
-                    Toast.makeText(this, getString(CoreR.string.main_selected, profile.name), Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this, getString(CoreR.string.main_profile_switch_disabled), Toast.LENGTH_SHORT).show()
+                when {
+                    isVpnTransitioning ->
+                        Toast.makeText(this, getString(CoreR.string.main_profile_switch_disabled), Toast.LENGTH_SHORT).show()
+                    // 与 TV 对齐：连接中点别的节点 → 确认后「切换 + 重连」
+                    isVpnRunning && profile.id != SettingsManager.getSelectedProfileId(this) ->
+                        confirmSwitchProfile(profile)
+                    else -> {
+                        SettingsManager.setSelectedProfileId(this, profile.id)
+                        loadProfiles()
+                        Toast.makeText(this, getString(CoreR.string.main_selected, profile.name), Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         )
@@ -83,15 +88,46 @@ class WearMainActivity : AppCompatActivity() {
         binding.rvWearNodes.adapter = adapter
     }
 
+    private fun confirmSwitchProfile(profile: app.fjj.stun.repo.Profile) {
+        if (isFinishing || isDestroyed) return
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle(getString(CoreR.string.tv_switch_confirm_title))
+            .setMessage(getString(CoreR.string.tv_switch_confirm_message, profile.name))
+            .setPositiveButton(CoreR.string.ok) { _, _ ->
+                stopVpnService()
+                lifecycleScope.launch(Dispatchers.Main) {
+                    awaitDisconnectedThenStart(profile.id)
+                }
+            }
+            .setNegativeButton(CoreR.string.cancel, null)
+            .show()
+    }
+
+    private suspend fun awaitDisconnectedThenStart(profileId: String) {
+        kotlinx.coroutines.delay(600L)
+        var waitedMs = 0L
+        while ((StunRepository.vpnState.value ?: VpnState.DISCONNECTED) != VpnState.DISCONNECTED) {
+            if (waitedMs >= 3_000L) break
+            kotlinx.coroutines.delay(100L)
+            waitedMs += 100L
+        }
+        SettingsManager.setSelectedProfileId(this, profileId)
+        startSelectedService()
+    }
+
     private fun setupListeners() {
         binding.btnWearPower.setOnClickListener {
             handleStartStop()
         }
     }
 
+    private var lastEngineError: String? = null
+
     private fun observeData() {
         StunRepository.vpnState.observe(this) { state ->
             updateVpnUi(state)
+            // 状态变化即请求刷新 Tile（默认 30s freshness 太迟钝）
+            StunWearTileService.requestTileUpdate(applicationContext)
         }
 
         StunRepository.txRate.observe(this) { rate ->
@@ -107,6 +143,46 @@ class WearMainActivity : AppCompatActivity() {
                 binding.tvWearSpeed.text = "▲ ${AppUtils.formatBytes(tx)}  ▼ ${AppUtils.formatBytes(rate)}"
             }
         }
+
+        StunRepository.engineError.observe(this) { msg ->
+            // 只在值变化时提示，避免引擎刷错误时连环 Toast
+            if (!msg.isNullOrEmpty() && msg != lastEngineError) {
+                Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+                lastEngineError = msg
+            }
+        }
+
+        // Go 引擎 Panic：手机/TV 端都有弹窗，表盘上不能悄无声息
+        StunRepository.crashEvent.observe(this) { crashLog ->
+            if (!crashLog.isNullOrEmpty()) {
+                showCrashDialog(crashLog)
+                StunRepository.crashEvent.postValue(null)
+            }
+        }
+    }
+
+    private fun showCrashDialog(crashLog: String) {
+        if (isFinishing || isDestroyed) return
+        val paddingH = (16 * resources.displayMetrics.density).toInt()
+        val paddingV = (12 * resources.displayMetrics.density).toInt()
+        val textView = android.widget.TextView(this).apply {
+            text = crashLog
+            textSize = 11f
+            typeface = android.graphics.Typeface.MONOSPACE
+            setPadding(paddingH, paddingV, paddingH, paddingV)
+            // 跟随主题取色：写死白色在浅色主题的浅色弹窗里不可读
+            setTextColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    this, com.google.android.material.R.attr.colorOnSurface
+                )
+            )
+        }
+        val scrollView = android.widget.ScrollView(this).apply { addView(textView) }
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle(getString(CoreR.string.crash_dialog_title))
+            .setView(scrollView)
+            .setPositiveButton(getString(CoreR.string.close), null)
+            .show()
     }
 
     private fun loadProfiles() {
@@ -115,6 +191,8 @@ class WearMainActivity : AppCompatActivity() {
             val selectedId = SettingsManager.getSelectedProfileId(this@WearMainActivity)
             withContext(Dispatchers.Main) {
                 adapter.updateProfiles(profiles, selectedId)
+                // 空列表提示：手表没有添加节点的入口，必须告诉用户去手机端推送
+                binding.tvWearEmptyHint.visibility = if (profiles.isEmpty()) View.VISIBLE else View.GONE
             }
         }
     }
@@ -126,24 +204,41 @@ class WearMainActivity : AppCompatActivity() {
                 isVpnTransitioning = false
                 binding.btnWearPower.isEnabled = true
                 binding.ivWearPowerIcon.setImageResource(CoreR.drawable.ic_pause)
-                binding.wearStatusDot.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF4CAF50.toInt())
+                binding.wearStatusDot.backgroundTintList =
+                    android.content.res.ColorStateList.valueOf(getColor(CoreR.color.status_connected))
                 binding.tvWearStatus.text = getString(CoreR.string.main_connected)
             }
             VpnState.CONNECTING, VpnState.RECONNECTING -> {
                 isVpnRunning = false
                 isVpnTransitioning = true
-                binding.btnWearPower.isEnabled = false
+                // 连接中按钮 = 取消连接（TV 同一语义）：禁用会让卡死的重连无处可逃
+                binding.btnWearPower.isEnabled = true
                 binding.ivWearPowerIcon.setImageResource(CoreR.drawable.ic_sync)
-                binding.wearStatusDot.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFFFF9800.toInt())
+                binding.wearStatusDot.backgroundTintList =
+                    android.content.res.ColorStateList.valueOf(getColor(CoreR.color.status_connecting))
                 binding.tvWearStatus.text = getString(CoreR.string.main_connecting)
+            }
+            VpnState.ERROR -> {
+                // 引擎报错要与「正常断开」区分：直接把原因顶到状态行
+                isVpnRunning = false
+                isVpnTransitioning = false
+                binding.btnWearPower.isEnabled = true
+                binding.ivWearPowerIcon.setImageResource(CoreR.drawable.ic_play)
+                binding.wearStatusDot.backgroundTintList =
+                    android.content.res.ColorStateList.valueOf(getColor(CoreR.color.status_disconnected))
+                binding.tvWearStatus.text =
+                    StunRepository.engineError.value?.takeIf { it.isNotBlank() } ?: getString(CoreR.string.main_disconnected)
             }
             else -> {
                 isVpnRunning = false
                 isVpnTransitioning = false
                 binding.btnWearPower.isEnabled = true
                 binding.ivWearPowerIcon.setImageResource(CoreR.drawable.ic_play)
-                binding.wearStatusDot.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFFF44336.toInt())
+                binding.wearStatusDot.backgroundTintList =
+                    android.content.res.ColorStateList.valueOf(getColor(CoreR.color.status_disconnected))
                 binding.tvWearStatus.text = getString(CoreR.string.main_disconnected)
+                // 断开后清掉上一轮会话的残留速率（观察者只在 isVpnRunning 时写）
+                binding.tvWearSpeed.text = ""
             }
         }
     }
@@ -152,7 +247,8 @@ class WearMainActivity : AppCompatActivity() {
         val currentState = StunRepository.vpnState.value ?: VpnState.DISCONNECTED
         when (currentState) {
             VpnState.CONNECTED -> stopVpnService()
-            VpnState.CONNECTING, VpnState.RECONNECTING -> return
+            // 连接中再按 = 取消连接（此前按钮被禁用，卡死的重连无处可逃）
+            VpnState.CONNECTING, VpnState.RECONNECTING -> stopVpnService()
             else -> checkAndRequestNotificationPermission()
         }
     }
@@ -168,6 +264,11 @@ class WearMainActivity : AppCompatActivity() {
     }
 
     private fun startSelectedService() {
+        // 没选节点就拉服务只会空转重连（首跑点了电源没反应的根因）
+        if (SettingsManager.getSelectedProfileId(this) == null) {
+            Toast.makeText(this, getString(CoreR.string.tv_select_node_hint), Toast.LENGTH_SHORT).show()
+            return
+        }
         val mode = SettingsManager.getServiceMode(this)
         if (mode == SettingsManager.SERVICE_MODE_TPROXY) {
             val intent = Intent(this, MyTransparentProxyService::class.java).apply { action = MyTransparentProxyService.ACTION_START }

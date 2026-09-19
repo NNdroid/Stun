@@ -50,16 +50,20 @@ class ProfileAdapterCar(
 
             val delay = delayMap[profile.id] ?: ""
             binding.tvCarItemDelay.text = delay
-            if (delay.contains("ms")) {
-                binding.tvCarItemDelay.setTextColor(Color.parseColor("#4CAF50"))
+            // 成功判定不能只认 "ms"：zh 的 latency_format 是「%1$d 毫秒」。
+            // 颜色走 core 的语义色，DayNight 两套主题都正确。
+            val context = binding.root.context
+            if (delay.contains("ms") || delay.contains("毫秒")) {
+                binding.tvCarItemDelay.setTextColor(context.getColor(app.fjj.stun.core.R.color.status_connected))
             } else {
-                binding.tvCarItemDelay.setTextColor(Color.parseColor("#FF9800"))
+                binding.tvCarItemDelay.setTextColor(context.getColor(app.fjj.stun.core.R.color.status_connecting))
             }
 
             binding.carItemActiveDot.visibility = if (isSelected) View.VISIBLE else View.GONE
-            
-            val context = binding.root.context
-            val primaryColor = getThemeColor(context, "colorPrimary", Color.GREEN)
+
+            val primaryColor = com.google.android.material.color.MaterialColors.getColor(
+                binding.root, androidx.appcompat.R.attr.colorPrimary
+            )
 
             binding.cardCarItem.strokeColor = if (isSelected) primaryColor else Color.TRANSPARENT
             binding.cardCarItem.strokeWidth = if (isSelected) 6 else 0
@@ -67,20 +71,6 @@ class ProfileAdapterCar(
             binding.root.setOnClickListener {
                 onProfileClick(profile)
             }
-        }
-
-        private fun getThemeColor(context: android.content.Context, attrName: String, defaultColor: Int): Int {
-            val attrId = context.resources.getIdentifier(attrName, "attr", context.packageName).takeIf { it != 0 }
-                ?: context.resources.getIdentifier(attrName, "attr", "android").takeIf { it != 0 }
-                ?: return defaultColor
-            val typedValue = android.util.TypedValue()
-            return if (context.theme.resolveAttribute(attrId, typedValue, true)) {
-                if (typedValue.resourceId != 0) {
-                    androidx.core.content.ContextCompat.getColor(context, typedValue.resourceId)
-                } else {
-                    typedValue.data
-                }
-            } else defaultColor
         }
     }
 }

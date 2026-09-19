@@ -67,6 +67,7 @@ class CarMainActivity : AppCompatActivity() {
         } else {
             StunLogger.w("CarMainActivity", "BLUETOOTH_CONNECT denied; phone-to-car Bluetooth sync disabled")
         }
+        updateBtBadge()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -80,6 +81,16 @@ class CarMainActivity : AppCompatActivity() {
         loadProfiles()
         setupBluetoothRemoteCallbacks()
         startBluetoothSyncServer()
+        updateBtBadge()
+    }
+
+    /** BT 徽标反映服务器真实状态（原来硬编码 "ON"，BT 被拒/没开时也在撒谎）。 */
+    private fun updateBtBadge() {
+        val on = BluetoothSyncManager.isRunning()
+        binding.tvBtStatusBadge.text = getString(
+            if (on) CoreR.string.car_bt_sync_on else CoreR.string.car_bt_sync_off
+        )
+        binding.tvBtStatusBadge.alpha = if (on) 1f else 0.5f
     }
 
     /**
@@ -187,6 +198,11 @@ class CarMainActivity : AppCompatActivity() {
         // 回调引用了 Activity（loadProfiles / launcher），销毁时必须摘除，防泄漏。
         BluetoothSyncManager.onRemoteControlRequested = null
         BluetoothSyncManager.tvStatusProvider = null
+        // 回调摘除后，远端 start_vpn 会落到 core 的 startOrStopService 兜底 —— 那条路
+        // 不经过 VpnService.prepare，会让服务空转重连。停掉服务器把这条路彻底关死
+        // （与 TV 同一策略）；用户再打开本页时会重新拉起。
+        BluetoothSyncManager.stopServer()
+        updateBtBadge()
     }
 
     /**
@@ -254,6 +270,39 @@ class CarMainActivity : AppCompatActivity() {
                 StunRepository.engineError.postValue(null)
             }
         }
+
+        // Go 引擎 Panic：手机/TV 端都有弹窗，车机端不能只留在旧界面上
+        StunRepository.crashEvent.observe(this) { crashLog ->
+            if (!crashLog.isNullOrEmpty()) {
+                showCrashDialog(crashLog)
+                StunRepository.crashEvent.postValue(null)
+            }
+        }
+    }
+
+    private fun showCrashDialog(crashLog: String) {
+        if (isFinishing || isDestroyed) return
+        val paddingH = (24 * resources.displayMetrics.density).toInt()
+        val paddingV = (16 * resources.displayMetrics.density).toInt()
+        val textView = android.widget.TextView(this).apply {
+            text = crashLog
+            textSize = 13f
+            typeface = android.graphics.Typeface.MONOSPACE
+            setTextIsSelectable(true)
+            setPadding(paddingH, paddingV, paddingH, paddingV)
+            // 跟随主题取色：写死白色在浅色主题的浅色弹窗里不可读
+            setTextColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    this, com.google.android.material.R.attr.colorOnSurface
+                )
+            )
+        }
+        val scrollView = android.widget.ScrollView(this).apply { addView(textView) }
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle(getString(CoreR.string.crash_dialog_title))
+            .setView(scrollView)
+            .setPositiveButton(getString(CoreR.string.close), null)
+            .show()
     }
 
     private fun loadProfiles() {
@@ -315,13 +364,23 @@ class CarMainActivity : AppCompatActivity() {
     private fun startSelectedService() =
         VpnControls.start(this) { vpnLauncher.launch(it) }
 
+    private var latencyTestJob: kotlinx.coroutines.Job? = null
+
     private fun pingAllNodes() {
-        lifecycleScope.launch(Dispatchers.IO) {
+        // 进行中再点直接忽略：8s 窗口内连点会叠出两轮并发 pingNodes
+        if (latencyTestJob?.isActive == true) return
+        latencyTestJob = lifecycleScope.launch(Dispatchers.IO) {
             val profiles = ProfileManager.getProfiles(this@CarMainActivity)
-            if (profiles.isEmpty()) return@launch
+            if (profiles.isEmpty()) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@CarMainActivity, getString(CoreR.string.tv_select_node_hint), Toast.LENGTH_SHORT).show()
+                }
+                return@launch
+            }
 
             withContext(Dispatchers.Main) {
                 Toast.makeText(this@CarMainActivity, getString(CoreR.string.speed_test_started), Toast.LENGTH_SHORT).show()
+                binding.btnCarPingAll.isEnabled = false
             }
 
             try {
@@ -340,8 +399,15 @@ class CarMainActivity : AppCompatActivity() {
                     Toast.makeText(this@CarMainActivity, getString(CoreR.string.speed_test_completed), Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 withContext(Dispatchers.Main) {
                     Toast.makeText(this@CarMainActivity, getString(CoreR.string.speed_test_error, e.message), Toast.LENGTH_SHORT).show()
+                }
+            } finally {
+                withContext(Dispatchers.Main) {
+                    if (!(isFinishing || isDestroyed)) {
+                        binding.btnCarPingAll.isEnabled = true
+                    }
                 }
             }
         }

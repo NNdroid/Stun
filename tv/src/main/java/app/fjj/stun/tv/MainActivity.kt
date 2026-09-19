@@ -548,6 +548,8 @@ class MainActivity : FragmentActivity() {
         ProfileManager.getProfilesLiveData(this).observe(this) { profiles ->
             adapter.submitList(profiles)
             layoutTvEmpty?.visibility = if (profiles.isEmpty()) View.VISIBLE else View.GONE
+            // 右栏标题右侧的节点计数（效果图 "2 nodes"）
+            binding.tvListCount.text = getString(R.string.tv_nodes_count, profiles.size)
             
             // Auto-select if nothing selected
             if (SettingsManager.getSelectedProfileId(this) == null && profiles.isNotEmpty()) {
@@ -631,6 +633,8 @@ class MainActivity : FragmentActivity() {
             VpnState.CONNECTED -> {
                 binding.tvVpnStatus.text = getString(CoreR.string.status_connected)
                 binding.tvVpnStatus.setTextColor(getColor(CoreR.color.status_connected))
+                binding.dotVpnStatus.backgroundTintList =
+                    android.content.res.ColorStateList.valueOf(getColor(CoreR.color.status_connected))
                 binding.btnConnect.text = getString(CoreR.string.disconnect)
                 fetchPublicIp()
             }
@@ -639,6 +643,8 @@ class MainActivity : FragmentActivity() {
                 binding.tvPublicIp.visibility = View.GONE
                 binding.tvVpnStatus.text = getString(CoreR.string.main_connecting)
                 binding.tvVpnStatus.setTextColor(getColor(CoreR.color.status_connecting))
+                binding.dotVpnStatus.backgroundTintList =
+                    android.content.res.ColorStateList.valueOf(getColor(CoreR.color.status_connecting))
                 // 此时点击 = stopVpn（取消连接），按钮语义是「断开」而不是「关闭」
                 binding.btnConnect.text = getString(CoreR.string.disconnect)
             }
@@ -647,6 +653,8 @@ class MainActivity : FragmentActivity() {
                 binding.tvPublicIp.visibility = View.GONE
                 binding.tvVpnStatus.text = getString(CoreR.string.status_disconnected)
                 binding.tvVpnStatus.setTextColor(getColor(CoreR.color.status_disconnected))
+                binding.dotVpnStatus.backgroundTintList =
+                    android.content.res.ColorStateList.valueOf(getColor(CoreR.color.status_disconnected))
                 binding.btnConnect.text = getString(CoreR.string.connect)
             }
         }

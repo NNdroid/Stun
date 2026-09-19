@@ -2,8 +2,6 @@ package app.fjj.stun.car
 
 import android.content.Intent
 import android.net.VpnService
-import android.os.Handler
-import android.os.Looper
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
 import androidx.car.app.model.Action
@@ -24,13 +22,16 @@ import app.fjj.stun.service.MyVpnService
 
 class CarHomeScreen(carContext: CarContext) : Screen(carContext) {
 
-    private val mainHandler = Handler(Looper.getMainLooper())
+    /** Automotive OS 车机上 MyVpnService 无法建立本地 VPN —— 投影模式（跑在手机上）才提供连接操作。 */
+    private val isAutomotive: Boolean =
+        (carContext.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_TYPE_MASK) ==
+            android.content.res.Configuration.UI_MODE_TYPE_CAR
 
     @Volatile
     private var cachedProfiles: List<Profile>? = null
 
     @Volatile
-    private var profilesLoading = false
+    private var errorMessage: String? = null
 
     @Volatile
     private var vpnConsentRequired = false
@@ -39,20 +40,54 @@ class CarHomeScreen(carContext: CarContext) : Screen(carContext) {
         // Screen implements LifecycleOwner (car-app 1.4.0); the LiveData observer is
         // auto-removed when the screen is destroyed and only fires while it is started.
         StunRepository.vpnState.observe(this) { invalidate() }
+
+        // 引擎报错 / Panic 在 Auto 表面上要可见（原来只有 Activity 里的 Snackbar，
+        // 投影时用户看不到任何失败原因）
+        StunRepository.engineError.observe(this) { msg ->
+            errorMessage = msg
+            invalidate()
+        }
+        StunRepository.crashEvent.observe(this) { crash ->
+            if (!crash.isNullOrEmpty()) {
+                errorMessage = crash
+                invalidate()
+                StunRepository.crashEvent.postValue(null)
+            }
+        }
+
+        // 节点列表跟随 LiveData（原来只加载一次，BT 推送/编辑后列表不刷新；
+        // 也不再用裸 Thread，生命周期绑定交给 LiveData）
+        ProfileManager.getProfilesLiveData(carContext).observe(this) { profiles ->
+            cachedProfiles = profiles
+            invalidate()
+        }
     }
 
     override fun onGetTemplate(): Template {
         // onGetTemplate runs on the main thread; Room access must happen off it.
-        val profiles = cachedProfiles ?: run {
-            startProfileLoad()
-            emptyList()
-        }
+        val profiles = cachedProfiles ?: emptyList()
         val selectedId = SettingsManager.getSelectedProfileId(carContext)
         val vpnState = StunRepository.vpnState.value ?: VpnState.DISCONNECTED
         val isTransitioning = vpnState == VpnState.CONNECTING || vpnState == VpnState.RECONNECTING
-        val canSelectProfile = vpnState == VpnState.DISCONNECTED
+        val canSelectProfile = vpnState == VpnState.DISCONNECTED && !isAutomotive
 
         val listBuilder = ItemList.Builder()
+
+        if (isAutomotive) {
+            listBuilder.addItem(
+                Row.Builder()
+                    .setTitle(carContext.getString(CoreR.string.car_automotive_unavailable))
+                    .build()
+            )
+        }
+
+        errorMessage?.takeIf { it.isNotBlank() }?.let { msg ->
+            listBuilder.addItem(
+                Row.Builder()
+                    .setTitle("⚠ " + msg.take(80))
+                    .build()
+            )
+        }
 
         if (vpnConsentRequired) {
             listBuilder.addItem(
@@ -75,11 +110,11 @@ class CarHomeScreen(carContext: CarContext) : Screen(carContext) {
                     .setTitle(profile.name)
                     .addText(if (profile.proxyAddr.isNotBlank()) profile.proxyAddr else profile.sshAddr)
 
-                if (isSelected && !isTransitioning) {
+                if (!isAutomotive && isSelected && !isTransitioning) {
                     rowBuilder.setOnClickListener {
                         toggleVpn()
                     }
-                } else if (!isSelected && canSelectProfile) {
+                } else if (!isAutomotive && !isSelected && canSelectProfile) {
                     rowBuilder.setOnClickListener {
                         SettingsManager.setSelectedProfileId(carContext, profile.id)
                         invalidate()
@@ -90,45 +125,37 @@ class CarHomeScreen(carContext: CarContext) : Screen(carContext) {
             }
         }
 
-        val isConnected = vpnState == VpnState.CONNECTED
-        val actionText = when {
-            isTransitioning -> carContext.getString(CoreR.string.main_connecting)
-            isConnected -> carContext.getString(CoreR.string.car_power_button_disconnect)
-            else -> carContext.getString(CoreR.string.car_power_button_connect)
-        }
-
-        val toggleAction = Action.Builder()
-            .setTitle(actionText)
-            .setBackgroundColor(if (isConnected) CarColor.RED else CarColor.GREEN)
-            .setOnClickListener {
-                if (!isTransitioning) toggleVpn()
+        if (!isAutomotive) {
+            val isConnected = vpnState == VpnState.CONNECTED
+            val actionText = when {
+                isTransitioning -> carContext.getString(CoreR.string.main_connecting)
+                isConnected -> carContext.getString(CoreR.string.car_power_button_disconnect)
+                else -> carContext.getString(CoreR.string.car_power_button_connect)
             }
-            .build()
+
+            val toggleAction = Action.Builder()
+                .setTitle(actionText)
+                .setBackgroundColor(if (isConnected) CarColor.RED else CarColor.GREEN)
+                .setOnClickListener {
+                    if (!isTransitioning) toggleVpn()
+                }
+                .build()
+
+            return ListTemplate.Builder()
+                .setTitle(carContext.getString(CoreR.string.car_app_name))
+                .setSingleList(listBuilder.build())
+                .setActionStrip(
+                    ActionStrip.Builder()
+                        .addAction(toggleAction)
+                        .build()
+                )
+                .build()
+        }
 
         return ListTemplate.Builder()
             .setTitle(carContext.getString(CoreR.string.car_app_name))
             .setSingleList(listBuilder.build())
-            .setActionStrip(
-                ActionStrip.Builder()
-                    .addAction(toggleAction)
-                    .build()
-            )
             .build()
-    }
-
-    private fun startProfileLoad() {
-        if (profilesLoading) return
-        profilesLoading = true
-        Thread {
-            val loaded = try {
-                ProfileManager.getProfiles(carContext)
-            } catch (_: Exception) {
-                emptyList()
-            }
-            cachedProfiles = loaded
-            profilesLoading = false
-            mainHandler.post { invalidate() }
-        }.start()
     }
 
     private fun toggleVpn() {

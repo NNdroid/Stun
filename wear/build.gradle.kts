@@ -10,8 +10,8 @@ val gitHash = providers.exec {
     isIgnoreExitValue = true
 }.standardOutput.asText.map { it.trim() }.getOrElse("unknown")
 
-val baseVersionName = "1.11"
-val baseVersionCode = 30012
+val baseVersionName = "1.12"
+val baseVersionCode = 30013
 
 android {
     namespace = "app.fjj.stun.wear"
@@ -106,27 +106,14 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.activity.ktx)
-    implementation(libs.androidx.fragment.ktx)
-    implementation(libs.androidx.splashscreen)
-    
-    // Wear OS Compose M3 & Tiles
-    implementation(libs.androidx.wear.compose.material3)
-    implementation(libs.androidx.wear.compose.foundation)
-    implementation(libs.androidx.wear.tiles)
-    implementation("androidx.wear.protolayout:protolayout:1.2.0")
-    implementation("androidx.wear.protolayout:protolayout-material:1.2.0")
-    implementation("com.google.guava:guava:33.4.0-android")
 
-    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    // Wear OS Tiles（纯 Views + protolayout，不用 Compose）
+    implementation(libs.androidx.wear.tiles)
+    implementation(libs.wear.protolayout)
+    implementation(libs.wear.protolayout.material)
+    implementation(libs.guava)
+
     implementation(libs.androidx.lifecycle.livedata.ktx)
-    implementation(libs.gson)
-    implementation(libs.zxing.android.embedded)
-    
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
-    
-    implementation(libs.androidx.work.runtime.ktx)
 
     debugImplementation(libs.debugoverlay)
     debugImplementation(libs.debugoverlay.okhttp)

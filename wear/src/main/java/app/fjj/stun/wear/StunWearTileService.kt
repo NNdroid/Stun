@@ -1,5 +1,6 @@
 package app.fjj.stun.wear
 
+import android.content.Context
 import androidx.wear.protolayout.ActionBuilders
 import androidx.wear.protolayout.ColorBuilders.argb
 import androidx.wear.protolayout.DimensionBuilders.dp
@@ -34,7 +35,8 @@ class StunWearTileService : TileService() {
         val statusColor = when {
             isConnected -> 0xFF10B981.toInt()
             isConnecting -> 0xFFF59E0B.toInt()
-            else -> 0xFF38BDF8.toInt()
+            // 断开=红，与应用内状态点同一语义（原来是蓝色，和应用内红点互相矛盾）
+            else -> 0xFFF44336.toInt()
         }
 
         // 1. Large prominent icon (52dp x 52dp)
@@ -129,5 +131,15 @@ class StunWearTileService : TileService() {
     companion object {
         private const val RESOURCES_VERSION = "2"
         private const val RESOURCES_ICON_ID = "stun_wear_tile_icon"
+
+        /**
+         * VPN 状态变化后主动请求系统刷新 Tile。默认 30s freshness 意味着手机/手表上
+         * 连接后表盘最长 30s 还显示旧状态，所以观察者里每个状态变化都推一次。
+         */
+        fun requestTileUpdate(context: Context) {
+            runCatching {
+                TileService.getUpdater(context).requestUpdate(StunWearTileService::class.java)
+            }
+        }
     }
 }

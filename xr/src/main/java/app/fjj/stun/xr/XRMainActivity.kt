@@ -114,6 +114,39 @@ class XRMainActivity : AppCompatActivity() {
                 StunRepository.engineError.postValue(null)
             }
         }
+
+        // Go 引擎 Panic：手机/TV 端都有弹窗，XR 不能只留在旧界面上
+        StunRepository.crashEvent.observe(this) { crashLog ->
+            if (!crashLog.isNullOrEmpty()) {
+                showCrashDialog(crashLog)
+                StunRepository.crashEvent.postValue(null)
+            }
+        }
+    }
+
+    private fun showCrashDialog(crashLog: String) {
+        if (isFinishing || isDestroyed) return
+        val paddingH = (24 * resources.displayMetrics.density).toInt()
+        val paddingV = (16 * resources.displayMetrics.density).toInt()
+        val textView = android.widget.TextView(this).apply {
+            text = crashLog
+            textSize = 13f
+            typeface = android.graphics.Typeface.MONOSPACE
+            setTextIsSelectable(true)
+            setPadding(paddingH, paddingV, paddingH, paddingV)
+            // 跟随主题取色：写死白色在浅色主题的浅色弹窗里不可读
+            setTextColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    this, com.google.android.material.R.attr.colorOnSurface
+                )
+            )
+        }
+        val scrollView = android.widget.ScrollView(this).apply { addView(textView) }
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle(getString(CoreR.string.crash_dialog_title))
+            .setView(scrollView)
+            .setPositiveButton(getString(CoreR.string.close), null)
+            .show()
     }
 
     private fun loadProfiles() {
@@ -122,6 +155,8 @@ class XRMainActivity : AppCompatActivity() {
             val selectedId = SettingsManager.getSelectedProfileId(this@XRMainActivity)
             withContext(Dispatchers.Main) {
                 adapter.updateProfiles(profiles, selectedId)
+                // 空列表提示（XR 没有添加节点的入口，首跑必须告诉用户去手机端推）
+                binding.tvXrEmptyHint.visibility = if (profiles.isEmpty()) View.VISIBLE else View.GONE
             }
         }
     }
@@ -132,8 +167,10 @@ class XRMainActivity : AppCompatActivity() {
                 isVpnRunning = true
                 isVpnTransitioning = false
                 binding.btnXrPower.isEnabled = true
+                binding.btnXrPower.alpha = 1f
                 binding.ivXrPowerIcon.setImageResource(CoreR.drawable.ic_pause)
-                binding.xrStatusDot.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF4CAF50.toInt())
+                binding.xrStatusDot.backgroundTintList =
+                    android.content.res.ColorStateList.valueOf(getColor(CoreR.color.status_connected))
                 binding.tvXrStatus.text = getString(CoreR.string.xr_spatial_status_connected)
                 binding.layoutXrTraffic.visibility = View.VISIBLE
             }
@@ -141,19 +178,27 @@ class XRMainActivity : AppCompatActivity() {
                 isVpnRunning = false
                 isVpnTransitioning = true
                 binding.btnXrPower.isEnabled = false
+                // 禁用态给视觉反馈（原来只挡点击，界面毫无变化）
+                binding.btnXrPower.alpha = 0.5f
                 binding.ivXrPowerIcon.setImageResource(CoreR.drawable.ic_sync)
-                binding.xrStatusDot.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFFFF9800.toInt())
-                binding.tvXrStatus.text = getString(CoreR.string.main_connecting)
+                binding.xrStatusDot.backgroundTintList =
+                    android.content.res.ColorStateList.valueOf(getColor(CoreR.color.status_connecting))
+                binding.tvXrStatus.text = getString(CoreR.string.xr_spatial_status_connecting)
                 binding.layoutXrTraffic.visibility = View.GONE
             }
             else -> {
                 isVpnRunning = false
                 isVpnTransitioning = false
                 binding.btnXrPower.isEnabled = true
+                binding.btnXrPower.alpha = 1f
                 binding.ivXrPowerIcon.setImageResource(CoreR.drawable.ic_play)
-                binding.xrStatusDot.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFFF44336.toInt())
+                binding.xrStatusDot.backgroundTintList =
+                    android.content.res.ColorStateList.valueOf(getColor(CoreR.color.status_disconnected))
                 binding.tvXrStatus.text = getString(CoreR.string.xr_spatial_status_disconnected)
                 binding.layoutXrTraffic.visibility = View.GONE
+                // 断开后清掉上一轮会话的残留速率（观察者只在 isVpnRunning 时写）
+                binding.tvXrUpSpeed.text = getString(CoreR.string.traffic_up_format, AppUtils.formatBytes(0))
+                binding.tvXrDownSpeed.text = getString(CoreR.string.traffic_down_format, AppUtils.formatBytes(0))
             }
         }
     }
@@ -172,13 +217,23 @@ class XRMainActivity : AppCompatActivity() {
     private fun startSelectedService() =
         VpnControls.start(this) { vpnLauncher.launch(it) }
 
+    private var latencyTestJob: kotlinx.coroutines.Job? = null
+
     private fun pingAllNodes() {
-        lifecycleScope.launch(Dispatchers.IO) {
+        // 进行中再点直接忽略：8s 窗口内连点会叠出两轮并发 pingNodes
+        if (latencyTestJob?.isActive == true) return
+        latencyTestJob = lifecycleScope.launch(Dispatchers.IO) {
             val profiles = ProfileManager.getProfiles(this@XRMainActivity)
-            if (profiles.isEmpty()) return@launch
+            if (profiles.isEmpty()) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@XRMainActivity, getString(CoreR.string.tv_select_node_hint), Toast.LENGTH_SHORT).show()
+                }
+                return@launch
+            }
 
             withContext(Dispatchers.Main) {
                 Toast.makeText(this@XRMainActivity, getString(CoreR.string.speed_test_started), Toast.LENGTH_SHORT).show()
+                binding.btnXrPingAll.isEnabled = false
             }
 
             try {
@@ -191,14 +246,23 @@ class XRMainActivity : AppCompatActivity() {
                 val results = PingResults.parse(this@XRMainActivity, jsonResStr)
 
                 withContext(Dispatchers.Main) {
-                    profiles.forEach { p ->
-                        adapter.updateDelay(p.id, results[p.id] ?: getString(CoreR.string.latency_network_error))
+                    // 整轮结果一次性回填（缺的补网络错误），N 个节点只触发一次重绘
+                    val filled = profiles.associate {
+                        it.id to (results[it.id] ?: getString(CoreR.string.latency_network_error))
                     }
+                    adapter.updateDelays(filled)
                     Toast.makeText(this@XRMainActivity, getString(CoreR.string.speed_test_completed), Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 withContext(Dispatchers.Main) {
                     Toast.makeText(this@XRMainActivity, getString(CoreR.string.speed_test_error, e.message), Toast.LENGTH_SHORT).show()
+                }
+            } finally {
+                withContext(Dispatchers.Main) {
+                    if (!(isFinishing || isDestroyed)) {
+                        binding.btnXrPingAll.isEnabled = true
+                    }
                 }
             }
         }

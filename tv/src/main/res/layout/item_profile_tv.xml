@@ -20,7 +20,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="14dp">
+        android:padding="16dp">
 
         <!-- Top Main Row: Avatar + Name & Addr + Delay & Selected Badge -->
         <LinearLayout
@@ -58,7 +58,7 @@
                     android:maxLines="1"
                     tools:text="Node Name"
                     android:textColor="@color/tv_text_primary"
-                    android:textSize="17sp"
+                    android:textSize="19sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -72,7 +72,7 @@
                     android:maxLines="1"
                     tools:text="1.2.3.4:22"
                     android:textColor="?attr/tvPublicIpColor"
-                    android:textSize="13sp" />
+                    android:textSize="14sp" />
             </LinearLayout>
 
             <!-- Delay & Selected Status Group -->
@@ -158,7 +158,7 @@
                 android:fontFamily="monospace"
                 tools:text="↑ 0 B  ↓ 0 B"
                 android:textColor="?attr/tvTrafficColor"
-                android:textSize="12.5sp" />
+                android:textSize="13sp" />
         </LinearLayout>
 
         <!-- Focused Remote Key Hints (Visible only when card has focus) -->

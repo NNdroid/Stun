@@ -10,8 +10,8 @@ val gitHash = providers.exec {
     isIgnoreExitValue = true
 }.standardOutput.asText.map { it.trim() }.getOrElse("unknown")
 
-val baseVersionName = "1.11"
-val baseVersionCode = 40012
+val baseVersionName = "1.12"
+val baseVersionCode = 40013
 
 android {
     namespace = "app.fjj.stun.xr"
@@ -106,19 +106,8 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.activity.ktx)
-    implementation(libs.androidx.fragment.ktx)
-    implementation(libs.androidx.splashscreen)
 
-    implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.livedata.ktx)
-    implementation(libs.gson)
-    implementation(libs.zxing.android.embedded)
-    
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
-    
-    implementation(libs.androidx.work.runtime.ktx)
 
     debugImplementation(libs.debugoverlay)
     debugImplementation(libs.debugoverlay.okhttp)

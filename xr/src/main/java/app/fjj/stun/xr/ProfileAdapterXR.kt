@@ -1,7 +1,6 @@
 package app.fjj.stun.xr
 
 import android.graphics.Color
-import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -29,6 +28,12 @@ class ProfileAdapterXR(
         notifyDataSetChanged()
     }
 
+    /** 批量回填测速结果：整轮测速只刷一次，避免 N 个节点触发 N 次全量重绘。 */
+    fun updateDelays(results: Map<String, String>) {
+        delayMap.putAll(results)
+        notifyDataSetChanged()
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): XRViewHolder {
         val binding = ItemProfileXrBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return XRViewHolder(binding)
@@ -50,16 +55,20 @@ class ProfileAdapterXR(
 
             val delay = delayMap[profile.id] ?: ""
             binding.tvXrItemDelay.text = delay
-            if (delay.contains("ms")) {
-                binding.tvXrItemDelay.setTextColor(Color.parseColor("#4CAF50"))
+            // 成功判定不能只认 "ms"：zh 的 latency_format 是「%1$d 毫秒」。
+            // 颜色走 core 的语义色，DayNight 两套主题都正确。
+            val context = binding.root.context
+            if (delay.contains("ms") || delay.contains("毫秒")) {
+                binding.tvXrItemDelay.setTextColor(context.getColor(app.fjj.stun.core.R.color.status_connected))
             } else {
-                binding.tvXrItemDelay.setTextColor(Color.parseColor("#FF9800"))
+                binding.tvXrItemDelay.setTextColor(context.getColor(app.fjj.stun.core.R.color.status_connecting))
             }
 
             binding.xrItemActiveDot.visibility = if (isSelected) View.VISIBLE else View.GONE
 
-            val context = binding.root.context
-            val primaryColor = getThemeColor(context, "colorPrimary", Color.GREEN)
+            val primaryColor = com.google.android.material.color.MaterialColors.getColor(
+                binding.root, androidx.appcompat.R.attr.colorPrimary
+            )
 
             binding.cardXrItem.strokeColor = if (isSelected) primaryColor else Color.TRANSPARENT
             binding.cardXrItem.strokeWidth = if (isSelected) 6 else 0
@@ -67,20 +76,6 @@ class ProfileAdapterXR(
             binding.root.setOnClickListener {
                 onProfileClick(profile)
             }
-        }
-
-        private fun getThemeColor(context: android.content.Context, attrName: String, defaultColor: Int): Int {
-            val attrId = context.resources.getIdentifier(attrName, "attr", context.packageName).takeIf { it != 0 }
-                ?: context.resources.getIdentifier(attrName, "attr", "android").takeIf { it != 0 }
-                ?: return defaultColor
-            val typedValue = TypedValue()
-            return if (context.theme.resolveAttribute(attrId, typedValue, true)) {
-                if (typedValue.resourceId != 0) {
-                    androidx.core.content.ContextCompat.getColor(context, typedValue.resourceId)
-                } else {
-                    typedValue.data
-                }
-            } else defaultColor
         }
     }
 }

@@ -618,6 +618,8 @@
     <string name="xr_app_name">Stun 空間版</string>
     <string name="xr_spatial_dashboard">懸浮空間儀表板</string>
     <string name="xr_spatial_status_connected">空間安全代理中</string>
+    <string name="xr_spatial_status_connecting">空間安全代理連線中...</string>
+    <string name="car_automotive_unavailable">車機系統無法建立本地 VPN，請在手機端使用。</string>
     <string name="xr_spatial_status_disconnected">空間未開啟代理</string>
 
     <!-- Sh&rtcuts & Gemini App Actions -->

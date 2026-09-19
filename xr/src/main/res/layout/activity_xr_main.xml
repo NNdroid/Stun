@@ -179,13 +179,29 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_marginStart="16dp"
-                android:clipToPadding="false"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHorizontal_weight="0.6"
                 app:layout_constraintStart_toEndOf="@id/area_xr_power"
                 app:layout_constraintTop_toTopOf="parent"
                 tools:listitem="@layout/item_profile_xr" />
+
+            <!-- 空列表提示：XR 没有添加节点的入口，必须告诉用户去手机端推送 -->
+            <TextView
+                android:id="@+id/tv_xr_empty_hint"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:gravity="center"
+                android:text="@string/main_empty_profiles"
+                android:textAppearance="?attr/textAppearanceBodyLarge"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@id/area_xr_power"
+                app:layout_constraintTop_toTopOf="parent"
+                tools:visibility="visible" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 

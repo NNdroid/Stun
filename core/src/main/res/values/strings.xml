@@ -623,6 +623,8 @@
     <string name="xr_app_name">Stun XR</string>
     <string name="xr_spatial_dashboard">Spatial Panel</string>
     <string name="xr_spatial_status_connected">Spatial Protection Active</string>
+    <string name="xr_spatial_status_connecting">Spatial Protection Connecting...</string>
+    <string name="car_automotive_unavailable">VPN cannot run on this Automotive head unit - use the phone app.</string>
     <string name="xr_spatial_status_disconnected">Spatial Protection Off</string>
 
     <!-- Sh&rtcuts & Gemini App Actions -->

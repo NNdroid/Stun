@@ -6,7 +6,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?android:attr/colorBackground"
-    android:padding="8dp">
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="8dp">
 
     <!-- Scrollable Container -->
     <androidx.core.widget.NestedScrollView
@@ -127,6 +128,19 @@
                 android:layout_marginTop="8dp"
                 android:nestedScrollingEnabled="false"
                 tools:listitem="@layout/item_profile_wear" />
+
+            <!-- 空列表提示：手表没有添加节点的入口，必须告诉用户去手机端推送 -->
+            <TextView
+                android:id="@+id/tv_wear_empty_hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:text="@string/main_empty_profiles"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:visibility="gone"
+                tools:visibility="visible" />
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

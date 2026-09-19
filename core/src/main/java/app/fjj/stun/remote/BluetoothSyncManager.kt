@@ -182,6 +182,9 @@ object BluetoothSyncManager {
         StunLogger.i(TAG, "Bluetooth Sync Server stopped.")
     }
 
+    /** 服务器是否在跑（Car 端状态徽标用）。 */
+    fun isRunning(): Boolean = isServerRunning
+
     private fun handleClientConnection(context: Context, socket: BluetoothSocket) {
         scope.launch {
             try {

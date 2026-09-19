@@ -22,7 +22,8 @@ class XRApp : Application() {
         runCatching { app.fjj.stun.util.CrashHandler.init(this) }
         runCatching { LocaleHelper.applyLocale(this) }
         runCatching { initLogger() }
-        runCatching { KeystoreUtils.init(this) }
+        // Keystore 首次生成可达百 ms 级，挪出主线程（与手机端 StunApp 同理）
+        Thread { runCatching { KeystoreUtils.init(this) } }.apply { isDaemon = true; start() }
         runCatching {
             StunRepository.setupLogBridge()
             StunRepository.registerEngineCallback()

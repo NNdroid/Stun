@@ -11,6 +11,8 @@
     <application
         android:name=".XRApp"
         android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
         android:icon="@drawable/ic_fox_logo"
         android:label="@string/xr_app_name"
         android:supportsRtl="true"

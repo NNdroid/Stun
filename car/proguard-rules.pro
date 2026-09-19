@@ -7,9 +7,8 @@
 -keep class com.journeyapps.barcodescanner.** { *; }
 -dontwarn com.google.zxing.**
 
-# ─── 3. ViewBinding & AndroidX Leanback / Material ───
--keep class app.fjj.stun.tv.databinding.** { *; }
--keep class androidx.leanback.** { *; }
+# ─── 3. ViewBinding & Material ───
+-keep class app.fjj.stun.car.databinding.** { *; }
 -keep class com.google.android.material.** { *; }
 
 # ─── 4. JNI & Logging ───

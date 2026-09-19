@@ -616,6 +616,8 @@
     <string name="xr_app_name">Stun XR</string>
     <string name="xr_spatial_dashboard">Raum-Panel</string>
     <string name="xr_spatial_status_connected">Räumlicher Schutz Aktiv</string>
+    <string name="xr_spatial_status_connecting">Räumlicher Schutz verbindet...</string>
+    <string name="car_automotive_unavailable">Auf diesem Automotive-System kann kein VPN aufgebaut werden - bitte die Phone-App verwenden.</string>
     <string name="xr_spatial_status_disconnected">Räumlicher Schutz Aus</string>
 
     <!-- Sh&rtcuts & Gemini App Actions -->

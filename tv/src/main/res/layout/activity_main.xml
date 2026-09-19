@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- TV 主界面（对齐效果图）：深海军蓝 + 琥珀点缀。
+     左栏 = 品牌 + 状态仪表 + 主操作 + Web 控制台 + 同步状态；
+     右栏 = 节点列表（右下角地平线光晕垫底 + 品牌落款）。
+     焦点可见性三件套见 tv_focus_ring / ProfileAdapterTV；配色见 values-night/colors。 -->
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/tv_bg_main">
+    android:background="@drawable/tv_bg_gradient">
 
     <!-- Left Side: App Branding & Status Dashboard -->
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -12,15 +16,15 @@
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:background="@color/tv_bg_left_panel"
-        android:paddingStart="24dp"
-        android:paddingEnd="24dp"
-        android:paddingTop="24dp"
-        android:paddingBottom="16dp"
+        android:paddingStart="28dp"
+        android:paddingEnd="28dp"
+        android:paddingTop="28dp"
+        android:paddingBottom="20dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintWidth_percent="0.38">
 
-        <!-- 1. Horizontal Header: Logo + App Name + Status + Public IP -->
+        <!-- 1. Header: Logo + Stun TV | 状态点 + 状态 + 标语 -->
         <LinearLayout
             android:id="@+id/headerLayout"
             android:layout_width="match_parent"
@@ -32,15 +36,15 @@
 
             <ImageView
                 android:id="@+id/ivLogo"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
                 android:src="@drawable/ic_fox_logo"
                 android:importantForAccessibility="no" />
 
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
+                android:layout_marginStart="16dp"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
@@ -56,14 +60,29 @@
                         android:layout_height="wrap_content"
                         android:text="@string/app_name"
                         android:textColor="@color/tv_text_primary"
-                        android:textSize="22sp"
+                        android:textSize="24sp"
                         android:textStyle="bold" />
+
+                    <View
+                        android:layout_width="1dp"
+                        android:layout_height="18dp"
+                        android:layout_marginStart="12dp"
+                        android:layout_marginEnd="12dp"
+                        android:alpha="0.35"
+                        android:background="@color/tv_text_secondary" />
+
+                    <View
+                        android:id="@+id/dot_vpn_status"
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:background="@drawable/tv_dot"
+                        android:backgroundTint="?attr/tvErrorColor" />
 
                     <TextView
                         android:id="@+id/tvVpnStatus"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
+                        android:layout_marginStart="7dp"
                         android:text="@string/status_disconnected"
                         android:textColor="?attr/tvErrorColor"
                         android:textSize="14sp"
@@ -71,11 +90,19 @@
                 </LinearLayout>
 
                 <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:alpha="0.75"
+                    android:text="@string/tv_tagline"
+                    android:textColor="@color/tv_text_secondary"
+                    android:textSize="12.5sp" />
+
+                <TextView
                     android:id="@+id/tvPublicIp"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:alpha="0.9"
+                    android:layout_marginTop="3dp"
                     android:ellipsize="end"
                     android:fontFamily="monospace"
                     android:maxLines="1"
@@ -88,7 +115,7 @@
                     android:id="@+id/tvEngineError"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
+                    android:layout_marginTop="3dp"
                     android:ellipsize="end"
                     android:maxLines="1"
                     android:text=""
@@ -104,9 +131,9 @@
             android:id="@+id/cardDashboardInfo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
+            android:layout_marginTop="18dp"
             app:cardBackgroundColor="@color/tv_card_bg"
-            app:cardCornerRadius="12dp"
+            app:cardCornerRadius="14dp"
             app:cardElevation="0dp"
             app:strokeColor="@color/tv_card_stroke"
             app:strokeWidth="1dp"
@@ -117,7 +144,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="10dp">
+                android:padding="14dp">
 
                 <!-- Current Selected Node Row -->
                 <LinearLayout
@@ -130,12 +157,14 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/tv_node_indicator"
-                        android:textSize="13sp" />
+                        android:textSize="13sp"
+                        android:textColor="@color/tv_text_secondary" />
 
                     <TextView
                         android:id="@+id/tvSelectedNodeTitle"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
                         android:layout_weight="1"
                         android:ellipsize="end"
                         android:maxLines="1"
@@ -149,7 +178,7 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
+                    android:layout_marginTop="8dp"
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
 
@@ -163,6 +192,14 @@
                         android:textColor="?attr/tvTrafficColor"
                         android:textSize="14sp" />
 
+                    <View
+                        android:layout_width="1dp"
+                        android:layout_height="14dp"
+                        android:layout_marginStart="10dp"
+                        android:layout_marginEnd="10dp"
+                        android:alpha="0.3"
+                        android:background="@color/tv_text_secondary" />
+
                     <TextView
                         android:id="@+id/tvTrafficTotal"
                         android:layout_width="wrap_content"
@@ -175,17 +212,24 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- 3. Primary Action: Connect / Disconnect Button -->
+        <!-- 3. Primary Action: Connect / Disconnect（琥珀实底，效果图的视觉锚点） -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnConnect"
-            style="@style/Widget.Material3.Button.TonalButton"
+            style="@style/Widget.Material3.Button"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginTop="12dp"
+            android:layout_height="52dp"
+            android:layout_marginTop="14dp"
+            android:backgroundTint="@color/tv_brand_amber"
             android:text="@string/connect"
+            android:textColor="@color/tv_brand_amber_on"
             android:textSize="17sp"
             android:textStyle="bold"
-            app:cornerRadius="12dp"
+            app:backgroundTint="@color/tv_brand_amber"
+            app:cornerRadius="14dp"
+            app:icon="@drawable/ic_link"
+            app:iconGravity="textStart"
+            app:iconPadding="12dp"
+            app:iconTint="@color/tv_brand_amber_on"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/cardDashboardInfo"
             android:nextFocusRight="@id/rvProfiles"
@@ -194,16 +238,23 @@
             android:focusable="true"
             android:focusedByDefault="true" />
 
-        <!-- 4. Secondary Action: Speed Test Button -->
+        <!-- 4. Secondary Action: Speed Test（琥珀描边） -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnTestLatency"
             style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:layout_marginTop="8dp"
+            android:layout_height="46dp"
+            android:layout_marginTop="10dp"
             android:text="@string/action_speed_test"
-            android:textSize="14sp"
-            app:cornerRadius="10dp"
+            android:textColor="@color/tv_brand_amber"
+            android:textSize="15sp"
+            app:cornerRadius="12dp"
+            app:icon="@drawable/ic_speed"
+            app:iconGravity="textStart"
+            app:iconPadding="12dp"
+            app:iconTint="@color/tv_brand_amber"
+            app:strokeColor="@color/tv_brand_amber"
+            app:strokeWidth="1dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/btnConnect"
             android:foreground="@drawable/tv_focus_ring"
@@ -216,11 +267,11 @@
             android:id="@+id/cardWebConsole"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="12dp"
             android:clickable="false"
             android:focusable="false"
             app:cardBackgroundColor="@color/tv_card_bg"
-            app:cardCornerRadius="12dp"
+            app:cardCornerRadius="14dp"
             app:cardElevation="0dp"
             app:strokeColor="@color/tv_card_stroke"
             app:strokeWidth="1dp"
@@ -233,14 +284,14 @@
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:padding="8dp">
+                android:padding="12dp">
 
                 <!-- Rounded White Container for high-contrast QR code -->
                 <com.google.android.material.card.MaterialCardView
-                    android:layout_width="52dp"
-                    android:layout_height="52dp"
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
                     app:cardBackgroundColor="#FFFFFF"
-                    app:cardCornerRadius="6dp"
+                    app:cardCornerRadius="12dp"
                     app:cardElevation="0dp"
                     app:strokeWidth="0dp">
 
@@ -248,7 +299,7 @@
                         android:id="@+id/ivWebQrCode"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:padding="2dp"
+                        android:padding="4dp"
                         android:scaleType="fitCenter"
                         android:contentDescription="@string/desc_qr_code" />
                 </com.google.android.material.card.MaterialCardView>
@@ -256,7 +307,7 @@
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
+                    android:layout_marginStart="12dp"
                     android:layout_weight="1"
                     android:orientation="vertical">
 
@@ -266,14 +317,14 @@
                         android:layout_height="wrap_content"
                         android:text="@string/web_console_qr_title"
                         android:textColor="@color/tv_text_primary"
-                        android:textSize="13sp"
+                        android:textSize="15sp"
                         android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/tvWebConsole"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
+                        android:layout_marginTop="3dp"
                         android:ellipsize="middle"
                         android:fontFamily="monospace"
                         android:maxLines="1"
@@ -285,8 +336,8 @@
                         android:id="@+id/tvWebQrHint"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="1dp"
-                        android:alpha="0.7"
+                        android:layout_marginTop="2dp"
+                        android:alpha="0.75"
                         android:text="@string/web_console_qr_hint"
                         android:textColor="@color/tv_text_secondary"
                         android:textSize="12sp" />
@@ -312,21 +363,27 @@
             android:id="@+id/bottomSyncLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="12dp"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             app:layout_constraintTop_toBottomOf="@id/cardWebConsole"
             app:layout_constraintStart_toStartOf="parent">
 
+            <View
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:background="@drawable/tv_dot"
+                android:backgroundTint="@color/tv_sync_green" />
+
             <TextView
                 android:id="@+id/tvSyncStatus"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="9dp"
                 android:layout_weight="1"
-                android:alpha="0.5"
                 android:text="@string/tv_sync_server_on"
                 android:textColor="@color/tv_text_secondary"
-                android:textSize="12sp" />
+                android:textSize="12.5sp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnToggleSync"
@@ -334,8 +391,12 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/tv_stop_sync"
-                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textColor="@color/tv_text_primary"
                 android:textSize="13sp"
+                app:icon="@drawable/ic_settings"
+                app:iconGravity="textStart"
+                app:iconPadding="8dp"
+                app:iconTint="?attr/colorOnSurfaceVariant"
                 android:foreground="@drawable/tv_focus_ring"
                 android:nextFocusUp="@id/btnTestLatency"
                 android:nextFocusRight="@id/rvProfiles" />
@@ -349,30 +410,66 @@
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:paddingTop="48dp"
-        android:paddingStart="32dp"
+        android:paddingStart="36dp"
         android:paddingEnd="48dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@id/leftPanel">
 
-        <TextView
-            android:id="@+id/tvListHeader"
-            android:layout_width="wrap_content"
+        <!-- 地平线光晕：垫在列表后面（先声明 = 先画），聚焦/滚动都不挡内容 -->
+        <View
+            android:id="@+id/glowCorner"
+            android:layout_width="380dp"
+            android:layout_height="220dp"
+            android:background="@drawable/tv_bg_glow"
+            android:importantForAccessibility="no"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <LinearLayout
+            android:id="@+id/listHeaderLayout"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/tv_nodes_received"
-            android:textColor="@color/tv_text_primary"
-            android:textSize="24sp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent">
+
+            <ImageView
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:src="@drawable/ic_server"
+                app:tint="@color/tv_text_primary"
+                android:importantForAccessibility="no" />
+
+            <TextView
+                android:id="@+id/tvListHeader"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:text="@string/tv_nodes_received"
+                android:textColor="@color/tv_text_primary"
+                android:textSize="26sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_list_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/tv_text_secondary"
+                android:textSize="14sp"
+                tools:text="2 nodes" />
+        </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvProfiles"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="20dp"
             android:clipToPadding="false"
-            android:paddingBottom="48dp"
+            android:paddingBottom="120dp"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tvListHeader"
+            app:layout_constraintTop_toBottomOf="@id/listHeaderLayout"
             android:nextFocusLeft="@id/btnConnect"
             tools:listitem="@layout/item_profile_tv" />
 
@@ -388,7 +485,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tvListHeader">
+            app:layout_constraintTop_toBottomOf="@id/listHeaderLayout">
 
             <ImageView
                 android:layout_width="80dp"
@@ -416,6 +513,36 @@
                 android:text="@string/tv_picker_title"
                 android:textColor="@color/tv_text_secondary"
                 android:textSize="15sp" />
+        </LinearLayout>
+
+        <!-- 品牌落款（效果图右下角） -->
+        <LinearLayout
+            android:id="@+id/brandFooter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="end"
+            android:orientation="vertical"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:alpha="0.85"
+                android:letterSpacing="0.3"
+                android:text="@string/tv_brand_footer_title"
+                android:textColor="@color/tv_text_secondary"
+                android:textSize="13sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:alpha="0.45"
+                android:letterSpacing="0.18"
+                android:text="@string/tv_brand_footer_subtitle"
+                android:textColor="@color/tv_text_secondary"
+                android:textSize="11sp" />
         </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>

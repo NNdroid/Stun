@@ -1,7 +1,6 @@
 package app.fjj.stun.wear
 
 import android.graphics.Color
-import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -42,8 +41,9 @@ class ProfileAdapterWear(
             binding.tvWearItemType.text = profile.tunnelType.uppercase()
             binding.wearItemActiveDot.visibility = if (isSelected) View.VISIBLE else View.GONE
 
-            val context = binding.root.context
-            val primaryColor = getThemeColor(context, "colorPrimary", Color.GREEN)
+            val primaryColor = com.google.android.material.color.MaterialColors.getColor(
+                binding.root, androidx.appcompat.R.attr.colorPrimary
+            )
 
             binding.cardWearItem.strokeColor = if (isSelected) primaryColor else Color.TRANSPARENT
             binding.cardWearItem.strokeWidth = if (isSelected) 4 else 0
@@ -51,20 +51,6 @@ class ProfileAdapterWear(
             binding.root.setOnClickListener {
                 onProfileClick(profile)
             }
-        }
-
-        private fun getThemeColor(context: android.content.Context, attrName: String, defaultColor: Int): Int {
-            val attrId = context.resources.getIdentifier(attrName, "attr", context.packageName).takeIf { it != 0 }
-                ?: context.resources.getIdentifier(attrName, "attr", "android").takeIf { it != 0 }
-                ?: return defaultColor
-            val typedValue = TypedValue()
-            return if (context.theme.resolveAttribute(attrId, typedValue, true)) {
-                if (typedValue.resourceId != 0) {
-                    androidx.core.content.ContextCompat.getColor(context, typedValue.resourceId)
-                } else {
-                    typedValue.data
-                }
-            } else defaultColor
         }
     }
 }

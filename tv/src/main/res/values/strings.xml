@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">Stun TV</string>
+
+    <!-- TV 专属版式文案（品牌/装饰文案不翻译） -->
+    <string name="tv_tagline">Simple. Secure. Everywhere.</string>
+    <string name="tv_nodes_count">%1$d nodes</string>
+    <string name="tv_brand_footer_title">STUN TV</string>
+    <string name="tv_brand_footer_subtitle">CONNECT A BRIGHTER WORLD</string>
 </resources>

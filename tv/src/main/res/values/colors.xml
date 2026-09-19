@@ -12,6 +12,11 @@
     <color name="tv_card_selected_focused_bg">#FFE3CC</color>
     <color name="tv_focus_border">#FF9800</color>
 
+    <!-- 品牌琥珀（日间加深一档保证对比度） -->
+    <color name="tv_brand_amber">#C77700</color>
+    <color name="tv_brand_amber_on">#FFFFFF</color>
+    <color name="tv_sync_green">#16A34A</color>
+
     <!-- Specific Dashboard Elements (Light Mode - Darker Colors) -->
     <color name="tv_color_traffic">#2B6CB0</color> <!-- Dark Blue -->
     <color name="tv_color_traffic_total">#4A5568</color>

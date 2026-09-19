@@ -1,16 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- TV Dark Theme Colors -->
-    <color name="tv_bg_main">#0B0F14</color>
-    <color name="tv_bg_left_panel">#131820</color>
-    <color name="tv_card_bg">#1A202A</color>
-    <color name="tv_card_inner_bg">#222B38</color>
-    <color name="tv_card_stroke">#263242</color>
+    <!-- TV Dark Theme Colors —— 深海军蓝底 + 琥珀点缀（对齐效果图） -->
+    <color name="tv_bg_main">#0A1322</color>
+    <color name="tv_bg_left_panel">#111C2B</color>
+    <color name="tv_card_bg">#172435</color>
+    <color name="tv_card_inner_bg">#1F2E40</color>
+    <color name="tv_card_stroke">#25384E</color>
     <color name="tv_text_primary">#FFFFFF</color>
-    <color name="tv_text_secondary">#8B949E</color>
+    <color name="tv_text_secondary">#8B9DB5</color>
+    <!-- 焦点态保持暖琥珀：与冷蓝底互补，焦点最扎眼 -->
     <color name="tv_card_focused_bg">#433019</color>
     <color name="tv_card_selected_focused_bg">#58391B</color>
     <color name="tv_focus_border">#FFA028</color>
+
+    <!-- 品牌琥珀：主按钮填充 / 描边按钮文字与描边 -->
+    <color name="tv_brand_amber">#F6A93B</color>
+    <color name="tv_brand_amber_on">#201503</color>
+    <!-- 同步服务器在线小圆点 -->
+    <color name="tv_sync_green">#4ADE80</color>
 
     <!-- Specific Dashboard Elements (Dark Mode - Brighter Colors) -->
     <color name="tv_color_traffic">#8FD0FF</color> <!-- Light Blue -->

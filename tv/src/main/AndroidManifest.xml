@@ -21,6 +21,8 @@
     <application
         android:name=".TVApp"
         android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
         android:icon="@drawable/ic_fox_logo"
         android:banner="@drawable/tv_banner"
         android:label="@string/app_name"

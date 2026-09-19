@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+   云备份规则（API < 31），语义同 data_extraction_rules.xml。
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="stun_prefs.xml" />
+    <exclude domain="database" path="." />
+    <exclude domain="file" path="." />
+    <exclude domain="external" path="." />
+</full-backup-content>

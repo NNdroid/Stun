@@ -10,8 +10,8 @@ val gitHash = providers.exec {
     isIgnoreExitValue = true
 }.standardOutput.asText.map { it.trim() }.getOrElse("unknown")
 
-val baseVersionName = "1.11"
-val baseVersionCode = 20012
+val baseVersionName = "1.12"
+val baseVersionCode = 20013
 
 android {
     namespace = "app.fjj.stun.car"
