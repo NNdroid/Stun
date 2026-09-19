@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 遥控焦点环：供所有可聚焦控件作 android:foreground 使用。
+     Material 按钮自带的焦点态（涟漪/色调变化）在电视大屏 + 远距离观看下偏淡，
+     这层「半透明暖色填充 + 橙色描边」与节点卡片的焦点描边同一色系（tv_focus_border），
+     遥控焦点落在哪个控件上一眼可辨。未聚焦时完全透明。 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <solid android:color="#2EFF9800" />
+            <stroke android:width="3dp" android:color="@color/tv_focus_border" />
+            <corners android:radius="12dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@android:color/transparent" />
+        </shape>
+    </item>
+</selector>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- 应用分流 sheet：分类筛选 chip（选中 = 主色实心胶囊，无勾选/关闭图标，计数拼进文案） -->
+    <style name="Widget.Stun.AppFilter.Chip" parent="Widget.Material3.Chip.Filter">
+        <item name="android:textAppearance">?attr/textAppearanceLabelLarge</item>
+        <item name="chipBackgroundColor">@color/app_filter_chip_bg</item>
+        <item name="android:textColor">@color/app_filter_chip_text</item>
+        <item name="chipStrokeColor">@color/app_filter_chip_stroke</item>
+        <item name="chipStrokeWidth">1dp</item>
+        <item name="checkedIconVisible">false</item>
+        <item name="closeIconVisible">false</item>
+        <item name="chipMinTouchTargetSize">@dimen/touch_target_min</item>
+    </style>
+
+    <!-- 应用行的「系统」徽标：小号胶囊（与设置页状态胶囊同一族） -->
+    <style name="Widget.Stun.AppFilter.Badge" parent="">
+        <item name="android:background">@drawable/bg_status_pill</item>
+        <item name="android:paddingLeft">@dimen/space_2</item>
+        <item name="android:paddingRight">@dimen/space_2</item>
+        <!-- 上下 2dp 为小徽标手调值：再大 pill 就高过 checkbox 行高，不再走 dimens -->
+        <item name="android:paddingTop">2dp</item>
+        <item name="android:paddingBottom">2dp</item>
+        <item name="android:textAppearance">?attr/textAppearanceLabelSmall</item>
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
+    </style>
+
+</resources>

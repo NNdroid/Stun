@@ -87,8 +87,6 @@ class TouchTargetLayoutTest {
         val sheet = inflate(R.layout.bottom_sheet_connection_details)
         assertTouchTargets(
             sheet,
-            R.id.btn_detail_close,
-            R.id.btn_detail_more,
             R.id.btn_detail_favorite,
             R.id.btn_topology_mode,
             R.id.btn_globe_more,

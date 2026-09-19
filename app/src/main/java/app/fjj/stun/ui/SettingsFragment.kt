@@ -55,9 +55,7 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
     private var geoTagPickerTarget: com.google.android.material.textfield.TextInputEditText? = null
 
     private val logLevels = arrayOf("DEBUG", "INFO", "WARN", "ERROR")
-    private val udpgwVersions = arrayOf("tun2proxy", "badvpn")
     private lateinit var serviceModes: Array<String>
-    private lateinit var filterModes: Array<String>
     private lateinit var languageLabels: Array<String>
     private val languageValues = arrayOf("auto", "en", "zh", "zh-rTW", "de", "fr", "ja")
     private lateinit var mcpAuthLabels: Array<String>
@@ -80,10 +78,6 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
         serviceModes = arrayOf(
             getString(CoreR.string.service_mode_vpn),
             getString(CoreR.string.service_mode_tproxy)
-        )
-        filterModes = arrayOf(
-            getString(CoreR.string.filter_disallow_mode),
-            getString(CoreR.string.filter_allow_mode)
         )
         languageLabels = arrayOf(
             getString(CoreR.string.lang_auto),
@@ -227,15 +221,20 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
             AppFilterDialogFragment.REQUEST_KEY,
             viewLifecycleOwner
         ) { _, result ->
-            binding.etFilterApps.setText(result.getString(AppFilterDialogFragment.RESULT_PACKAGES).orEmpty())
+            val packages = result.getString(AppFilterDialogFragment.RESULT_PACKAGES).orEmpty()
+            binding.etFilterApps.setText(packages)
+            updateFilterSelectedCount(packages)
         }
 
-        binding.etFilterApps.setOnClickListener {
+        binding.btnManageFilterApps.setOnClickListener {
             val fragment = AppFilterDialogFragment.newInstance(binding.etFilterApps.text.toString())
             fragment.show(parentFragmentManager, "AppFilterDialog")
         }
-        binding.etFilterApps.isFocusable = false
-        binding.etFilterApps.isClickable = true
+        binding.etFilterApps.doAfterTextChanged {
+            updateFilterSelectedCount(it?.toString().orEmpty())
+        }
+        binding.cardFilterAllow.setOnClickListener { selectFilterMode(allow = true) }
+        binding.cardFilterDisallow.setOnClickListener { selectFilterMode(allow = false) }
 
         binding.btnUpdateNow.setOnClickListener {
             binding.btnUpdateNow.isEnabled = false
@@ -308,10 +307,15 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
             binding.spinnerLogLevel.setText(state.logLevel, false)
             binding.etRemoteDnsServer.setText(state.remoteDns)
             binding.etLocalDnsServer.setText(state.localDns)
-            binding.spinnerUdpgwVersion.setText(state.udpgwVersion, false)
+            binding.rbUdpgwTun2proxy.isChecked = state.udpgwVersion != "badvpn"
+            binding.rbUdpgwBadvpn.isChecked = state.udpgwVersion == "badvpn"
+            applyUdpgwSelectionTint()
             binding.etUdpgwAddr.setText(state.udpgwAddr)
-            binding.spinnerFilterMode.setText(if (state.filterMode == 1) getString(CoreR.string.filter_allow_mode) else getString(CoreR.string.filter_disallow_mode), false)
+            binding.rbFilterAllow.isChecked = state.filterMode == 1
+            binding.rbFilterDisallow.isChecked = state.filterMode != 1
+            applyFilterSelectionTint()
             binding.etFilterApps.setText(state.filterApps)
+            updateFilterSelectedCount(state.filterApps)
             binding.etGeositeUrl.setText(state.geositeUrl)
             binding.etGeoipUrl.setText(state.geoipUrl)
             binding.etUpdateInterval.setText(state.updateInterval.toString())
@@ -458,13 +462,65 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
         binding.spinnerServiceMode.setAdapter(ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, serviceModes))
         binding.spinnerLanguage.setAdapter(ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, languageLabels))
         binding.spinnerLogLevel.setAdapter(ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, logLevels))
-        binding.spinnerUdpgwVersion.setAdapter(ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, udpgwVersions))
-        binding.spinnerFilterMode.setAdapter(ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, filterModes))
+        // UDP 网关实现：双选卡（点击行为在 setupUI 里挂）
+        binding.cardUdpgwTun2proxy.setOnClickListener { selectUdpgw(tun2proxy = true) }
+        binding.cardUdpgwBadvpn.setOnClickListener { selectUdpgw(tun2proxy = false) }
         binding.spinnerMcpAuthMode.setAdapter(ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, mcpAuthLabels))
         binding.spinnerMcpAuthMode.setOnItemClickListener { _, _, position, _ ->
             val mode = mcpAuthValues[position]
             updateMcpAuthSecretUI(mode)
         }
+    }
+
+    private fun selectFilterMode(allow: Boolean) {
+        binding.rbFilterAllow.isChecked = allow
+        binding.rbFilterDisallow.isChecked = !allow
+        applyFilterSelectionTint()
+    }
+
+    /**
+     * 分段选择卡的选中态配色：布局里两卡都是中性底色，谁被选中由这里染成
+     * secondaryContainer（与卡片头部徽标同色系），标题/说明文字随之换色。
+     * 「应用分流」过滤模式与「UDP 网关实现」两处共用。
+     */
+    private fun tintSelectionCard(
+        card: com.google.android.material.card.MaterialCardView,
+        title: android.widget.TextView,
+        sub: android.widget.TextView,
+        selected: Boolean
+    ) {
+        val selBg = MaterialColors.getColor(card, com.google.android.material.R.attr.colorSecondaryContainer)
+        val unselBg = MaterialColors.getColor(card, com.google.android.material.R.attr.colorSurfaceContainer)
+        val selFg = MaterialColors.getColor(card, com.google.android.material.R.attr.colorOnSecondaryContainer)
+        val unselFg = MaterialColors.getColor(card, com.google.android.material.R.attr.colorOnSurface)
+        val unselSub = MaterialColors.getColor(card, com.google.android.material.R.attr.colorOnSurfaceVariant)
+        card.setCardBackgroundColor(if (selected) selBg else unselBg)
+        title.setTextColor(if (selected) selFg else unselFg)
+        sub.setTextColor(if (selected) selFg else unselSub)
+        sub.alpha = if (selected) 0.75f else 1f
+    }
+
+    private fun applyFilterSelectionTint() {
+        val allowSelected = binding.rbFilterAllow.isChecked
+        tintSelectionCard(binding.cardFilterAllow, binding.tvFilterAllowTitle, binding.tvFilterAllowDesc, allowSelected)
+        tintSelectionCard(binding.cardFilterDisallow, binding.tvFilterDisallowTitle, binding.tvFilterDisallowDesc, !allowSelected)
+    }
+
+    private fun selectUdpgw(tun2proxy: Boolean) {
+        binding.rbUdpgwTun2proxy.isChecked = tun2proxy
+        binding.rbUdpgwBadvpn.isChecked = !tun2proxy
+        applyUdpgwSelectionTint()
+    }
+
+    private fun applyUdpgwSelectionTint() {
+        val tunSelected = binding.rbUdpgwTun2proxy.isChecked
+        tintSelectionCard(binding.cardUdpgwTun2proxy, binding.tvUdpgwTun2proxyTitle, binding.tvUdpgwTun2proxyDesc, tunSelected)
+        tintSelectionCard(binding.cardUdpgwBadvpn, binding.tvUdpgwBadvpnTitle, binding.tvUdpgwBadvpnDesc, !tunSelected)
+    }
+
+    private fun updateFilterSelectedCount(packages: String) {
+        val count = packages.split(',').map { it.trim() }.count { it.isNotEmpty() }
+        binding.tvFilterSelectedCount.text = getString(CoreR.string.selected_count, count)
     }
 
     private fun updateLastUpdateText(lastUpdate: Long) {
@@ -522,14 +578,14 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
             logLevel = binding.spinnerLogLevel.text.toString(),
             remoteDns = binding.etRemoteDnsServer.text.toString(),
             localDns = binding.etLocalDnsServer.text.toString(),
-            udpgwVersion = binding.spinnerUdpgwVersion.text.toString(),
+            udpgwVersion = if (binding.rbUdpgwBadvpn.isChecked) "badvpn" else "tun2proxy",
             udpgwAddr = binding.etUdpgwAddr.text.toString(),
             geositeUrl = binding.etGeositeUrl.text.toString(),
             geoipUrl = binding.etGeoipUrl.text.toString(),
             updateInterval = binding.etUpdateInterval.text.toString().toLongOrNull() ?: 0L,
             geositeDirect = binding.etGeositeDirect.text.toString(),
             geoipDirect = binding.etGeoipDirect.text.toString(),
-            filterMode = if (binding.spinnerFilterMode.text.toString() == getString(CoreR.string.filter_allow_mode)) 1 else 0,
+            filterMode = if (binding.rbFilterAllow.isChecked) 1 else 0,
             filterApps = binding.etFilterApps.text.toString(),
             showNotificationSpeed = binding.switchShowNotificationSpeed.isChecked,
             mcpServerEnabled = mcpEnabled,

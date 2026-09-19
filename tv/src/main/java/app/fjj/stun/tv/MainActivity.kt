@@ -109,6 +109,13 @@ class MainActivity : FragmentActivity() {
                 val url = WebServer.getEffectiveUrl(this@MainActivity, port)
                 updateWebConsoleUI(url)
             }
+            withContext(Dispatchers.Main) {
+                if (isFinishing || isDestroyed) return@withContext
+                // TV 把地址+二维码直接挂屏上，「关闭认证」模式下同网段任何设备都能控制本机 —— 显式提示
+                binding.tvWebAuthWarning.visibility =
+                    if (SettingsManager.getWebAuthMode(this@MainActivity) == SettingsManager.WEB_AUTH_MODE_DISABLED)
+                        View.VISIBLE else View.GONE
+            }
         }
     }
 
@@ -213,21 +220,7 @@ class MainActivity : FragmentActivity() {
                     "restart_vpn" -> {
                         stopVpn()
                         lifecycleScope.launch(Dispatchers.Main) {
-                            kotlinx.coroutines.delay(600L)
-                            // P3 收尾异步化后，stop 后的收尾可能拖过 600ms：等到回到 DISCONNECTED
-                            // （上限 3s）再启动，否则 start 会撞上还没收尾完的旧会话。
-                            var waitedMs = 0L
-                            while (currentVpnState != VpnState.DISCONNECTED) {
-                                if (waitedMs >= 3_000L) break
-                                kotlinx.coroutines.delay(100L)
-                                waitedMs += 100L
-                            }
-                            if (profileId != null) {
-                                SettingsManager.setSelectedProfileId(this@MainActivity, profileId)
-                                adapter.updateSelectedId(profileId)
-                                updateSelectedNodeUI()
-                            }
-                            startVpn()
+                            awaitDisconnectedThenStart(profileId)
                         }
                         true
                     }
@@ -239,15 +232,7 @@ class MainActivity : FragmentActivity() {
                             if (currentVpnState == VpnState.CONNECTED || currentVpnState == VpnState.CONNECTING) {
                                 stopVpn()
                                 lifecycleScope.launch(Dispatchers.Main) {
-                                    kotlinx.coroutines.delay(600L)
-                                    // 同 restart_vpn：等到 DISCONNECTED（上限 3s）再启动。
-                                    var waitedMs = 0L
-                                    while (currentVpnState != VpnState.DISCONNECTED) {
-                                        if (waitedMs >= 3_000L) break
-                                        kotlinx.coroutines.delay(100L)
-                                        waitedMs += 100L
-                                    }
-                                    startVpn()
+                                    awaitDisconnectedThenStart(null)
                                 }
                             }
                             true
@@ -351,9 +336,15 @@ class MainActivity : FragmentActivity() {
         adapter = ProfileAdapterTV(
             selectedId,
             onProfileClick = { profile ->
-                SettingsManager.setSelectedProfileId(this, profile.id)
-                updateSelectedNodeUI()
-                Toast.makeText(this, getString(CoreR.string.main_selected, profile.name), Toast.LENGTH_SHORT).show()
+                // 已连接/连接中时点别的节点：先确认再「切换 + 重连」，
+                // 与远控 select_profile / WebUI 的行为对齐，不再只静默改选中
+                if ((currentVpnState == VpnState.CONNECTED || currentVpnState == VpnState.CONNECTING) &&
+                    profile.id != SettingsManager.getSelectedProfileId(this)
+                ) {
+                    confirmSwitchProfile(profile)
+                } else {
+                    selectProfileLocally(profile)
+                }
             },
             onProfileLongClick = { profile ->
                 showProfileOptionsDialog(profile)
@@ -364,6 +355,12 @@ class MainActivity : FragmentActivity() {
         binding.rvProfiles.adapter = adapter
         (binding.rvProfiles.itemAnimator as? androidx.recyclerview.widget.SimpleItemAnimator)?.supportsChangeAnimations = false
         updateSelectedNodeUI()
+
+        // 遥控焦点音：与列表卡片同一套系统导航音，焦点移动时听觉也能定位
+        bindFocusSound(
+            binding.btnConnect, binding.btnTestLatency, binding.btnToggleSync,
+            binding.btnOptionPing, binding.btnOptionDelete
+        )
 
         binding.btnConnect.setOnClickListener {
             handleConnectClick()
@@ -376,6 +373,59 @@ class MainActivity : FragmentActivity() {
         binding.btnTestLatency.setOnClickListener {
             testAllProfilesLatency()
         }
+    }
+
+    /** 遥控焦点音：系统按「导航音/触摸反馈」设置播放；列表卡片的焦点音在 ProfileAdapterTV 里。 */
+    private fun bindFocusSound(vararg views: View) {
+        views.forEach { v ->
+            v.setOnFocusChangeListener { view, hasFocus ->
+                if (hasFocus) view.playSoundEffect(android.view.SoundEffectConstants.CLICK)
+            }
+        }
+    }
+
+    private fun selectProfileLocally(profile: Profile) {
+        SettingsManager.setSelectedProfileId(this, profile.id)
+        adapter.updateSelectedId(profile.id)
+        updateSelectedNodeUI()
+        Toast.makeText(this, getString(CoreR.string.main_selected, profile.name), Toast.LENGTH_SHORT).show()
+    }
+
+    /** 已连接时本地点击别的节点：确认后按远控 select_profile 的同一套时序切换重连。 */
+    private fun confirmSwitchProfile(profile: Profile) {
+        if (isFinishing || isDestroyed) return
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle(getString(CoreR.string.tv_switch_confirm_title))
+            .setMessage(getString(CoreR.string.tv_switch_confirm_message, profile.name))
+            .setPositiveButton(getString(CoreR.string.ok)) { _, _ ->
+                stopVpn()
+                lifecycleScope.launch(Dispatchers.Main) {
+                    awaitDisconnectedThenStart(profile.id)
+                }
+            }
+            .setNegativeButton(getString(CoreR.string.cancel), null)
+            .show()
+    }
+
+    /**
+     * stop 之后的收尾（P3 收尾异步化）可能拖过固定延迟：先等 600ms，再轮询等到
+     * DISCONNECTED（上限 3s）才 start，否则 start 会撞上还没收尾完的旧会话。
+     * 远控 restart_vpn / 远控 select_profile / 本地确认切换三处共用。
+     */
+    private suspend fun awaitDisconnectedThenStart(profileId: String?) {
+        kotlinx.coroutines.delay(600L)
+        var waitedMs = 0L
+        while (currentVpnState != VpnState.DISCONNECTED) {
+            if (waitedMs >= 3_000L) break
+            kotlinx.coroutines.delay(100L)
+            waitedMs += 100L
+        }
+        if (profileId != null) {
+            SettingsManager.setSelectedProfileId(this, profileId)
+            adapter.updateSelectedId(profileId)
+            updateSelectedNodeUI()
+        }
+        startVpn()
     }
 
     private fun showProfileOptionsDialog(profile: Profile) {
@@ -553,7 +603,12 @@ class MainActivity : FragmentActivity() {
             typeface = android.graphics.Typeface.MONOSPACE
             setTextIsSelectable(true)
             setPadding(paddingH, paddingV, paddingH, paddingV)
-            setTextColor(android.graphics.Color.WHITE)
+            // 跟随主题取色：写死白色在浅色主题的浅色弹窗里不可读
+            setTextColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    this, com.google.android.material.R.attr.colorOnSurface
+                )
+            )
         }
 
         val scrollView = android.widget.ScrollView(this).apply {
@@ -584,7 +639,8 @@ class MainActivity : FragmentActivity() {
                 binding.tvPublicIp.visibility = View.GONE
                 binding.tvVpnStatus.text = getString(CoreR.string.main_connecting)
                 binding.tvVpnStatus.setTextColor(getColor(CoreR.color.status_connecting))
-                binding.btnConnect.text = getString(CoreR.string.close).uppercase()
+                // 此时点击 = stopVpn（取消连接），按钮语义是「断开」而不是「关闭」
+                binding.btnConnect.text = getString(CoreR.string.disconnect)
             }
             else -> {
                 publicIpJob?.cancel()
@@ -657,11 +713,14 @@ class MainActivity : FragmentActivity() {
         }
     }
 
-    // 实时流量速率与累计（来自引擎 1Hz 回调）
+    // 实时流量速率与累计（来自引擎 1Hz 回调）；一秒多次触发，findViewById 缓存成字段
+    private var tvTrafficView: TextView? = null
+    private var tvTrafficTotalView: TextView? = null
+
     private fun updateTrafficUI() {
         if (isFinishing || isDestroyed) return
-        val tv = findViewById<TextView>(R.id.tvTraffic)
-        val tvTotal = findViewById<TextView>(R.id.tvTrafficTotal)
+        val tv = tvTrafficView ?: findViewById<TextView>(R.id.tvTraffic).also { tvTrafficView = it }
+        val tvTotal = tvTrafficTotalView ?: findViewById<TextView>(R.id.tvTrafficTotal).also { tvTrafficTotalView = it }
         val tx = StunRepository.txRate.value ?: 0L
         val rx = StunRepository.rxRate.value ?: 0L
         val totalTx = StunRepository.txTotal.value ?: 0L
@@ -737,15 +796,21 @@ class MainActivity : FragmentActivity() {
     }
 
     // 测速入口：与手机端 testAllProfilesLatency 走同一套 Go pingNodes，结果按节点回填到列表
+    private var latencyTestJob: kotlinx.coroutines.Job? = null
+
     private fun testAllProfilesLatency() {
+        // 进行中再点直接忽略：8s 超时窗口内连点会叠出两轮 "..."
+        if (latencyTestJob?.isActive == true) return
         val profiles = adapter.currentList
         if (profiles.isEmpty()) {
             Toast.makeText(this, getString(CoreR.string.tv_select_node_hint), Toast.LENGTH_SHORT).show()
             return
         }
         profiles.forEach { adapter.updateDelay(it.id, "...") }
+        binding.btnTestLatency.isEnabled = false
+        binding.btnTestLatency.text = getString(CoreR.string.tv_latency_testing)
 
-        lifecycleScope.launch(Dispatchers.IO) {
+        latencyTestJob = lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val reqArray = JSONArray()
                 profiles.forEach { p ->
@@ -769,6 +834,13 @@ class MainActivity : FragmentActivity() {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 withContext(Dispatchers.Main) {
                     Toast.makeText(this@MainActivity, getString(CoreR.string.speed_test_error, e.message), Toast.LENGTH_SHORT).show()
+                }
+            } finally {
+                withContext(Dispatchers.Main) {
+                    if (!(isFinishing || isDestroyed)) {
+                        binding.btnTestLatency.isEnabled = true
+                        binding.btnTestLatency.text = getString(CoreR.string.action_speed_test)
+                    }
                 }
             }
         }

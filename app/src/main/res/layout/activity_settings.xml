@@ -42,24 +42,12 @@
             android:paddingHorizontal="@dimen/space_4"
             android:paddingBottom="@dimen/space_4">
 
-            <!-- Section: Core -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/space_4"
-                android:layout_marginTop="@dimen/space_6"
-                android:layout_marginBottom="@dimen/space_2"
-                android:text="@string/unified_config"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textAllCaps="true"
-                android:alpha="0.7"
-                android:textColor="?attr/colorPrimary"
-                android:textStyle="bold" />
-
+            <!-- Section: Global Settings -->
             <com.google.android.material.card.MaterialCardView
                 style="?attr/materialCardViewFilledStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_4"
                 app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
                 app:cardCornerRadius="@dimen/corner_lg"
                 app:strokeWidth="0dp">
@@ -70,10 +58,37 @@
                     android:orientation="vertical"
                     android:padding="@dimen/space_4">
 
+                    <!-- Card header: icon badge + title -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <ImageView
+                            android:layout_width="@dimen/badge_size"
+                            android:layout_height="@dimen/badge_size"
+                            android:background="@drawable/bg_icon_badge"
+                            android:contentDescription="@null"
+                            android:padding="@dimen/space_2"
+                            android:src="@drawable/ic_settings"
+                            app:tint="?attr/colorOnSecondaryContainer" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_3"
+                            android:layout_weight="1"
+                            android:text="@string/unified_config"
+                            android:textAppearance="?attr/textAppearanceTitleMedium"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
                     <com.google.android.material.textfield.TextInputLayout
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_4"
                         android:hint="@string/service_mode"
                         app:startIconDrawable="@drawable/ic_settings">
                         <com.google.android.material.textfield.MaterialAutoCompleteTextView
@@ -117,7 +132,8 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/remote_dns"
-                        app:endIconMode="clear_text">
+                        app:endIconMode="clear_text"
+                        app:startIconDrawable="@drawable/ic_globe">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_remote_dns_server"
                             android:layout_width="match_parent"
@@ -134,7 +150,8 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/local_dns"
-                        app:endIconMode="clear_text">
+                        app:endIconMode="clear_text"
+                        app:startIconDrawable="@drawable/ic_globe">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_local_dns_server"
                             android:layout_width="match_parent"
@@ -145,34 +162,45 @@
                             android:contentDescription="@string/desc_local_dns_input" />
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/switch_show_notification_speed"
+                    <!-- 通知栏实时网速：图标 + 文案 + 右侧开关 -->
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="@dimen/space_4"
-                        android:text="@string/show_notification_speed"
-                        android:textAppearance="?attr/textAppearanceBodyLarge" />
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <ImageView
+                            android:layout_width="@dimen/badge_icon_size"
+                            android:layout_height="@dimen/badge_icon_size"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_bell"
+                            app:tint="?attr/colorOnSurfaceVariant" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="@dimen/space_3"
+                            android:text="@string/show_notification_speed"
+                            android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/switch_show_notification_speed"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" />
+                    </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Section: UDP Gateway -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/space_4"
-                android:layout_marginTop="@dimen/space_6"
-                android:layout_marginBottom="@dimen/space_2"
-                android:text="@string/udpgw_version"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textAllCaps="true"
-                android:alpha="0.7"
-                android:textColor="?attr/colorPrimary"
-                android:textStyle="bold" />
-
+            <!-- Section: UDP Gateway —— 区块头 + 实现双选卡 + 地址子卡 + 小提示子卡（参照效果图）。
+                 card_udpgw_section 是预览测试的锚点（外层卡自身，别挂在子卡内的视图上）。 -->
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_udpgw_section"
                 style="?attr/materialCardViewFilledStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_4"
                 app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
                 app:cardCornerRadius="@dimen/corner_lg"
                 app:strokeWidth="0dp">
@@ -183,55 +211,404 @@
                     android:orientation="vertical"
                     android:padding="@dimen/space_4">
 
-                    <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    <!-- 区块头：徽标 + 标题 + 副标题 -->
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/udpgw_version">
-                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                            android:id="@+id/spinner_udpgw_version"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="@dimen/badge_size"
+                            android:layout_height="@dimen/badge_size"
+                            android:background="@drawable/bg_icon_badge"
+                            android:contentDescription="@null"
+                            android:padding="@dimen/space_2"
+                            android:src="@drawable/ic_port"
+                            app:tint="?attr/colorOnSecondaryContainer" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_3"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/udpgw_version"
+                                android:textAppearance="?attr/textAppearanceTitleMedium"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/space_1"
+                                android:text="@string/udpgw_section_subtitle"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:alpha="0.7" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- 子卡：UDP 网关实现（双选卡，交互与「应用分流」过滤模式一致） -->
+                    <com.google.android.material.card.MaterialCardView
+                        style="?attr/materialCardViewFilledStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_4"
+                        app:cardBackgroundColor="?attr/colorSurfaceContainer"
+                        app:cardCornerRadius="@dimen/corner_md"
+                        app:strokeWidth="0dp">
+
+                        <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:inputType="none" />
-                    </com.google.android.material.textfield.TextInputLayout>
+                            android:orientation="vertical"
+                            android:padding="@dimen/space_3">
 
-                    <com.google.android.material.textfield.TextInputLayout
-                        style="?attr/textInputOutlinedStyle"
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal">
+
+                                <ImageView
+                                    android:layout_width="@dimen/badge_size"
+                                    android:layout_height="@dimen/badge_size"
+                                    android:background="@drawable/bg_icon_badge"
+                                    android:contentDescription="@null"
+                                    android:padding="@dimen/space_2"
+                                    android:src="@drawable/ic_server"
+                                    app:tint="?attr/colorOnSecondaryContainer" />
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="@dimen/space_3"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="@string/udpgw_impl_title"
+                                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                                        android:textStyle="bold" />
+
+                                    <TextView
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:layout_marginTop="@dimen/space_1"
+                                        android:text="@string/udpgw_impl_desc"
+                                        android:textAppearance="?attr/textAppearanceBodySmall"
+                                        android:textColor="?attr/colorOnSurfaceVariant" />
+                                </LinearLayout>
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/space_3"
+                                android:orientation="horizontal">
+
+                                <com.google.android.material.card.MaterialCardView
+                                    android:id="@+id/card_udpgw_tun2proxy"
+                                    style="?attr/materialCardViewFilledStyle"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:checkable="true"
+                                    android:clickable="true"
+                                    android:focusable="true"
+                                    app:cardBackgroundColor="?attr/colorSurfaceContainer"
+                                    app:cardCornerRadius="@dimen/corner_md"
+                                    app:checkedIconEnabled="false"
+                                    app:strokeWidth="0dp">
+
+                                    <LinearLayout
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:gravity="center_vertical"
+                                        android:orientation="horizontal"
+                                        android:padding="@dimen/space_3">
+
+                                        <RadioButton
+                                            android:id="@+id/rb_udpgw_tun2proxy"
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:clickable="false"
+                                            android:focusable="false" />
+
+                                        <LinearLayout
+                                            android:layout_width="0dp"
+                                            android:layout_height="wrap_content"
+                                            android:layout_marginStart="@dimen/space_2"
+                                            android:layout_weight="1"
+                                            android:orientation="vertical">
+
+                                            <LinearLayout
+                                                android:layout_width="match_parent"
+                                                android:layout_height="wrap_content"
+                                                android:gravity="center_vertical"
+                                                android:orientation="horizontal">
+
+                                                <TextView
+                                                    android:id="@+id/tv_udpgw_tun2proxy_title"
+                                                    android:layout_width="wrap_content"
+                                                    android:layout_height="wrap_content"
+                                                    android:text="tun2proxy"
+                                                    android:textAppearance="?attr/textAppearanceBodySmall"
+                                                    android:textStyle="bold" />
+
+                                                <TextView
+                                                    android:layout_width="wrap_content"
+                                                    android:layout_height="wrap_content"
+                                                    android:layout_marginStart="@dimen/space_2"
+                                                    android:background="@drawable/bg_badge_type"
+                                                    android:backgroundTint="?attr/colorPrimary"
+                                                    android:paddingHorizontal="6dp"
+                                                    android:paddingVertical="1dp"
+                                                    android:text="@string/badge_recommended"
+                                                    android:textColor="?attr/colorOnPrimary"
+                                                    android:textSize="10sp"
+                                                    android:textStyle="bold" />
+                                            </LinearLayout>
+
+                                            <TextView
+                                                android:id="@+id/tv_udpgw_tun2proxy_desc"
+                                                android:layout_width="match_parent"
+                                                android:layout_height="wrap_content"
+                                                android:layout_marginTop="@dimen/space_1"
+                                                android:text="@string/udpgw_tun2proxy_desc"
+                                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                                android:textColor="?attr/colorOnSurfaceVariant" />
+                                        </LinearLayout>
+                                    </LinearLayout>
+                                </com.google.android.material.card.MaterialCardView>
+
+                                <com.google.android.material.card.MaterialCardView
+                                    android:id="@+id/card_udpgw_badvpn"
+                                    style="?attr/materialCardViewFilledStyle"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="@dimen/space_2"
+                                    android:layout_weight="1"
+                                    android:checkable="true"
+                                    android:clickable="true"
+                                    android:focusable="true"
+                                    app:cardBackgroundColor="?attr/colorSurfaceContainer"
+                                    app:cardCornerRadius="@dimen/corner_md"
+                                    app:checkedIconEnabled="false"
+                                    app:strokeWidth="0dp">
+
+                                    <LinearLayout
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:gravity="center_vertical"
+                                        android:orientation="horizontal"
+                                        android:padding="@dimen/space_3">
+
+                                        <RadioButton
+                                            android:id="@+id/rb_udpgw_badvpn"
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:clickable="false"
+                                            android:focusable="false" />
+
+                                        <LinearLayout
+                                            android:layout_width="0dp"
+                                            android:layout_height="wrap_content"
+                                            android:layout_marginStart="@dimen/space_2"
+                                            android:layout_weight="1"
+                                            android:orientation="vertical">
+
+                                            <TextView
+                                                android:id="@+id/tv_udpgw_badvpn_title"
+                                                android:layout_width="wrap_content"
+                                                android:layout_height="wrap_content"
+                                                android:text="badvpn"
+                                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                                android:textStyle="bold" />
+
+                                            <TextView
+                                                android:id="@+id/tv_udpgw_badvpn_desc"
+                                                android:layout_width="match_parent"
+                                                android:layout_height="wrap_content"
+                                                android:layout_marginTop="@dimen/space_1"
+                                                android:text="@string/udpgw_badvpn_desc"
+                                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                                android:textColor="?attr/colorOnSurfaceVariant" />
+                                        </LinearLayout>
+                                    </LinearLayout>
+                                </com.google.android.material.card.MaterialCardView>
+                            </LinearLayout>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- 子卡：UDP 网关地址 -->
+                    <com.google.android.material.card.MaterialCardView
+                        style="?attr/materialCardViewFilledStyle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="@dimen/space_3"
-                        android:hint="@string/udpgw_addr"
-                        app:endIconMode="clear_text">
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/et_udpgw_addr"
+                        app:cardBackgroundColor="?attr/colorSurfaceContainer"
+                        app:cardCornerRadius="@dimen/corner_md"
+                        app:strokeWidth="0dp">
+
+                        <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:imeOptions="actionNext"
-                            android:singleLine="true"
-                            android:inputType="text"
-                            android:contentDescription="@string/desc_udpgw_addr_input" />
-                    </com.google.android.material.textfield.TextInputLayout>
+                            android:orientation="vertical"
+                            android:padding="@dimen/space_3">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal">
+
+                                <ImageView
+                                    android:layout_width="@dimen/badge_size"
+                                    android:layout_height="@dimen/badge_size"
+                                    android:background="@drawable/bg_icon_badge"
+                                    android:contentDescription="@null"
+                                    android:padding="@dimen/space_2"
+                                    android:src="@drawable/ic_server"
+                                    app:tint="?attr/colorOnSecondaryContainer" />
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="@dimen/space_3"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:labelFor="@+id/et_udpgw_addr"
+                                        android:text="@string/udpgw_addr"
+                                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                                        android:textStyle="bold" />
+
+                                    <TextView
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:layout_marginTop="@dimen/space_1"
+                                        android:text="@string/udpgw_addr_desc"
+                                        android:textAppearance="?attr/textAppearanceBodySmall"
+                                        android:textColor="?attr/colorOnSurfaceVariant" />
+                                </LinearLayout>
+                            </LinearLayout>
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                style="?attr/textInputOutlinedStyle"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/space_3"
+                                app:endIconMode="clear_text">
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/et_udpgw_addr"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:imeOptions="actionNext"
+                                    android:inputType="text"
+                                    android:singleLine="true"
+                                    android:contentDescription="@string/desc_udpgw_addr_input" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/space_2"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal">
+
+                                <ImageView
+                                    android:layout_width="@dimen/badge_icon_size"
+                                    android:layout_height="@dimen/badge_icon_size"
+                                    android:contentDescription="@null"
+                                    android:src="@drawable/ic_info"
+                                    app:tint="?attr/colorOnSurfaceVariant" />
+
+                                <TextView
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="@dimen/space_2"
+                                    android:layout_weight="1"
+                                    android:text="@string/udpgw_addr_helper"
+                                    android:textAppearance="?attr/textAppearanceBodySmall"
+                                    android:textColor="?attr/colorOnSurfaceVariant" />
+                            </LinearLayout>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- 子卡：小提示 -->
+                    <com.google.android.material.card.MaterialCardView
+                        style="?attr/materialCardViewFilledStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        app:cardBackgroundColor="?attr/colorSurfaceContainer"
+                        app:cardCornerRadius="@dimen/corner_md"
+                        app:strokeWidth="0dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="@dimen/space_3">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal">
+
+                                <ImageView
+                                    android:layout_width="@dimen/badge_size"
+                                    android:layout_height="@dimen/badge_size"
+                                    android:background="@drawable/bg_icon_badge"
+                                    android:contentDescription="@null"
+                                    android:padding="@dimen/space_2"
+                                    android:src="@drawable/ic_info"
+                                    app:tint="?attr/colorOnSecondaryContainer" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="@dimen/space_3"
+                                    android:text="@string/udp_tips_title"
+                                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                                    android:textStyle="bold" />
+                            </LinearLayout>
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/space_3"
+                                android:text="@string/udp_tip_1"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/space_1"
+                                android:text="@string/udp_tip_2"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <!-- Section: GeoData -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/space_4"
-                android:layout_marginTop="@dimen/space_6"
-                android:layout_marginBottom="@dimen/space_2"
-                android:text="@string/geo_data_config"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textAllCaps="true"
-                android:alpha="0.7"
-                android:textColor="?attr/colorPrimary"
-                android:textStyle="bold" />
-
             <com.google.android.material.card.MaterialCardView
                 style="?attr/materialCardViewFilledStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_4"
                 app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
                 app:cardCornerRadius="@dimen/corner_lg"
                 app:strokeWidth="0dp">
@@ -242,12 +619,39 @@
                     android:orientation="vertical"
                     android:padding="@dimen/space_4">
 
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <ImageView
+                            android:layout_width="@dimen/badge_size"
+                            android:layout_height="@dimen/badge_size"
+                            android:background="@drawable/bg_icon_badge"
+                            android:contentDescription="@null"
+                            android:padding="@dimen/space_2"
+                            android:src="@drawable/ic_database"
+                            app:tint="?attr/colorOnSecondaryContainer" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_3"
+                            android:layout_weight="1"
+                            android:text="@string/geo_data_config"
+                            android:textAppearance="?attr/textAppearanceTitleMedium"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
                     <com.google.android.material.textfield.TextInputLayout
                         style="?attr/textInputOutlinedStyle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_4"
                         android:hint="@string/geosite_url"
-                        app:endIconMode="clear_text">
+                        app:endIconMode="clear_text"
+                        app:startIconDrawable="@drawable/ic_link">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_geosite_url"
                             android:layout_width="match_parent"
@@ -263,7 +667,8 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/geoip_url"
-                        app:endIconMode="clear_text">
+                        app:endIconMode="clear_text"
+                        app:startIconDrawable="@drawable/ic_link">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_geoip_url"
                             android:layout_width="match_parent"
@@ -279,7 +684,8 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/update_interval"
-                        app:endIconMode="clear_text">
+                        app:endIconMode="clear_text"
+                        app:startIconDrawable="@drawable/ic_schedule">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_update_interval"
                             android:layout_width="match_parent"
@@ -317,23 +723,11 @@
             </com.google.android.material.card.MaterialCardView>
 
             <!-- Section: Custom Direct Routing -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/space_4"
-                android:layout_marginTop="@dimen/space_6"
-                android:layout_marginBottom="@dimen/space_2"
-                android:text="@string/custom_direct_routing"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textAllCaps="true"
-                android:alpha="0.7"
-                android:textColor="?attr/colorPrimary"
-                android:textStyle="bold" />
-
             <com.google.android.material.card.MaterialCardView
                 style="?attr/materialCardViewFilledStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_4"
                 app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
                 app:cardCornerRadius="@dimen/corner_lg"
                 app:strokeWidth="0dp">
@@ -344,12 +738,39 @@
                     android:orientation="vertical"
                     android:padding="@dimen/space_4">
 
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <ImageView
+                            android:layout_width="@dimen/badge_size"
+                            android:layout_height="@dimen/badge_size"
+                            android:background="@drawable/bg_icon_badge"
+                            android:contentDescription="@null"
+                            android:padding="@dimen/space_2"
+                            android:src="@drawable/ic_filter"
+                            app:tint="?attr/colorOnSecondaryContainer" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_3"
+                            android:layout_weight="1"
+                            android:text="@string/custom_direct_routing"
+                            android:textAppearance="?attr/textAppearanceTitleMedium"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/layout_geosite_direct"
                         style="?attr/textInputOutlinedStyle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_4"
                         android:hint="@string/geosite_direct"
+                        app:startIconDrawable="@drawable/ic_label"
                         app:endIconDrawable="@drawable/ic_search"
                         app:endIconContentDescription="@string/geo_tag_picker_title"
                         app:endIconMode="custom">
@@ -370,6 +791,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/geoip_direct"
+                        app:startIconDrawable="@drawable/ic_label"
                         app:endIconDrawable="@drawable/ic_search"
                         app:endIconContentDescription="@string/geo_tag_picker_title"
                         app:endIconMode="custom">
@@ -386,23 +808,11 @@
             </com.google.android.material.card.MaterialCardView>
 
             <!-- Section: WebDAV Cloud Backup -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/space_4"
-                android:layout_marginTop="@dimen/space_6"
-                android:layout_marginBottom="@dimen/space_2"
-                android:text="@string/webdav_title"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textAllCaps="true"
-                android:alpha="0.7"
-                android:textColor="?attr/colorPrimary"
-                android:textStyle="bold" />
-
             <com.google.android.material.card.MaterialCardView
                 style="?attr/materialCardViewFilledStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_4"
                 app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
                 app:cardCornerRadius="@dimen/corner_lg"
                 app:strokeWidth="0dp">
@@ -413,24 +823,68 @@
                     android:orientation="vertical"
                     android:padding="@dimen/space_4">
 
-                    <TextView
+                    <!-- Card header: icon badge + title/subtitle + auto-backup switch -->
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="@string/webdav_desc"
-                        android:textAppearance="?attr/textAppearanceBodySmall"
-                        android:textColor="?attr/colorOnSurfaceVariant" />
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
 
+                        <ImageView
+                            android:layout_width="@dimen/badge_size"
+                            android:layout_height="@dimen/badge_size"
+                            android:background="@drawable/bg_icon_badge"
+                            android:contentDescription="@null"
+                            android:padding="@dimen/space_2"
+                            android:src="@drawable/ic_cloud"
+                            app:tint="?attr/colorOnSecondaryContainer" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_3"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/webdav_title"
+                                android:textAppearance="?attr/textAppearanceTitleMedium"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/space_1"
+                                android:text="@string/webdav_subtitle"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:alpha="0.7" />
+                        </LinearLayout>
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/switch_webdav_auto"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_2" />
+                    </LinearLayout>
+
+                    <!-- 字段名走输入框浮动标签（与地理数据/自定义直连分流同款）：
+                         hint 在描边框上，图标用 startIcon 收进框内 -->
                     <com.google.android.material.textfield.TextInputLayout
                         style="?attr/textInputOutlinedStyle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/space_3"
+                        android:layout_marginTop="@dimen/space_4"
                         android:hint="@string/webdav_url_hint"
-                        app:helperText="@string/webdav_url_example">
+                        app:helperText="@string/webdav_url_example"
+                        app:endIconMode="clear_text"
+                        app:startIconDrawable="@drawable/ic_link">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_webdav_url"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
                             android:inputType="textUri"
                             android:singleLine="true" />
                     </com.google.android.material.textfield.TextInputLayout>
@@ -439,12 +893,15 @@
                         style="?attr/textInputOutlinedStyle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/space_2"
-                        android:hint="@string/webdav_user_hint">
+                        android:layout_marginTop="@dimen/space_3"
+                        android:hint="@string/webdav_user_hint"
+                        app:endIconMode="clear_text"
+                        app:startIconDrawable="@drawable/ic_person">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_webdav_user"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
                             android:inputType="text"
                             android:singleLine="true" />
                     </com.google.android.material.textfield.TextInputLayout>
@@ -453,9 +910,10 @@
                         style="?attr/textInputOutlinedStyle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/space_2"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/webdav_pass_hint"
-                        app:endIconMode="password_toggle">
+                        app:endIconMode="password_toggle"
+                        app:startIconDrawable="@drawable/ic_lock">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_webdav_pass"
                             android:layout_width="match_parent"
@@ -469,9 +927,11 @@
                         style="?attr/textInputOutlinedStyle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/space_2"
+                        android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/webdav_pin_hint"
-                        app:helperText="@string/webdav_pin_helper">
+                        app:endIconMode="clear_text"
+                        app:helperText="@string/webdav_pin_helper"
+                        app:startIconDrawable="@drawable/ic_key">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_webdav_pin"
                             android:layout_width="match_parent"
@@ -485,8 +945,11 @@
                         style="?attr/textInputOutlinedStyle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/space_2"
-                        android:hint="@string/webdav_interval">
+                        android:layout_marginTop="@dimen/space_3"
+                        android:hint="@string/webdav_interval_label"
+                        app:helperText="@string/webdav_interval_helper"
+                        app:startIconDrawable="@drawable/ic_schedule"
+                        app:suffixText="@string/unit_hours">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_webdav_interval"
                             android:layout_width="match_parent"
@@ -495,66 +958,69 @@
                             android:singleLine="true" />
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/switch_webdav_auto"
+                    <!-- Footer：上次备份 + 操作按钮，包一层内嵌子卡片做出「页脚」层次 -->
+                    <com.google.android.material.card.MaterialCardView
+                        style="?attr/materialCardViewFilledStyle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/space_3"
-                        android:text="@string/webdav_auto" />
+                        android:layout_marginTop="@dimen/space_4"
+                        app:cardBackgroundColor="?attr/colorSurfaceContainer"
+                        app:cardCornerRadius="@dimen/corner_md"
+                        app:strokeWidth="0dp">
 
-                    <TextView
-                        android:id="@+id/tv_webdav_last"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/space_2"
-                        android:textAppearance="?attr/textAppearanceLabelMedium"
-                        android:textColor="?attr/colorOnSurfaceVariant" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/space_3"
-                        android:orientation="horizontal">
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btn_webdav_backup"
-                            style="@style/Widget.Material3.Button.TonalButton"
-                            android:layout_width="0dp"
+                        <LinearLayout
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginEnd="@dimen/space_2"
-                            android:layout_weight="1"
-                            android:text="@string/webdav_backup_now" />
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:padding="@dimen/space_3">
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btn_webdav_restore"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="@dimen/space_2"
-                            android:layout_weight="1"
-                            android:text="@string/webdav_restore" />
-                    </LinearLayout>
+                            <ImageView
+                                android:layout_width="@dimen/badge_size"
+                                android:layout_height="@dimen/badge_size"
+                                android:background="@drawable/bg_icon_badge"
+                                android:contentDescription="@null"
+                                android:padding="@dimen/space_2"
+                                android:src="@drawable/ic_schedule"
+                                app:tint="?attr/colorOnSecondaryContainer" />
+
+                            <TextView
+                                android:id="@+id/tv_webdav_last"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="@dimen/space_3"
+                                android:layout_weight="1"
+                                android:maxLines="2"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_webdav_backup"
+                                style="@style/Widget.Material3.Button.TonalButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/webdav_backup_now"
+                                app:icon="@drawable/ic_cloud" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_webdav_restore"
+                                style="@style/Widget.Material3.Button.OutlinedButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="@dimen/space_2"
+                                android:text="@string/webdav_restore"
+                                app:icon="@drawable/ic_sync" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <!-- Section: App Filtering -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/space_4"
-                android:layout_marginTop="@dimen/space_6"
-                android:layout_marginBottom="@dimen/space_2"
-                android:text="@string/app_filtering"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textAllCaps="true"
-                android:alpha="0.7"
-                android:textColor="?attr/colorPrimary"
-                android:textStyle="bold" />
-
             <com.google.android.material.card.MaterialCardView
                 style="?attr/materialCardViewFilledStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_4"
                 app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
                 app:cardCornerRadius="@dimen/corner_lg"
                 app:strokeWidth="0dp">
@@ -565,17 +1031,239 @@
                     android:orientation="vertical"
                     android:padding="@dimen/space_4">
 
-                    <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    <!-- Card header: icon badge + title/subtitle -->
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/filter_mode">
-                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                            android:id="@+id/spinner_filter_mode"
-                            android:layout_width="match_parent"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <ImageView
+                            android:layout_width="@dimen/badge_size"
+                            android:layout_height="@dimen/badge_size"
+                            android:background="@drawable/bg_icon_badge"
+                            android:contentDescription="@null"
+                            android:padding="@dimen/space_2"
+                            android:src="@drawable/ic_grid"
+                            app:tint="?attr/colorOnSecondaryContainer" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:inputType="none" />
-                    </com.google.android.material.textfield.TextInputLayout>
+                            android:layout_marginStart="@dimen/space_3"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/app_filtering"
+                                android:textAppearance="?attr/textAppearanceTitleMedium"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/space_1"
+                                android:text="@string/app_filtering_subtitle"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:alpha="0.7" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- 过滤模式：标题 + 说明图标 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_4"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/filter_mode"
+                            android:textAppearance="?attr/textAppearanceTitleSmall"
+                            android:textStyle="bold" />
+
+                        <ImageView
+                            android:layout_width="@dimen/badge_icon_size"
+                            android:layout_height="@dimen/badge_icon_size"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_info"
+                            app:tint="?attr/colorOnSurfaceVariant" />
+                    </LinearLayout>
+
+                    <!-- 过滤模式：双列分段选择（左=排除 / 右=仅指定）。
+                         选中态由 SettingsFragment.applyFilterSelectionTint() 上色。 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/card_filter_disallow"
+                            style="?attr/materialCardViewFilledStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:checkable="true"
+                            android:clickable="true"
+                            android:focusable="true"
+                            app:cardBackgroundColor="?attr/colorSurfaceContainer"
+                            app:cardCornerRadius="@dimen/corner_md"
+                            app:checkedIconEnabled="false"
+                            app:strokeWidth="0dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal"
+                                android:padding="@dimen/space_3">
+
+                                <RadioButton
+                                    android:id="@+id/rb_filter_disallow"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:clickable="false"
+                                    android:focusable="false" />
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="@dimen/space_2"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical">
+
+                                    <TextView
+                                        android:id="@+id/tv_filter_disallow_title"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:text="@string/filter_disallow_mode"
+                                        android:textAppearance="?attr/textAppearanceBodySmall"
+                                        android:textStyle="bold" />
+
+                                    <TextView
+                                        android:id="@+id/tv_filter_disallow_desc"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:layout_marginTop="@dimen/space_1"
+                                        android:text="@string/filter_disallow_desc"
+                                        android:textAppearance="?attr/textAppearanceBodySmall"
+                                        android:textColor="?attr/colorOnSurfaceVariant" />
+                                </LinearLayout>
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/card_filter_allow"
+                            style="?attr/materialCardViewFilledStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_2"
+                            android:layout_weight="1"
+                            android:checkable="true"
+                            android:clickable="true"
+                            android:focusable="true"
+                            app:cardBackgroundColor="?attr/colorSurfaceContainer"
+                            app:cardCornerRadius="@dimen/corner_md"
+                            app:checkedIconEnabled="false"
+                            app:strokeWidth="0dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal"
+                                android:padding="@dimen/space_3">
+
+                                <RadioButton
+                                    android:id="@+id/rb_filter_allow"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:clickable="false"
+                                    android:focusable="false" />
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="@dimen/space_2"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical">
+
+                                    <TextView
+                                        android:id="@+id/tv_filter_allow_title"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:text="@string/filter_allow_mode"
+                                        android:textAppearance="?attr/textAppearanceBodySmall"
+                                        android:textStyle="bold" />
+
+                                    <TextView
+                                        android:id="@+id/tv_filter_allow_desc"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:layout_marginTop="@dimen/space_1"
+                                        android:text="@string/filter_allow_desc"
+                                        android:textAppearance="?attr/textAppearanceBodySmall"
+                                        android:textColor="?attr/colorOnSurfaceVariant" />
+                                </LinearLayout>
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
+                    </LinearLayout>
+
+                    <!-- 已选择的应用：徽标 + 计数/说明 + 选择应用 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_4"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <ImageView
+                            android:layout_width="@dimen/badge_size"
+                            android:layout_height="@dimen/badge_size"
+                            android:background="@drawable/bg_icon_badge"
+                            android:contentDescription="@null"
+                            android:padding="@dimen/space_2"
+                            android:src="@drawable/ic_grid"
+                            app:tint="?attr/colorOnSecondaryContainer" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_3"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tv_filter_selected_count"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:textAppearance="?attr/textAppearanceBodyLarge"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/space_1"
+                                android:text="@string/filter_apps_manage_desc"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+                        </LinearLayout>
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_manage_filter_apps"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/select_apps"
+                            app:icon="@drawable/ic_chevron_right"
+                            app:iconGravity="textEnd" />
+                    </LinearLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
                         style="?attr/textInputOutlinedStyle"
@@ -584,13 +1272,11 @@
                         android:layout_marginTop="@dimen/space_3"
                         android:hint="@string/filter_apps_hint"
                         app:startIconDrawable="@drawable/ic_filter">
+
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_filter_apps"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:focusable="false"
-                            android:focusableInTouchMode="false"
-                            android:cursorVisible="false"
                             android:inputType="text"
                             android:contentDescription="@string/desc_filter_apps_input" />
                     </com.google.android.material.textfield.TextInputLayout>

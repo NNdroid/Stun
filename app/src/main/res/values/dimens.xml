@@ -46,7 +46,10 @@
 
     <!-- ===== 卡片头部图标徽标 =====
          外框 40dp、内嵌图标 24dp（差值 16dp 由使用处的 padding 吃掉，即四边各 8dp）。
-         目前用在设置页 MCP / 数据库 WebUI 两张卡的头部，底色 bg_icon_badge。 -->
+         底色 bg_icon_badge。现在设置页**八张卡**（全局设置 / UDP 网关 / 地理数据 /
+         自定义直连分流 / WebDAV 云备份 / 应用分流 / MCP / 数据库 WebUI）的头部都用这一套，
+         所以「卡片头部」这个版式是页内统一契约，新增小节卡请照抄，别另起一套尺寸。
+         badge_icon_size 另有用途：卡片**内部行**（非头部徽标）的前导图标也用它。 -->
     <dimen name="badge_size">40dp</dimen>
     <dimen name="badge_icon_size">24dp</dimen>
 

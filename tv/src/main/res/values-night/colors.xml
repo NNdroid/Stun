@@ -8,9 +8,9 @@
     <color name="tv_card_stroke">#263242</color>
     <color name="tv_text_primary">#FFFFFF</color>
     <color name="tv_text_secondary">#8B949E</color>
-    <color name="tv_card_focused_bg">#2A241C</color>
-    <color name="tv_card_selected_focused_bg">#382A1C</color>
-    <color name="tv_focus_border">#FFB77B</color>
+    <color name="tv_card_focused_bg">#433019</color>
+    <color name="tv_card_selected_focused_bg">#58391B</color>
+    <color name="tv_focus_border">#FFA028</color>
 
     <!-- Specific Dashboard Elements (Dark Mode - Brighter Colors) -->
     <color name="tv_color_traffic">#8FD0FF</color> <!-- Light Blue -->

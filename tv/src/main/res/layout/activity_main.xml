@@ -81,7 +81,7 @@
                     android:maxLines="1"
                     android:text=""
                     android:textColor="?attr/tvPublicIpColor"
-                    android:textSize="11.5sp"
+                    android:textSize="13sp"
                     android:visibility="gone" />
 
                 <TextView
@@ -93,7 +93,7 @@
                     android:maxLines="1"
                     android:text=""
                     android:textColor="?attr/tvErrorColor"
-                    android:textSize="11.5sp"
+                    android:textSize="13sp"
                     android:textStyle="bold"
                     android:visibility="gone" />
             </LinearLayout>
@@ -130,7 +130,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/tv_node_indicator"
-                        android:textSize="12sp" />
+                        android:textSize="13sp" />
 
                     <TextView
                         android:id="@+id/tvSelectedNodeTitle"
@@ -141,7 +141,7 @@
                         android:maxLines="1"
                         android:text="@string/tv_select_node_hint"
                         android:textColor="@color/tv_text_primary"
-                        android:textSize="13sp"
+                        android:textSize="15sp"
                         android:textStyle="bold" />
                 </LinearLayout>
 
@@ -161,7 +161,7 @@
                         android:fontFamily="monospace"
                         tools:text="↑ 0 B/s  ↓ 0 B/s"
                         android:textColor="?attr/tvTrafficColor"
-                        android:textSize="12.5sp" />
+                        android:textSize="14sp" />
 
                     <TextView
                         android:id="@+id/tvTrafficTotal"
@@ -170,7 +170,7 @@
                         android:fontFamily="monospace"
                         tools:text="Σ 0 B"
                         android:textColor="?attr/tvTrafficTotalColor"
-                        android:textSize="11.5sp" />
+                        android:textSize="13sp" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -190,6 +190,7 @@
             app:layout_constraintTop_toBottomOf="@id/cardDashboardInfo"
             android:nextFocusRight="@id/rvProfiles"
             android:nextFocusDown="@id/btnTestLatency"
+            android:foreground="@drawable/tv_focus_ring"
             android:focusable="true"
             android:focusedByDefault="true" />
 
@@ -205,6 +206,7 @@
             app:cornerRadius="10dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/btnConnect"
+            android:foreground="@drawable/tv_focus_ring"
             android:nextFocusUp="@id/btnConnect"
             android:nextFocusDown="@id/btnToggleSync"
             android:nextFocusRight="@id/rvProfiles" />
@@ -277,7 +279,7 @@
                         android:maxLines="1"
                         tools:text="http://192.168.1.100:5858"
                         android:textColor="?attr/tvPublicIpColor"
-                        android:textSize="10.5sp" />
+                        android:textSize="12sp" />
 
                     <TextView
                         android:id="@+id/tvWebQrHint"
@@ -287,7 +289,19 @@
                         android:alpha="0.7"
                         android:text="@string/web_console_qr_hint"
                         android:textColor="@color/tv_text_secondary"
-                        android:textSize="9.5sp" />
+                        android:textSize="12sp" />
+
+                    <!-- 「关闭认证」模式下显示：TV 把地址+二维码挂屏上，免认证等同向全网段开放控制 -->
+                    <TextView
+                        android:id="@+id/tvWebAuthWarning"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:text="@string/tv_web_no_auth_warning"
+                        android:textColor="?attr/tvErrorColor"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
                 </LinearLayout>
 
             </LinearLayout>
@@ -312,7 +326,7 @@
                 android:alpha="0.5"
                 android:text="@string/tv_sync_server_on"
                 android:textColor="@color/tv_text_secondary"
-                android:textSize="10.5sp" />
+                android:textSize="12sp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnToggleSync"
@@ -321,7 +335,8 @@
                 android:layout_height="wrap_content"
                 android:text="@string/tv_stop_sync"
                 android:textColor="?attr/colorOnSurfaceVariant"
-                android:textSize="10.5sp"
+                android:textSize="13sp"
+                android:foreground="@drawable/tv_focus_ring"
                 android:nextFocusUp="@id/btnTestLatency"
                 android:nextFocusRight="@id/rvProfiles" />
         </LinearLayout>
@@ -468,6 +483,7 @@
                 android:gravity="start|center_vertical"
                 android:text="@string/action_speed_test"
                 android:textSize="16sp"
+                android:foreground="@drawable/tv_focus_ring"
                 app:cornerRadius="12dp"
                 app:icon="@drawable/ic_speed"
                 app:iconPadding="16dp" />
@@ -482,6 +498,7 @@
                 android:text="@string/delete"
                 android:textColor="?attr/tvErrorColor"
                 android:textSize="16sp"
+                android:foreground="@drawable/tv_focus_ring"
                 app:cornerRadius="12dp"
                 app:icon="@drawable/ic_delete"
                 app:iconPadding="16dp"
@@ -500,7 +517,7 @@
                 android:gravity="center"
                 android:text="@string/tv_sheet_close_hint"
                 android:textColor="@color/tv_text_secondary"
-                android:textSize="11sp" />
+                android:textSize="12sp" />
 
         </LinearLayout>
     </androidx.cardview.widget.CardView>

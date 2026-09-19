@@ -1245,14 +1245,11 @@ class HomeFragment : Fragment() {
             }
         }
 
-        details.btnDetailClose.setOnClickListener { dialog.dismiss() }
-
         // 地球：点「下载」补离线地理库。进度与失败都写进卡片底部那行状态文案（见 refreshGlobe）。
         details.btnGlobeDownload.setOnClickListener { startGlobeDownload(details) }
 
         // ⋮ 只挂既有能力，不做"待实现"占位：编辑节点走既有的编辑页，复制详情把面板上
-        // 看得见的字段拼成纯文本，方便贴进工单/聊天。顶栏与拓扑卡身份头共用同一份菜单。
-        details.btnDetailMore.setOnClickListener { anchor -> showDetailMoreMenu(details, profile, anchor) }
+        // 看得见的字段拼成纯文本，方便贴进工单/聊天。原顶栏 ⋮ 已删，拓扑卡身份头是唯一入口。
         details.btnGlobeMore.setOnClickListener { anchor -> showDetailMoreMenu(details, profile, anchor) }
 
         // 右下角复位视角：倍率收回 1 + 相机重新对准当前节点 + 收掉点选气泡。

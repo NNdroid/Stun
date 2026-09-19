@@ -1,16 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 应用行：checkable 卡片 —— 选中态的底色/描边走 res/color 选择器
+     （app_filter_row_bg / app_filter_row_stroke），勾选状态由代码 setChecked 驱动。 -->
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/card_app"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginHorizontal="@dimen/space_3"
     android:layout_marginVertical="@dimen/space_1"
-    app:cardBackgroundColor="?attr/colorSurfaceContainerLowest"
+    android:checkable="true"
+    app:cardBackgroundColor="@color/app_filter_row_bg"
     app:cardCornerRadius="@dimen/corner_sm"
     app:cardElevation="0dp"
     app:strokeWidth="1dp"
-    app:strokeColor="?attr/colorOutlineVariant">
+    app:strokeColor="@color/app_filter_row_stroke">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -48,7 +52,8 @@
             android:textAppearance="?attr/textAppearanceTitleMedium"
             android:textColor="?attr/colorOnSurface"
             app:layout_constraintBottom_toTopOf="@+id/tv_package_name"
-            app:layout_constraintEnd_toStartOf="@+id/cb_selected"
+            app:layout_constraintEnd_toStartOf="@+id/tv_app_badge"
+            app:layout_constraintHorizontal_bias="0.0"
             app:layout_constraintStart_toEndOf="@id/icon_container"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintVertical_chainStyle="packed"
@@ -67,6 +72,20 @@
             app:layout_constraintStart_toStartOf="@id/tv_app_name"
             app:layout_constraintTop_toBottomOf="@id/tv_app_name"
             tools:text="com.example.package" />
+
+        <TextView
+            android:id="@+id/tv_app_badge"
+            style="@style/Widget.Stun.AppFilter.Badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="@dimen/space_1"
+            android:text="@string/badge_installed"
+            android:visibility="visible"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/cb_selected"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="@string/badge_installed"
+            tools:visibility="visible" />
 
         <com.google.android.material.checkbox.MaterialCheckBox
             android:id="@+id/cb_selected"

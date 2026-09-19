@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 应用分流分类 chip：选中 = 主色实心（效果图的橙色胶囊），未选中 = 透明底 + 细描边 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_checked="true" android:color="?attr/colorPrimary" />
+    <item android:color="@android:color/transparent" />
+</selector>

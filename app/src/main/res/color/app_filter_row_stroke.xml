@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 应用行卡片描边：选中 = 主色（效果图的橙色描边行），未选中 = 弱描边 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_checked="true" android:color="?attr/colorPrimary" />
+    <item android:color="?attr/colorOutlineVariant" />
+</selector>

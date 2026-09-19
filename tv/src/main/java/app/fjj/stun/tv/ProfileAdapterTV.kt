@@ -50,6 +50,7 @@ class ProfileAdapterTV(
         holder.card.animate().cancel()
         holder.card.scaleX = 1.0f
         holder.card.scaleY = 1.0f
+        holder.card.alpha = 1.0f
         holder.card.cardElevation = 3f
         holder.tvFocusHint.visibility = View.GONE
     }
@@ -97,13 +98,17 @@ class ProfileAdapterTV(
 
         if (isSelected) {
             holder.card.setCardBackgroundColor(if (hasFocus) bgSelectedFocused else bgNormal)
-            holder.card.strokeWidth = if (hasFocus) 4 else 3
+            holder.card.strokeWidth = if (hasFocus) 5 else 3
             holder.card.strokeColor = if (hasFocus) focusBorderColor else primaryColor
         } else {
             holder.card.setCardBackgroundColor(if (hasFocus) bgFocused else bgNormal)
-            holder.card.strokeWidth = if (hasFocus) 3 else 1
+            holder.card.strokeWidth = if (hasFocus) 4 else 1
             holder.card.strokeColor = if (hasFocus) focusBorderColor else strokeNormal
         }
+
+        // 未聚焦压暗在这里统一驱动（bind / 焦点变化 / 局部刷新三条路径都过这里），
+        // 首帧不至于「全员高亮」、焦点一动才集体变暗。
+        holder.itemView.alpha = if (hasFocus) 1f else 0.88f
     }
 
     private fun bind(holder: ViewHolder, profile: Profile) {
@@ -179,11 +184,14 @@ class ProfileAdapterTV(
         }
         
         holder.itemView.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) holder.itemView.playSoundEffect(android.view.SoundEffectConstants.CLICK)
             holder.tvFocusHint.visibility = if (hasFocus) View.VISIBLE else View.GONE
             updateSelectionVisuals(holder, profile)
-            
-            val scale = if (hasFocus) 1.03f else 1.0f
-            val elevation = if (hasFocus) 10f else 3f
+
+            // 电视端焦点三件套：放大 + 抬升 + 描边（updateSelectionVisuals）；
+            // 未聚焦行由 updateSelectionVisuals 统一压暗。
+            val scale = if (hasFocus) 1.06f else 1.0f
+            val elevation = if (hasFocus) 12f else 3f
             holder.card.cardElevation = elevation
             holder.card.animate().cancel()
             holder.card.animate()

@@ -933,7 +933,11 @@ class GlobeView @JvmOverloads constructor(
 
         if (inertiaRemainingMs > 0f) {
             inertiaRemainingMs -= dtSeconds * 1000f
-            lonDeg = wrapLon(lonDeg + flingDxPerSec * dtSeconds)
+            // ⚠️ 单位必须换算成角度：`flingDxPerSec` 是**像素/秒**，而 lonDeg 是度。
+            // 不换算就是"把 px 当 deg 用"，惯性比手指快 `density / ROTATE_DEG_PER_DP` 倍
+            // （xhdpi 5 倍、xxhdpi 7.5 倍）—— 症状是松手后球疯转几圈再停在一个跟手指
+            // 完全无关的经度上。换算因子与 [rotateBy] 同一条，惯性才真的"接着手指的速度走"。
+            lonDeg = wrapLon(lonDeg + flingDxPerSec * ROTATE_DEG_PER_DP / density * dtSeconds)
             flingDxPerSec *= (1f - min(1f, dtSeconds * INERTIA_DECAY_PER_SEC))
             // 只在惯性真的走完的这一帧锚定：早一帧会把还没走完的位移丢掉，画面会顿一下。
             if (inertiaRemainingMs <= 0f) anchorSwayToCamera()
@@ -1496,6 +1500,14 @@ class GlobeView @JvmOverloads constructor(
      */
     internal fun debugAnchorLonDeg(): Float =
         anchorLonFor(lonDeg, if (textureWidth > 0) textureWidth else MESH_COLS)
+
+    /**
+     * 仅供测试：当前**相机经度**（度）。
+     *
+     * 动效判据要量的是"这一帧转了多少度"（惯性、摆动），这在像素上量不出来（亚度级角位移
+     * 落在一两个纹素以内），只能从这里读 —— 见 `松手后的惯性角速度与手指拖动的角速度一致`。
+     */
+    internal fun debugCameraLonDeg(): Float = lonDeg
 
     /**
      * 懒加载 assets/geo/ 三张贴图（缺哪张回退哪张：白天缺 → 矢量海岸线，夜景缺 → 纯色夜面，

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 应用行卡片：选中 = 主色容器底（效果图的橙色底纹行），未选中 = 低阶面色 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_checked="true" android:color="?attr/colorPrimaryContainer" />
+    <item android:color="?attr/colorSurfaceContainerLow" />
+</selector>
