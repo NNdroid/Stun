@@ -205,6 +205,8 @@ dependencies {
     
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.zxing.android.embedded)
+    // 压住 core 版本，理由见 gradle/libs.versions.toml 的 zxing-core
+    implementation(libs.zxing.core)
 
     // Ktor for remote control
     implementation(libs.ktor.server.core)

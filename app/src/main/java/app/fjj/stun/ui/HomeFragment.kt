@@ -15,6 +15,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -25,16 +26,19 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.SimpleItemAnimator
 import app.fjj.stun.R
 import app.fjj.stun.core.R as CoreR
 import app.fjj.stun.databinding.BottomSheetConnectionDetailsBinding
 import app.fjj.stun.databinding.FragmentHomeBinding
 import app.fjj.stun.geo.*
+import app.fjj.stun.qr.AnimatedQrProtocol
 import app.fjj.stun.repo.*
+import app.fjj.stun.ui.qr.AnimatedQrPlayer
+import app.fjj.stun.ui.qr.AnimatedQrScanActivity
+import app.fjj.stun.ui.qr.QrLogoBadge
 import app.fjj.stun.ui.view.GlobeView
+import app.fjj.stun.ui.view.ServerNoticeBox
 
 import app.fjj.stun.service.MyTransparentProxyService
 import app.fjj.stun.service.MyVpnService
@@ -47,8 +51,6 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.sidesheet.SideSheetDialog
 import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
-import com.journeyapps.barcodescanner.ScanContract
-import com.journeyapps.barcodescanner.ScanOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -159,16 +161,17 @@ class HomeFragment : Fragment() {
         startSelectedService()
     }
 
+    /**
+     * 扫码入口。走自己实现的连续扫码页而不是库的 `CaptureActivity`：
+     * 前者既能扫普通单张二维码，也能把动画二维码的帧**边扫边拼**，两者的结果格式一致，
+     * 所以这里统一交给 [handleImportText] 分派（加密载荷 → PIN 弹窗 / 明文 JSON / Base64）。
+     */
     private val barcodeLauncher = registerForActivityResult(
-        ScanContract()
+        ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.contents != null) {
-            if (ShareCryptoUtils.isEncryptedPayload(result.contents)) {
-                showPinInputDialog(result.contents)
-            } else {
-                importProfileFromJsonBase64(result.contents)
-            }
-        }
+        if (result.resultCode != android.app.Activity.RESULT_OK) return@registerForActivityResult
+        val text = result.data?.getStringExtra(AnimatedQrScanActivity.EXTRA_QR_TEXT)
+        if (!text.isNullOrEmpty()) handleImportText(text)
     }
 
     private fun showPinInputDialog(encryptedPayload: String) {
@@ -484,13 +487,7 @@ class HomeFragment : Fragment() {
     }
 
     private fun setupListeners() {
-        binding.btnEmptyScanQr.setOnClickListener {
-            barcodeLauncher.launch(ScanOptions().apply {
-                setPrompt(getString(CoreR.string.scan_prompt))
-                setBeepEnabled(true)
-                setOrientationLocked(false)
-            })
-        }
+        binding.btnEmptyScanQr.setOnClickListener { scanQRCode() }
 
         binding.btnEmptyAddProfile.setOnClickListener {
             val intent = Intent(requireContext(), ProfileEditActivity::class.java)
@@ -1172,13 +1169,6 @@ class HomeFragment : Fragment() {
         // 拓扑卡的身份头与「节点详情」卡同源（同一个 profile），只是把最常用的几项提到球上方：
         // 服务器地址直接复用上面算好的那份文案，不在这里拼第二遍。
         details.tvGlobeServer.text = details.tvDetailServer.text
-        details.tvGlobeProtocolChip.text = protocol
-        // 标记魔数只对自定义隧道有意义：空值整枚标签收起，不写占位符。
-        val magic = profile.udpCustomMagic.trim()
-        details.tvGlobeMagicChip.isVisible = magic.isNotBlank()
-        if (magic.isNotBlank()) {
-            details.tvGlobeMagicChip.text = getString(R.string.connection_magic_format, magic)
-        }
         details.tvGlobeLast.text = getString(
             R.string.connection_last_connected_short,
             formatLastConnected(profile.lastConnectedAt)
@@ -1195,6 +1185,9 @@ class HomeFragment : Fragment() {
         if (sshNotice.isNotBlank()) {
             // banner 可含 ANSI 颜色与白名单 HTML（含 http(s) 链接），消毒与渲染交给 SshBannerRenderer
             SshBannerRenderer.applyTo(details.tvDetailSshNotice, sshNotice)
+            // 虚线框跟着主题走，只能在运行时装（XML 里的 shape 颜色不吃 ?attr/），
+            // 放在这里与"把行设成 VISIBLE"绑在一起：框不存在没上色就先露出来的空窗。
+            ServerNoticeBox.applyTo(details.tvDetailSshNotice)
             details.rowDetailSshNotice.visibility = View.VISIBLE
             details.dividerDetailSshNotice.visibility = View.VISIBLE
         } else {
@@ -1715,12 +1708,11 @@ class HomeFragment : Fragment() {
             adapter.setFilterMode(mode)
         }
 
-        val dpWidth = resources.displayMetrics.widthPixels / resources.displayMetrics.density
-        binding.rvProfiles.layoutManager = if (dpWidth >= 600) {
-            GridLayoutManager(requireContext(), (dpWidth / 360).toInt().coerceAtLeast(2))
-        } else {
-            LinearLayoutManager(requireContext())
-        }
+        // 宽屏（平板 / 横屏 / 桌面多窗口）把节点列表切成一行多列，把横向空间用起来。
+        // 规则与阈值在 core 的 GridSpans 里，四个模块（app/tv/car/xr）共用同一条；
+        // ⚠️ 列数按 **RecyclerView 自己的实际宽度**算（GridSpans 内部读 rv.width），
+        // 不按屏宽 —— 分屏/多窗口下窗口宽不等于屏宽，按屏宽算会多切出几列。
+        GridSpans.bind(binding.rvProfiles)
         binding.rvProfiles.adapter = adapter
         (binding.rvProfiles.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
 
@@ -1790,6 +1782,11 @@ class HomeFragment : Fragment() {
         }
         view.findViewById<TextView>(R.id.tv_profile_name).text = profile.name
 
+        // 二维码中心的应用图标。只在这里光栅化一次（矢量图必须在主线程画），
+        // 静态单张码和动画每一帧共用这同一张位图，尺寸和留白规则见 [QrLogoBadge]。
+        val logoBitmap = AppCompatResources.getDrawable(requireContext(), R.drawable.ic_fox_logo)
+            ?.let { QrLogoBadge.rasterize(it, QrLogoBadge.iconSide(qrSize)) }
+
         // PIN 可自定义：预填随机值，用户改动后防抖重新加密并刷新二维码
         var sharedEncryptedPayload: String? = null
         val etSharePin = view.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.et_share_pin).apply {
@@ -1799,45 +1796,132 @@ class HomeFragment : Fragment() {
             isEnabled = false
         }
         val progress = view.findViewWithTag<View>("qr_progress")
+        val streamInfo = view.findViewById<TextView>(R.id.tv_qr_stream_info)
+        val streamControls = view.findViewById<View>(R.id.qr_stream_controls)
+        val streamHint = view.findViewById<TextView>(R.id.tv_qr_stream_hint)
+        val streamToggle = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_qr_stream_toggle)
+        val streamSpeedGroup = view.findViewById<com.google.android.material.button.MaterialButtonToggleGroup>(R.id.toggle_qr_stream_speed)
         var pinEditJob: kotlinx.coroutines.Job? = null
+
+        // 只有在密文塞不进单张二维码时才会被启动（见 AnimatedQrProtocol.SINGLE_QR_MAX_BYTES）。
+        // 播放循环跑在 viewLifecycleOwner 的协程作用域里，页面销毁自动取消，不用额外收尾。
+        val player = AnimatedQrPlayer(
+            scope = viewLifecycleOwner.lifecycleScope,
+            imageView = qrView,
+            onFrame = { index, total, round ->
+                streamInfo.text = getString(R.string.qr_stream_info_format, index + 1, total, round)
+            },
+            onFailed = {
+                dialog.dismiss()
+                Toast.makeText(requireContext(), getString(CoreR.string.main_qr_fail), Toast.LENGTH_SHORT).show()
+            },
+        )
+
+        fun setStreamVisible(visible: Boolean) {
+            val visibility = if (visible) View.VISIBLE else View.GONE
+            streamInfo.visibility = visibility
+            streamControls.visibility = visibility
+            streamHint.visibility = visibility
+        }
+
+        fun showShareFailure() {
+            dialog.dismiss()
+            Toast.makeText(requireContext(), getString(CoreR.string.main_qr_fail), Toast.LENGTH_SHORT).show()
+        }
+
+        /** 超限时的退路：切成 N 帧循环播放，接收端边扫边拼（协议见 [AnimatedQrProtocol]）。 */
+        fun startStream(encrypted: String) {
+            val session = runCatching {
+                AnimatedQrProtocol.split(encrypted.toByteArray(Charsets.UTF_8))
+            }.onFailure {
+                StunLogger.e("HomeFragment", "Failed to split payload into QR frames", it)
+            }.getOrNull()
+            if (session == null) {
+                showShareFailure()
+                return
+            }
+            progress.visibility = View.GONE
+            streamHint.text = getString(R.string.qr_stream_hint_format, session.totalFrames)
+            streamInfo.text = getString(R.string.qr_stream_info_format, 1, session.totalFrames, 1)
+            streamToggle.setText(R.string.qr_stream_pause)
+            // 只在还没选过速度时才落到中档：用户上一轮如果已经调到"慢"才扫得动，
+            // 这次改 PIN 重新生成时不该把他的选择冲掉。
+            if (streamSpeedGroup.checkedButtonId == View.NO_ID) {
+                streamSpeedGroup.check(R.id.btn_qr_speed_medium)
+            }
+            setStreamVisible(true)
+            player.setPaused(false)
+            qrView.visibility = View.VISIBLE
+            player.start(session, qrSize, logoBitmap)
+        }
 
         fun regenerateForPin(newPin: String) {
             pinEditJob?.cancel()
+            player.stop()
+            setStreamVisible(false)
+            streamInfo.text = null
             progress.visibility = View.VISIBLE
             qrView.visibility = View.INVISIBLE
+            copyButton.isEnabled = false
             pinEditJob = viewLifecycleOwner.lifecycleScope.launch {
-                // 防抖：等待 300ms 无新输入再执行 PBKDF2 + QR 光栅化
+                // 防抖：等待 300ms 无新输入再执行 PBKDF2
                 kotlinx.coroutines.delay(300)
-                val result = withContext(Dispatchers.Default) {
+                val encrypted = withContext(Dispatchers.Default) {
                     runCatching {
-                        val json = Gson().toJson(profile)
-                        val encrypted = ShareCryptoUtils.encrypt(json, newPin)
-                        encrypted to QRUtils.generateQRCode(encrypted, qrSize, qrSize)
+                        ShareCryptoUtils.encrypt(Gson().toJson(profile), newPin)
                     }.onFailure {
                         if (it !is kotlinx.coroutines.CancellationException) {
-                            StunLogger.e("HomeFragment", "Failed to prepare share QR code", it)
+                            StunLogger.e("HomeFragment", "Failed to prepare share payload", it)
                         }
                     }.getOrNull()
                 }
-                if (!dialog.isShowing) {
-                    result?.second?.recycle()
-                    return@launch
-                }
-                val encrypted = result?.first
-                val bitmap = result?.second
-                if (encrypted == null || bitmap == null) {
-                    dialog.dismiss()
-                    Toast.makeText(requireContext(), getString(CoreR.string.main_qr_fail), Toast.LENGTH_SHORT).show()
+                if (!dialog.isShowing) return@launch
+                if (encrypted == null) {
+                    showShareFailure()
                     return@launch
                 }
                 sharedEncryptedPayload = encrypted
-                progress.visibility = View.GONE
-                qrView.apply {
-                    setImageBitmap(bitmap)
-                    colorFilter = null
-                    visibility = View.VISIBLE
-                }
                 copyButton.isEnabled = true
+
+                // 密文是纯 ASCII，字符数即字节数。装得下就继续用原来的静态单张码 —— 旧版本照常互认，
+                // 只有真的超限才升级成动画模式（那要求对方也是新版本）。
+                if (encrypted.length <= AnimatedQrProtocol.SINGLE_QR_MAX_BYTES) {
+                    val bitmap = withContext(Dispatchers.Default) {
+                        QRUtils.generateQRCode(encrypted, qrSize, qrSize)
+                    }
+                    if (!dialog.isShowing) {
+                        bitmap?.recycle()
+                        return@launch
+                    }
+                    if (bitmap != null) {
+                        QrLogoBadge.drawInto(bitmap, logoBitmap)
+                        progress.visibility = View.GONE
+                        qrView.apply {
+                            setImageBitmap(bitmap)
+                            colorFilter = null
+                            visibility = View.VISIBLE
+                        }
+                        return@launch
+                    }
+                }
+                startStream(encrypted)
+            }
+        }
+
+        streamToggle.setOnClickListener {
+            val paused = !player.isPaused
+            player.setPaused(paused)
+            streamToggle.setText(if (paused) R.string.qr_stream_resume else R.string.qr_stream_pause)
+        }
+
+        // 帧率随时可调，且**不重启播放**（AnimatedQrPlayer 每帧都读一次 speed），
+        // 用户可以对着屏幕一边看进度一边试到能扫上为止。
+        streamSpeedGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            player.speed = when (checkedId) {
+                R.id.btn_qr_speed_slow -> AnimatedQrPlayer.Speed.SLOW
+                R.id.btn_qr_speed_fast -> AnimatedQrPlayer.Speed.FAST
+                else -> AnimatedQrPlayer.Speed.MEDIUM
             }
         }
 
@@ -1867,6 +1951,12 @@ class HomeFragment : Fragment() {
                 clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("Stun Node URI", uri))
                 Toast.makeText(requireContext(), getString(CoreR.string.copy_success), Toast.LENGTH_SHORT).show()
             }
+        }
+
+        // 关掉弹窗就把播放停掉：否则动画循环会继续在看不见的 ImageView 上编码、白烧 CPU
+        dialog.setOnDismissListener {
+            player.stop()
+            pinEditJob?.cancel()
         }
 
         dialog.show()
@@ -2007,13 +2097,7 @@ class HomeFragment : Fragment() {
     }
 
     private fun scanQRCode() {
-        val options = ScanOptions().apply {
-            setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-            setPrompt(getString(CoreR.string.main_scan_prompt))
-            setBeepEnabled(false)
-            setOrientationLocked(false)
-        }
-        barcodeLauncher.launch(options)
+        barcodeLauncher.launch(Intent(requireContext(), AnimatedQrScanActivity::class.java))
     }
 
     private fun testSelectedProfileLatency(delayMs: Long = 0L) {

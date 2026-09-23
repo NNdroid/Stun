@@ -6,6 +6,7 @@ import android.os.Looper
 import android.text.SpannableStringBuilder
 import androidx.lifecycle.MutableLiveData
 import myssh.TunnelEventCallback
+import app.fjj.stun.util.CrashHistoryStore
 import app.fjj.stun.util.QualityCalculator
 import app.fjj.stun.util.QualityScore
 import com.google.gson.Gson
@@ -240,7 +241,7 @@ object StunRepository {
      * 注册 Go 引擎事件回调：把连通/重连/停止状态映射到 vpnState，
      * 把致命/连接错误推到 engineError，把崩溃 Panic 推到 crashEvent 供主 UI 弹窗。
      */
-    fun registerEngineCallback() {
+    fun registerEngineCallback(ctx: Context) {
         proxy.setEngineCallback(object : myssh.EngineCallback {
             override fun onState(state: String?, detail: String?) {
                 when (state) {
@@ -270,6 +271,10 @@ object StunRepository {
                 val report = crashReport ?: "Unknown core panic"
                 StunLogger.e("GoCrash", report)
                 crashEvent.postValue(report)
+                // JVM 崩溃走 CrashHandler 记录；这里是 Go 引擎 Panic 的独立入口。
+                // 注意与 initCrashOutput 写 cacheDir/crash.log 不是一回事：那个只在 Go 真
+                // Fatal（recover 都来不及）时触发，且只留一份、下次启动就被重命名归档。
+                CrashHistoryStore.record(ctx, CrashHistoryStore.TYPE_GO_PANIC, report)
             }
         })
 

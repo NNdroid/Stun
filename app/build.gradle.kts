@@ -121,7 +121,9 @@ dependencies {
     implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.gson)
     implementation(libs.zxing.android.embedded)
-    
+    // 压住 core 版本，理由见 gradle/libs.versions.toml 的 zxing-core
+    implementation(libs.zxing.core)
+
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)

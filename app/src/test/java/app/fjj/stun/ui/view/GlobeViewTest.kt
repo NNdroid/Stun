@@ -23,6 +23,7 @@ import app.fjj.stun.geo.GlobeTopology
 import app.fjj.stun.geo.GlobeTopologyBuilder
 import app.fjj.stun.geo.NullGeoResolver
 import java.io.File
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
@@ -472,6 +473,11 @@ class GlobeViewTest {
         val view = newSizedView().apply {
             starryMode = true
             sunEpochMillis = EQUINOX_NOON_UTC
+            // 光效两层（太阳光晕 + 贴图模式的球面高光，默认都开着）都是叠在这层贴图**之上**的，
+            // 会按比例压缩海/陆的色差、也会在近黑处加最多 48 的亮度。这条钉的是它下面那层
+            // "贴图有没有按经纬度对位"，先把两层都摘掉再比。
+            sunGlowEnabled = false
+            sphereSheenEnabled = false
         }
         view.submitTopology(
             GlobeTopology(
@@ -548,6 +554,9 @@ class GlobeViewTest {
             val view = newSizedView().apply {
                 starryMode = true
                 sunEpochMillis = EQUINOX_NOON_UTC - (lon / 15f * 3_600_000L).toLong()
+                // 同上：取样点刻意选在直射点 35° 内，正好是光晕最亮处，先摘掉光效两层再比色差。
+                sunGlowEnabled = false
+                sphereSheenEnabled = false
             }
             view.submitTopology(
                 GlobeTopology(
@@ -608,6 +617,13 @@ class GlobeViewTest {
                 starryMode = true
                 // 秋分 ⇒ 赤纬 ≈0 ⇒ 直射点在赤道，经度由 sunLon 定。
                 sunEpochMillis = EQUINOX_NOON_UTC - (sunLon / 15f * 3_600_000L).toLong()
+                // ⚠️ 必须关掉光效两层：这条是拿"太阳正对盘心"与"太阳在球缘"两帧相减比白昼侧有没有被压暗，
+                // 而光晕恰恰只在直射点在盘心时叠上来（到球缘就淡出到 0）—— 留着它，两帧之差里混进的
+                // 就是光晕的亮度（实测 8%），直接盖过 4% 的容差。球面高光同理：它是固定的屏幕空间图层，
+                // 但"直射点在盘心"那帧的取样点落在它的亮部、"太阳在球缘"那帧落在暗部，一样会串进来。
+                // 光效由 `GlobeSunGlowTest` 单独钉。
+                sunGlowEnabled = false
+                sphereSheenEnabled = false
             }
             view.submitTopology(
                 GlobeTopology(
@@ -954,6 +970,78 @@ class GlobeViewTest {
                 out.getPixel(4, 10),
             )
         }
+    }
+
+    /**
+     * 背面塌陷的**净效果**判据：整张网格画出来的面积和必须 ≈ 盘面积 πR²。
+     *
+     * 这一条盯的是"上下转动时盘的最上/最下会糊掉一条"那个 bug 的根。网格必须铺满整张 360°
+     * （见上一条）、背面列只能"跟邻居重合"退化成零面积（见 [零面积格子画不画]），所以塌陷目标
+     * 一旦算错，症状只剩两种、方向相反：
+     *
+     * - **面积和 > πR²**：有块区域被画了**两遍**。成因是两个相邻行的背面顶点塌到了方位角差
+     *   几十度的两个位置 —— 中间那个四边形变成一条横跨球缘的**弦形三角**，把低 10° 的贴图糊到
+     *   高 10° 的位置上。老实现（逐行塌到"本行挨着的正面列"）在 pitch 60° 量到 **1.0515**。
+     * - **面积和 < πR² 太多**：盘面漏了一块（有洞、露底）—— 塌过头了。
+     *
+     * 下界不能卡 1：内接多边形本身就割掉一点面积（72 列 × 18 行的理论值 ≈ 0.994）。
+     *
+     * 阈值是**对着两侧实测值**取的：本实现全区间 [0.9936, 0.9988]，老实现 121 个俯仰里
+     * 有 28 个 > 1.005（峰值 1.0515）。上界 1.005 刚好把老实现整个挡在外面。
+     *
+     * 失败信息里带的是**全部**越界的俯仰，不是第一个 —— 这条 bug 是"某些角度才犯"，只报一个看不出规律。
+     */
+    @Test
+    fun `背面塌陷不会让盘面多画或漏画`() {
+        val over = ArrayList<String>()
+        val under = ArrayList<String>()
+        for (pitch in -60..60) {
+            val view = newSizedView()
+            view.submitTopology(markerAtLatTopology(pitch.toFloat()))
+            val r = minOf(view.width, view.height) / 2f * DISC_FILL_RATIO
+            val (areaSum, _) = meshStats(view)
+            val ratio = areaSum / (PI * r * r)
+            if (ratio > MAX_AREA_RATIO) over += "  pitch=$pitch → %.4f".format(ratio)
+            if (ratio < MIN_AREA_RATIO) under += "  pitch=$pitch → %.4f".format(ratio)
+        }
+
+        assertTrue(
+            "以下俯仰盘面被画了**两遍**（面积和 / πR² 超出 $MAX_AREA_RATIO）—— 背面塌陷的目标" +
+                "跨到了球缘另一边，会把一条纬度的贴图糊到相邻的那条上：\n" + over.joinToString("\n"),
+            over.isEmpty(),
+        )
+        assertTrue(
+            "以下俯仰盘面**漏画**了（面积和 / πR² 低于 $MIN_AREA_RATIO）—— 背面塌陷塌过头了：\n" +
+                under.joinToString("\n"),
+            under.isEmpty(),
+        )
+    }
+
+    /**
+     * 塌陷后的顶点不许跑出球面轮廓 —— 网格是"贴图到球面"的唯一出口，只要有一个顶点在盘外，
+     * 它牵着的那些四边形就会把贴图画到球的外面去（球缘外侧出现本不该有的色块）。
+     *
+     * 正面顶点是单位向量的正交投影，天然 `|v| ≤ 1`；背面顶点只有两种合法落点：跟同行/同列邻居
+     * **重合**（落在盘内），或者落在**球缘**上（`|v| = 1`，逐列塌陷归一到半径 1 就是为了这个）。
+     * 两种都在界内。
+     *
+     * ⚠️ 这条**不是**上面那个"多画/漏画"bug 的判据：实测老实现（逐行规则）也全程不越界，
+     * 它只是把面积**摊错位置**、并没有跑到球外。两者互为补充、别指望用这条替代上一条。
+     */
+    @Test
+    fun `背面顶点塌陷后不会跑出球缘`() {
+        val out = ArrayList<String>()
+        for (pitch in -60..60) {
+            val view = newSizedView()
+            view.submitTopology(markerAtLatTopology(pitch.toFloat()))
+            val (_, maxOffset) = meshStats(view)
+            if (maxOffset > MAX_VERTEX_OFFSET) out += "  pitch=$pitch → %.5fR".format(maxOffset)
+        }
+        assertTrue(
+            "以下俯仰有顶点跑到了球面轮廓之外（离盘心 > $MAX_VERTEX_OFFSET·R）—— " +
+                "贴图会被画到球的外面去：\n" + out.joinToString("\n"),
+            out.isEmpty(),
+        )
     }
 
     // ────────────────────────────────────────────────────────── 自转（有限摆动）
@@ -1351,6 +1439,13 @@ class GlobeViewTest {
         available = true,
     )
 
+    /** hub 钉在 (lat, 0)：相机跟着 hub 对准，于是 `lat` 就是这一帧的相机纬度（经度恒 0）。 */
+    private fun markerAtLatTopology(lat: Float): GlobeTopology = GlobeTopology(
+        markers = listOf(GlobeMarker(point = GeoPoint(lat.toDouble(), 0.0, "CN"), isCurrent = true)),
+        arcs = emptyList(),
+        available = true,
+    )
+
     private fun drag(view: View, dx: Float, dy: Float) {
         val start = 100f
         val t = SystemClock.uptimeMillis()
@@ -1425,6 +1520,54 @@ class GlobeViewTest {
         val cols = GlobeView.MESH_COLS
         val row = Math.round((90f - latDeg) / 180f * GlobeView.MESH_ROWS).toInt()
         return FloatArray(cols + 1) { verts[(row * (cols + 1) + it) * 2] }
+    }
+
+    /**
+     * 按当前相机姿态铺一遍网格，返回 `(所有四边形面积和, 顶点离盘心的最大距离 / 球半径)`。
+     *
+     * 四边形取序与 `drawBitmapMesh` 一致：`(row,col) (row,col+1) (row+1,col+1) (row+1,col)`
+     * —— 顺序写错会算成蝴蝶形的自交多边形，面积全乱。
+     */
+    private fun meshStats(view: GlobeView): Pair<Double, Double> {
+        val verts = view.debugMeshVerts()
+        val cols = GlobeView.MESH_COLS
+        val rows = GlobeView.MESH_ROWS
+        val r = minOf(view.width, view.height) / 2f * DISC_FILL_RATIO
+        val cx = view.width / 2f
+        val cy = view.height / 2f
+
+        fun vx(row: Int, col: Int) = verts[(row * (cols + 1) + col) * 2]
+        fun vy(row: Int, col: Int) = verts[(row * (cols + 1) + col) * 2 + 1]
+
+        var total = 0.0
+        for (row in 0 until rows) {
+            for (col in 0 until cols) {
+                val xs = doubleArrayOf(
+                    vx(row, col).toDouble(), vx(row, col + 1).toDouble(),
+                    vx(row + 1, col + 1).toDouble(), vx(row + 1, col).toDouble(),
+                )
+                val ys = doubleArrayOf(
+                    vy(row, col).toDouble(), vy(row, col + 1).toDouble(),
+                    vy(row + 1, col + 1).toDouble(), vy(row + 1, col).toDouble(),
+                )
+                var shoelace = 0.0
+                for (i in 0 until 4) {
+                    val j = (i + 1) % 4
+                    shoelace += xs[i] * ys[j] - xs[j] * ys[i]
+                }
+                total += abs(shoelace) / 2.0
+            }
+        }
+
+        var maxOffset = 0.0
+        for (row in 0..rows) {
+            for (col in 0..cols) {
+                val dx = (vx(row, col) - cx).toDouble()
+                val dy = (vy(row, col) - cy).toDouble()
+                maxOffset = maxOf(maxOffset, sqrt(dx * dx + dy * dy))
+            }
+        }
+        return total to maxOffset / r
     }
 
     private fun newSizedView(themed: Context = themedContext()): GlobeView {
@@ -1644,5 +1787,17 @@ class GlobeViewTest {
          * 直射点经度的**符号**（见 `同一地点昼夜随真实时刻翻转`）。
          */
         const val REAL_1600_CST_2026_09_16 = 1_789_545_600_000L
+
+        /**
+         * 网格面积和的容许上界（相对 πR²）。实测本实现 ≤ 0.9988、老实现峰值 1.0515，
+         * 取 1.005 是为了"只容忍浮点/抗锯齿量级的重叠，但把老实现那种成片重复画挡在外面"。
+         */
+        const val MAX_AREA_RATIO = 1.005
+
+        /** 网格面积和的容许下界：留够内接多边形割掉的面积（72×18 的理论值 ≈ 0.994），只防"塌过头露底"。 */
+        const val MIN_AREA_RATIO = 0.99
+
+        /** 顶点离盘心的容许上限（相对球半径）：实测恒 ≤ 1，留一点浮点余量。 */
+        const val MAX_VERTEX_OFFSET = 1.001
     }
 }

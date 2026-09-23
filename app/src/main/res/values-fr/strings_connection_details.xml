@@ -13,7 +13,6 @@
     <string name="connection_exit">Adresse de sortie</string>
     <string name="connection_exit_pending">Récupération de l\'adresse de sortie…</string>
     <string name="connection_last_connected">Dernière connexion</string>
-    <string name="connection_magic_format">Magique : %1$s</string>
     <string name="connection_label_protocol">Protocole</string>
     <string name="connection_label_magic">Marqueur magique</string>
     <string name="connection_label_note">Note</string>

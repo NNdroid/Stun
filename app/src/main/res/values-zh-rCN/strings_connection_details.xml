@@ -13,7 +13,6 @@
     <string name="connection_exit">出口地址</string>
     <string name="connection_exit_pending">正在获取出口地址…</string>
     <string name="connection_last_connected">上次连接</string>
-    <string name="connection_magic_format">标记魔数：%1$s</string>
     <string name="connection_label_protocol">协议</string>
     <string name="connection_label_magic">标记魔数</string>
     <string name="connection_label_note">备注</string>

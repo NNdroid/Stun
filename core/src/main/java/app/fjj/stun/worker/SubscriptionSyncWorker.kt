@@ -58,11 +58,14 @@ class SubscriptionSyncWorker(appContext: Context, workerParams: WorkerParameters
         if (subs.isEmpty()) return Result.success()
 
         val now = System.currentTimeMillis()
+        // 上次同步时间一次批量取回（挂在订阅行上，不再按 URL 查一张旁挂表）：
+        // 所以**改过域名的订阅不会因为"新 URL 查不到记录"被误判成"从未同步"而每次都被拉一遍**。
+        val lastSyncById = SubscriptionManager.getLastSyncTimes(ctx)
         val due = subs.filter { sub ->
             // 只处理本机可拉取的协议（https）；历史残留的 sftp 等非法/不支持的链接直接跳过，不做无效尝试
             if (!SubscriptionManager.isValidSubscriptionScheme(sub.url)) return@filter false
             val hours = if (sub.updateIntervalHours > 0) sub.updateIntervalHours else DEFAULT_INTERVAL_HOURS
-            val last = SubscriptionManager.getLastSyncForUrl(ctx, sub.url)
+            val last = lastSyncById[sub.subId] ?: 0L
             (now - last) >= hours * 3_600_000L
         }
         if (due.isEmpty()) {
@@ -72,7 +75,7 @@ class SubscriptionSyncWorker(appContext: Context, workerParams: WorkerParameters
 
         StunLogger.i(TAG, "Syncing ${due.size} due subscription(s)")
         val results = SubscriptionManager.syncAllSubscriptions(ctx, due)
-        // syncAllSubscriptions 已对成功项写入 getLastSyncForUrl，此处仅做日志统计
+        // syncAllSubscriptions 已对成功项写回各自行的 lastSyncTime / syncCount，此处仅做日志统计
         val ok = results.count { it.success }
         StunLogger.i(TAG, "Subscription sync done: $ok/${due.size} succeeded")
         return Result.success()

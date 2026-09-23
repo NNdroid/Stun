@@ -21,10 +21,6 @@
     <color name="connection_favorite_active">#FBBF24</color>
     <color name="connection_favorite_inactive">#94A3B8</color>
 
-    <!-- 「服务器提示」虚线框（深色）：描边压暗、底色向暖黑靠，避免深色下白得刺眼 -->
-    <color name="detail_notice_outline">#B07C77</color>
-    <color name="detail_notice_fill">#2A1F1E</color>
-
     <!-- M3 夜间调色板（2026-09-15 补齐）：与 values/colors.xml 的 light 种子（#904D00 橙棕）
          同 hue 的暗色 tonal 映射。dark primary = light inversePrimary、
          dark primaryContainer = light primaryContainer（M3 的标准镜像关系）。

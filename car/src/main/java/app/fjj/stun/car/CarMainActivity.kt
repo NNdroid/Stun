@@ -8,7 +8,6 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
 import app.fjj.stun.car.databinding.ActivityCarMainBinding
 import app.fjj.stun.core.R as CoreR
 import app.fjj.stun.remote.BluetoothSyncManager
@@ -20,6 +19,7 @@ import app.fjj.stun.repo.VpnState
 import app.fjj.stun.service.VpnConfigBuilder
 import app.fjj.stun.service.VpnControls
 import app.fjj.stun.util.AppUtils
+import app.fjj.stun.util.GridSpans
 import app.fjj.stun.util.PingResults
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
@@ -233,7 +233,10 @@ class CarMainActivity : AppCompatActivity() {
             }
         )
 
-        binding.rvCarNodes.layoutManager = LinearLayoutManager(this)
+        // 车机横屏很宽（常见 1280dp 起），列表切成一行多列才不浪费横向空间。规则见 core 的 GridSpans。
+        // ⚠️ 列数按 RecyclerView 自己的宽度算 —— 这个列表外面还包着 12dp padding 的卡片，
+        // 按屏宽算会偏多。
+        GridSpans.bind(binding.rvCarNodes)
         binding.rvCarNodes.adapter = adapter
     }
 

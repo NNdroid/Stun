@@ -5,6 +5,8 @@
   --border-focus:#FF9F43;--primary:#FF9F43;--primary-glow:rgba(255, 159, 67, 0.25);
   --accent:#38BDF8;--success:#10B981;--warn:#F59E0B;--danger:#EF4444;
   --text:#F1F5F9;--text-muted:#94A3B8;--text-dim:#64748B;
+  --log-bg:#070A0E;--log-text:#E2E8F0;--log-debug:#94A3B8;--log-debug-border:#64748B;
+  --log-warn:#FDE68A;--log-error:#FCA5A5;
   --scrollbar-thumb:rgba(255, 255, 255, 0.16);
   --scrollbar-thumb-hover:rgba(255, 159, 67, 0.7);
   --font-mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
@@ -18,6 +20,8 @@
   --border-focus:#F97316;--primary:#F97316;--primary-glow:rgba(249, 115, 22, 0.2);
   --accent:#0284C7;--success:#059669;--warn:#D97706;--danger:#DC2626;
   --text:#0F172A;--text-muted:#64748B;--text-dim:#94A3B8;
+  --log-bg:#F1F5F9;--log-text:#0F172A;--log-debug:#64748B;--log-debug-border:#CBD5E1;
+  --log-warn:#B45309;--log-error:#B91C1C;
   --scrollbar-thumb:rgba(0, 0, 0, 0.16);
   --scrollbar-thumb-hover:rgba(249, 115, 22, 0.7);
   --shadow-card:0 10px 25px -5px rgba(0,0,0,0.06);--shadow-btn:0 4px 12px rgba(249,115,22,0.2);
@@ -196,6 +200,19 @@ main{
 .btn-danger:hover{background:rgba(239,68,68,0.12);border-color:var(--danger)}
 .btn-sm{padding:5px 11px;font-size:0.78rem;border-radius:var(--radius-sm)}
 
+/* ── 凭据字段：「有已保存值」时框内留空、改用 placeholder hint，下方浮出一行小字「删除」 ──
+   不占用弹窗额外高度（只在真的有凭据时出现一行），也不改 HTML 结构（由 JS 注入进 .form-group）。 */
+.secret-clear{
+  display:none;align-self:flex-start;padding:0;border:none;background:none;
+  color:var(--text-muted);font-size:0.74rem;font-family:var(--font-ui);cursor:pointer;
+  text-decoration:underline;text-underline-offset:2px;
+}
+.secret-clear:hover{color:var(--danger)}
+/* 不指定 .form-group：8 个凭据框的父级是 .form-group，但 edit-node-auth-token 直接挂在
+   .dynamic-subcard 下（两者都是 display:flex;flex-direction:column，所以 align-self 生效）。 */
+.has-secret > .secret-clear{display:inline-block}
+.text-input.has-secret,.code-input.has-secret{border-style:dashed}
+
 /* ── 节点卡片列表 ── */
 .profile-grid{
   display:grid;grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));gap:12px;
@@ -332,17 +349,57 @@ table.conns-table tr:hover td{background:var(--bg-card-hover)}
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 
-/* ── 日志控制台 ── */
+/* ── 日志控制台 ──
+   底色与文字色跟随主题（--log-* 变量在 :root 与 [data-theme="light"] 各给一份）：
+   暗黑模式用接近纯黑的底色配浅色文字，白天模式换成浅灰面板配深色文字——浅色文字
+   直接放浅底上会看不见，所以每一级都要有各自的白天配色。
+   级别左边框沿用 --success / --warn / --danger，这三个本身已经随主题切换。 */
 #log-box{
-  background:#070A0E;border:1px solid var(--border);border-radius:var(--radius-md);
+  background:var(--log-bg);border:1px solid var(--border);border-radius:var(--radius-md);
   height:calc(100vh - 270px);overflow-y:auto;padding:12px;font-family:var(--font-mono);
-  font-size:0.8rem;line-height:1.6;color:#E2E8F0;
+  font-size:0.8rem;line-height:1.6;color:var(--log-text);
 }
 .log-line{padding:2px 8px;word-break:break-all;white-space:pre-wrap;border-left:2px solid transparent}
-.log-line.D{border-color:#64748B;color:#94A3B8}
-.log-line.I{border-color:var(--success);color:#E2E8F0}
-.log-line.W{border-color:var(--warn);color:#FDE68A}
-.log-line.E{border-color:var(--danger);color:#FCA5A5}
+.log-line.D{border-color:var(--log-debug-border);color:var(--log-debug)}
+.log-line.I{border-color:var(--success);color:var(--log-text)}
+.log-line.W{border-color:var(--warn);color:var(--log-warn)}
+.log-line.E{border-color:var(--danger);color:var(--log-error)}
+
+/* ── 崩溃历史 ──
+   与日志控制台同理：颜色一律走主题变量，不写死 hex，否则白天模式下浅色文字会落到
+   浅底上看不见。这里用到的 --danger / --warn / --success / --bg-input 本身已随主题切换，
+   类型徽标的半透明底用固定 rgba 就够了——它们只是低对比的衬托色，正文颜色另有实色兜底。 */
+.crash-item{
+  border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-card);
+  padding:12px 14px;margin-bottom:10px;transition:border-color .2s;
+}
+.crash-item:hover{border-color:var(--border-hover)}
+.crash-item-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.crash-type{
+  font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:var(--radius-full);
+  border:1px solid var(--border);font-family:var(--font-mono);
+}
+.crash-type-jvm{color:var(--danger);border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.12)}
+.crash-type-go_panic{color:var(--warn);border-color:rgba(245,158,11,0.3);background:rgba(245,158,11,0.12)}
+.crash-time{font-size:0.74rem;font-family:var(--font-mono);color:var(--text-muted)}
+.crash-item-actions{margin-left:auto;display:flex;gap:6px}
+.crash-exception{font-family:var(--font-mono);font-size:0.8rem;color:var(--danger);word-break:break-all}
+.crash-message{font-size:0.8rem;color:var(--text);margin-top:4px;word-break:break-all}
+.crash-meta{
+  display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;
+  font-size:0.72rem;color:var(--text-muted);font-family:var(--font-mono);
+}
+.crash-report{
+  margin-top:10px;padding:10px;background:var(--bg-input);border:1px solid var(--border);
+  border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:0.72rem;line-height:1.5;
+  color:var(--text);white-space:pre-wrap;word-break:break-all;max-height:340px;overflow-y:auto;
+}
+.crash-toggle{
+  margin-top:8px;background:none;border:none;color:var(--primary);font-size:0.76rem;
+  cursor:pointer;padding:0;font-family:var(--font-ui);
+}
+.crash-toggle:hover{text-decoration:underline}
+.crash-empty{text-align:center;padding:48px 16px;color:var(--text-muted);font-size:0.86rem}
 
 /* ── 页脚 Footer ── */
 footer{

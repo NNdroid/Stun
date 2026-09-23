@@ -21,8 +21,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val selectedProfile: LiveData<Profile?> = _selectedProfile
 
     init {
-        // 节点卡片的"来源订阅"徽标要按 URL 查订阅名。名字快照是懒加载的，若等列表第一次
-        // bind 时才在主线程序列化订阅表，首帧就会多一次读盘。这里提前在 IO 上把它焐热。
+        // 节点卡片的"来源订阅"徽标要按 subId 查订阅名。名字快照是懒加载的，若等列表第一次
+        // bind 时才去查库，首帧就会多一次查库（而 bind 在主线程，Room 会直接拒绝同步查询，
+        // 那里的实现因此改成"缓存没热就只返回空串"）。这里提前在 IO 上把它焐热。
         viewModelScope.launch(Dispatchers.IO) {
             SubscriptionManager.warmSubscriptionNameCache(getApplication())
         }

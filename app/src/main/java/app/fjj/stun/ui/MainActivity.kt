@@ -35,9 +35,8 @@ class MainActivity : BaseActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            app.fjj.stun.repo.ProfileManager.migratePlaintextProfiles(this@MainActivity)
-        }
+        // 明文凭据迁移已挪到 AppBootstrap（它覆盖 phone/tv/car/wear/xr 全部入口，
+        // 见 ProfileManager.migratePlaintextProfiles 的注释），这里不再重复触发。
 
         setupNavigationDrawer()
 

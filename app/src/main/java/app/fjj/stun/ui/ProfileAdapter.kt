@@ -167,13 +167,14 @@ class ProfileAdapter(
                 tvHost.visibility = View.GONE
             }
 
-            // 来源订阅徽标：sourceSubscriptionUrl 非空（订阅导入的节点）时显示**订阅名**。
-            // 名字走 SubscriptionManager 的内存快照（订阅表在 saveSubscriptions 里就地重建
-            // 快照），所以这里是查表、不是读盘，不会拖慢滚动热路径。
+            // 来源订阅徽标：profile.subId 非空（订阅导入的节点）时显示**订阅名**。
+            // 名字走 SubscriptionManager 的内存快照（订阅表在 saveSubscriptions / 同步收尾 /
+            // 启动期搬运里就地重建快照），所以这里是查表、不是查库，不会拖慢滚动热路径 ——
+            // 缓存没热时 subscriptionNameFor 直接返回空串（主线程查库会被 Room 拒绝）。
             // 名字为空就整个收起 —— 不回落到 URL 域名：那正是用户明确要求不要出现的东西，
             // 而且未命名说明订阅头里本来就没给名字，露出个域名只会更像"没做完"。
-            val subUrl = profile.sourceSubscriptionUrl.trim()
-            val subLabel = if (subUrl.isBlank()) "" else SubscriptionManager.subscriptionNameFor(context, subUrl)
+            val subId = profile.subId.trim()
+            val subLabel = if (subId.isBlank()) "" else SubscriptionManager.subscriptionNameFor(context, subId)
             tvSubBadge.visibility = if (subLabel.isNotBlank()) View.VISIBLE else View.GONE
             tvSubBadge.text = subLabel
             tvSubBadge.contentDescription =

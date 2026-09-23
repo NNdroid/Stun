@@ -223,11 +223,20 @@ data class Profile(
     @SerializedName("favorite")
     var favorite: Boolean = false,
 
-    // 来源订阅 URL。手动添加的节点恒为空串；订阅同步导入/更新时盖戳。
-    // 用途：节点卡片显示来源徽标、删订阅时询问清理、同步后移除已下架节点。
+    // 来源订阅的**本地 subId**（Subscription.subId）。手动添加的节点恒为空串；
+    // 订阅同步导入/更新时盖戳。空串 = 手动节点。
+    //
+    // 为什么存 subId 而不是 URL：URL 是订阅表里的**可变字段**，换域名 / 服务商迁移时 URL 会变，
+    // 用 URL 关联会让节点的"来源"在改 URL 的一瞬间全部失联 —— 来源徽标丢掉、删订阅时不再清理
+    // 它们、订阅缩水时不再剔除。subId 创建后永不改变，所以关联不再随 URL 漂移。
+    //
+    // ⚠️ v25 迁移**不回填**本列（见 AppDatabase.MIGRATION_24_25）：老数据里只有 URL、没有 subId，
+    // 而 Room 迁移读不到 SharedPreferences，所以历史订阅节点的 subId 一律置空串 = 暂时按手动节点对待。
+    // 下一次同步会按节点 id 命中同一条记录并**重新盖戳**（syncSingle 的 update 分支同样写来源字段），
+    // 归属自动恢复；只有"升级前就已从订阅下架、且未收藏"的节点会永久留在手动节点里。
     // 纯元数据，不参与 VpnConfigBuilder 的任何连接参数。
-    @SerializedName("sourceSubscriptionUrl")
-    var sourceSubscriptionUrl: String = ""
+    @SerializedName("subId")
+    var subId: String = ""
 ) : java.io.Serializable {
     companion object {
         // myssh 4735512：类型收敛为 13 个，TLS 由 tunnelTlsEnabled 开关控制。

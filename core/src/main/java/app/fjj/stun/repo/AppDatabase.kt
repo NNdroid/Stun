@@ -8,25 +8,98 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Profile::class], version = 24, exportSchema = true)
+@Database(entities = [Profile::class, Subscription::class], version = 25, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun profileDao(): ProfileDao
+    abstract fun subscriptionDao(): SubscriptionDao
 
     companion object {
         // v22 基线 schema（与 MIGRATION_21_22 的建表语句逐列一致）。
         // 迁移 22_23 不重复粘贴这份清单，改为在其后追加新列，避免两处漂移。
-        private const val PROFILES_V22_COLUMN_DEFS =
+        //
+        // ⚠️ 这几个清单**故意声明成 internal**（而不是 private）：`SubscriptionSchemaPinTest`
+        // 要拿它们跟 KSP 导出的 `schemas/25.json` 逐列比对。手抄一份到测试里就是再造一处漂移源，
+        // 而这些串一旦跟实体对不上，症状是运行时 "Migration didn't properly handle" 直接崩。
+        internal const val PROFILES_V22_COLUMN_DEFS =
             "`id` TEXT NOT NULL, `name` TEXT NOT NULL, `sshAddr` TEXT NOT NULL, `user` TEXT NOT NULL, `pass` TEXT NOT NULL, `authType` TEXT NOT NULL, `privateKey` TEXT NOT NULL, `tunnelType` TEXT NOT NULL, `tunnelTlsEnabled` INTEGER NOT NULL, `icmpCustomPsk` TEXT NOT NULL, `icmpCustomMagic` TEXT NOT NULL, `icmpCustomPublicKey` TEXT NOT NULL, `icmpCustomMtuMode` TEXT NOT NULL, `icmpCustomMaxPayload` INTEGER NOT NULL, `icmpCustomPaceMS` INTEGER NOT NULL, `icmpCustomIdRange` TEXT NOT NULL, `proxyAddr` TEXT NOT NULL, `customHost` TEXT NOT NULL, `serverName` TEXT NOT NULL, `customPath` TEXT NOT NULL, `enableCustomPath` INTEGER NOT NULL, `proxyAuthRequired` INTEGER NOT NULL, `proxyAuthToken` TEXT NOT NULL, `proxyAuthUser` TEXT NOT NULL, `proxyAuthPass` TEXT NOT NULL, `httpPayload` TEXT NOT NULL, `type` TEXT NOT NULL, `dnsOverride` INTEGER NOT NULL, `remoteDns` TEXT NOT NULL, `localDns` TEXT NOT NULL, `udpgwVersion` TEXT NOT NULL, `udpgwAddr` TEXT NOT NULL, `geositeDirect` TEXT NOT NULL, `geoipDirect` TEXT NOT NULL, `appFilterOverride` INTEGER NOT NULL, `filterApps` TEXT NOT NULL, `filterMode` INTEGER NOT NULL, `disableStatusCheck` INTEGER NOT NULL, `verifyFingerprint` INTEGER NOT NULL, `serverFingerprint` TEXT NOT NULL, `verifyCertFingerprint` INTEGER NOT NULL, `serverCertFingerprint` TEXT NOT NULL, `alpn` TEXT NOT NULL, `keyPass` TEXT NOT NULL, `dnsTunnelDomain` TEXT NOT NULL, `dnsTunnelServers` TEXT NOT NULL, `dnsTunnelType` TEXT NOT NULL, `dnsTunnelPublicKey` TEXT NOT NULL, `dnsTunnelEDNS0` INTEGER NOT NULL, `dnsTunnelPsk` TEXT NOT NULL, `dnsTunnelMarker` TEXT NOT NULL, `kcpPassword` TEXT NOT NULL, `kcpCrypt` TEXT NOT NULL, `kcpMode` TEXT NOT NULL, `kcpDataShards` INTEGER NOT NULL, `kcpParityShards` INTEGER NOT NULL, `kcpSndWnd` INTEGER NOT NULL, `kcpRcvWnd` INTEGER NOT NULL, `kcpMtu` INTEGER NOT NULL, `kcpNoComp` INTEGER NOT NULL, `kcpSmuxVer` INTEGER NOT NULL, `kcpKeepAlive` INTEGER NOT NULL, `udpCustomPsk` TEXT NOT NULL, `udpCustomMagic` TEXT NOT NULL, `udpCustomPublicKey` TEXT NOT NULL, `udpCustomPaths` INTEGER NOT NULL, `udpCustomSockets` INTEGER NOT NULL, `udpCustomSendWindow` INTEGER NOT NULL, `udpCustomMaxPkt` INTEGER NOT NULL, `udpCustomMtuProbe` TEXT NOT NULL, `noisePublicKey` TEXT NOT NULL, `xhttpChunkSizeKB` INTEGER NOT NULL, `xhttpStreamMode` TEXT NOT NULL, `bindInterface` TEXT NOT NULL, `lastConnectedAt` INTEGER NOT NULL, `heartbeatIntervalMs` INTEGER NOT NULL, `paddingMinBytes` INTEGER NOT NULL, `masqueAlpn` TEXT NOT NULL, `totalTx` INTEGER NOT NULL, `totalRx` INTEGER NOT NULL, `sortIndex` INTEGER NOT NULL"
 
-        private const val PROFILES_V22_COLUMN_NAMES =
+        internal const val PROFILES_V22_COLUMN_NAMES =
             "`id`, `name`, `sshAddr`, `user`, `pass`, `authType`, `privateKey`, `tunnelType`, `tunnelTlsEnabled`, `icmpCustomPsk`, `icmpCustomMagic`, `icmpCustomPublicKey`, `icmpCustomMtuMode`, `icmpCustomMaxPayload`, `icmpCustomPaceMS`, `icmpCustomIdRange`, `proxyAddr`, `customHost`, `serverName`, `customPath`, `enableCustomPath`, `proxyAuthRequired`, `proxyAuthToken`, `proxyAuthUser`, `proxyAuthPass`, `httpPayload`, `type`, `dnsOverride`, `remoteDns`, `localDns`, `udpgwVersion`, `udpgwAddr`, `geositeDirect`, `geoipDirect`, `appFilterOverride`, `filterApps`, `filterMode`, `disableStatusCheck`, `verifyFingerprint`, `serverFingerprint`, `verifyCertFingerprint`, `serverCertFingerprint`, `alpn`, `keyPass`, `dnsTunnelDomain`, `dnsTunnelServers`, `dnsTunnelType`, `dnsTunnelPublicKey`, `dnsTunnelEDNS0`, `dnsTunnelPsk`, `dnsTunnelMarker`, `kcpPassword`, `kcpCrypt`, `kcpMode`, `kcpDataShards`, `kcpParityShards`, `kcpSndWnd`, `kcpRcvWnd`, `kcpMtu`, `kcpNoComp`, `kcpSmuxVer`, `kcpKeepAlive`, `udpCustomPsk`, `udpCustomMagic`, `udpCustomPublicKey`, `udpCustomPaths`, `udpCustomSockets`, `udpCustomSendWindow`, `udpCustomMaxPkt`, `udpCustomMtuProbe`, `noisePublicKey`, `xhttpChunkSizeKB`, `xhttpStreamMode`, `bindInterface`, `lastConnectedAt`, `heartbeatIntervalMs`, `paddingMinBytes`, `masqueAlpn`, `totalTx`, `totalRx`, `sortIndex`"
 
         // v23 基线 = v22 清单 + note/favorite（MIGRATION_22_23 追加的两列）。
         // v24 在其后追加 sourceSubscriptionUrl，同样不在两处重复粘贴清单。
-        private const val PROFILES_V23_COLUMN_DEFS =
+        internal const val PROFILES_V23_COLUMN_DEFS =
             "$PROFILES_V22_COLUMN_DEFS, `note` TEXT NOT NULL, `favorite` INTEGER NOT NULL"
-        private const val PROFILES_V23_COLUMN_NAMES =
+        internal const val PROFILES_V23_COLUMN_NAMES =
             "$PROFILES_V22_COLUMN_NAMES, `note`, `favorite`"
+
+        internal const val PROFILES_V24_COLUMN_DEFS =
+            "$PROFILES_V23_COLUMN_DEFS, `sourceSubscriptionUrl` TEXT NOT NULL"
+        internal const val PROFILES_V24_COLUMN_NAMES =
+            "$PROFILES_V23_COLUMN_NAMES, `sourceSubscriptionUrl`"
+
+        // v25 基线 = **v23** 清单 + subId —— 刻意跳过 v24 的 sourceSubscriptionUrl：
+        // v25 用 subId 取代 URL 作为"节点↔订阅"关联键，URL 列就此退役。
+        internal const val PROFILES_V25_COLUMN_DEFS =
+            "$PROFILES_V23_COLUMN_DEFS, `subId` TEXT NOT NULL"
+        internal const val PROFILES_V25_COLUMN_NAMES =
+            "$PROFILES_V23_COLUMN_NAMES, `subId`"
+
+        /**
+         * `subscriptions` 表的建表语句（v25 引入）。
+         *
+         * 声明成常量而不是内联在迁移里：`SubscriptionSchemaPinTest` 要拿它跟
+         * KSP 导出的 `schemas/25.json` 逐列比对。这两处一旦对不上，症状是运行时
+         * "Migration didn't properly handle" 崩，而不是编译期报错。
+         */
+        internal const val SUBSCRIPTIONS_TABLE_DDL =
+            "CREATE TABLE IF NOT EXISTS `subscriptions` (" +
+                "`subId` TEXT NOT NULL, `url` TEXT NOT NULL, `pin` TEXT NOT NULL, " +
+                "`name` TEXT NOT NULL, `homePage` TEXT NOT NULL, " +
+                "`updateIntervalHours` INTEGER NOT NULL, `lastSyncTime` INTEGER NOT NULL, " +
+                "`syncCount` INTEGER NOT NULL, `usageJson` TEXT NOT NULL, " +
+                "`notifiedOverquota` INTEGER NOT NULL, `notifiedExpiring` INTEGER NOT NULL, " +
+                "`sortIndex` INTEGER NOT NULL, PRIMARY KEY(`subId`))"
+
+        /**
+         * v24 → v25：订阅从 SharedPreferences 升格为独立表 + 关联键由 URL 换成 subId。
+         *
+         * ## 为什么
+         * 旧设计里 URL 既是订阅的身份又是关联键（`profiles.sourceSubscriptionUrl`、
+         * `last_sync_map` / `sync_count_map` / `usage_by_url` / `notified_*` 全以 URL 为键），
+         * 改一次订阅 URL 就整条漂移。新设计：[Subscription.subId] 是永不改变的本地 UUID。
+         *
+         * ## 本迁移只做 DDL，**不回填 `profiles.subId`**
+         * 回填需要知道"每个老节点属于哪个订阅 URL"，而那信息只存在于
+         * `profiles.sourceSubscriptionUrl`（本迁移正要删掉的列）+ SharedPreferences（订阅清单）。
+         * 迁移函数拿不到 `Context`，读不了 SharedPreferences；而删列与回填又**不能拆到两版**
+         * （同一次升级 v25→v26 会连着跑完，运行时回填根本来不及）。⇒ 采「不回填」：
+         * 老节点的 `subId` 一律置空串（= 按手动节点对待），下一次同步按节点 id 命中同一条记录时
+         * 会重新盖戳，归属自动恢复。代价仅限"升级前就已下架且未收藏"的节点会留在手动节点里。
+         *
+         * ## 订阅数据本身不丢
+         * `subscriptions` 表建好后由 `SubscriptionManager` 的**惰性一次性搬迁**把
+         * SharedPreferences 里的订阅清单 / 同步计时 / 用量灌进来（那一侧能拿到 Context）。
+         * 旧 SP key 一律保留不删，可回滚。
+         *
+         * ## 为什么 profiles 要整表重建
+         * Room 2.8.4 会拒绝 `ALTER TABLE ADD COLUMN` 残留的 DEFAULT 值
+         * （"Migration didn't properly handle"），且删列在 SQLite 上本来就要重建（同 19_20 起的惯例）。
+         */
+        val MIGRATION_24_25 = object : Migration(24, 25) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(SUBSCRIPTIONS_TABLE_DDL)
+                db.execSQL(
+                    "CREATE TABLE `profiles_new_v25` ($PROFILES_V25_COLUMN_DEFS, PRIMARY KEY(`id`))"
+                )
+                db.execSQL(
+                    "INSERT INTO `profiles_new_v25` ($PROFILES_V25_COLUMN_NAMES) " +
+                        "SELECT $PROFILES_V23_COLUMN_NAMES, '' FROM `profiles`"
+                )
+                db.execSQL("DROP TABLE `profiles`")
+                db.execSQL("ALTER TABLE `profiles_new_v25` RENAME TO `profiles`")
+            }
+        }
 
         val MIGRATION_23_24 = object : Migration(23, 24) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -34,10 +107,10 @@ abstract class AppDatabase : RoomDatabase() {
                 // 必须整表重建：Room 2.8.4 会把 ALTER TABLE ADD COLUMN 残留的
                 // DEFAULT 值判为 "Migration didn't properly handle"（同 21_22 / 22_23）。
                 db.execSQL(
-                    "CREATE TABLE `profiles_new_v24` ($PROFILES_V23_COLUMN_DEFS, `sourceSubscriptionUrl` TEXT NOT NULL, PRIMARY KEY(`id`))"
+                    "CREATE TABLE `profiles_new_v24` ($PROFILES_V24_COLUMN_DEFS, PRIMARY KEY(`id`))"
                 )
                 db.execSQL(
-                    "INSERT INTO `profiles_new_v24` ($PROFILES_V23_COLUMN_NAMES, `sourceSubscriptionUrl`) " +
+                    "INSERT INTO `profiles_new_v24` ($PROFILES_V24_COLUMN_NAMES) " +
                         "SELECT $PROFILES_V23_COLUMN_NAMES, '' FROM `profiles`"
                 )
                 db.execSQL("DROP TABLE `profiles`")
@@ -261,7 +334,7 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
                     MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17,
                     MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22,
-                    MIGRATION_22_23, MIGRATION_23_24
+                    MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25
                 )
                 .fallbackToDestructiveMigration(true)
                 .build()

@@ -197,8 +197,8 @@
                 android:orientation="vertical">
                 <!-- 卡内身份头：效果图里拓扑卡自带"这是谁在连"的上下文 —— 面板滚到地球这一段时，
                      不必再往回翻才想起自己看的是哪个节点。内容刻意精简：头像/节点名、落地服务器、
-                     协议与标记魔数两枚标签、时延 · 上次连接 · 累计收发。用户名/备注等字段
-                     仍只在下方「节点详情」卡里出现，不在这里重复第二遍。 -->
+                     时延 · 上次连接 · 累计收发。协议/标记魔数这类协议细节已在下方「节点详情」卡里
+                     出现，这里不再重复第二遍。 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -254,43 +254,6 @@
                             android:textAppearance="?attr/textAppearanceBodySmall"
                             android:textColor="?attr/colorOnSurfaceVariant"
                             tools:text="43.138.143.71:25000-26000 → 43.138.143.71:22" />
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="@dimen/space_2"
-                            android:orientation="horizontal">
-
-                            <TextView
-                                android:id="@+id/tv_globe_protocol_chip"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:background="@drawable/bg_badge_type"
-                                android:paddingStart="@dimen/space_2"
-                                android:paddingEnd="@dimen/space_2"
-                                android:paddingTop="2dp"
-                                android:paddingBottom="2dp"
-                                android:textAppearance="?attr/textAppearanceLabelSmall"
-                                android:textColor="?attr/colorOnTertiaryContainer"
-                                android:textStyle="bold"
-                                tools:text="UDP_CUSTOM" />
-
-                            <!-- 标记魔数只对自定义隧道有意义，为空时整枚标签收起（不占位、不写占位符） -->
-                            <TextView
-                                android:id="@+id/tv_globe_magic_chip"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="@dimen/space_2"
-                                android:background="@drawable/bg_badge_secondary"
-                                android:paddingStart="@dimen/space_2"
-                                android:paddingEnd="@dimen/space_2"
-                                android:paddingTop="2dp"
-                                android:paddingBottom="2dp"
-                                android:textAppearance="?attr/textAppearanceLabelSmall"
-                                android:textColor="?attr/colorOnSecondaryContainer"
-                                android:textStyle="bold"
-                                tools:text="Magic: UDPC" />
-                        </LinearLayout>
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -639,14 +602,18 @@
                 <View android:id="@+id/divider_detail_ssh_banner" style="@style/StunConnectionDetailDividerIcon" />
                 <!-- 认证阶段服务器提示（MOTD / 登录告知）：服务端未配置时整行连同分隔线隐藏。
                      文案是**服务端可控文本**（可含 ANSI 颜色与链接，由 SshBannerRenderer 消毒渲染），
-                     所以给它一个虚线框 —— 一眼看出"这段是服务器说的，不是我们的字段值"。 -->
+                     所以给它一个虚线框 —— 一眼看出"这段是服务器说的，不是我们的字段值"。
+
+                     框**不在这里写 android:background**：`<shape>` 的 solid/stroke 颜色不吃 `?attr/`
+                     主题引用，资源里的颜色也不能引用主题属性，所以跟着主题走的框只能在运行时装
+                     （见 ServerNoticeBox）。它只在下面把行设成 VISIBLE 的同一处被装上，而行默认
+                     就是 gone，不存在"框还没上色就先显示"的空窗。 -->
                 <LinearLayout android:id="@+id/row_detail_ssh_notice" style="@style/StunConnectionDetailRow" android:visibility="gone" tools:visibility="visible">
                     <ImageView style="@style/StunConnectionDetailRowIcon" android:src="@drawable/ic_terminal_rounded" app:tint="?attr/colorOnSecondaryContainer" />
                     <TextView style="@style/StunConnectionDetailLabel" android:text="@string/connection_label_ssh_notice" />
                     <TextView
                         android:id="@+id/tv_detail_ssh_notice"
                         style="@style/StunConnectionDetailValueHtml"
-                        android:background="@drawable/bg_detail_notice"
                         android:gravity="center_horizontal"
                         android:paddingStart="@dimen/space_3"
                         android:paddingEnd="@dimen/space_3"
@@ -681,6 +648,11 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- 刻意让 TonalButton 用**自己的默认配色**（colorPrimaryContainer / colorOnPrimaryContainer），
+             不再覆盖成 error 角色。原因：M3 的 error 调色板在 DynamicColors 下是**固定红**，
+             不随壁纸取色——本 app 启用 DynamicColors（StunApp / BaseActivity），于是主题换成
+             蓝青色时这颗按钮永远停在粉色上，跟整个面板格格不入。
+             断开的破坏性语义改由 ⏹ 图标 + 文案承担；配色回归主题的证明见 ConnectionDetailsThemeTest。 -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_detail_disconnect"
             style="@style/Widget.Material3.Button.TonalButton"
@@ -688,11 +660,8 @@
             android:layout_height="56dp"
             android:layout_marginTop="@dimen/space_5"
             android:text="@string/connection_disconnect_action"
-            android:textColor="?attr/colorOnErrorContainer"
-            app:backgroundTint="?attr/colorErrorContainer"
             app:cornerRadius="@dimen/corner_md"
             app:icon="@drawable/ic_stop_rounded"
-            app:iconGravity="textStart"
-            app:iconTint="?attr/colorOnErrorContainer" />
+            app:iconGravity="textStart" />
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

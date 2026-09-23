@@ -6,7 +6,6 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
 import app.fjj.stun.core.R as CoreR
 import app.fjj.stun.repo.ProfileManager
 import app.fjj.stun.repo.SettingsManager
@@ -15,6 +14,7 @@ import app.fjj.stun.repo.VpnState
 import app.fjj.stun.service.VpnConfigBuilder
 import app.fjj.stun.service.VpnControls
 import app.fjj.stun.util.AppUtils
+import app.fjj.stun.util.GridSpans
 import app.fjj.stun.util.PingResults
 import app.fjj.stun.xr.databinding.ActivityXrMainBinding
 import com.google.android.material.snackbar.Snackbar
@@ -77,7 +77,10 @@ class XRMainActivity : AppCompatActivity() {
             }
         )
 
-        binding.rvXrNodes.layoutManager = LinearLayoutManager(this)
+        // ⚠️ 这个列表只占屏宽 60%（layout_constraintHorizontal_weight=0.6，右边是电源面板），
+        // 所以列数必须按 **RecyclerView 自己的宽度**算。GridSpans 内部读的就是 rv.width，
+        // 按屏宽算会把列数多给一倍。规则与阈值见 core 的 GridSpans。
+        GridSpans.bind(binding.rvXrNodes)
         binding.rvXrNodes.adapter = adapter
     }
 

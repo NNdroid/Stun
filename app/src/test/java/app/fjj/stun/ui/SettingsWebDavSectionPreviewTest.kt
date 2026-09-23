@@ -16,7 +16,9 @@ import app.fjj.stun.R
 import app.fjj.stun.core.R as CoreR
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.materialswitch.MaterialSwitch
+import com.google.android.material.textfield.MaterialAutoCompleteTextView
 import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -40,7 +42,10 @@ import java.io.File
  *   第一个 `MaterialCardView`，不能写死层数（本测试就是因为写死层数而失败的）。
  * 3. 五个输入框（URL / User / Pass / PIN / Interval）各带 startIcon：
  *    ic_link / ic_person / ic_lock / ic_key / ic_schedule。
- * 4. 字段顺序、自动备份开关、上次备份文案、备份/恢复按钮**逻辑与 id 不变**。
+ * 4. **同步模式**是一个 ExposedDropdownMenu（`spinner_webdav_sync_mode`，`ic_sync` 前置图标），
+ *    与「全局设置」里的工作模式/语言/日志级别同款控件；它插在 Interval 与自动备份开关之间。
+ *    这里只钉"控件在、id 未变、图标未变"——具体档位文案由 SettingsFragment 在运行时灌进 adapter。
+ * 5. 字段顺序、自动备份开关、上次备份文案、备份/恢复按钮**逻辑与 id 不变**。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class, qualifiers = "zh-rCN-w393dp-h851dp-xhdpi")
@@ -57,6 +62,10 @@ class SettingsWebDavSectionPreviewTest {
         assertNotNull("Pass 输入框缺失", root.findViewById<TextInputEditText>(R.id.et_webdav_pass))
         assertNotNull("PIN 输入框缺失", root.findViewById<TextInputEditText>(R.id.et_webdav_pin))
         assertNotNull("Interval 输入框缺失", root.findViewById<TextInputEditText>(R.id.et_webdav_interval))
+        assertNotNull(
+            "同步模式下拉缺失",
+            root.findViewById<MaterialAutoCompleteTextView>(R.id.spinner_webdav_sync_mode),
+        )
 
         // 开关 / 上次备份 / 两个按钮都在
         val sw = root.findViewById<MaterialSwitch>(R.id.switch_webdav_auto)
@@ -69,6 +78,27 @@ class SettingsWebDavSectionPreviewTest {
         val card = webDavCard(root)
         val container = card.getChildAt(0) as ViewGroup
         val header = container.getChildAt(0) as ViewGroup
+
+        // 同步模式是 ExposedDropdownMenu：hint 取 core 里的本地化串，前置图标 ic_sync，
+        // 且与 Interval 同容器、排在它之后（插在"间隔"和"每日自动备份"之间）。
+        //
+        // ⚠️ 不能写 `spinner.parent as TextInputLayout`：Material 会在 EditText 与
+        // TextInputLayout 之间垫一层内部 FrameLayout（实测 parent 就是 FrameLayout）。
+        // 所以这里向上找最近的 TextInputLayout，不假设中间层数。
+        val modeTil = tilOf(root.findViewById<MaterialAutoCompleteTextView>(R.id.spinner_webdav_sync_mode))
+        assertEquals(
+            "同步模式下拉的 hint 应为 webdav_sync_mode",
+            root.context.getString(CoreR.string.webdav_sync_mode),
+            modeTil.hint?.toString(),
+        )
+        assertNotNull("同步模式下拉应有前置图标 ic_sync", modeTil.startIconDrawable)
+
+        val intervalTil = tilOf(root.findViewById<TextInputEditText>(R.id.et_webdav_interval))
+        assertTrue("同步模式应和内层容器同层", modeTil.parent === container)
+        assertTrue(
+            "同步模式应排在 Interval 之后",
+            container.indexOfChild(modeTil) > container.indexOfChild(intervalTil),
+        )
 
         // 头部行 1) 是横向排布；2) 首个子节点是徽标 ImageView（带圆角底）；
         // 3) 含一个加粗标题 TextView，文案就是本节标题；4) 自动备份开关就挂在头部行里。
@@ -119,6 +149,14 @@ class SettingsWebDavSectionPreviewTest {
         while (node != null && node !is MaterialCardView) node = node.parent as? View
         assertNotNull("找不到 WebDAV 卡片", node)
         return node as MaterialCardView
+    }
+
+    /** 向上找最近的 `TextInputLayout`。不假设中间层数：Material 会把 EditText 垫进一层 FrameLayout。 */
+    private fun tilOf(view: View): TextInputLayout {
+        var node: View? = view.parent as? View
+        while (node != null && node !is TextInputLayout) node = node.parent as? View
+        assertNotNull("找不到输入控件的 TextInputLayout", node)
+        return node as TextInputLayout
     }
 
     private fun textViews(group: ViewGroup): List<TextView> = buildList {

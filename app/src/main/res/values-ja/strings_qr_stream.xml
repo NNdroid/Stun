@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="qr_stream_info_format">%1$d/%2$d フレーム · %3$d 周目</string>
+    <string name="qr_stream_hint_format">データが大きいため %1$d フレームに分割して繰り返し再生しています。もう一方の端末で「QR コードをスキャン」を選び、この画面にカメラを向け続けてください。</string>
+    <string name="qr_stream_pause">一時停止</string>
+    <string name="qr_stream_resume">再開</string>
+    <string name="qr_stream_speed_slow">遅い</string>
+    <string name="qr_stream_speed_medium">標準</string>
+    <string name="qr_stream_speed_fast">速い</string>
+
+    <string name="qr_stream_scan_title">QR コードをスキャン</string>
+    <string name="qr_stream_scan_waiting">QR コードにカメラを向けてください</string>
+    <string name="qr_stream_scan_progress_format">%1$d/%2$d フレーム受信 · %3$d%%</string>
+    <string name="qr_stream_scan_hint">受信が完了するまで、送信側の画面を枠内に収めてください。データが大きい場合はアニメーション QR コードで送信されます。</string>
+    <string name="qr_stream_scan_checksum_failed">組み立てたデータの検証に失敗しました。もう一度スキャンしてください。</string>
+    <string name="qr_stream_scan_too_large">この転送は受信するには大きすぎます。</string>
+    <string name="qr_stream_camera_denied">QR コードのスキャンにはカメラの権限が必要です。</string>
+</resources>

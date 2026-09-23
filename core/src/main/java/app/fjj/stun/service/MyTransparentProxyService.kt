@@ -137,7 +137,7 @@ class MyTransparentProxyService : Service() {
             return
         }
 
-        StunRepository.registerEngineCallback()
+        StunRepository.registerEngineCallback(this)
         StunRepository.vpnState.postValue(VpnState.CONNECTING)
         updateNotification(getString(R.string.main_connecting))
         acquireLocks()

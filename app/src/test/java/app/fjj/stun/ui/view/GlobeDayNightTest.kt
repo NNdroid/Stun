@@ -76,6 +76,14 @@ class GlobeDayNightTest {
                 val view = newSizedView(ctx).apply {
                     starryMode = true
                     sunEpochMillis = epoch
+                    // 这条钉的是**它下面那一层**：晨昏线烘出来的颜色是不是逐像素等于
+                    // `day·N·S` 那套公式。光效两层（太阳光晕 + 贴图模式的球面高光，默认都开着，
+                    // 见 `GlobeView.sunGlowEnabled / sphereSheenEnabled`）留着就不可能落在 TOL 内：
+                    // 高光在近黑处能加 48，光晕在直射点附近能加 110。
+                    // 它们本来就必须**独立于**合成器存在（烘进贴图会被 5° 一列的网格折线化，
+                    // 也会跟着昼/夜贴图一起被混色），由 `GlobeSunGlowTest` 单独钉。
+                    sunGlowEnabled = false
+                    sphereSheenEnabled = false
                     submitTopology(hubAt(camLat, camLon))
                 }
                 val bitmap = render(view)

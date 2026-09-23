@@ -26,7 +26,7 @@ class CarApp : Application() {
         runCatching { KeystoreUtils.init(this) }
         runCatching {
             StunRepository.setupLogBridge()
-            StunRepository.registerEngineCallback()
+            StunRepository.registerEngineCallback(this)
             StunRepository.initCrashOutput(this)
         }
 

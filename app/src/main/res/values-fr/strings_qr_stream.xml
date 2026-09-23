@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="qr_stream_info_format">Image %1$d/%2$d · tour %3$d</string>
+    <string name="qr_stream_hint_format">Découpé en %1$d images jouées en boucle. Sur l\'autre appareil, choisissez « Scanner un QR code » et gardez-le pointé vers cet écran.</string>
+    <string name="qr_stream_pause">Pause</string>
+    <string name="qr_stream_resume">Reprendre</string>
+    <string name="qr_stream_speed_slow">Lent</string>
+    <string name="qr_stream_speed_medium">Moyen</string>
+    <string name="qr_stream_speed_fast">Rapide</string>
+
+    <string name="qr_stream_scan_title">Scanner un QR code</string>
+    <string name="qr_stream_scan_waiting">Pointez la caméra vers le QR code</string>
+    <string name="qr_stream_scan_progress_format">%1$d/%2$d images reçues · %3$d%%</string>
+    <string name="qr_stream_scan_hint">Gardez l\'écran de l\'émetteur dans le cadre jusqu\'à la fin de la réception. Les données volumineuses sont envoyées sous forme de QR code animé.</string>
+    <string name="qr_stream_scan_checksum_failed">Les données assemblées n\'ont pas pu être vérifiées. Veuillez scanner à nouveau.</string>
+    <string name="qr_stream_scan_too_large">Ce transfert est trop volumineux pour être reçu.</string>
+    <string name="qr_stream_camera_denied">L\'autorisation d\'accès à la caméra est requise pour scanner des QR codes.</string>
+</resources>

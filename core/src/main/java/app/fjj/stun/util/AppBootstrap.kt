@@ -1,8 +1,10 @@
 package app.fjj.stun.util
 
 import android.content.Context
+import app.fjj.stun.repo.ProfileManager
 import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.StunLogger
+import app.fjj.stun.repo.SubscriptionManager
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -88,6 +90,25 @@ object AppBootstrap {
                         StunLogger.e(TAG, "Rule-set update check failed", t)
                     }
                     deferred.complete(Unit)
+                    // 明文凭据就地迁成 Keystore 密文。**必须排在就绪门之后**：它是数据订正，
+                    // 不该拖慢 awaitAssets（VPN 起不来，比凭据晚一步加密严重得多）。
+                    // 放在这里而不是各端 Activity 里，是为了覆盖 car / wear / xr ——
+                    // 它们从前根本不调 migratePlaintextProfiles，只在这些端用过的话，
+                    // 4 个隧道凭据永远不会被加密。
+                    try {
+                        ProfileManager.migratePlaintextProfiles(app)
+                    } catch (t: Throwable) {
+                        StunLogger.e(TAG, "Plaintext credential migration failed", t)
+                    }
+                    // 订阅存储：SharedPreferences → Room 的 `subscriptions` 表（v25）。
+                    // Room 的 MIGRATION_24_25 拿不到 Context、读不了 SharedPreferences，所以
+                    // 订阅数据本身只能靠这一趟搬。放这儿同样是"覆盖全部 5 个入口 + 排在就绪门之后"。
+                    // 即便这一步失败，SubscriptionManager 的存储层也会在第一次真正读写前补跑。
+                    try {
+                        SubscriptionManager.migrateLegacyPrefsIfNeeded(app)
+                    } catch (t: Throwable) {
+                        StunLogger.e(TAG, "Subscription store migration (SharedPreferences -> Room) failed", t)
+                    }
                 }
             }
         }

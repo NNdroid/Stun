@@ -339,50 +339,17 @@
                                             android:clickable="false"
                                             android:focusable="false" />
 
-                                        <LinearLayout
+                                        <!-- 只留「radio + 名称」：原来的 Recommended 徽标与
+                                             描述文案已删（窄屏下两行字把卡片撑得很挤）。 -->
+                                        <TextView
+                                            android:id="@+id/tv_udpgw_tun2proxy_title"
                                             android:layout_width="0dp"
                                             android:layout_height="wrap_content"
                                             android:layout_marginStart="@dimen/space_2"
                                             android:layout_weight="1"
-                                            android:orientation="vertical">
-
-                                            <LinearLayout
-                                                android:layout_width="match_parent"
-                                                android:layout_height="wrap_content"
-                                                android:gravity="center_vertical"
-                                                android:orientation="horizontal">
-
-                                                <TextView
-                                                    android:id="@+id/tv_udpgw_tun2proxy_title"
-                                                    android:layout_width="wrap_content"
-                                                    android:layout_height="wrap_content"
-                                                    android:text="tun2proxy"
-                                                    android:textAppearance="?attr/textAppearanceBodySmall"
-                                                    android:textStyle="bold" />
-
-                                                <TextView
-                                                    android:layout_width="wrap_content"
-                                                    android:layout_height="wrap_content"
-                                                    android:layout_marginStart="@dimen/space_2"
-                                                    android:background="@drawable/bg_badge_type"
-                                                    android:backgroundTint="?attr/colorPrimary"
-                                                    android:paddingHorizontal="6dp"
-                                                    android:paddingVertical="1dp"
-                                                    android:text="@string/badge_recommended"
-                                                    android:textColor="?attr/colorOnPrimary"
-                                                    android:textSize="10sp"
-                                                    android:textStyle="bold" />
-                                            </LinearLayout>
-
-                                            <TextView
-                                                android:id="@+id/tv_udpgw_tun2proxy_desc"
-                                                android:layout_width="match_parent"
-                                                android:layout_height="wrap_content"
-                                                android:layout_marginTop="@dimen/space_1"
-                                                android:text="@string/udpgw_tun2proxy_desc"
-                                                android:textAppearance="?attr/textAppearanceBodySmall"
-                                                android:textColor="?attr/colorOnSurfaceVariant" />
-                                        </LinearLayout>
+                                            android:text="tun2proxy"
+                                            android:textAppearance="?attr/textAppearanceBodySmall"
+                                            android:textStyle="bold" />
                                     </LinearLayout>
                                 </com.google.android.material.card.MaterialCardView>
 
@@ -415,30 +382,16 @@
                                             android:clickable="false"
                                             android:focusable="false" />
 
-                                        <LinearLayout
+                                        <!-- 同上：只留「radio + 名称」。 -->
+                                        <TextView
+                                            android:id="@+id/tv_udpgw_badvpn_title"
                                             android:layout_width="0dp"
                                             android:layout_height="wrap_content"
                                             android:layout_marginStart="@dimen/space_2"
                                             android:layout_weight="1"
-                                            android:orientation="vertical">
-
-                                            <TextView
-                                                android:id="@+id/tv_udpgw_badvpn_title"
-                                                android:layout_width="wrap_content"
-                                                android:layout_height="wrap_content"
-                                                android:text="badvpn"
-                                                android:textAppearance="?attr/textAppearanceBodySmall"
-                                                android:textStyle="bold" />
-
-                                            <TextView
-                                                android:id="@+id/tv_udpgw_badvpn_desc"
-                                                android:layout_width="match_parent"
-                                                android:layout_height="wrap_content"
-                                                android:layout_marginTop="@dimen/space_1"
-                                                android:text="@string/udpgw_badvpn_desc"
-                                                android:textAppearance="?attr/textAppearanceBodySmall"
-                                                android:textColor="?attr/colorOnSurfaceVariant" />
-                                        </LinearLayout>
+                                            android:text="badvpn"
+                                            android:textAppearance="?attr/textAppearanceBodySmall"
+                                            android:textStyle="bold" />
                                     </LinearLayout>
                                 </com.google.android.material.card.MaterialCardView>
                             </LinearLayout>
@@ -540,64 +493,6 @@
                                     android:textAppearance="?attr/textAppearanceBodySmall"
                                     android:textColor="?attr/colorOnSurfaceVariant" />
                             </LinearLayout>
-                        </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
-
-                    <!-- 子卡：小提示 -->
-                    <com.google.android.material.card.MaterialCardView
-                        style="?attr/materialCardViewFilledStyle"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/space_3"
-                        app:cardBackgroundColor="?attr/colorSurfaceContainer"
-                        app:cardCornerRadius="@dimen/corner_md"
-                        app:strokeWidth="0dp">
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:padding="@dimen/space_3">
-
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:gravity="center_vertical"
-                                android:orientation="horizontal">
-
-                                <ImageView
-                                    android:layout_width="@dimen/badge_size"
-                                    android:layout_height="@dimen/badge_size"
-                                    android:background="@drawable/bg_icon_badge"
-                                    android:contentDescription="@null"
-                                    android:padding="@dimen/space_2"
-                                    android:src="@drawable/ic_info"
-                                    app:tint="?attr/colorOnSecondaryContainer" />
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginStart="@dimen/space_3"
-                                    android:text="@string/udp_tips_title"
-                                    android:textAppearance="?attr/textAppearanceBodyLarge"
-                                    android:textStyle="bold" />
-                            </LinearLayout>
-
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="@dimen/space_3"
-                                android:text="@string/udp_tip_1"
-                                android:textAppearance="?attr/textAppearanceBodySmall"
-                                android:textColor="?attr/colorOnSurfaceVariant" />
-
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="@dimen/space_1"
-                                android:text="@string/udp_tip_2"
-                                android:textAppearance="?attr/textAppearanceBodySmall"
-                                android:textColor="?attr/colorOnSurfaceVariant" />
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
                 </LinearLayout>
@@ -958,6 +853,23 @@
                             android:singleLine="true" />
                     </com.google.android.material.textfield.TextInputLayout>
 
+                    <!-- 同步模式：定时任务往哪个方向跑（默认「仅上传」＝引入本功能前的唯一行为）。
+                         用 ExposedDropdownMenu，与「全局设置」里的工作模式/语言/日志级别同款控件。 -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:hint="@string/webdav_sync_mode"
+                        app:helperText="@string/webdav_sync_mode_helper"
+                        app:startIconDrawable="@drawable/ic_sync">
+                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                            android:id="@+id/spinner_webdav_sync_mode"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="none" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
                     <!-- Footer：上次备份 + 操作按钮，包一层内嵌子卡片做出「页脚」层次 -->
                     <com.google.android.material.card.MaterialCardView
                         style="?attr/materialCardViewFilledStyle"
@@ -971,45 +883,82 @@
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal"
+                            android:orientation="vertical"
                             android:padding="@dimen/space_3">
 
-                            <ImageView
-                                android:layout_width="@dimen/badge_size"
-                                android:layout_height="@dimen/badge_size"
-                                android:background="@drawable/bg_icon_badge"
-                                android:contentDescription="@null"
-                                android:padding="@dimen/space_2"
-                                android:src="@drawable/ic_schedule"
-                                app:tint="?attr/colorOnSecondaryContainer" />
-
-                            <TextView
-                                android:id="@+id/tv_webdav_last"
-                                android:layout_width="0dp"
+                            <!-- 行 1：上次备份单独占一行。原来它和两个按钮同处一行，
+                                 窄屏（320dp）下 label 会被挤成「Last b / ackup:」两条竖排窄字。 -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:layout_marginStart="@dimen/space_3"
-                                android:layout_weight="1"
-                                android:maxLines="2"
-                                android:textAppearance="?attr/textAppearanceBodySmall"
-                                android:textColor="?attr/colorOnSurfaceVariant" />
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal">
 
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/btn_webdav_backup"
-                                style="@style/Widget.Material3.Button.TonalButton"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="@string/webdav_backup_now"
-                                app:icon="@drawable/ic_cloud" />
+                                <ImageView
+                                    android:layout_width="@dimen/badge_size"
+                                    android:layout_height="@dimen/badge_size"
+                                    android:background="@drawable/bg_icon_badge"
+                                    android:contentDescription="@null"
+                                    android:padding="@dimen/space_2"
+                                    android:src="@drawable/ic_schedule"
+                                    app:tint="?attr/colorOnSecondaryContainer" />
 
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/btn_webdav_restore"
-                                style="@style/Widget.Material3.Button.OutlinedButton"
-                                android:layout_width="wrap_content"
+                                <TextView
+                                    android:id="@+id/tv_webdav_last"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="@dimen/space_3"
+                                    android:layout_weight="1"
+                                    android:maxLines="2"
+                                    android:textAppearance="?attr/textAppearanceBodySmall"
+                                    android:textColor="?attr/colorOnSurfaceVariant" />
+                            </LinearLayout>
+
+                            <!-- 行 2：两个操作按钮。外面套一层 HorizontalScrollView 是仓库既有做法
+                                 （home / logs / 应用分流三处同款）：320dp 窄屏上这两个按钮的自然宽
+                                 合计约 267dp，而卡片内可用宽度只有约 232dp —— 不套的话 LinearLayout
+                                 会把后一个按钮压扁（Restore 出现省略号）。宽屏时 HSV 收缩到内容宽，
+                                 再由父容器 gravity=end 贴右，观感与原来的单行版式一致。
+                                 ⚠️ fillViewport 必须保持 false、HSV 自身用 wrap_content：
+                                 改成 true 会以 EXACTLY 测量子节点，压扁原样回来。 -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:layout_marginStart="@dimen/space_2"
-                                android:text="@string/webdav_restore"
-                                app:icon="@drawable/ic_sync" />
+                                android:layout_marginTop="@dimen/space_3"
+                                android:gravity="end"
+                                android:orientation="horizontal">
+
+                                <HorizontalScrollView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fadingEdgeLength="@dimen/space_6"
+                                    android:requiresFadingEdge="horizontal"
+                                    android:scrollbars="none">
+
+                                    <LinearLayout
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:orientation="horizontal">
+
+                                        <com.google.android.material.button.MaterialButton
+                                            android:id="@+id/btn_webdav_backup"
+                                            style="@style/Widget.Material3.Button.TonalButton"
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:text="@string/webdav_backup_now"
+                                            app:icon="@drawable/ic_cloud" />
+
+                                        <com.google.android.material.button.MaterialButton
+                                            android:id="@+id/btn_webdav_restore"
+                                            style="@style/Widget.Material3.Button.OutlinedButton"
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:layout_marginStart="@dimen/space_2"
+                                            android:text="@string/webdav_restore"
+                                            app:icon="@drawable/ic_sync" />
+                                    </LinearLayout>
+                                </HorizontalScrollView>
+                            </LinearLayout>
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
                 </LinearLayout>
@@ -1131,30 +1080,15 @@
                                     android:clickable="false"
                                     android:focusable="false" />
 
-                                <LinearLayout
+                                <TextView
+                                    android:id="@+id/tv_filter_disallow_title"
                                     android:layout_width="0dp"
                                     android:layout_height="wrap_content"
                                     android:layout_marginStart="@dimen/space_2"
                                     android:layout_weight="1"
-                                    android:orientation="vertical">
-
-                                    <TextView
-                                        android:id="@+id/tv_filter_disallow_title"
-                                        android:layout_width="match_parent"
-                                        android:layout_height="wrap_content"
-                                        android:text="@string/filter_disallow_mode"
-                                        android:textAppearance="?attr/textAppearanceBodySmall"
-                                        android:textStyle="bold" />
-
-                                    <TextView
-                                        android:id="@+id/tv_filter_disallow_desc"
-                                        android:layout_width="match_parent"
-                                        android:layout_height="wrap_content"
-                                        android:layout_marginTop="@dimen/space_1"
-                                        android:text="@string/filter_disallow_desc"
-                                        android:textAppearance="?attr/textAppearanceBodySmall"
-                                        android:textColor="?attr/colorOnSurfaceVariant" />
-                                </LinearLayout>
+                                    android:text="@string/filter_disallow_mode"
+                                    android:textAppearance="?attr/textAppearanceBodySmall"
+                                    android:textStyle="bold" />
                             </LinearLayout>
                         </com.google.android.material.card.MaterialCardView>
 
@@ -1187,30 +1121,15 @@
                                     android:clickable="false"
                                     android:focusable="false" />
 
-                                <LinearLayout
+                                <TextView
+                                    android:id="@+id/tv_filter_allow_title"
                                     android:layout_width="0dp"
                                     android:layout_height="wrap_content"
                                     android:layout_marginStart="@dimen/space_2"
                                     android:layout_weight="1"
-                                    android:orientation="vertical">
-
-                                    <TextView
-                                        android:id="@+id/tv_filter_allow_title"
-                                        android:layout_width="match_parent"
-                                        android:layout_height="wrap_content"
-                                        android:text="@string/filter_allow_mode"
-                                        android:textAppearance="?attr/textAppearanceBodySmall"
-                                        android:textStyle="bold" />
-
-                                    <TextView
-                                        android:id="@+id/tv_filter_allow_desc"
-                                        android:layout_width="match_parent"
-                                        android:layout_height="wrap_content"
-                                        android:layout_marginTop="@dimen/space_1"
-                                        android:text="@string/filter_allow_desc"
-                                        android:textAppearance="?attr/textAppearanceBodySmall"
-                                        android:textColor="?attr/colorOnSurfaceVariant" />
-                                </LinearLayout>
+                                    android:text="@string/filter_allow_mode"
+                                    android:textAppearance="?attr/textAppearanceBodySmall"
+                                    android:textStyle="bold" />
                             </LinearLayout>
                         </com.google.android.material.card.MaterialCardView>
                     </LinearLayout>

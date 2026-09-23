@@ -18,6 +18,7 @@ import app.fjj.stun.geo.GlobeArc
 import app.fjj.stun.geo.GlobeMarker
 import app.fjj.stun.geo.GlobeTopology
 import app.fjj.stun.ui.view.GlobeView
+import app.fjj.stun.ui.view.ServerNoticeBox
 import app.fjj.stun.ui.view.TrafficBarChartView
 import app.fjj.stun.util.SshBannerRenderer
 import com.google.android.material.color.MaterialColors
@@ -119,8 +120,6 @@ class ConnectionDetailsLayoutPreviewTest {
         sheet.fill(R.id.tv_globe_avatar_letter, "G")
         sheet.fill(R.id.tv_globe_name, "Guangzhou Home")
         sheet.fill(R.id.tv_globe_server, SERVER)
-        sheet.fill(R.id.tv_globe_protocol_chip, "UDP_CUSTOM")
-        sheet.fill(R.id.tv_globe_magic_chip, ctx.getString(R.string.connection_magic_format, "UDPC"))
         sheet.fill(R.id.tv_globe_latency, "810 ms")
         sheet.fill(R.id.tv_globe_last, ctx.getString(R.string.connection_last_connected_short, "0 分钟前"))
         sheet.fill(R.id.tv_globe_traffic, "↑ 153.5 MB  ↓ 1.6 GB")
@@ -142,6 +141,9 @@ class ConnectionDetailsLayoutPreviewTest {
             sheet.findViewById(R.id.tv_detail_ssh_notice),
             "\u001b[33mAUTHORIZED ACCESS ONLY\u001b[0m\n\u001b[32m哈吉米南北绿豆\u001b[0m",
         )
+        // 虚线框是运行时由 ServerNoticeBox 装的（XML 里的 shape 颜色不吃 ?attr/），
+        // 预览必须走同一条路径，否则 PNG 里这一框没有边框，看着像漏了样式。
+        ServerNoticeBox.applyTo(sheet.findViewById(R.id.tv_detail_ssh_notice))
         sheet.findViewById<View>(R.id.row_detail_ssh_notice).visibility = View.VISIBLE
         sheet.findViewById<View>(R.id.divider_detail_ssh_notice).visibility = View.VISIBLE
         sheet.fill(R.id.tv_detail_sni, "—")

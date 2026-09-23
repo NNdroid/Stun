@@ -65,11 +65,6 @@
     <color name="connection_state_pending">#F59E0B</color>
     <color name="connection_state_offline">#EF4444</color>
 
-    <!-- 「服务器提示」虚线框（浅色）。它框的是**外部输入**（服务端 MOTD），需要与普通字段值
-         一眼分开，所以借 error 语义色的柔化版而不是中性描边。-->
-    <color name="detail_notice_outline">#D98C86</color>
-    <color name="detail_notice_fill">#FFF8F7</color>
-
     <!-- M3 夜间调色板的**默认声明**：lint MissingDefaultResource 要求 night 资源在基础 values 里也有。
          这些值只在 values-night/themes.xml 里被引用，基础侧声明不会被浅色模式取用。 -->
     <color name="md_theme_dark_primary">#FFB77B</color>

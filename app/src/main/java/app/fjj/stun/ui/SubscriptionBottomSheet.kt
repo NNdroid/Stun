@@ -177,8 +177,10 @@ class SubscriptionBottomSheet : BottomSheetDialogFragment() {
 
         lifecycleScope.launch {
             val saved = withContext(Dispatchers.IO) {
+                // 两个都是查库：必须在 IO 上（Room 的同步查询在主线程会直接抛）。
+                SubscriptionManager.seedUsageLiveData(requireContext())
                 SubscriptionManager.getSubscriptions(requireContext()).map { entry ->
-                    val meta = SubscriptionManager.getSyncMetaForUrl(requireContext(), entry.url)
+                    val meta = SubscriptionManager.getSyncMetaForSub(requireContext(), entry.subId)
                     SubscriptionRow(
                         id = ROW_IDS.incrementAndGet(),
                         entry = entry,
@@ -194,7 +196,6 @@ class SubscriptionBottomSheet : BottomSheetDialogFragment() {
         }
 
         SubscriptionManager.syncStateLiveData.observe(viewLifecycleOwner) { applySyncStates(it) }
-        SubscriptionManager.seedUsageLiveData(requireContext())
         SubscriptionManager.usageLiveData.observe(viewLifecycleOwner) { map ->
             usageUi = buildUsageUi(map)
             submit()
@@ -276,7 +277,14 @@ class SubscriptionBottomSheet : BottomSheetDialogFragment() {
         drafts[id] = Draft(url, pin, name)
     }
 
-    /** 保存单行编辑：URL 变更作废旧同步元信息（换源了），落库并收起。 */
+    /**
+     * 保存单行编辑：落库并收起。
+     *
+     * ⚠️ 这里**不再**因为"URL 变了"就把 lastSync/nodeCount 归零。旧实现会归零，是因为那时
+     * 同步元信息以 URL 为键、换 URL 就等于换了身份；现在身份是 `entry.subId`（订阅行），
+     * 换域名只是这一行的 url 列换了个值 —— 用量历史、同步计时、节点归属一个都不该丢，
+     * 这正是本次重构的目的。顺带也就没有了"改 URL 时要在主线程查一次库取新元信息"。
+     */
     private fun saveRow(id: Long, url: String, pin: String, name: String) {
         val index = rows.indexOfFirst { it.id == id }
         if (index < 0) return
@@ -294,15 +302,10 @@ class SubscriptionBottomSheet : BottomSheetDialogFragment() {
             pin = pin.trim(),
             name = name.trim().ifBlank { if (urlChanged) "" else old.entry.name }
         )
-        val meta = if (newEntry.url.isNotBlank()) {
-            SubscriptionManager.getSyncMetaForUrl(requireContext(), newEntry.url)
-        } else null
         rows[index] = old.copy(
             entry = newEntry,
             expanded = false,
             urlInvalid = false,
-            lastSync = if (urlChanged) 0L else old.lastSync,
-            nodeCount = if (urlChanged) (meta?.count ?: -1) else old.nodeCount,
             status = null,
             errorCode = null
         )
@@ -314,16 +317,16 @@ class SubscriptionBottomSheet : BottomSheetDialogFragment() {
     /**
      * 删除前置询问。
      *
-     * "要一起删 N 个节点吗"里的 N 来自 Room 全表查询 —— 先在 IO 取数、拿到结果再弹框。
+     * "要一起删 N 个节点吗"里的 N 来自 Room 的一次 COUNT —— 先在 IO 取数、拿到结果再弹框。
      * 直接在点击回调（主线程）里查库，节点多时点"删除"会先卡一下才出确认框。
      */
     private fun confirmRemove(id: Long) {
         val row = rows.firstOrNull { it.id == id } ?: return
-        val url = row.entry.url
+        val subId = row.entry.subId
         val ctx = requireContext()
         lifecycleScope.launch {
-            val nodeCount = if (url.isNotBlank()) {
-                SubscriptionManager.countSubscriptionNodes(ctx, url)
+            val nodeCount = if (subId.isNotBlank()) {
+                SubscriptionManager.countSubscriptionNodes(ctx, subId)
             } else 0
 
             val builder = MaterialAlertDialogBuilder(ctx)
@@ -336,7 +339,7 @@ class SubscriptionBottomSheet : BottomSheetDialogFragment() {
                 ) { _, _, checked -> alsoDelete[0] = checked }
             }
             builder.setNegativeButton(CoreR.string.cancel, null)
-                .setPositiveButton(CoreR.string.delete) { _, _ -> removeRow(id, url, alsoDelete[0]) }
+                .setPositiveButton(CoreR.string.delete) { _, _ -> removeRow(id, subId, alsoDelete[0]) }
                 .show()
         }
     }
@@ -345,11 +348,11 @@ class SubscriptionBottomSheet : BottomSheetDialogFragment() {
      * 确认后的删除：列表先按"已删除"更新（乐观，用户点完立刻看到行消失），
      * 落库交给 [SubscriptionManager.removeSubscriptionAsync]（进程级 scope，查库/删库都在 IO）。
      */
-    private fun removeRow(id: Long, url: String, alsoDeleteNodes: Boolean) {
+    private fun removeRow(id: Long, subId: String, alsoDeleteNodes: Boolean) {
         rows.removeAll { it.id == id }
         drafts.remove(id)
         submit()
-        SubscriptionManager.removeSubscriptionAsync(requireContext(), url, alsoDeleteNodes)
+        SubscriptionManager.removeSubscriptionAsync(requireContext(), subId, alsoDeleteNodes)
     }
 
     private fun showRowMenu(id: Long, anchor: View) {
@@ -414,12 +417,17 @@ class SubscriptionBottomSheet : BottomSheetDialogFragment() {
         }
     }
 
-    /** 实时同步状态映射回各行（syncing/success/failed + 本地化错误），并刷新节点数/时间。 */
+    /**
+     * 实时同步状态映射回各行（syncing/success/failed + 本地化错误），并刷新节点数/时间。
+     *
+     * 按 **subId** 而不是 URL 匹配：同步是异步的，用户完全可能在这个过程中改掉某一行的 URL，
+     * 用 URL 匹配会漏贴状态、甚至贴到别的行上去；而 subId 在行的一生里不变。
+     */
     private fun applySyncStates(states: List<SubscriptionManager.SubSyncState>) {
-        val byUrl = states.associateBy { it.url }
+        val bySubId = states.associateBy { it.subId }
         for (i in rows.indices) {
             val row = rows[i]
-            val state = byUrl[row.entry.url.trim()]
+            val state = bySubId[row.entry.subId]
             val result = state?.result
             var next = row.copy(
                 status = state?.status,
@@ -446,11 +454,32 @@ class SubscriptionBottomSheet : BottomSheetDialogFragment() {
         else -> getString(CoreR.string.subscription_sync_error, getString(CoreR.string.error_unknown))
     }
 
-    /** 结构变更后即时落库（增/删/保存都调用），不再依赖"立即同步"的副作用。 */
+    /**
+     * 结构变更后即时落库（增/删/保存都调用），不再依赖"立即同步"的副作用。
+     *
+     * 落库会把**新行的 subId 回写到内存行**：subId 是"这一行 ↔ 订阅表里那一行"的唯一凭据，
+     * 刚加进来的行在本地还是空串（见 [SubEntry] 的说明），不回写的话同步结果贴不回这一行、
+     * 后续"删除 / 查归属节点数"也都传不出 subId。回写按**位置**对应 ——
+     * `saveSubscriptions` 保持入参顺序，且这里喂进去的就是过滤后的同一批。
+     */
     private fun persistRows() {
-        val entries = rows.map { it.entry.copy(url = it.entry.url.trim()) }.filter { it.url.isNotBlank() }
+        val targets = rows.withIndex().filter { it.value.entry.url.isNotBlank() }
+        val entries = targets.map { it.value.entry.copy(url = it.value.entry.url.trim()) }
         lifecycleScope.launch {
-            withContext(Dispatchers.IO) { SubscriptionManager.saveSubscriptions(requireContext(), entries) }
+            val saved = withContext(Dispatchers.IO) {
+                SubscriptionManager.saveSubscriptions(requireContext(), entries)
+            }
+            var patched = false
+            targets.forEachIndexed { i, indexed ->
+                val entry = saved.getOrNull(i) ?: return@forEachIndexed
+                // 期间用户可能已经删掉/重排了这一行 → 只在仍是同一行（id 相符）时才回写。
+                if (rows.getOrNull(indexed.index)?.id != indexed.value.id) return@forEachIndexed
+                if (rows[indexed.index].entry != entry) {
+                    rows[indexed.index] = rows[indexed.index].copy(entry = entry)
+                    patched = true
+                }
+            }
+            if (patched) submit()
         }
     }
 
@@ -507,16 +536,24 @@ class SubscriptionBottomSheet : BottomSheetDialogFragment() {
      *
      * 所有取数/本地化集中在这里：头部会随列表回收重建，绑定阶段只能做赋值
      * （趋势图也一样，必须在 bind 里重放，否则滚回来图就没了）。
+     *
+     * map 的键是 **subId**，且值已经是完整的 [SubscriptionManager.UsageView]（含今日/本月新增
+     * 与趋势）—— 本函数跑在主线程的观察者里，不能再查库补数据。
      */
     private fun buildUsageUi(
-        map: Map<String, SubscriptionManager.SubscriptionUsage>
+        map: Map<String, SubscriptionManager.UsageView>
     ): UsageUi? {
-        val latest = map.maxByOrNull { it.value.updatedAt } ?: return null
-        val usage = latest.value
-        val name = rows.firstOrNull { it.entry.url.trim() == latest.key }?.entry?.name.orEmpty()
-        val sourceText = name.ifBlank { runCatching { Uri.parse(latest.key).host }.getOrNull().orEmpty() }
+        val latest = map.maxByOrNull { it.value.usage.updatedAt } ?: return null
+        val view = latest.value
+        val usage = view.usage
+        // 名字与"没名字时的域名回落"都取**那一行**的 url：键现在是 subId，
+        // 拿它去解 host 只会得到一串 UUID。
+        val row = rows.firstOrNull { it.entry.subId == latest.key }
+        val name = row?.entry?.name.orEmpty()
+        val sourceText = name.ifBlank {
+            runCatching { Uri.parse(row?.entry?.url.orEmpty()).host }.getOrNull().orEmpty()
+        }
         val pct = Math.round(usage.ratio * 100).toInt()
-        val detail = SubscriptionManager.getUsageForUrl(requireContext(), latest.key)
 
         val expireText = if (usage.hasExpire) {
             val expireMs = usage.expire * 1000L
@@ -542,11 +579,11 @@ class SubscriptionBottomSheet : BottomSheetDialogFragment() {
         }
         val todayText = getString(
             CoreR.string.subscription_usage_today,
-            AppUtils.formatBytes(maxOf(0L, detail?.dayDelta ?: 0L))
+            AppUtils.formatBytes(maxOf(0L, view.dayDelta))
         )
         val monthText = getString(
             CoreR.string.subscription_usage_month,
-            AppUtils.formatBytes(maxOf(0L, detail?.monthDelta ?: 0L))
+            AppUtils.formatBytes(maxOf(0L, view.monthDelta))
         )
         val amountText = getString(CoreR.string.subscription_usage_used_of, usedText, totalText)
         val percentText = getString(CoreR.string.subscription_usage_percent, pct)
@@ -565,7 +602,7 @@ class SubscriptionBottomSheet : BottomSheetDialogFragment() {
                 pct >= 70 -> "colorTertiary"
                 else -> "colorPrimary"
             },
-            samples = detail?.history?.map { it.second }.orEmpty(),
+            samples = view.history.map { it.second },
             // 复制用的纯文本快照：去掉图标与进度条，粘到聊天窗/工单里直接能读。
             copyPayload = buildList {
                 if (sourceText.isNotBlank()) add(sourceText)

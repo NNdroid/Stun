@@ -12,14 +12,17 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import androidx.core.content.ContextCompat
 import app.fjj.stun.backup.WebDavBackupManager
+import app.fjj.stun.backup.WebDavSyncMode
 import app.fjj.stun.repo.Profile
 import app.fjj.stun.repo.ProfileManager
+import app.fjj.stun.repo.ProfileSecrets
 import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.StunLogger
 import app.fjj.stun.repo.StunRepository
 import app.fjj.stun.repo.SubscriptionManager
 import app.fjj.stun.service.MyVpnService
 import app.fjj.stun.service.VpnConfigBuilder
+import app.fjj.stun.util.CrashHistoryStore
 import app.fjj.stun.util.ShareCryptoUtils
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -218,7 +221,12 @@ object WebServer {
 
             server = embeddedServer(CIO, port = actualPort) {
                 install(ContentNegotiation) {
-                    gson { setPrettyPrinting() }
+                    gson {
+                        setPrettyPrinting()
+                        // update 响应会把刚保存的 Profile 回吐给前端；不注册脱敏就会把
+                        // 明文凭据又送回去（等于 GET 打码白做）。
+                        ProfileSecrets.registerRedaction(this)
+                    }
                 }
 
                 routing {
@@ -289,9 +297,20 @@ object WebServer {
                     get("/api/profiles") {
                         if (!call.checkToken(appContext)) return@get
                         val selectedId = SettingsManager.getSelectedProfileId(appContext)
+                        // 凭据一律掩码。WebUI 编辑页把 ***** 挪进 input.dataset.secret、框里只留
+                        // 「已保存 · 留空则不修改」的 hint（用户不再看到一坨星号），提交前再还原回框里
+                        // 原样发回，由 update 侧识别成"保持原值" —— 读的明文没有必要存在。
+                        val redacting = ProfileSecrets.redactingGson()
+                        // 来源订阅名（`profiles.subId` → 订阅行）在服务端解析好再下发：
+                        // 前端拿不到订阅表，而把 subId 直接当徽标提示既不可读、也没必要暴露。
+                        // 与原生节点卡片同一口径：名字为空就不显示徽标（不回落到 URL 域名）。
                         val profiles = ProfileManager.getProfiles(appContext).map { p ->
-                            val jsonMap = gson.fromJson<MutableMap<String, Any?>>(gson.toJson(p), object : TypeToken<MutableMap<String, Any?>>() {}.type)
+                            val jsonMap = redacting.fromJson<MutableMap<String, Any?>>(
+                                redacting.toJson(p),
+                                object : TypeToken<MutableMap<String, Any?>>() {}.type
+                            )
                             jsonMap["isSelected"] = (p.id == selectedId)
+                            jsonMap["subName"] = SubscriptionManager.subscriptionNameFor(appContext, p.subId)
                             jsonMap
                         }
                         call.respond(HttpStatusCode.OK, profiles)
@@ -300,7 +319,11 @@ object WebServer {
                     post("/api/profiles/update") {
                         if (!call.checkToken(appContext)) return@post
                         try {
-                            val body = call.receive<Map<String, Any?>>()
+                            val body = call.receive<Map<String, Any?>>().toMutableMap()
+                            // 掩码哨兵：前端把 GET 拿到的 ***** 原样提交回来 = "保持原值"。
+                            // 置 null 后，下游 `(body["pass"] as? String) ?: existing.pass` 自然回落到库里的值；
+                            // 用户真想清空时提交的是空串（不是掩码），仍会照常写库。
+                            ProfileSecrets.dropMaskedSecrets(body)
                             val id = (body["id"] as? String)?.trim()
                             if (id.isNullOrBlank()) {
                                 return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing id"))
@@ -771,8 +794,12 @@ object WebServer {
                             HttpStatusCode.OK,
                             mapOf(
                                 "subscriptions" to SubscriptionManager.getSubscriptions(appContext).map {
-                                    val meta = SubscriptionManager.getSyncMetaForUrl(appContext, it.url)
+                                    val meta = SubscriptionManager.getSyncMetaForSub(appContext, it.subId)
                                     mapOf(
+                                        // 订阅的本地 id：前端必须原样回传（save / sync），
+                                        // 否则"在控制台里改订阅链接"会被当成新建一条 —— 用量历史、
+                                        // 同步计时、节点归属全部断开，正是本次重构要消灭的漂移。
+                                        "subId" to it.subId,
                                         "url" to it.url,
                                         "pin" to it.pin,
                                         // 响应头解析出的元信息必须回吐：缺了它前端只能显示裸链接，
@@ -790,8 +817,9 @@ object WebServer {
                         )
                     }
 
-                    // 覆盖保存整个订阅列表；body: {subscriptions:[{url,pin,name?,homePage?,updateIntervalHours?}]}
-                    // name/homePage/updateIntervalHours 缺省时沿用同 URL 的已存值，避免旧前端把元信息清空。
+                    // 覆盖保存整个订阅列表；body: {subscriptions:[{subId,url,pin,name?,homePage?,updateIntervalHours?}]}
+                    // subId 缺省（旧前端）时按同 URL 认领已存行；name/homePage/updateIntervalHours
+                    // 缺省时沿用同 URL 的已存值，避免旧前端把元信息清空。
                     post("/api/subscription/save") {
                         if (!call.checkToken(appContext)) return@post
                         try {
@@ -810,6 +838,7 @@ object WebServer {
                                         val interval = (m["updateIntervalHours"] as? Number)
                                             ?.toInt()?.coerceAtLeast(0) ?: 0
                                         SubscriptionManager.SubEntry(
+                                            subId = (m["subId"] as? String)?.trim().orEmpty(),
                                             url = u,
                                             pin = (m["pin"] as? String)?.trim().orEmpty(),
                                             name = name.ifBlank { prev?.name.orEmpty() },
@@ -847,6 +876,7 @@ object WebServer {
                                     (item as? Map<*, *>)?.let { m ->
                                         val u = (m["url"] as? String)?.trim().orEmpty()
                                         if (u.isBlank()) null else SubscriptionManager.SubEntry(
+                                            subId = (m["subId"] as? String)?.trim().orEmpty(),
                                             url = u,
                                             pin = (m["pin"] as? String)?.trim().orEmpty(),
                                             name = (m["name"] as? String)?.trim().orEmpty(),
@@ -857,8 +887,9 @@ object WebServer {
                                 }
                             }
                             val toSync = if (!incoming.isNullOrEmpty()) {
+                                // 用落库后的返回值（subId 已补齐）去同步：直接拿入参会带着空 subId
+                                // 进同步，节点盖戳/用量记账/结果回贴全都会失去锚点。
                                 SubscriptionManager.saveSubscriptions(appContext, incoming)
-                                incoming
                             } else {
                                 SubscriptionManager.getSubscriptions(appContext)
                             }
@@ -896,7 +927,7 @@ object WebServer {
                         }
                     }
 
-                    // ── WebDAV 云备份 API (WebDAV Cloud Backup) ──
+                    // ── WebDAV 云备份 / 同步 API (WebDAV Cloud Backup & Sync) ──
                     get("/api/webdav") {
                         if (!call.checkToken(appContext)) return@get
                         call.respond(
@@ -908,7 +939,10 @@ object WebServer {
                                 "hasPin" to SettingsManager.getWebDavPin(appContext).isNotBlank(),
                                 "auto" to SettingsManager.isWebDavAutoBackupEnabled(appContext),
                                 "intervalHours" to SettingsManager.getWebDavBackupIntervalHours(appContext),
-                                "lastBackup" to SettingsManager.getWebDavLastBackupTime(appContext)
+                                "lastBackup" to SettingsManager.getWebDavLastBackupTime(appContext),
+                                // 同步模式：前端按 id 自己映射文案，别让它去比本地化的标签串
+                                "syncMode" to SettingsManager.getWebDavSyncMode(appContext).id,
+                                "lastSync" to SettingsManager.getWebDavLastSyncTime(appContext)
                             )
                         )
                     }
@@ -927,11 +961,60 @@ object WebServer {
                             (body["intervalHours"] as? Number)?.toInt()?.let {
                                 SettingsManager.saveWebDavBackupIntervalHours(appContext, it.toLong())
                             }
-                            // 间隔/开关可能变化，重排 WorkManager 周期任务（未开启则取消）
+                            // 换模式＝换方向，作废"已推过兜底快照"标记：新模式的第一次仍要先留后路
+                            (body["syncMode"] as? String)?.let { raw ->
+                                val mode = WebDavSyncMode.fromId(raw)
+                                if (mode != SettingsManager.getWebDavSyncMode(appContext)) {
+                                    SettingsManager.saveWebDavSyncMode(appContext, mode)
+                                    SettingsManager.setWebDavSyncBootstrapped(appContext, false)
+                                }
+                            }
+                            // 间隔/开关/模式可能变化，重排 WorkManager 周期任务（未开启则取消）
                             app.fjj.stun.worker.WebDavBackupWorker.schedule(appContext)
-                            call.respond(HttpStatusCode.OK, mapOf("status" to "success"))
+                            call.respond(
+                                HttpStatusCode.OK,
+                                mapOf(
+                                    "status" to "success",
+                                    "syncMode" to SettingsManager.getWebDavSyncMode(appContext).id
+                                )
+                            )
                         } catch (e: Exception) {
                             call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "save failed")))
+                        }
+                    }
+
+                    // 按当前同步模式跑一次（body 可带 mode 临时覆盖；不带就用设置里的）
+                    post("/api/webdav/sync") {
+                        if (!call.checkToken(appContext)) return@post
+                        try {
+                            val body = runCatching { call.receive<Map<String, Any?>>() }.getOrDefault(emptyMap())
+                            val mode = (body["mode"] as? String)
+                                ?.let { WebDavSyncMode.fromId(it) }
+                                ?: SettingsManager.getWebDavSyncMode(appContext)
+                            val result = WebDavBackupManager.sync(appContext, readWebDavConfig(appContext), mode)
+                            if (result.pushed) {
+                                SettingsManager.saveWebDavLastBackupTime(appContext, System.currentTimeMillis())
+                            }
+                            StunLogger.i(
+                                TAG,
+                                "WebUI WebDAV sync(${mode.id}) OK: pulled=${result.pulled}, pushed=${result.pushed}"
+                            )
+                            call.respond(
+                                HttpStatusCode.OK,
+                                mapOf(
+                                    "status" to "success",
+                                    "mode" to mode.id,
+                                    "pulled" to result.pulled,
+                                    // 已本地化的分区名，前端直接拼进提示语（不重复维护一份翻译）
+                                    "pulledText" to WebDavBackupManager.sectionSummary(appContext, result.pulled),
+                                    "pushed" to result.pushed,
+                                    "count" to result.profiles,
+                                    "bootstrapped" to result.bootstrapped
+                                )
+                            )
+                        } catch (e: Exception) {
+                            StunLogger.w(TAG, "WebUI WebDAV sync failed: ${e.message}")
+                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "sync failed")))
                         }
                     }
 
@@ -1158,6 +1241,55 @@ object WebServer {
                         if (!call.checkToken(appContext)) return@get
                         StunLogger.i(TAG, "--- Log cleared by web console ---")
                         call.respond(HttpStatusCode.OK, "ok")
+                    }
+
+                    // ── 崩溃历史 API ──
+                    // 数据源 filesDir/crash_history.jsonl（CrashHistoryStore 维护）：JVM 未捕获异常
+                    // 由 CrashHandler 写入，Go 引擎 Panic 由 StunRepository.onCrash 写入。
+                    // 读操作一律走 Dispatchers.IO——历史可能累积到几十 KB，别压 Ktor 线程。
+                    get("/api/crashes") {
+                        if (!call.checkToken(appContext)) return@get
+                        val crashes = withContext(Dispatchers.IO) { CrashHistoryStore.list(appContext) }
+                        call.respond(HttpStatusCode.OK, mapOf(
+                            "status" to "success",
+                            "total" to crashes.size,
+                            "limit" to CrashHistoryStore.MAX_RECORDS,
+                            "crashes" to crashes.map { c -> mapOf(
+                                "id" to c.id,
+                                "time" to c.time,
+                                "type" to c.type,
+                                "version" to c.version,
+                                "device" to c.device,
+                                "android" to c.android,
+                                "thread" to c.thread,
+                                "exception" to c.exception,
+                                "message" to c.message,
+                                "report" to c.report
+                            ) }
+                        ))
+                    }
+
+                    post("/api/crashes/delete") {
+                        if (!call.checkToken(appContext)) return@post
+                        val body = try { call.receive<Map<String, Any?>>() } catch (_: Exception) { emptyMap() }
+                        val id = when (val raw = body["id"]) {
+                            is Number -> raw.toLong()
+                            else -> raw?.toString()?.trim()?.toLongOrNull()
+                        }
+                        if (id == null) return@post call.respond(
+                            HttpStatusCode.BadRequest, mapOf("error" to "Missing id")
+                        )
+                        val deleted = withContext(Dispatchers.IO) { CrashHistoryStore.delete(appContext, id) }
+                        call.respond(
+                            if (deleted) HttpStatusCode.OK else HttpStatusCode.NotFound,
+                            mapOf("status" to "success", "deleted" to deleted, "id" to id)
+                        )
+                    }
+
+                    post("/api/crashes/clear") {
+                        if (!call.checkToken(appContext)) return@post
+                        val removed = withContext(Dispatchers.IO) { CrashHistoryStore.clear(appContext) }
+                        call.respond(HttpStatusCode.OK, mapOf("status" to "success", "deleted" to removed))
                     }
                 }
             }.start(wait = false)

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="qr_stream_info_format">第 %1$d/%2$d 幀 · 第 %3$d 輪</string>
+    <string name="qr_stream_hint_format">資料較大，已切成 %1$d 幀循環播放。請在另一台裝置上選擇「掃描 QR Code」，對準本畫面持續掃描。</string>
+    <string name="qr_stream_pause">暫停</string>
+    <string name="qr_stream_resume">繼續</string>
+    <string name="qr_stream_speed_slow">慢</string>
+    <string name="qr_stream_speed_medium">中</string>
+    <string name="qr_stream_speed_fast">快</string>
+
+    <string name="qr_stream_scan_title">掃描 QR Code</string>
+    <string name="qr_stream_scan_waiting">將鏡頭對準 QR Code</string>
+    <string name="qr_stream_scan_progress_format">已收 %1$d/%2$d 幀 · %3$d%%</string>
+    <string name="qr_stream_scan_hint">請保持傳送端畫面在取景框內，直到接收完成。資料較大時對方會以動畫 QR Code 傳送。</string>
+    <string name="qr_stream_scan_checksum_failed">資料驗證未通過，請重新掃描。</string>
+    <string name="qr_stream_scan_too_large">這次傳輸的資料過大，無法接收。</string>
+    <string name="qr_stream_camera_denied">掃描 QR Code 需要相機權限。</string>
+</resources>

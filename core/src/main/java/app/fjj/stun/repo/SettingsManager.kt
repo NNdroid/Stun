@@ -599,6 +599,30 @@ object SettingsManager {
     private const val KEY_WEBDAV_AUTO = "webdav_auto"
     private const val KEY_WEBDAV_LAST = "webdav_last_backup"
     private const val KEY_WEBDAV_INTERVAL_H = "webdav_interval_hours"
+    private const val KEY_WEBDAV_LAST_SYNC = "webdav_last_sync"
+
+    /**
+     * 同步模式 —— 存**设备态**库，刻意不进云备份。
+     *
+     * 它决定「本机是否参与同步」，是本机策略：若能被云端恢复覆盖，就会出现自指
+     * （恢复一次设置把本机模式改掉，下一轮同步行为突变）。同 [KEY_WEBDAV_PIN]，
+     * 属于「钥匙类」设备态。取值见 [app.fjj.stun.backup.WebDavSyncMode]。
+     */
+    private const val KEY_WEBDAV_SYNC_MODE = "webdav_sync_mode"
+
+    /**
+     * 各分区「内容修改时间」与内容指纹 —— 同步时判断该拉还是该推的唯一依据，
+     * 同样是设备态（描述的是**本机**这份数据的状态）。
+     *
+     * 键形如 `webdav_sync_mtime_<分区 id>` / `webdav_sync_hash_<分区 id>`。
+     * "profiles"（节点）不是 [app.fjj.stun.backup.BackupSection]，但它同样参与同步，
+     * 因此也用同一套键，只是它的 id 固定为 [app.fjj.stun.backup.WebDavBackupManager.PROFILES_SYNC_ID]。
+     */
+    private const val KEY_WEBDAV_SYNC_MTIME_PREFIX = "webdav_sync_mtime_"
+    private const val KEY_WEBDAV_SYNC_HASH_PREFIX = "webdav_sync_hash_"
+
+    /** 首次进入「仅下载/双向」时是否已经推过一份本机兜底快照。 */
+    private const val KEY_WEBDAV_SYNC_BOOTSTRAPPED = "webdav_sync_bootstrapped"
 
     fun getWebDavUrl(context: Context): String = getPrefs(context).getString(KEY_WEBDAV_URL, "") ?: ""
     fun getWebDavUser(context: Context): String = getPrefs(context).getString(KEY_WEBDAV_USER, "") ?: ""
@@ -658,6 +682,62 @@ object SettingsManager {
     // 设备态：上次备份时间，写路径同样落设备态库
     fun saveWebDavLastBackupTime(context: Context, time: Long) {
         devicePrefs(context).edit { putLong(KEY_WEBDAV_LAST, time) }
+    }
+
+    /**
+     * 上次「跑完一次同步」的时间。与「上次备份」分开记：
+     * 仅下载模式**根本不上传**，若共用同一个字段，UI 上的"上次备份"会永远停在很久以前，
+     * 用户会以为同步坏了。
+     */
+    fun getWebDavLastSyncTime(context: Context): Long = devicePrefs(context).getLong(KEY_WEBDAV_LAST_SYNC, 0L)
+
+    fun saveWebDavLastSyncTime(context: Context, time: Long) {
+        devicePrefs(context).edit { putLong(KEY_WEBDAV_LAST_SYNC, time) }
+    }
+
+    // ── WebDAV 同步模式与分区同步指纹（均为设备态，结构上不进云备份） ──
+
+    fun getWebDavSyncMode(context: Context): app.fjj.stun.backup.WebDavSyncMode =
+        app.fjj.stun.backup.WebDavSyncMode.fromId(devicePrefs(context).getString(KEY_WEBDAV_SYNC_MODE, null))
+
+    fun saveWebDavSyncMode(context: Context, mode: app.fjj.stun.backup.WebDavSyncMode) {
+        devicePrefs(context).edit { putString(KEY_WEBDAV_SYNC_MODE, mode.id) }
+    }
+
+    /**
+     * 一个分区的本地同步指纹：**内容修改时间** + 内容指纹。
+     *
+     * 为什么要两个：本机没有在每个设置写入点埋钩子（80+ 处，漏一个就是静默不同步），
+     * 改为同步时用 [hash] 与上次记录的指纹比对来**推断**"本机这份内容被改过"，
+     * 改过才把 [mtime] 抬到当前时间。两者必须成对使用，单独一个都判不出来。
+     */
+    data class SyncStamp(val mtime: Long, val hash: String)
+
+    fun getWebDavSyncStamp(context: Context, sectionId: String): SyncStamp = devicePrefs(context).let { p ->
+        SyncStamp(
+            mtime = p.getLong(KEY_WEBDAV_SYNC_MTIME_PREFIX + sectionId, 0L),
+            hash = p.getString(KEY_WEBDAV_SYNC_HASH_PREFIX + sectionId, "") ?: "",
+        )
+    }
+
+    fun saveWebDavSyncStamp(context: Context, sectionId: String, mtime: Long, hash: String) {
+        devicePrefs(context).edit {
+            putLong(KEY_WEBDAV_SYNC_MTIME_PREFIX + sectionId, mtime)
+            putString(KEY_WEBDAV_SYNC_HASH_PREFIX + sectionId, hash)
+        }
+    }
+
+    /**
+     * 首次进入「仅下载 / 双向」时是否已经推过一份**本机兜底快照**。
+     *
+     * 用户明确要求：先把本机现状留一份后路，再去拉云端。否则云端那份若本身不对，
+     * 本机就只剩被覆盖后的样子，没有可退的副本。
+     */
+    fun isWebDavSyncBootstrapped(context: Context): Boolean =
+        devicePrefs(context).getBoolean(KEY_WEBDAV_SYNC_BOOTSTRAPPED, false)
+
+    fun setWebDavSyncBootstrapped(context: Context, value: Boolean) {
+        devicePrefs(context).edit { putBoolean(KEY_WEBDAV_SYNC_BOOTSTRAPPED, value) }
     }
 
     // ── WebDAV 设置备份 ──

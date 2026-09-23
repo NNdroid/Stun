@@ -158,6 +158,22 @@
                 android:resource="@xml/widget_stun_detail_info" />
         </receiver>
 
+        <!-- 连续扫码页：既扫普通单张二维码，也扫动画二维码流（收齐多帧后拼回载荷）。
+             相机权限由本页自己申请 —— 库的 CaptureActivity 走 CaptureManager，而它的
+             returnResult() 默认"识别一张就 finish"，正是连续扫码不能要的行为，故不复用。
+
+             方向：允许旋转（扫笔记本屏幕是常见场景），但声明 configChanges 避免旋转重建 Activity ——
+             动画二维码的拼接进度只存在内存里，一旦重建就全丢，用户得从头再扫一遍。
+             stateNotNeeded 与库的 CaptureActivity 保持一致。 -->
+        <activity
+            android:name=".ui.qr.AnimatedQrScanActivity"
+            android:label="@string/qr_stream_scan_title"
+            android:exported="false"
+            android:screenOrientation="fullSensor"
+            android:stateNotNeeded="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
+            android:windowSoftInputMode="stateAlwaysHidden" />
+
         <activity
             android:name="com.journeyapps.barcodescanner.CaptureActivity"
             android:screenOrientation="fullSensor"

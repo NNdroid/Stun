@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="qr_stream_info_format">第 %1$d/%2$d 帧 · 第 %3$d 轮</string>
+    <string name="qr_stream_hint_format">数据较大，已切成 %1$d 帧循环播放。请在另一台设备上选择「扫描二维码」，对准本屏幕持续扫描。</string>
+    <string name="qr_stream_pause">暂停</string>
+    <string name="qr_stream_resume">继续</string>
+    <string name="qr_stream_speed_slow">慢</string>
+    <string name="qr_stream_speed_medium">中</string>
+    <string name="qr_stream_speed_fast">快</string>
+
+    <string name="qr_stream_scan_title">扫描二维码</string>
+    <string name="qr_stream_scan_waiting">将镜头对准二维码</string>
+    <string name="qr_stream_scan_progress_format">已收 %1$d/%2$d 帧 · %3$d%%</string>
+    <string name="qr_stream_scan_hint">请保持发送端屏幕在取景框内，直到接收完成。数据较大时对方会以动画二维码发送。</string>
+    <string name="qr_stream_scan_checksum_failed">数据校验未通过，请重新扫描。</string>
+    <string name="qr_stream_scan_too_large">这次传输的数据过大，无法接收。</string>
+    <string name="qr_stream_camera_denied">扫描二维码需要相机权限。</string>
+</resources>

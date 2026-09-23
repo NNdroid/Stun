@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
-import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.SimpleItemAnimator
 import androidx.recyclerview.widget.RecyclerView
 import app.fjj.stun.remote.BluetoothSyncManager
 import app.fjj.stun.remote.RemoteSyncManager
@@ -25,6 +25,7 @@ import app.fjj.stun.repo.*
 import app.fjj.stun.service.MyVpnService
 import app.fjj.stun.service.VpnConfigBuilder
 import app.fjj.stun.util.ExitIpProbe
+import app.fjj.stun.util.GridSpans
 import app.fjj.stun.util.PingResults
 import com.google.android.material.button.MaterialButton
 import app.fjj.stun.core.R as CoreR
@@ -76,9 +77,7 @@ class MainActivity : FragmentActivity() {
             setContentView(R.layout.activity_main)
         }
 
-        lifecycleScope.launch(Dispatchers.IO) {
-            app.fjj.stun.repo.ProfileManager.migratePlaintextProfiles(this@MainActivity)
-        }
+        // 明文凭据迁移已挪到 AppBootstrap（覆盖 phone/tv/car/wear/xr 全部入口），这里不再重复触发。
 
         setupUI()
         setupRemoteCallbacks()
@@ -351,9 +350,17 @@ class MainActivity : FragmentActivity() {
             }
         )
 
-        binding.rvProfiles.layoutManager = LinearLayoutManager(this)
+        // 宽屏把节点列表切成一行多列：TV 横屏普遍 960dp 起，单列铺满整行、一张卡片横跨全屏，
+        // 横向空间基本全废。阈值/列数见 core 的 GridSpans（TV 用 tv/values/dimens.xml 把每列
+        // 最小宽覆盖成 480dp —— 10 尺 UI 的卡片要比手机大）。
+        // ⚠️ 遥控焦点：只换几何排布，不写焦点代码。横向在列间移动由 FocusFinder 按坐标直接命中；
+        // 走到可视区边缘时 RecyclerView 会走 `LayoutManager.onFocusSearchFailed` 把下一列滚进来
+        // （LinearLayoutManager / GridLayoutManager 都实现了）。所以单列→多列**不需要**改
+        // nextFocus*；但"最右列再往右是回到侧栏还是别的控件"这类边界行为，改完要在真机上按一遍。
+        // ⚠️ 同理，卡片内部不要再长出第二个可聚焦控件，否则方向键会在卡片里打转（整卡一个焦点目标）。
+        GridSpans.bind(binding.rvProfiles)
         binding.rvProfiles.adapter = adapter
-        (binding.rvProfiles.itemAnimator as? androidx.recyclerview.widget.SimpleItemAnimator)?.supportsChangeAnimations = false
+        (binding.rvProfiles.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
         updateSelectedNodeUI()
 
         // 遥控焦点音：与列表卡片同一套系统导航音，焦点移动时听觉也能定位

@@ -90,7 +90,8 @@ jobs:
         working-directory: core/jni/myssh
         run: |
           mkdir -p ../../libs
-          VERSION="v1.0.$(date +%Y%m%d)"
+          # 与 core/jni/myssh/scripts/build_android_libs.sh 保持一致：v1.0.YYYYMMDD-<myssh 提交短哈希>
+          VERSION="v1.0.$(date -u +%Y%m%d)-$(git rev-parse --short=7 HEAD)"
 
           echo "📦 Compiling myssh.release.aar..."
           LDFLAGS="-s -w -X 'myssh.Version=$VERSION' -X 'myssh.DebugStr=false'"
@@ -100,9 +101,9 @@ jobs:
           LDFLAGS="-X 'myssh.Version=$VERSION' -X 'myssh.DebugStr=true'"
           gomobile bind -v -target=android -androidapi 28 -ldflags="$LDFLAGS" -o "../../libs/myssh.debug.aar" .
 
-      # 各模块的构建脚本只认 core/libs/ 里的两个产物（该目录被 gitignore，本机手工生成、
-      # CI 必须现场复刻，否则 checkReleaseDuplicateClasses 的 transform 阶段报
-      # "File/directory does not exist"）：
+      # 各模块的构建脚本只认 core/libs/ 里的两个产物（该目录被 gitignore，本机用
+      # core/jni/myssh/scripts/build_android_libs.sh 生成、CI 必须现场复刻，否则
+      # files(...) 声明的路径不存在，构建直接失败）：
       #   myssh-classes.jar   —— 编译期 classes（release/debug 的 gomobile 绑定类相同，共享一份）
       #   myssh.*-slim.aar    —— 运行期 AAR：原包去掉 classes.jar（避免与上面的 jar duplicate-class），
       #                          jni/*.so 等其余条目原样保留

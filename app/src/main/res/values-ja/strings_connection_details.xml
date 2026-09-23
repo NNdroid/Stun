@@ -13,7 +13,6 @@
     <string name="connection_exit">出口アドレス</string>
     <string name="connection_exit_pending">出口アドレスを取得中…</string>
     <string name="connection_last_connected">前回の接続</string>
-    <string name="connection_magic_format">マジック値：%1$s</string>
     <string name="connection_label_protocol">プロトコル</string>
     <string name="connection_label_magic">マジック値</string>
     <string name="connection_label_note">メモ</string>

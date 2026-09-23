@@ -28,7 +28,7 @@ class TVApp : Application() {
         
         // Setup bridge to UI LiveData
         app.fjj.stun.repo.StunRepository.setupLogBridge()
-        app.fjj.stun.repo.StunRepository.registerEngineCallback()
+        app.fjj.stun.repo.StunRepository.registerEngineCallback(this)
         app.fjj.stun.repo.StunRepository.initCrashOutput(this)
 
         // Deploy assets (geoip.dat, geosite.dat, etc.)

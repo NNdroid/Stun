@@ -95,6 +95,10 @@ object CrashHandler {
                 putString(KEY_CRASH_REPORT, crashReport)
             }
         } catch (_: Throwable) {}
+
+        // 3. 追加进崩溃历史台账。与上面 last_crash.txt 那份不同：后者是「上次崩溃」的一次性
+        //    标记，checkPreviousCrash 读一次就删；这里长期累积，供 WebUI 事后查询，由用户手动清空。
+        CrashHistoryStore.record(context, CrashHistoryStore.TYPE_JVM, crashReport)
     }
 
     /**

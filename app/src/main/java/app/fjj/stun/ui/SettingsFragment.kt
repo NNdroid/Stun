@@ -104,10 +104,13 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
             openGeoTagPicker(GeoTagsPickerBottomSheet.TagKind.IP, binding.etGeoipDirect)
         }
 
-        // WebDAV 云备份
-        binding.btnWebdavBackup.setOnClickListener { runWebDavBackup() }
+        // WebDAV 云备份 / 同步
+        binding.btnWebdavBackup.setOnClickListener { runWebDavPrimaryAction() }
         binding.btnWebdavRestore.setOnClickListener { pickAndRestoreWebDav() }
         binding.switchWebdavAuto.setOnCheckedChangeListener { _, checked -> setWebDavAutoBackup(checked) }
+        // 模式选完**立刻生效**：它决定定时任务的方向，也是主按钮的语义，
+        // 不该等到点底栏"保存"才起作用（改完就走会让人以为没生效）。
+        binding.spinnerWebdavSyncMode.setOnItemClickListener { _, _, position, _ -> onWebDavSyncModePicked(position) }
 
         binding.toolbar.setNavigationIcon(R.drawable.ic_back)
         binding.toolbar.setNavigationOnClickListener {
@@ -480,30 +483,27 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
 
     /**
      * 分段选择卡的选中态配色：布局里两卡都是中性底色，谁被选中由这里染成
-     * secondaryContainer（与卡片头部徽标同色系），标题/说明文字随之换色。
+     * secondaryContainer（与卡片头部徽标同色系），标题文字随之换色。
      * 「应用分流」过滤模式与「UDP 网关实现」两处共用。
+     * （四张卡里的说明文字已从布局删掉，所以不再需要 sub 参数。）
      */
     private fun tintSelectionCard(
         card: com.google.android.material.card.MaterialCardView,
         title: android.widget.TextView,
-        sub: android.widget.TextView,
         selected: Boolean
     ) {
         val selBg = MaterialColors.getColor(card, com.google.android.material.R.attr.colorSecondaryContainer)
         val unselBg = MaterialColors.getColor(card, com.google.android.material.R.attr.colorSurfaceContainer)
         val selFg = MaterialColors.getColor(card, com.google.android.material.R.attr.colorOnSecondaryContainer)
         val unselFg = MaterialColors.getColor(card, com.google.android.material.R.attr.colorOnSurface)
-        val unselSub = MaterialColors.getColor(card, com.google.android.material.R.attr.colorOnSurfaceVariant)
         card.setCardBackgroundColor(if (selected) selBg else unselBg)
         title.setTextColor(if (selected) selFg else unselFg)
-        sub.setTextColor(if (selected) selFg else unselSub)
-        sub.alpha = if (selected) 0.75f else 1f
     }
 
     private fun applyFilterSelectionTint() {
         val allowSelected = binding.rbFilterAllow.isChecked
-        tintSelectionCard(binding.cardFilterAllow, binding.tvFilterAllowTitle, binding.tvFilterAllowDesc, allowSelected)
-        tintSelectionCard(binding.cardFilterDisallow, binding.tvFilterDisallowTitle, binding.tvFilterDisallowDesc, !allowSelected)
+        tintSelectionCard(binding.cardFilterAllow, binding.tvFilterAllowTitle, allowSelected)
+        tintSelectionCard(binding.cardFilterDisallow, binding.tvFilterDisallowTitle, !allowSelected)
     }
 
     private fun selectUdpgw(tun2proxy: Boolean) {
@@ -514,8 +514,8 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
 
     private fun applyUdpgwSelectionTint() {
         val tunSelected = binding.rbUdpgwTun2proxy.isChecked
-        tintSelectionCard(binding.cardUdpgwTun2proxy, binding.tvUdpgwTun2proxyTitle, binding.tvUdpgwTun2proxyDesc, tunSelected)
-        tintSelectionCard(binding.cardUdpgwBadvpn, binding.tvUdpgwBadvpnTitle, binding.tvUdpgwBadvpnDesc, !tunSelected)
+        tintSelectionCard(binding.cardUdpgwTun2proxy, binding.tvUdpgwTun2proxyTitle, tunSelected)
+        tintSelectionCard(binding.cardUdpgwBadvpn, binding.tvUdpgwBadvpnTitle, !tunSelected)
     }
 
     private fun updateFilterSelectedCount(packages: String) {
@@ -660,6 +660,13 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
 
     // ── WebDAV 云备份 ──
 
+    /** 三档同步模式与显示名的映射 —— 只维护这一份，读回时按下标取，绝不靠比字符串。 */
+    private fun webDavSyncModeValues() = listOf(
+        app.fjj.stun.backup.WebDavSyncMode.UPLOAD to getString(CoreR.string.webdav_sync_upload),
+        app.fjj.stun.backup.WebDavSyncMode.DOWNLOAD to getString(CoreR.string.webdav_sync_download),
+        app.fjj.stun.backup.WebDavSyncMode.BOTH to getString(CoreR.string.webdav_sync_both),
+    )
+
     private fun fillWebDavUi() {
         val ctx = requireContext().applicationContext
         binding.etWebdavUrl.setText(SettingsManager.getWebDavUrl(ctx))
@@ -668,19 +675,45 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
         binding.etWebdavPin.setText(SettingsManager.getWebDavPin(ctx))
         binding.etWebdavInterval.setText(SettingsManager.getWebDavBackupIntervalHours(ctx).toString())
         binding.switchWebdavAuto.isChecked = SettingsManager.isWebDavAutoBackupEnabled(ctx)
+
+        val modes = webDavSyncModeValues()
+        binding.spinnerWebdavSyncMode.setAdapter(
+            ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, modes.map { it.second })
+        )
+        renderWebDavSyncMode(modes, SettingsManager.getWebDavSyncMode(ctx))
         updateWebDavLastText(ctx)
     }
 
+    /** 把模式刷进下拉与主按钮文案 —— 两者必须一起变，否则"按钮名"和它实际干的活会打架。 */
+    private fun renderWebDavSyncMode(
+        modes: List<Pair<app.fjj.stun.backup.WebDavSyncMode, String>>,
+        mode: app.fjj.stun.backup.WebDavSyncMode,
+    ) {
+        val index = modes.indexOfFirst { it.first == mode }.coerceAtLeast(0)
+        binding.spinnerWebdavSyncMode.setText(modes[index].second, false)
+        binding.btnWebdavBackup.text = getString(
+            if (mode == app.fjj.stun.backup.WebDavSyncMode.UPLOAD) CoreR.string.webdav_backup_now
+            else CoreR.string.webdav_sync_now
+        )
+    }
+
     private fun updateWebDavLastText(ctx: Context) {
-        val last = SettingsManager.getWebDavLastBackupTime(ctx)
-        binding.tvWebdavLast.text = if (last > 0) {
+        // 仅上传没有"同步"这个概念，硬套"上次同步"会让人以为多了个新东西；
+        // 反过来仅下载从不上传，若共用"上次备份"它会永远停在很久以前，看着像坏了。
+        val mode = SettingsManager.getWebDavSyncMode(ctx)
+        val (time, labelRes) = if (mode == app.fjj.stun.backup.WebDavSyncMode.UPLOAD) {
+            SettingsManager.getWebDavLastBackupTime(ctx) to CoreR.string.webdav_last
+        } else {
+            SettingsManager.getWebDavLastSyncTime(ctx) to CoreR.string.webdav_last_sync
+        }
+        binding.tvWebdavLast.text = if (time > 0) {
             getString(
-                CoreR.string.webdav_last,
+                labelRes,
                 java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
-                    .format(java.util.Date(last))
+                    .format(java.util.Date(time))
             )
         } else {
-            getString(CoreR.string.webdav_last, getString(CoreR.string.subscription_never_synced))
+            getString(labelRes, getString(CoreR.string.subscription_never_synced))
         }
     }
 
@@ -772,6 +805,69 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
                 Toast.makeText(
                     requireContext(),
                     getString(CoreR.string.webdav_failed, webDavErrorText(e)), Toast.LENGTH_LONG
+                ).show()
+            } finally {
+                binding.btnWebdavBackup.isEnabled = true
+                binding.btnWebdavRestore.isEnabled = true
+            }
+        }
+    }
+
+    /**
+     * 下拉选完立刻落盘、立刻重排定时任务。
+     *
+     * 顺便把"已推过兜底快照"的标记清掉：换了方向就是换了覆盖风险，
+     * 新的模式下第一次跑仍要先把本机现状留一份后路，再去拉云端。
+     */
+    private fun onWebDavSyncModePicked(position: Int) {
+        val modes = webDavSyncModeValues()
+        val mode = modes.getOrNull(position)?.first ?: return
+        val appCtx = requireContext().applicationContext
+        SettingsManager.saveWebDavSyncMode(appCtx, mode)
+        SettingsManager.setWebDavSyncBootstrapped(appCtx, false)
+        renderWebDavSyncMode(modes, mode)
+        updateWebDavLastText(appCtx)
+        app.fjj.stun.worker.WebDavBackupWorker.schedule(appCtx)
+    }
+
+    /** 主按钮：仅上传＝「立即备份」（引入同步模式之前的老行为），其余两档＝按模式跑一次同步。 */
+    private fun runWebDavPrimaryAction() {
+        val mode = SettingsManager.getWebDavSyncMode(requireContext().applicationContext)
+        if (mode == app.fjj.stun.backup.WebDavSyncMode.UPLOAD) runWebDavBackup() else runWebDavSync()
+    }
+
+    /** 手动跑一次同步（仅下载 / 双向）。仅上传不会走到这里，见 [runWebDavPrimaryAction]。 */
+    private fun runWebDavSync() {
+        if (webDavJob?.isActive == true) return
+        if (!validateWebDavPin()) return
+        saveWebDavConfigIfComplete()
+        val config = captureWebDavConfig()
+        if (!config.isConfigured) {
+            Toast.makeText(requireContext(), CoreR.string.webdav_err_config, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val appCtx = requireContext().applicationContext
+        val mode = SettingsManager.getWebDavSyncMode(appCtx)
+        webDavJob = viewLifecycleOwner.lifecycleScope.launch {
+            binding.btnWebdavBackup.isEnabled = false
+            binding.btnWebdavRestore.isEnabled = false
+            try {
+                val result = app.fjj.stun.backup.WebDavBackupManager.sync(appCtx, config, mode)
+                if (result.pushed) SettingsManager.saveWebDavLastBackupTime(appCtx, System.currentTimeMillis())
+                val detail = if (result.pulled.isEmpty()) {
+                    getString(CoreR.string.webdav_sync_uptodate)
+                } else {
+                    getString(CoreR.string.webdav_sync_pulled, result.pulled.size)
+                }
+                Toast.makeText(
+                    requireContext(),
+                    getString(CoreR.string.webdav_sync_ok, detail), Toast.LENGTH_LONG
+                ).show()
+                updateWebDavLastText(appCtx)
+            } catch (e: Exception) {
+                Toast.makeText(
+                    requireContext(),
+                    getString(CoreR.string.webdav_sync_failed, webDavErrorText(e)), Toast.LENGTH_LONG
                 ).show()
             } finally {
                 binding.btnWebdavBackup.isEnabled = true

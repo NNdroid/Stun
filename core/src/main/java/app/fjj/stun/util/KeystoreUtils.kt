@@ -15,6 +15,14 @@ object KeystoreUtils {
     private const val PREF_FILE_NAME = "stun_prefs"
     private const val MASTER_KEY_URI = "android-keystore://stun_master_key"
 
+    /**
+     * 加密产物的固定前缀 —— **密文判定的唯一依据**。读写两侧、明文迁移都按它识别，
+     * 所以别在任何地方再写 `"ENC:"` 字面量。
+     *
+     * 是 `const`（编译期内联），因此纯 JVM 单测里引用它不会拉起 Android / Tink 的类加载。
+     */
+    const val ENC_PREFIX = "ENC:"
+
     private val lock = Any()
 
     @Volatile
@@ -97,7 +105,7 @@ object KeystoreUtils {
 
         return try {
             val ciphertext = client.encrypt(data.toByteArray(StandardCharsets.UTF_8), aad)
-            "ENC:" + Base64.getEncoder().encodeToString(ciphertext)
+            ENC_PREFIX + Base64.getEncoder().encodeToString(ciphertext)
         } catch (e: Exception) {
             ""
         }
@@ -110,8 +118,8 @@ object KeystoreUtils {
         val aad = (associatedData ?: packageName ?: "")
             .toByteArray(StandardCharsets.UTF_8)
 
-        val isEnc = encryptedData.startsWith("ENC:")
-        val targetData = if (isEnc) encryptedData.substring(4) else encryptedData
+        val isEnc = encryptedData.startsWith(ENC_PREFIX)
+        val targetData = if (isEnc) encryptedData.substring(ENC_PREFIX.length) else encryptedData
 
         return try {
             val ciphertext = Base64.getDecoder().decode(targetData)

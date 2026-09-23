@@ -56,7 +56,7 @@ class StunApp : Application() {
         startupStep("日志与崩溃回调桥") {
             // Setup bridge to UI LiveData
             app.fjj.stun.repo.StunRepository.setupLogBridge()
-            app.fjj.stun.repo.StunRepository.registerEngineCallback()
+            app.fjj.stun.repo.StunRepository.registerEngineCallback(this@StunApp)
             app.fjj.stun.repo.StunRepository.initCrashOutput(this@StunApp)
         }
 

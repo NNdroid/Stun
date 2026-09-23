@@ -261,7 +261,7 @@ class MyVpnService : VpnService() {
                 
                 updateNotification()
                 
-                StunRepository.registerEngineCallback()
+                StunRepository.registerEngineCallback(this)
                 val cfgStatus = StunRepository.proxy.loadGlobalConfig(VpnConfigBuilder.buildGlobalConfig(this, profile))
                 if (cfgStatus != 0L) throw RuntimeException("Global config load failed: $cfgStatus")
 

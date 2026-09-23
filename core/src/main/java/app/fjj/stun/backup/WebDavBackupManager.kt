@@ -3,12 +3,18 @@ package app.fjj.stun.backup
 import android.content.Context
 import app.fjj.stun.repo.Profile
 import app.fjj.stun.repo.ProfileManager
+import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.StunLogger
 import app.fjj.stun.util.WebDavClient
 import com.google.gson.Gson
+import com.google.gson.JsonArray
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.security.MessageDigest
 
 /**
  * WebDAV 云备份：每次备份写入 WebDAV 基址下按 UTC 时间戳命名的 Stun 目录，
@@ -38,6 +44,21 @@ object WebDavBackupManager {
 
     /** settings 分区的历史文件名；[SettingsBackupSection] 复用它，保证旧备份可恢复。 */
     const val SETTINGS_FILE_NAME = "settings.json.enc"
+
+    /**
+     * 同步元数据：每个分区「内容修改时间」的表（`{分区 id: epochMillis}`），加密后随快照一起上传。
+     *
+     * **刻意单独一个文件**，而不是塞进任何一个载荷的信封里 —— 理由和 subscription_usage 独立成文件
+     * 完全一样：旧版本读新备份时只会**忽略未知文件**，而信封一旦从数组变对象，旧版本会整块
+     * 反序列化失败，把那个分区的数据一起赔进去。
+     *
+     * ⚠️ 旧备份没有这个文件。那种目录**不参与"谁更新"的判断**，见 [sync]。
+     */
+    const val SYNC_META_FILE_NAME = "sync_meta.json.enc"
+
+    /** 节点（profiles）在同步元数据里的 id。它不是 [BackupSection]，但同样参与同步。 */
+    const val PROFILES_SYNC_ID = "profiles"
+
     const val MAX_BACKUPS = 5
 
     /** 备份目录名：UTC 时间戳，字典序即时间序。 */
@@ -92,19 +113,171 @@ object WebDavBackupManager {
         }.joinToString(joiner)
     }
 
-    /** 备份：写入新的时间戳目录（节点 + 各注册分区），成功后裁剪到最近 [MAX_BACKUPS] 份。 */
+    /** 备份：写入新的时间戳目录（节点 + 各注册分区 + 同步元数据），成功后裁剪到最近 [MAX_BACKUPS] 份。 */
     suspend fun backup(context: Context, config: Config): BackupResult = withContext(Dispatchers.IO) {
         if (!config.isConfigured) throw BackupException("config incomplete", ErrorCode.CONFIG_INCOMPLETE)
         val base = WebDavClient.normalizeBaseUrl(config.url)
-        val dir = newBackupDirName()
-        StunLogger.i("WebDAV", "Backup start → $base/$BACKUP_DIR/$dir")
+        val parts = exportParts(context, emptyMap())
+        val mtimes = anchorMtimes(parts)
+        val result = pushSnapshot(base, config, parts, mtimes)
+        persistStamps(context, parts, mtimes)
+        result
+    }
+
+    /** [sync] 的结果。 */
+    data class SyncResult(
+        /** 本次从云端拉回并应用的分区 id（节点也会以 [PROFILES_SYNC_ID] 出现在这里）。 */
+        val pulled: List<String>,
+        /** 本次是否上传了新快照。 */
+        val pushed: Boolean,
+        /** 上传快照包含的节点数；未上传为 0。 */
+        val profiles: Int,
+        /** 拉取之前是否推了一份本机兜底快照。 */
+        val bootstrapped: Boolean,
+    )
+
+    /**
+     * 按 [mode] 跑一次同步：
+     * - **仅上传**：等价于 [backup]（引入本功能前唯一存在的行为，因此默认档零改动）；
+     * - **仅下载**：只把云端较新的分区拉回本机；
+     * - **双向**：先拉后推，把合并结果写成一份新快照。
+     *
+     * ## 「按内容时间戳决胜负」是怎么判的
+     * 每个分区在设备态库里有 `(mtime, hash)` 指纹（见 [SettingsManager.SyncStamp]）：
+     * - `hash` 是**本机这份内容**的指纹，与上次记录比对来**推断**"本机被改过" ——
+     *   刻意不在 80+ 个设置写入点埋钩子，漏一个就是静默不同步；
+     * - `mtime` 是内容修改时间。本机改动时抬到 `max(now, 远端 + 1)`，抬到"比见过的远端大 1"
+     *   是**防两台设备时钟偏差**：否则慢钟那台改完依然"比云端旧"，永远推不上去。
+     *
+     * ## 远端时间戳从哪来
+     * 各备份目录里的 [SYNC_META_FILE_NAME]，**同一分区取所有保留目录里的最大值**（见
+     * [collectRemoteStamps]），不是只看最新目录。
+     *
+     * ## 首次进入拉取模式先留后路
+     * 用户明确要求：第一次跑「仅下载 / 双向」时，先把本机现状推一份再拉。否则云端那份若本身不对，
+     * 本机就只剩被覆盖后的样子、没有可退的副本。
+     */
+    suspend fun sync(context: Context, config: Config, mode: WebDavSyncMode): SyncResult = withContext(Dispatchers.IO) {
+        if (!config.isConfigured) throw BackupException("config incomplete", ErrorCode.CONFIG_INCOMPLETE)
+        val base = WebDavClient.normalizeBaseUrl(config.url)
+        val dirs = listBackups(config)
+        val remote = collectRemoteStamps(base, dirs, config)
+        val parts = exportParts(context, remote)
+
+        // 兜底推送。⚠️ 这一步**不写本机指纹**，meta 用的是本机当前的（多半还是 0 的）时间戳：
+        // 若在这里把 mtime 锚到 now，下面判"谁更新"时云端会因为"比本机的 now 旧"而**永远拉不下来**。
+        var bootstrapped = false
+        if (mode.pulls && dirs.isNotEmpty() && !SettingsManager.isWebDavSyncBootstrapped(context)) {
+            StunLogger.i("WebDAV", "Sync bootstrap: pushing a local snapshot before the first pull")
+            pushSnapshot(base, config, parts, parts.associate { it.id to it.mtime })
+            SettingsManager.setWebDavSyncBootstrapped(context, true)
+            bootstrapped = true
+        }
+
+        // ── 拉取：远端内容修改时间 > 本机 ⇒ 远端赢 ──
+        val pulled = mutableListOf<String>()
+        parts.forEach { part ->
+            val ref = remote[part.id] ?: return@forEach
+            val localBefore = part.mtime
+            if (!shouldPull(ref.mtime, localBefore)) return@forEach
+            val json = (fetchDecrypted(base, dirPath(ref.dir, part.fileName), config) as? Fetched.Ok)?.json
+            if (json == null) {
+                StunLogger.d("WebDAV", "Sync: ${part.id} is newer on cloud but unreadable in ${ref.dir}, skipped")
+                return@forEach
+            }
+            try {
+                applyJson(context, part, json)
+            } catch (e: Exception) {
+                StunLogger.w("WebDAV", "Sync: apply ${part.id} failed: ${e.message}")
+                return@forEach
+            }
+            val hash = fingerprint(json)
+            SettingsManager.saveWebDavSyncStamp(context, part.id, ref.mtime, hash)
+            part.mtime = ref.mtime
+            part.hash = hash
+            pulled += part.id
+            StunLogger.i("WebDAV", "Sync: pulled ${part.id} (cloud ${ref.mtime} > local $localBefore)")
+        }
+
+        // ── 推送 ──
+        var pushed = false
+        var profiles = 0
+        if (mode.pushes) {
+            // 仅上传必须"每次都推" —— 引入本功能之前就是如此，默认档不能有行为变化；
+            // 双向则只在真有变化时推，免得 5 个保留位全被无变化的快照吃掉。
+            val needPush = mode == WebDavSyncMode.UPLOAD || bootstrapped || dirs.isEmpty() ||
+                pulled.isNotEmpty() || parts.any { it.changed || it.neverObserved }
+            if (needPush) {
+                val mtimes = anchorMtimes(parts)
+                profiles = pushSnapshot(base, config, parts, mtimes).profiles
+                persistStamps(context, parts, mtimes)
+                pushed = true
+            }
+        }
+
+        SettingsManager.saveWebDavLastSyncTime(context, System.currentTimeMillis())
+        StunLogger.i(
+            "WebDAV",
+            "Sync(${mode.id}) OK: pulled=[${pulled.joinToString()}] pushed=$pushed" +
+                (if (bootstrapped) " (bootstrapped)" else "")
+        )
+        SyncResult(pulled, pushed, profiles, bootstrapped)
+    }
+
+    /** 远端某分区的内容修改时间，以及它出现在哪个备份目录（拉取时要去那个目录取文件）。 */
+    private class RemoteRef(val mtime: Long, val dir: String)
+
+    /**
+     * 参与同步的一份内容。节点（[PROFILES_SYNC_ID]）也走同一条路，只是它的 [section] 为 null、
+     * [fileName] 是 [PROFILES_FILE_NAME]、应用时要走"按 id 合并"而不是直接覆盖。
+     */
+    private class SyncPart(
+        val id: String,
+        val fileName: String,
+        /** 本机明文 JSON；null = 本机没有这份内容（如订阅为空），既不推也不参与判断。 */
+        val json: String?,
+        val section: BackupSection?,
+        /** 节点数，只用于回执文案。 */
+        val itemCount: Int,
+        /** 本机内容指纹；null 表示本机没有这份内容。 */
+        var hash: String?,
+        /** 是否从未观测过本机内容（指纹库为空）。 */
+        val neverObserved: Boolean,
+        /** 与上次记录相比，本机内容是否被改过。 */
+        val changed: Boolean,
+        /** 判断"该拉该推"用的内容修改时间；0 = 从未观测过，**不挡远端拉取**。 */
+        var mtime: Long,
+    )
+
+    /**
+     * 采集本机各分区的内容与同步指纹。
+     *
+     * ⚠️ 本函数**有写副作用**：把本次观测到的 `(mtime, hash)` 记回设备态库。放在这里是因为
+     * "本机是否被改过"只能在同步时判定（不在 80+ 个设置写入点埋钩子 —— 漏一个就是静默不同步），
+     * 观测一次就该落一次盘，否则下次又变回"从未观测"。
+     */
+    private fun exportParts(context: Context, remote: Map<String, RemoteRef>): List<SyncPart> {
+        val now = System.currentTimeMillis()
+        val parts = ArrayList<SyncPart>(BackupSections.all.size + 1)
+
+        fun define(id: String, fileName: String, json: String?, section: BackupSection?, itemCount: Int) {
+            val stored = SettingsManager.getWebDavSyncStamp(context, id)
+            val hash = json?.let { fingerprint(it) }
+            val neverObserved = stored.hash.isBlank()
+            val changed = hash != null && !neverObserved && stored.hash != hash
+            val mtime = localMtime(
+                storedMtime = stored.mtime,
+                storedHash = stored.hash,
+                hash = hash,
+                remoteMtime = remote[id]?.mtime ?: 0L,
+                now = now,
+            )
+            parts += SyncPart(id, fileName, json, section, itemCount, hash, neverObserved, changed, mtime)
+            if (hash != null) SettingsManager.saveWebDavSyncStamp(context, id, mtime, hash)
+        }
 
         val profiles = ProfileManager.getProfiles(context)
-        val profilesJson = Gson().toJson(profiles)
-        WebDavClient.put(base, dirPath(dir, PROFILES_FILE_NAME), config.user, config.pass, encryptToBytes(profilesJson, config.pin))
-
-        // 可插拔分区：本类不认识任何具体设置项，只遍历注册表。
-        val uploaded = mutableListOf<String>()
+        define(PROFILES_SYNC_ID, PROFILES_FILE_NAME, Gson().toJson(profiles), null, profiles.size)
         BackupSections.all.forEach { section ->
             val json = try {
                 section.export(context)
@@ -112,19 +285,200 @@ object WebDavBackupManager {
                 StunLogger.w("WebDAV", "Section ${section.id} export failed, skipped: ${e.message}")
                 null
             }
+            define(section.id, section.fileName, json, section, 0)
+        }
+        return parts
+    }
+
+    /**
+     * 「本机这份内容该记成什么内容修改时间」—— 同步冲突判定的全部智慧都在这里，因此抽成纯函数
+     * （`internal`）以便回归测试，不再埋在 [exportParts] 的闭包里。
+     *
+     * 分支含义：
+     * - `hash == null`：本机根本没有这份内容（如订阅为空），沿用已存记录，不参与判断；
+     * - `storedHash` 为空：**首次观测**，返回 0 —— 本机版本未知，不能凭"刚看见"就压住云端，
+     *   否则一台新设备装完就永远拉不到任何数据；
+     * - 指纹未变：沿用已存时间，本机没动过，不去抢；
+     * - 指纹变了：抬到 `max(now, 远端 + 1)`。抬到"比见过的远端大 1"是**防两台设备时钟偏差**：
+     *   慢钟那台改完若仍"比云端旧"，就永远推不上去，双设备会各自看到自己的版本。
+     */
+    internal fun localMtime(
+        storedMtime: Long,
+        storedHash: String,
+        hash: String?,
+        remoteMtime: Long,
+        now: Long,
+    ): Long = when {
+        hash == null -> storedMtime
+        storedHash.isBlank() -> 0L
+        storedHash != hash -> maxOf(now, remoteMtime + 1L)
+        else -> storedMtime
+    }
+
+    /** 拉取判定：远端内容修改时间**严格大于**本机才拉（相等视为同一版本，避免无谓往返）。 */
+    internal fun shouldPull(remoteMtime: Long, localMtime: Long): Boolean = remoteMtime > localMtime
+
+    /**
+     * 落盘 / 写进 meta 用的最终时间戳：从未观测过的分区（[localMtime] 给了 0）锚到**现在**。
+     *
+     * 为什么和 [SyncPart.mtime] 分成两层：判"该拉该推"时 0 表示"本机版本未知"，不能让本机赢；
+     * 但一旦要把本机内容写进 meta，就必须给一个**能与其他设备比较**的真实时间 ——
+     * 写 0 会让别的设备永远拉不到这份数据。
+     */
+    internal fun anchorMtime(mtime: Long, now: Long): Long = mtime.takeIf { it > 0L } ?: now
+
+    private fun anchorMtimes(parts: List<SyncPart>): Map<String, Long> {
+        val now = System.currentTimeMillis()
+        return parts.filter { it.json != null }.associate { it.id to anchorMtime(it.mtime, now) }
+    }
+
+    private fun persistStamps(context: Context, parts: List<SyncPart>, mtimes: Map<String, Long>) {
+        parts.forEach { part ->
+            val mtime = mtimes[part.id] ?: return@forEach
+            val hash = part.hash ?: return@forEach
+            SettingsManager.saveWebDavSyncStamp(context, part.id, mtime, hash)
+        }
+    }
+
+    /**
+     * 把一个快照写进新的时间戳目录：节点 + 各分区 + 同步元数据，最后裁剪旧目录。
+     *
+     * [backup] 只是"算指纹 → 调它 → 落指纹"的一层壳；[sync] 的兜底推送直接调它、不落指纹。
+     */
+    private fun pushSnapshot(base: String, config: Config, parts: List<SyncPart>, mtimes: Map<String, Long>): BackupResult {
+        val dir = newBackupDirName()
+        StunLogger.i("WebDAV", "Backup start → $base/$BACKUP_DIR/$dir")
+
+        val profilesPart = parts.first { it.id == PROFILES_SYNC_ID }
+        val profilesJson = profilesPart.json ?: "[]"
+        WebDavClient.put(base, dirPath(dir, PROFILES_FILE_NAME), config.user, config.pass, encryptToBytes(profilesJson, config.pin))
+
+        // 可插拔分区：本类不认识任何具体设置项，只遍历注册表。
+        val uploaded = mutableListOf<String>()
+        parts.forEach { part ->
+            val section = part.section ?: return@forEach
             // 无内容（如订阅为空）就不上传，也不动云端已有文件
-            if (json == null) return@forEach
+            val json = part.json ?: return@forEach
             WebDavClient.put(base, dirPath(dir, section.fileName), config.user, config.pass, encryptToBytes(json, config.pin))
             uploaded += section.id
         }
 
+        // 元数据只记录**本次真的上传了**的分区，不给不存在的内容编时间戳
+        val meta = mtimes.filterKeys { it == PROFILES_SYNC_ID || it in uploaded }
+        WebDavClient.put(base, dirPath(dir, SYNC_META_FILE_NAME), config.user, config.pass, encryptToBytes(Gson().toJson(meta), config.pin))
+
         val pruned = pruneOldBackups(base, config)
         StunLogger.i(
             "WebDAV",
-            "Backup OK: ${profiles.size} nodes + ${uploaded.size} sections (${uploaded.joinToString()}) → $dir" +
+            "Backup OK: ${profilesPart.itemCount} nodes + ${uploaded.size} sections (${uploaded.joinToString()}) → $dir" +
                 (if (pruned > 0) ", pruned $pruned old backup(s)" else "")
         )
-        BackupResult(profiles.size, uploaded)
+        return BackupResult(profilesPart.itemCount, uploaded)
+    }
+
+    /**
+     * 汇总各备份目录的同步元数据，**同一分区取最大值**。
+     *
+     * 为什么不是"只看最新目录"：分区是按需上传的（订阅为空时不上传），而且不同设备的目录会交替
+     * 插到最前面 —— 只看最新目录，会让"仅上传"设备插进来的那份旧数据把另一台设备较新的版本挡住。
+     *
+     * ⚠️ **没有 meta 的目录（本功能之前产生的备份）直接跳过**，而不是拿目录名当初次上传时间兜底：
+     * 老用户升级后本地设置是"真身"、云端那份只是历史副本，拿上传时间冒充内容时间会让云端**反盖本地**。
+     */
+    private suspend fun collectRemoteStamps(base: String, dirs: List<String>, config: Config): Map<String, RemoteRef> {
+        val out = HashMap<String, RemoteRef>()
+        dirs.forEach { dir ->
+            val meta = try {
+                when (val fetched = fetchDecrypted(base, dirPath(dir, SYNC_META_FILE_NAME), config)) {
+                    is Fetched.Ok -> parseMeta(fetched.json)
+                    Fetched.Missing -> null
+                    Fetched.Undecryptable -> {
+                        StunLogger.w("WebDAV", "$dir/$SYNC_META_FILE_NAME cannot be decrypted, dir ignored")
+                        null
+                    }
+                }
+            } catch (e: Exception) {
+                // 单个目录取不动（网络抖动 / 被别的工具删了）不该让整次同步失败
+                StunLogger.w("WebDAV", "Reading meta of $dir failed: ${e.message}")
+                null
+            }
+            meta?.forEach { (id, mtime) ->
+                val current = out[id]
+                if (current == null || mtime > current.mtime) out[id] = RemoteRef(mtime, dir)
+            }
+        }
+        return out
+    }
+
+    /** 解析 [SYNC_META_FILE_NAME]；格式不合法返回 null（该目录整份作废，不当成空表）。 */
+    internal fun parseMeta(json: String): Map<String, Long>? = try {
+        val type = object : TypeToken<Map<String, Long>>() {}.type
+        Gson().fromJson<Map<String, Long>>(json, type)
+    } catch (e: Exception) {
+        StunLogger.w("WebDAV", "Malformed $SYNC_META_FILE_NAME: ${e.message}")
+        null
+    }
+
+    /** 把一份云端明文 JSON 应用到本机：节点走"按 id 合并"，分区走各自的 import。 */
+    private fun applyJson(context: Context, part: SyncPart, json: String) {
+        val section = part.section
+        if (section == null) applyProfilesJson(context, json) else section.import(context, json)
+    }
+
+    /** 节点载荷的应用：按 id 合并（同 id 保本机设备态字段，新节点清掉本机没有的网卡绑定）。 */
+    private fun applyProfilesJson(context: Context, json: String): Int {
+        val profiles = parseProfiles(json)
+        // 网卡名只在枚举得出来的时候才用来做判断（见 dropForeignBindInterface）
+        val localInterfaces = localInterfaceNames()
+        var merged = 0
+        profiles.forEach { p ->
+            val existing = ProfileManager.getProfileById(context, p.id)
+            if (existing != null) {
+                // 同 id 合并：留本机的"运行期/设备态"字段，其余按备份覆盖。
+                // 恢复走的是 Room 的整行 REPLACE，不管的话备份里那一刻的累计流量、
+                // 排序位次、上次连接时间会把本机这几天的新值直接冲回去。
+                p.keepLocalDeviceState(existing)
+                ProfileManager.updateProfile(context, p)
+            } else {
+                ProfileManager.addProfile(
+                    context,
+                    p.copy(id = p.id.ifBlank { java.util.UUID.randomUUID().toString() })
+                        .dropForeignBindInterface(localInterfaces)
+                )
+            }
+            merged++
+        }
+        return merged
+    }
+
+    /**
+     * 内容指纹：先把 JSON **规范化**（对象键递归排序）再取 SHA-256。
+     *
+     * 排序是必须的：设置快照是从 `SharedPreferences.all` 枚举出来的，键序不该成为"内容变了"的依据 ——
+     * 不排序的话一次无关的键增删就会让指纹翻转、被判成"本机改过"，从而无谓地推一份新快照，
+     * 更糟的是把本机时间戳抬到最高、永远压住别的设备。
+     *
+     * `internal` 而非 `private`：同步的"谁更新"判定完全建立在这个指纹上，必须有回归测试钉住
+     * 「键序无关 / 内容一变就翻转」这两条（见 `WebDavSyncDecisionTest`）。
+     */
+    internal fun fingerprint(json: String): String {
+        val canonical = try {
+            Gson().toJson(sortKeys(JsonParser.parseString(json)))
+        } catch (_: Exception) {
+            json // 不是合法 JSON 就按原样算：宁可指纹不稳，也不要在这里抛
+        }
+        return MessageDigest.getInstance("SHA-256")
+            .digest(canonical.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it.toInt() and 0xFF) }
+    }
+
+    /** 递归排序对象键（数组顺序保留 —— 数组本身是有序语义）。 */
+    internal fun sortKeys(element: JsonElement): JsonElement = when {
+        element.isJsonObject -> JsonObject().apply {
+            element.asJsonObject.entrySet().sortedBy { it.key }.forEach { (key, value) -> add(key, sortKeys(value)) }
+        }
+        element.isJsonArray -> JsonArray().apply { element.asJsonArray.forEach { add(sortKeys(it)) } }
+        else -> element
     }
 
     /** 列出服务器上的备份目录名（由新到旧）。 */
@@ -165,26 +519,8 @@ object WebDavBackupManager {
             }
         }
 
-        // 网卡名只在枚举得出来的时候才用来做判断（见 dropForeignBindInterface）
-        val localInterfaces = localInterfaceNames()
-        var merged = 0
-        profiles.forEach { p ->
-            val existing = ProfileManager.getProfileById(context, p.id)
-            if (existing != null) {
-                // 同 id 合并：留本机的"运行期/设备态"字段，其余按备份覆盖。
-                // 恢复走的是 Room 的整行 REPLACE，不管的话备份里那一刻的累计流量、
-                // 排序位次、上次连接时间会把本机这几天的新值直接冲回去。
-                p.keepLocalDeviceState(existing)
-                ProfileManager.updateProfile(context, p)
-            } else {
-                ProfileManager.addProfile(
-                    context,
-                    p.copy(id = p.id.ifBlank { java.util.UUID.randomUUID().toString() })
-                        .dropForeignBindInterface(localInterfaces)
-                )
-            }
-            merged++
-        }
+        // 节点合并走与同步链路**同一份**实现（见 applyProfilesJson）：两处各写一遍迟早漂移
+        val merged = applyProfilesJson(context, Gson().toJson(profiles))
 
         // 各分区可选：单个分区损坏/缺失只跳过它，不影响已完成的节点合并
         val restoredIds = mutableListOf<String>()

@@ -76,6 +76,111 @@
 
     </com.google.android.material.card.MaterialCardView>
 
+    <!-- 动画二维码播放态。仅当密文超过单张二维码容量时可见；静态模式下整组 gone，
+         不占高度、不改变原有版式。 -->
+    <TextView
+        android:id="@+id/tv_qr_stream_info"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_3"
+        android:gravity="center"
+        android:textAppearance="?attr/textAppearanceLabelLarge"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:visibility="gone"
+        tools:text="Frame 3/20 · round 2"
+        tools:visibility="visible" />
+
+    <!-- 动画二维码播放控制。
+         ⚠️ 刻意用**纵向**排布、且整块 wrap_content：横向 LinearLayout 永远不会换行，
+         320dp 窄屏 + 大字号下（速度组 3 个按钮各自有 48dp 最小触摸目标）整排会超出父容器
+         被直接裁掉 —— 用户看到的是少了一档速度、甚至半个按钮。
+         纵向 + wrap_content 的宽度上限是"单个最宽的控件"，任何窗口宽度都不会溢出。
+         ⚠️ 也别改成整块 match_parent：那样这里的宽度就不再跟内容绑定，
+         而父容器的 gravity=center 会给它两侧留出不对称的空白。 -->
+    <LinearLayout
+        android:id="@+id/qr_stream_controls"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_2"
+        android:orientation="vertical"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_qr_stream_toggle"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:minWidth="@dimen/touch_target_min"
+            android:text="@string/qr_stream_pause" />
+
+        <!-- 帧率是用户唯一能对抗"扫不到"的杠杆：摄像头跟不上就往下调，机身强就往上调 -->
+        <!-- ⚠️ 速度组外面这层 HorizontalScrollView 不能删。
+             MaterialButtonToggleGroup 本质是横向 LinearLayout：**宽度不够时它不换行，而是
+             把最后一个按钮压扁**。实测 320dp 窄屏、弹窗内容区 272dp 时，德语
+             Langsam/Mittel/Schnell 三个按钮自然宽 285dp 就已经超了 —— "Schnell" 被压到
+             82.5dp（省略号吃掉 4 个字符）；1.5× 字号压到 27.5dp，2× 字号只剩 1.5dp，
+             文字全没了、连 48dp 热区也不剩。
+             套一层 HSV 后整组保持自然宽度、放不下时**横向滑动**，而不是把文字挤没；
+             右侧渐隐边缘给"还有内容"一个视觉提示。这也是仓库里
+             home / logs / app-filter 三处同类"一排可选项"的统一做法。
+             ⚠️ HSV 保持 wrap_content（不是 match_parent）：放得下时它的宽度就等于整组宽度，
+             好让父容器 gravity=center 把这一排居中；改成 match_parent 会把片段挤到左边缘。 -->
+        <HorizontalScrollView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_2"
+            android:fadingEdgeLength="@dimen/space_6"
+            android:requiresFadingEdge="horizontal"
+            android:scrollbars="none">
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/toggle_qr_stream_speed"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_qr_speed_slow"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="@dimen/touch_target_min"
+                    android:text="@string/qr_stream_speed_slow" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_qr_speed_medium"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="@dimen/touch_target_min"
+                    android:text="@string/qr_stream_speed_medium" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_qr_speed_fast"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="@dimen/touch_target_min"
+                    android:text="@string/qr_stream_speed_fast" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+        </HorizontalScrollView>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_qr_stream_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_2"
+        android:gravity="center"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:visibility="gone"
+        tools:text="Split into 20 frames. On the other device, use Scan QR code and keep it pointed at this screen."
+        tools:visibility="visible" />
+
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/layout_share_pin"
         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"

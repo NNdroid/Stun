@@ -25,6 +25,10 @@ let settingsTokens = {
   customToken: ''
 };
 
+// 当前 WebDAV 同步模式（upload / download / both）。只驱动前端文案与按钮行为，
+// 真正落库在 /api/webdav/config。默认仅上传，与 Android 端一致。
+let webdavSyncMode = 'upload';
+
 const I18N = {
   'zh-CN': {
     edit_sec_1_title: "🖥️ 基础连接与 SSH 认证",
@@ -35,6 +39,7 @@ const I18N = {
     edit_ssh_addr_placeholder: "IP:Port 或 域名:端口",
     edit_user_placeholder: "例如：root",
     edit_pass_placeholder: "留空则保持原密码不变",
+    secret_saved_hint: "已保存 · 留空则不修改",
     edit_key_pass_placeholder: "无口令可留空",
     edit_proxy_addr_placeholder: "IP:Port 或 域名:端口",
     edit_custom_host_placeholder: "例如：cloudflare.com",
@@ -153,8 +158,27 @@ const I18N = {
     tab_profiles: '🚀 节点管理',
     tab_conntrack: '🔍 连接跟踪',
     tab_settings: '⚙️ 系统设置',
-    tab_mcp: '🤖 MCP 智能体',
+    tab_mcp: '🌐 MCP 控制台',
     tab_logs: '📜 实时日志',
+    tab_crashes: '💥 崩溃历史',
+    crash_type_all: '全部',
+    crash_type_jvm: 'JVM 崩溃',
+    crash_type_go: '引擎 Panic',
+    crash_count: '{count} / {total} 条',
+    crash_empty: '✅ 暂无崩溃记录',
+    crash_none_filtered: '🔍 该类型下没有记录',
+    crash_loading: '⏳ 正在加载崩溃记录…',
+    crash_load_failed: '崩溃记录加载失败：{error}',
+    crash_show_detail: '▾ 展开完整堆栈',
+    crash_hide_detail: '▴ 收起完整堆栈',
+    crash_copied: '已复制完整崩溃报告',
+    crash_deleted: '已删除该条记录',
+    crash_delete_failed: '删除失败：{error}',
+    crash_delete_confirm: '确认删除这条崩溃记录？',
+    crash_cleared: '已清空 {count} 条崩溃记录',
+    crash_clear_failed: '清空失败：{error}',
+    crash_clear_confirm: '确认清空全部 {count} 条崩溃记录？此操作不可撤销。',
+    crash_already_empty: '崩溃记录已经是空的',
     stat_selected: '🎯 当前选中节点',
     stat_speed: '⚡ 实时速率 (↑ / ↓)',
     stat_total: 'Σ 累计传输总量',
@@ -300,13 +324,23 @@ label_tunnel_tls: '🔒 TLS 加密',
     label_webdav_pin: '备份 PIN（字母+数字，至少 4 位）：',
     label_webdav_auto: '每日自动备份：',
     label_webdav_last: '上次备份：',
+    label_webdav_last_sync: '上次同步：',
     label_webdav_interval: '自动备份间隔 (小时)：',
+    label_webdav_sync_mode: '同步模式：',
     opt_webdav_auto_off: '关闭',
     opt_webdav_auto_on: '开启',
+    opt_webdav_sync_upload: '仅上传',
+    opt_webdav_sync_download: '仅下载',
+    opt_webdav_sync_both: '双向',
     btn_webdav_backup: '☁️ 立即备份',
+    btn_webdav_sync: '☁️ 立即同步',
     btn_webdav_save: '💾 保存配置',
     btn_webdav_restore: '📥 从云恢复',
     webdav_saved: '✓ WebDAV 配置已保存',
+    webdav_sync_ok: '✓ 同步完成（{detail}）',
+    webdav_sync_pulled: '拉取 {count} 项',
+    webdav_sync_uptodate: '已是最新',
+    webdav_sync_failed: '✕ 同步失败',
     webdav_backup_ok: '✓ WebDAV 备份完成（{count} 个节点；{sections}）',
     webdav_backup_ok_plain: '✓ WebDAV 备份完成（{count} 个节点）',
     webdav_pin_too_short: '备份 PIN 至少 4 位',
@@ -434,26 +468,6 @@ label_tunnel_tls: '🔒 TLS 加密',
     opt_mcp_auth_oauth: '🛡️ OAuth 2.0 (Token / Code 授权)',
     label_mcp_secret: 'MCP 访问密钥 / 密码 (Secret / Key)：',
     mcp_secret_placeholder: '留空则免密或使用默认密钥',
-    mcp_stat_status: '📡 MCP 服务状态',
-    mcp_stat_port: '🔌 统一监听端口',
-    mcp_stat_proto: '⚡ 通信协议与模式',
-    mcp_stat_tools: '🛠️ 可用 AI 工具总数',
-    mcp_dash_title: '🚀 独立 Stun MCP & Gemini 交互控制台',
-    mcp_dash_desc: '包含 SSL CA 根证书下载、OAuth 2.0 授权、实时 SSE 监控以及多语言支持',
-    btn_open_mcp_dash: '🚀 打开 MCP 控制台',
-    mcp_claude_title: '💻 Claude Desktop / Cursor / Windsurf 接入配置',
-    mcp_claude_desc: '将以下内容直接粘贴至您的 <code>claude_desktop_config.json</code> 中：',
-    btn_copy_mcp_config: '📋 复制配置',
-    mcp_gemini_title: '🤖 Google Gemini 2.0 Flash / 1.5 Pro 直连 (Python)',
-    mcp_gemini_desc: '利用原生 Function Calling 接口，3 行 Python 直接控制 Stun：',
-    btn_copy_gemini_snippet: '📋 复制代码',
-    mcp_tools_title: '🛠️ 已注册的 18 项 AI 核心控制能力',
-    mcp_gemini_c1: '# 1. 动态拉取 Stun MCP 声明的 18 个工具',
-    mcp_gemini_c2: '# 2. 初始化 Gemini 2.0 Flash / Pro 自动工具调用',
-    mcp_gemini_c3: '# 3. 发送指令由 AI 自动调用 Stun 控制功能',
-    mcp_gemini_prompt: '检查 Stun VPN 状态，并测试所有节点延迟',
-    toast_mcp_config_copied: '✓ MCP JSON 配置已复制到剪贴板！',
-    toast_gemini_snippet_copied: '✓ Gemini Python 代码片段已复制！',
     subscription_title: '📡 订阅管理',
     subscription_url_placeholder: 'https://example.com/sub 或订阅链接',
     btn_sub_sync: '🔄 立即同步',
@@ -480,6 +494,7 @@ label_tunnel_tls: '🔒 TLS 加密',
     edit_ssh_addr_placeholder: "IP:Port 或 網域名稱:連接埠",
     edit_user_placeholder: "例如：root",
     edit_pass_placeholder: "留空則保持原密碼不變",
+    secret_saved_hint: "已儲存 · 留空則不修改",
     edit_key_pass_placeholder: "無口令可留空",
     edit_proxy_addr_placeholder: "IP:Port 或 網域名稱:連接埠",
     edit_custom_host_placeholder: "例如：cloudflare.com",
@@ -598,8 +613,27 @@ label_tunnel_tls: '🔒 TLS 加密',
     tab_profiles: '🚀 節點管理',
     tab_conntrack: '🔍 連線追蹤',
     tab_settings: '⚙️ 系統設定',
-    tab_mcp: '🤖 MCP 智慧體',
+    tab_mcp: '🌐 MCP 控制台',
     tab_logs: '📜 即時日誌',
+    tab_crashes: '💥 崩潰歷史',
+    crash_type_all: '全部',
+    crash_type_jvm: 'JVM 崩潰',
+    crash_type_go: '引擎 Panic',
+    crash_count: '{count} / {total} 條',
+    crash_empty: '✅ 暫無崩潰記錄',
+    crash_none_filtered: '🔍 該類型下沒有記錄',
+    crash_loading: '⏳ 正在載入崩潰記錄…',
+    crash_load_failed: '崩潰記錄載入失敗：{error}',
+    crash_show_detail: '▾ 展開完整堆疊',
+    crash_hide_detail: '▴ 收起完整堆疊',
+    crash_copied: '已複製完整崩潰報告',
+    crash_deleted: '已刪除該條記錄',
+    crash_delete_failed: '刪除失敗：{error}',
+    crash_delete_confirm: '確認刪除這條崩潰記錄？',
+    crash_cleared: '已清空 {count} 條崩潰記錄',
+    crash_clear_failed: '清空失敗：{error}',
+    crash_clear_confirm: '確認清空全部 {count} 條崩潰記錄？此操作不可撤銷。',
+    crash_already_empty: '崩潰記錄已經是空的',
     stat_selected: '🎯 當前選中節點',
     stat_speed: '⚡ 即時速率 (↑ / ↓)',
     stat_total: 'Σ 累計傳輸總量',
@@ -745,13 +779,23 @@ label_tunnel_tls: '🔒 TLS 加密',
     label_webdav_pin: '備份 PIN（字母+數字，至少 4 位）：',
     label_webdav_auto: '每日自動備份：',
     label_webdav_last: '上次備份：',
+    label_webdav_last_sync: '上次同步：',
     label_webdav_interval: '自動備份間隔 (小時)：',
+    label_webdav_sync_mode: '同步模式：',
     opt_webdav_auto_off: '關閉',
     opt_webdav_auto_on: '開啟',
+    opt_webdav_sync_upload: '僅上傳',
+    opt_webdav_sync_download: '僅下載',
+    opt_webdav_sync_both: '雙向',
     btn_webdav_backup: '☁️ 立即備份',
+    btn_webdav_sync: '☁️ 立即同步',
     btn_webdav_save: '💾 儲存設定',
     btn_webdav_restore: '📥 從雲還原',
     webdav_saved: '✓ WebDAV 設定已儲存',
+    webdav_sync_ok: '✓ 同步完成（{detail}）',
+    webdav_sync_pulled: '拉取 {count} 項',
+    webdav_sync_uptodate: '已是最新',
+    webdav_sync_failed: '✕ 同步失敗',
     webdav_backup_ok: '✓ WebDAV 備份完成（{count} 個節點；{sections}）',
     webdav_backup_ok_plain: '✓ WebDAV 備份完成（{count} 個節點）',
     webdav_pin_too_short: '備份 PIN 至少 4 位',
@@ -879,26 +923,6 @@ label_tunnel_tls: '🔒 TLS 加密',
     opt_mcp_auth_oauth: '🛡️ OAuth 2.0 (Token / Code 授權)',
     label_mcp_secret: 'MCP 存取金鑰 / 密碼 (Secret / Key)：',
     mcp_secret_placeholder: '留空則免密或使用預設金鑰',
-    mcp_stat_status: '📡 MCP 服務狀態',
-    mcp_stat_port: '🔌 統一監聽連接埠',
-    mcp_stat_proto: '⚡ 通訊協議與模式',
-    mcp_stat_tools: '🛠️ 可用 AI 工具總數',
-    mcp_dash_title: '🚀 獨立 Stun MCP & Gemini 互動控制台',
-    mcp_dash_desc: '包含 SSL CA 根憑證下載、OAuth 2.0 授權、即時 SSE 監控以及多語言支援',
-    btn_open_mcp_dash: '🚀 開啟 MCP 控制台',
-    mcp_claude_title: '💻 Claude Desktop / Cursor / Windsurf 接入配置',
-    mcp_claude_desc: '將以下內容直接貼至您的 <code>claude_desktop_config.json</code> 中：',
-    btn_copy_mcp_config: '📋 複製配置',
-    mcp_gemini_title: '🤖 Google Gemini 2.0 Flash / 1.5 Pro 直連 (Python)',
-    mcp_gemini_desc: '利用原生 Function Calling 介面，3 行 Python 直接控制 Stun：',
-    btn_copy_gemini_snippet: '📋 複製程式碼',
-    mcp_tools_title: '🛠️ 已註冊的 18 項 AI 核心控制能力',
-    mcp_gemini_c1: '# 1. 動態獲取 Stun MCP 聲明的 18 個工具',
-    mcp_gemini_c2: '# 2. 初始化 Gemini 2.0 Flash / Pro 自動工具調用',
-    mcp_gemini_c3: '# 3. 發送指令由 AI 自動調用 Stun 控制功能',
-    mcp_gemini_prompt: '檢查 Stun VPN 狀態，並測試所有節點延遲',
-    toast_mcp_config_copied: '✓ MCP JSON 配置已複製到剪貼簿！',
-    toast_gemini_snippet_copied: '✓ Gemini Python 程式碼片段已複製！',
     subscription_title: '📡 訂閱管理',
     subscription_url_placeholder: 'https://example.com/sub 或訂閱連結',
     btn_sub_sync: '🔄 立即同步',
@@ -925,6 +949,7 @@ label_tunnel_tls: '🔒 TLS 加密',
     edit_ssh_addr_placeholder: "IP:Port or Domain:Port",
     edit_user_placeholder: "e.g. root",
     edit_pass_placeholder: "Leave empty to keep existing password",
+    secret_saved_hint: "Saved · leave empty to keep",
     edit_key_pass_placeholder: "Leave empty if unencrypted",
     edit_proxy_addr_placeholder: "IP:Port or Domain:Port",
     edit_custom_host_placeholder: "e.g. cloudflare.com",
@@ -1043,8 +1068,27 @@ label_tunnel_tls: '🔒 TLS 加密',
     tab_profiles: '🚀 Nodes',
     tab_conntrack: '🔍 Connections',
     tab_settings: '⚙️ Settings',
-    tab_mcp: '🤖 MCP & AI',
+    tab_mcp: '🌐 MCP Console',
     tab_logs: '📜 Live Logs',
+    tab_crashes: '💥 Crash History',
+    crash_type_all: 'All',
+    crash_type_jvm: 'JVM Crash',
+    crash_type_go: 'Engine Panic',
+    crash_count: '{count} / {total}',
+    crash_empty: '✅ No crashes recorded',
+    crash_none_filtered: '🔍 No records of this type',
+    crash_loading: '⏳ Loading crash history…',
+    crash_load_failed: 'Failed to load crash history: {error}',
+    crash_show_detail: '▾ Expand full stack trace',
+    crash_hide_detail: '▴ Collapse stack trace',
+    crash_copied: 'Full crash report copied',
+    crash_deleted: 'Record deleted',
+    crash_delete_failed: 'Delete failed: {error}',
+    crash_delete_confirm: 'Delete this crash record?',
+    crash_cleared: 'Cleared {count} crash records',
+    crash_clear_failed: 'Clear failed: {error}',
+    crash_clear_confirm: 'Clear all {count} crash records? This cannot be undone.',
+    crash_already_empty: 'Crash history is already empty',
     stat_selected: '🎯 Active Node',
     stat_speed: '⚡ Live Speed (↑ / ↓)',
     stat_total: 'Σ Total Traffic',
@@ -1190,13 +1234,23 @@ label_tunnel_tls: '🔒 TLS encryption',
     label_webdav_pin: 'Backup PIN (letters/digits, min 4):',
     label_webdav_auto: 'Daily auto backup:',
     label_webdav_last: 'Last backup:',
+    label_webdav_last_sync: 'Last sync:',
     label_webdav_interval: 'Auto backup interval (hours):',
+    label_webdav_sync_mode: 'Sync mode:',
     opt_webdav_auto_off: 'Off',
     opt_webdav_auto_on: 'On',
+    opt_webdav_sync_upload: 'Upload only',
+    opt_webdav_sync_download: 'Download only',
+    opt_webdav_sync_both: 'Two-way',
     btn_webdav_backup: '☁️ Back up now',
+    btn_webdav_sync: '☁️ Sync now',
     btn_webdav_save: '💾 Save config',
     btn_webdav_restore: '📥 Restore from cloud',
     webdav_saved: '✓ WebDAV config saved',
+    webdav_sync_ok: '✓ Sync complete ({detail})',
+    webdav_sync_pulled: '{count} item(s) pulled',
+    webdav_sync_uptodate: 'already up to date',
+    webdav_sync_failed: '✕ Sync failed',
     webdav_backup_ok: '✓ WebDAV backup complete ({count} nodes; {sections})',
     webdav_backup_ok_plain: '✓ WebDAV backup complete ({count} nodes)',
     webdav_pin_too_short: 'Backup PIN must be at least 4 characters',
@@ -1324,26 +1378,6 @@ label_tunnel_tls: '🔒 TLS encryption',
     opt_mcp_auth_oauth: '🛡️ OAuth 2.0 (Token / Code grant)',
     label_mcp_secret: 'MCP Access Secret / Key:',
     mcp_secret_placeholder: 'Leave empty for no auth or default key',
-    mcp_stat_status: '📡 MCP Service Status',
-    mcp_stat_port: '🔌 Listening Port',
-    mcp_stat_proto: '⚡ Protocol & Mode',
-    mcp_stat_tools: '🛠️ Available AI Tools',
-    mcp_dash_title: '🚀 Stun MCP & Gemini Interactive Dashboard',
-    mcp_dash_desc: 'Includes SSL CA certificate download, OAuth 2.0 authorization, live SSE monitor and multilingual support',
-    btn_open_mcp_dash: '🚀 Open MCP Dashboard',
-    mcp_claude_title: '💻 Claude Desktop / Cursor / Windsurf Integration',
-    mcp_claude_desc: 'Paste the following into your <code>claude_desktop_config.json</code>:',
-    btn_copy_mcp_config: '📋 Copy Config',
-    mcp_gemini_title: '🤖 Google Gemini 2.0 Flash / 1.5 Pro Direct (Python)',
-    mcp_gemini_desc: 'Control Stun with just 3 lines of Python via native Function Calling:',
-    btn_copy_gemini_snippet: '📋 Copy Code',
-    mcp_tools_title: '🛠️ 18 Registered AI Control Capabilities',
-    mcp_gemini_c1: '# 1. Dynamically fetch the 18 tools declared by Stun MCP',
-    mcp_gemini_c2: '# 2. Initialize Gemini 2.0 Flash / Pro automatic function calling',
-    mcp_gemini_c3: '# 3. Send prompt for AI to automatically execute Stun control functions',
-    mcp_gemini_prompt: 'Check Stun VPN status and test all node latencies',
-    toast_mcp_config_copied: '✓ MCP JSON config copied to clipboard!',
-    toast_gemini_snippet_copied: '✓ Gemini Python snippet copied!',
     subscription_title: '📡 Subscription',
     subscription_url_placeholder: 'https://example.com/sub or subscription link',
     btn_sub_sync: '🔄 Sync Now',
@@ -1370,6 +1404,7 @@ label_tunnel_tls: '🔒 TLS encryption',
     edit_ssh_addr_placeholder: "IP:ポート または ドメイン:ポート",
     edit_user_placeholder: "例: root",
     edit_pass_placeholder: "変更しない場合は空のまま",
+    secret_saved_hint: "保存済み · 空欄なら変更しません",
     edit_key_pass_placeholder: "パスフレーズがない場合は空欄",
     edit_proxy_addr_placeholder: "IP:ポート または ドメイン:ポート",
     edit_custom_host_placeholder: "例: cloudflare.com",
@@ -1488,8 +1523,27 @@ label_tunnel_tls: '🔒 TLS encryption',
     tab_profiles: '🚀 ノード管理',
     tab_conntrack: '🔍 接続追跡',
     tab_settings: '⚙️ 設定',
-    tab_mcp: '🤖 MCP & AI',
+    tab_mcp: '🌐 MCP コンソール',
     tab_logs: '📜 リアルタイムログ',
+    tab_crashes: '💥 クラッシュ履歴',
+    crash_type_all: 'すべて',
+    crash_type_jvm: 'JVM クラッシュ',
+    crash_type_go: 'エンジン Panic',
+    crash_count: '{count} / {total}',
+    crash_empty: '✅ クラッシュ履歴なし',
+    crash_none_filtered: '🔍 この種別の記録がありません',
+    crash_loading: '⏳ クラッシュ履歴を読み込んでいます…',
+    crash_load_failed: 'クラッシュ履歴の読み込みに失敗しました：{error}',
+    crash_show_detail: '▾ スタックトレースを展開',
+    crash_hide_detail: '▴ スタックトレースを折りたたむ',
+    crash_copied: 'クラッシュレポート全体をコピーしました',
+    crash_deleted: '記録を削除しました',
+    crash_delete_failed: '削除に失敗しました：{error}',
+    crash_delete_confirm: 'このクラッシュ記録を削除しますか？',
+    crash_cleared: '{count} 件のクラッシュ記録を削除しました',
+    crash_clear_failed: '全削除に失敗しました：{error}',
+    crash_clear_confirm: '全 {count} 件のクラッシュ記録を削除しますか？元に戻せません。',
+    crash_already_empty: 'クラッシュ履歴は既に空です',
     stat_selected: '🎯 選択中ノード',
     stat_speed: '⚡ リアルタイム速度',
     stat_total: 'Σ 総通信量',
@@ -1635,13 +1689,23 @@ label_tunnel_tls: '🔒 TLS 暗号化',
     label_webdav_pin: 'バックアップ PIN（英数字4文字以上）：',
     label_webdav_auto: '毎日自動バックアップ：',
     label_webdav_last: '前回のバックアップ：',
+    label_webdav_last_sync: '前回の同期：',
     label_webdav_interval: '自動バックアップ間隔 (時間)：',
+    label_webdav_sync_mode: '同期モード：',
     opt_webdav_auto_off: 'オフ',
     opt_webdav_auto_on: 'オン',
+    opt_webdav_sync_upload: 'アップロードのみ',
+    opt_webdav_sync_download: 'ダウンロードのみ',
+    opt_webdav_sync_both: '双方向',
     btn_webdav_backup: '☁️ 今すぐバックアップ',
+    btn_webdav_sync: '☁️ 今すぐ同期',
     btn_webdav_save: '💾 設定を保存',
     btn_webdav_restore: '📥 クラウドから復元',
     webdav_saved: '✓ WebDAV 設定を保存しました',
+    webdav_sync_ok: '✓ 同期完了（{detail}）',
+    webdav_sync_pulled: '{count} 件を取得',
+    webdav_sync_uptodate: '最新です',
+    webdav_sync_failed: '✕ 同期に失敗しました',
     webdav_backup_ok: '✓ WebDAV バックアップ完了（{count} ノード；{sections}）',
     webdav_backup_ok_plain: '✓ WebDAV バックアップ完了（{count} ノード）',
     webdav_pin_too_short: 'バックアップ PIN は 4 文字以上必要です',
@@ -1769,26 +1833,6 @@ label_tunnel_tls: '🔒 TLS 暗号化',
     opt_mcp_auth_oauth: '🛡️ OAuth 2.0 (Token / Code 認可)',
     label_mcp_secret: 'MCP アクセスキー / シークレット：',
     mcp_secret_placeholder: '空欄でパスワードなし・デフォルトキー使用',
-    mcp_stat_status: '📡 MCP サービス状態',
-    mcp_stat_port: '🔌 リスニングポート',
-    mcp_stat_proto: '⚡ プロトコルとモード',
-    mcp_stat_tools: '🛠️ 利用可能な AI ツール数',
-    mcp_dash_title: '🚀 Stun MCP & Gemini インタラクティブダッシュボード',
-    mcp_dash_desc: 'SSL CA 証明書ダウンロード・OAuth 2.0 認可・リアルタイム SSE モニター・多言語対応を含む',
-    btn_open_mcp_dash: '🚀 MCP ダッシュボードを開く',
-    mcp_claude_title: '💻 Claude Desktop / Cursor / Windsurf 連携設定',
-    mcp_claude_desc: '以下を <code>claude_desktop_config.json</code> に貼り付けてください：',
-    btn_copy_mcp_config: '📋 設定をコピー',
-    mcp_gemini_title: '🤖 Google Gemini 2.0 Flash / 1.5 Pro 直接接続 (Python)',
-    mcp_gemini_desc: 'ネイティブ Function Calling で Python 3 行から Stun を制御：',
-    btn_copy_gemini_snippet: '📋 コードをコピー',
-    mcp_tools_title: '🛠️ 登録済み 18 種の AI コア制御機能',
-    mcp_gemini_c1: '# 1. Stun MCP が宣言した 18 個のツールを動的に取得',
-    mcp_gemini_c2: '# 2. Gemini 2.0 Flash / Pro 自動ツール呼び出しの初期化',
-    mcp_gemini_c3: '# 3. AI が Stun 制御機能を自動的に呼び出す命令を送信',
-    mcp_gemini_prompt: 'Stun VPN の状態を確認し、全ノードの遅延を測定してください',
-    toast_mcp_config_copied: '✓ MCP JSON 設定をクリップボードにコピーしました！',
-    toast_gemini_snippet_copied: '✓ Gemini Python スニペットをコピーしました！',
     subscription_title: '📡 購読管理',
     subscription_url_placeholder: 'https://example.com/sub または購読リンク',
     btn_sub_sync: '🔄 今すぐ同期',
@@ -1815,6 +1859,7 @@ label_tunnel_tls: '🔒 TLS 暗号化',
     edit_ssh_addr_placeholder: "IP:Port oder Domain:Port",
     edit_user_placeholder: "z.B. root",
     edit_pass_placeholder: "Leer lassen für unverändertes Passwort",
+    secret_saved_hint: "Gespeichert · leer lassen = unverändert",
     edit_key_pass_placeholder: "Leer lassen wenn unverschlüsselt",
     edit_proxy_addr_placeholder: "IP:Port oder Domain:Port",
     edit_custom_host_placeholder: "z.B. cloudflare.com",
@@ -1933,8 +1978,27 @@ label_tunnel_tls: '🔒 TLS 暗号化',
     tab_profiles: '🚀 Knoten',
     tab_conntrack: '🔍 Verbindungen',
     tab_settings: '⚙️ Einstellungen',
-    tab_mcp: '🤖 MCP & KI',
+    tab_mcp: '🌐 MCP-Konsole',
     tab_logs: '📜 Live-Protokolle',
+    tab_crashes: '💥 Absturzverlauf',
+    crash_type_all: 'Alle',
+    crash_type_jvm: 'JVM-Absturz',
+    crash_type_go: 'Engine-Panic',
+    crash_count: '{count} / {total}',
+    crash_empty: '✅ Keine Abstürze aufgezeichnet',
+    crash_none_filtered: '🔍 Keine Einträge dieser Art',
+    crash_loading: '⏳ Absturzverlauf wird geladen…',
+    crash_load_failed: 'Absturzverlauf konnte nicht geladen werden: {error}',
+    crash_show_detail: '▾ Vollständigen Stacktrace anzeigen',
+    crash_hide_detail: '▴ Stacktrace ausblenden',
+    crash_copied: 'Vollständiger Absturzbericht kopiert',
+    crash_deleted: 'Eintrag gelöscht',
+    crash_delete_failed: 'Löschen fehlgeschlagen: {error}',
+    crash_delete_confirm: 'Diesen Absturzeintrag löschen?',
+    crash_cleared: '{count} Absturzeinträge gelöscht',
+    crash_clear_failed: 'Leeren fehlgeschlagen: {error}',
+    crash_clear_confirm: 'Alle {count} Absturzeinträge löschen? Dies kann nicht rückgängig gemacht werden.',
+    crash_already_empty: 'Der Absturzverlauf ist bereits leer',
     stat_selected: '🎯 Aktiver Knoten',
     stat_speed: '⚡ Live-Geschwindigkeit',
     stat_total: 'Σ Gesamtverkehr',
@@ -2080,13 +2144,23 @@ label_tunnel_tls: '🔒 TLS-Verschlüsselung',
     label_webdav_pin: 'Backup-PIN (Buchstaben/Ziffern, min. 4):',
     label_webdav_auto: 'Tägliche automatische Sicherung:',
     label_webdav_last: 'Letztes Backup:',
+    label_webdav_last_sync: 'Letzte Synchronisierung:',
     label_webdav_interval: 'Auto-Backup-Intervall (Stunden):',
+    label_webdav_sync_mode: 'Synchronisierungsmodus:',
     opt_webdav_auto_off: 'Aus',
     opt_webdav_auto_on: 'Ein',
+    opt_webdav_sync_upload: 'Nur hochladen',
+    opt_webdav_sync_download: 'Nur herunterladen',
+    opt_webdav_sync_both: 'Beidseitig',
     btn_webdav_backup: '☁️ Jetzt sichern',
+    btn_webdav_sync: '☁️ Jetzt synchronisieren',
     btn_webdav_save: '💾 Konfiguration speichern',
     btn_webdav_restore: '📥 Aus der Cloud wiederherstellen',
     webdav_saved: '✓ WebDAV-Konfiguration gespeichert',
+    webdav_sync_ok: '✓ Synchronisierung abgeschlossen ({detail})',
+    webdav_sync_pulled: '{count} Elemente geladen',
+    webdav_sync_uptodate: 'Auf dem neuesten Stand',
+    webdav_sync_failed: '✕ Synchronisierung fehlgeschlagen',
     webdav_backup_ok: '✓ WebDAV-Backup abgeschlossen ({count} Knoten; {sections})',
     webdav_backup_ok_plain: '✓ WebDAV-Backup abgeschlossen ({count} Knoten)',
     webdav_pin_too_short: 'Der Backup-PIN muss mindestens 4 Zeichen lang sein',
@@ -2214,26 +2288,6 @@ label_tunnel_tls: '🔒 TLS-Verschlüsselung',
     opt_mcp_auth_oauth: '🛡️ OAuth 2.0 (Token / Code-Autorisierung)',
     label_mcp_secret: 'MCP Zugriffsschlüssel / Geheimnis:',
     mcp_secret_placeholder: 'Leer lassen für keinen Auth oder Standardschlüssel',
-    mcp_stat_status: '📡 MCP Dienststatus',
-    mcp_stat_port: '🔌 Abhör-Port',
-    mcp_stat_proto: '⚡ Protokoll & Modus',
-    mcp_stat_tools: '🛠️ Verfügbare KI-Werkzeuge',
-    mcp_dash_title: '🚀 Stun MCP & Gemini Interaktives Dashboard',
-    mcp_dash_desc: 'Enthält SSL-CA-Zertifikat-Download, OAuth 2.0-Autorisierung, Live-SSE-Monitor und Mehrsprachunterstützung',
-    btn_open_mcp_dash: '🚀 MCP-Dashboard öffnen',
-    mcp_claude_title: '💻 Claude Desktop / Cursor / Windsurf Integration',
-    mcp_claude_desc: 'Fügen Sie Folgendes in Ihre <code>claude_desktop_config.json</code> ein:',
-    btn_copy_mcp_config: '📋 Konfiguration kopieren',
-    mcp_gemini_title: '🤖 Google Gemini 2.0 Flash / 1.5 Pro Direkt (Python)',
-    mcp_gemini_desc: 'Steuern Sie Stun mit nur 3 Python-Zeilen über native Function Calling:',
-    btn_copy_gemini_snippet: '📋 Code kopieren',
-    mcp_tools_title: '🛠️ 18 registrierte KI-Kernsteuerungsfähigkeiten',
-    mcp_gemini_c1: '# 1. Dynamisches Abrufen der 18 von Stun MCP deklarierten Werkzeuge',
-    mcp_gemini_c2: '# 2. Initialisieren des automatischen Werkzeugaufrufs für Gemini 2.0 Flash / Pro',
-    mcp_gemini_c3: '# 3. Anweisung senden, damit die KI Stun-Steuerungsfunktionen automatisch ausführt',
-    mcp_gemini_prompt: 'Stun-VPN-Status prüfen und Latenz aller Knoten testen',
-    toast_mcp_config_copied: '✓ MCP JSON-Konfiguration in Zwischenablage kopiert!',
-    toast_gemini_snippet_copied: '✓ Gemini Python-Snippet kopiert!',
     subscription_title: '📡 Abonnement',
     subscription_url_placeholder: 'https://example.com/sub oder Abonnement-Link',
     btn_sub_sync: '🔄 Jetzt synchronisieren',
@@ -2260,6 +2314,7 @@ label_tunnel_tls: '🔒 TLS-Verschlüsselung',
     edit_ssh_addr_placeholder: "IP:Port ou Domaine:Port",
     edit_user_placeholder: "Ex: root",
     edit_pass_placeholder: "Laisser vide pour conserver le mot de passe",
+    secret_saved_hint: "Enregistré · laisser vide pour conserver",
     edit_key_pass_placeholder: "Laisser vide si non chiffré",
     edit_proxy_addr_placeholder: "IP:Port ou Domaine:Port",
     edit_custom_host_placeholder: "Ex: cloudflare.com",
@@ -2378,8 +2433,27 @@ label_tunnel_tls: '🔒 TLS-Verschlüsselung',
     tab_profiles: '🚀 Nœuds',
     tab_conntrack: '🔍 Connexions',
     tab_settings: '⚙️ Paramètres',
-    tab_mcp: '🤖 MCP & IA',
+    tab_mcp: '🌐 Console MCP',
     tab_logs: '📜 Journaux en direct',
+    tab_crashes: '💥 Historique des plantages',
+    crash_type_all: 'Tous',
+    crash_type_jvm: 'Plantage JVM',
+    crash_type_go: 'Panic moteur',
+    crash_count: '{count} / {total}',
+    crash_empty: '✅ Aucun plantage enregistré',
+    crash_none_filtered: '🔍 Aucune entrée de ce type',
+    crash_loading: '⏳ Chargement de l\'historique des plantages…',
+    crash_load_failed: 'Échec du chargement de l\'historique : {error}',
+    crash_show_detail: '▾ Déployer la pile complète',
+    crash_hide_detail: '▴ Replier la pile',
+    crash_copied: 'Rapport de plantage complet copié',
+    crash_deleted: 'Entrée supprimée',
+    crash_delete_failed: 'Échec de la suppression : {error}',
+    crash_delete_confirm: 'Supprimer cette entrée de plantage ?',
+    crash_cleared: '{count} entrées de plantage supprimées',
+    crash_clear_failed: 'Échec de la remise à zéro : {error}',
+    crash_clear_confirm: 'Supprimer les {count} entrées de plantage ? Irréversible.',
+    crash_already_empty: 'L\'historique des plantages est déjà vide',
     stat_selected: '🎯 Nœud actif',
     stat_speed: '⚡ Débit en direct',
     stat_total: 'Σ Trafic total',
@@ -2525,13 +2599,23 @@ label_tunnel_tls: '🔒 Chiffrement TLS',
     label_webdav_pin: 'Code PIN de sauvegarde (lettres/chiffres, 4 min.) :',
     label_webdav_auto: 'Sauvegarde auto quotidienne :',
     label_webdav_last: 'Dernière sauvegarde :',
+    label_webdav_last_sync: 'Dernière synchronisation :',
     label_webdav_interval: 'Intervalle de sauvegarde auto (heures) :',
+    label_webdav_sync_mode: 'Mode de synchronisation :',
     opt_webdav_auto_off: 'Désactivé',
     opt_webdav_auto_on: 'Activé',
+    opt_webdav_sync_upload: 'Envoi uniquement',
+    opt_webdav_sync_download: 'Réception uniquement',
+    opt_webdav_sync_both: 'Bidirectionnel',
     btn_webdav_backup: '☁️ Sauvegarder maintenant',
+    btn_webdav_sync: '☁️ Synchroniser maintenant',
     btn_webdav_save: '💾 Enregistrer la config',
     btn_webdav_restore: '📥 Restaurer depuis le cloud',
     webdav_saved: '✓ Configuration WebDAV enregistrée',
+    webdav_sync_ok: '✓ Synchronisation terminée ({detail})',
+    webdav_sync_pulled: '{count} éléments récupérés',
+    webdav_sync_uptodate: 'À jour',
+    webdav_sync_failed: '✕ Échec de la synchronisation',
     webdav_backup_ok: '✓ Sauvegarde WebDAV terminée ({count} nœuds ; {sections})',
     webdav_backup_ok_plain: '✓ Sauvegarde WebDAV terminée ({count} nœuds)',
     webdav_pin_too_short: 'Le PIN de sauvegarde doit contenir au moins 4 caractères',
@@ -2659,26 +2743,6 @@ label_tunnel_tls: '🔒 Chiffrement TLS',
     opt_mcp_auth_oauth: '🛡️ OAuth 2.0 (Token / Code grant)',
     label_mcp_secret: 'Clé secrète / accès MCP :',
     mcp_secret_placeholder: 'Laisser vide pour sans auth ou clé par défaut',
-    mcp_stat_status: '📡 Statut du service MCP',
-    mcp_stat_port: '🔌 Port d\'écoute',
-    mcp_stat_proto: '⚡ Protocole & Mode',
-    mcp_stat_tools: '🛠️ Outils IA disponibles',
-    mcp_dash_title: '🚀 Tableau de bord Stun MCP & Gemini interactif',
-    mcp_dash_desc: 'Inclut téléchargement CA SSL, autorisation OAuth 2.0, moniteur SSE en direct et support multilingue',
-    btn_open_mcp_dash: '🚀 Ouvrir le tableau de bord MCP',
-    mcp_claude_title: '💻 Intégration Claude Desktop / Cursor / Windsurf',
-    mcp_claude_desc: 'Collez ce qui suit dans votre <code>claude_desktop_config.json</code> :',
-    btn_copy_mcp_config: '📋 Copier la config',
-    mcp_gemini_title: '🤖 Google Gemini 2.0 Flash / 1.5 Pro Direct (Python)',
-    mcp_gemini_desc: 'Contrôlez Stun en 3 lignes Python via Function Calling natif :',
-    btn_copy_gemini_snippet: '📋 Copier le code',
-    mcp_tools_title: '🛠️ 18 capacités de contrôle IA enregistrées',
-    mcp_gemini_c1: '# 1. Récupérer dynamiquement les 18 outils déclarés par Stun MCP',
-    mcp_gemini_c2: '# 2. Initialiser l\'appel automatique d\'outils Gemini 2.0 Flash / Pro',
-    mcp_gemini_c3: '# 3. Envoyer une instruction pour exécuter automatiquement les fonctions de contrôle Stun',
-    mcp_gemini_prompt: 'Vérifier le statut du VPN Stun et tester la latence de tous les nœuds',
-    toast_mcp_config_copied: '✓ Configuration JSON MCP copiée dans le presse-papiers !',
-    toast_gemini_snippet_copied: '✓ Extrait Python Gemini copié !',
     subscription_title: '📡 Abonnement',
     subscription_url_placeholder: 'https://example.com/sub ou lien d\'abonnement',
     btn_sub_sync: '🔄 Synchroniser maintenant',
@@ -2754,6 +2818,17 @@ function applyI18n() {
   document.getElementById('t-tab-settings').textContent = t('tab_settings');
   if (document.getElementById('t-tab-mcp')) document.getElementById('t-tab-mcp').textContent = t('tab_mcp');
   document.getElementById('t-tab-logs').textContent = t('tab_logs');
+  if (document.getElementById('t-tab-crashes')) document.getElementById('t-tab-crashes').textContent = t('tab_crashes');
+  const crashTypeSel = document.getElementById('select-crash-type');
+  if (crashTypeSel) {
+    for (const opt of crashTypeSel.options) {
+      const key = opt.value === 'jvm' ? 'crash_type_jvm'
+        : opt.value === 'go_panic' ? 'crash_type_go' : 'crash_type_all';
+      opt.textContent = t(key);
+    }
+    // 语言切换发生在崩溃列表已渲染之后时，重画一次让类型标签同步（数据不变，纯重渲染）。
+    if (currentTab === 'crashes') renderCrashes();
+  }
 
   document.getElementById('t-stat-selected').textContent = t('stat_selected');
   document.getElementById('t-stat-speed').textContent = t('stat_speed');
@@ -2810,10 +2885,13 @@ function applyI18n() {
   // WebDAV
   const wdTitle = document.getElementById('t-webdav-title');
   if (wdTitle) wdTitle.textContent = t('webdav_title');
+  // 「上次备份/上次同步」与主按钮文案跟模式走，不在这张静态表里 —— 由 renderWebDavModeTexts() 画
   [['t-label-webdav-url','label_webdav_url'],['t-label-webdav-user','label_webdav_user'],
    ['t-label-webdav-pass','label_webdav_pass'],['t-label-webdav-pin','label_webdav_pin'],
-   ['t-label-webdav-auto','label_webdav_auto'],['t-label-webdav-last','label_webdav_last'],
-   ['t-btn-webdav-backup','btn_webdav_backup'],['t-btn-webdav-save','btn_webdav_save'],
+   ['t-label-webdav-auto','label_webdav_auto'],
+   ['t-label-webdav-interval','label_webdav_interval'],
+   ['t-label-webdav-sync-mode','label_webdav_sync_mode'],
+   ['t-btn-webdav-save','btn_webdav_save'],
    ['t-btn-webdav-restore','btn_webdav_restore']].forEach(([id, key]) => {
     const el = document.getElementById(id);
     if (el) el.textContent = t(key);
@@ -2822,6 +2900,7 @@ function applyI18n() {
   if (autoOff) autoOff.textContent = t('opt_webdav_auto_off');
   const autoOn = document.getElementById('opt-webdav-auto-on');
   if (autoOn) autoOn.textContent = t('opt_webdav_auto_on');
+  renderWebDavModeTexts();
   const subLastSyncLabel = document.getElementById('t-label-sub-last-sync');
   if (subLastSyncLabel) subLastSyncLabel.textContent = t('label_sub_last_sync');
   updateSubscriptionLastSyncDisplay(null);
@@ -3031,6 +3110,7 @@ function applyI18n() {
     'opt-alpn-h3-h2', 'opt-alpn-h2-h3', 'opt-alpn-h3', 'opt-alpn-h2', 'opt-dns-txt',
     'opt-stream-auto', 'opt-stream-stream', 'opt-stream-poll',
     'opt-webdav-auto-off', 'opt-webdav-auto-on',
+    'opt-webdav-sync-upload', 'opt-webdav-sync-download', 'opt-webdav-sync-both',
     'opt-kcp-mode-fast', 'opt-kcp-mode-normal', 'opt-kcp-mode-fast2', 'opt-kcp-mode-fast3',
     'opt-kcp-nocomp-off', 'opt-kcp-nocomp-on'
   ];
@@ -3083,6 +3163,14 @@ function applyI18n() {
     if (el) el.placeholder = t(key);
   }
 
+  // 凭据框：phMap 刚设完「无值态」placeholder，正好在这里收快照。已经带 dataset.secret 的
+  // 框此刻挂的是 hint，不能当快照（语言切换时弹窗恰好开着的边缘情况，跳过即可）。
+  for (const id of SECRET_INPUT_IDS) {
+    const el = document.getElementById(id);
+    if (el && !el.dataset.secret) SECRET_BASE_PH[id] = el.placeholder || '';
+  }
+  refreshSecretDisplay();
+
   // Button Titles & Tooltips
   const btnFetchSsh = document.getElementById('t-btn-fetch-ssh-fp');
   if (btnFetchSsh) btnFetchSsh.title = t('btn_fetch_ssh_fp_title');
@@ -3116,37 +3204,6 @@ function applyI18n() {
     const el = document.getElementById(id);
     if (el) el.textContent = t(mcpAuthOptKeys[i]);
   });
-
-  // MCP Dashboard Tab
-  const elMcpStatStatus = document.getElementById('t-mcp-stat-status');
-  if (elMcpStatStatus) elMcpStatStatus.textContent = t('mcp_stat_status');
-  const elMcpStatPort = document.getElementById('t-mcp-stat-port');
-  if (elMcpStatPort) elMcpStatPort.textContent = t('mcp_stat_port');
-  const elMcpStatProto = document.getElementById('t-mcp-stat-proto');
-  if (elMcpStatProto) elMcpStatProto.textContent = t('mcp_stat_proto');
-  const elMcpStatTools = document.getElementById('t-mcp-stat-tools');
-  if (elMcpStatTools) elMcpStatTools.textContent = t('mcp_stat_tools');
-  const elMcpDashTitle = document.getElementById('t-mcp-dash-title');
-  if (elMcpDashTitle) elMcpDashTitle.textContent = t('mcp_dash_title');
-  const elMcpDashDesc = document.getElementById('t-mcp-dash-desc');
-  if (elMcpDashDesc) elMcpDashDesc.textContent = t('mcp_dash_desc');
-  const elBtnOpenMcpDash = document.getElementById('btn-open-mcp-dashboard');
-  if (elBtnOpenMcpDash) elBtnOpenMcpDash.textContent = t('btn_open_mcp_dash');
-  const elMcpClaudeTitle = document.getElementById('t-mcp-claude-title');
-  if (elMcpClaudeTitle) elMcpClaudeTitle.textContent = t('mcp_claude_title');
-  const elMcpClaudeDesc = document.getElementById('t-mcp-claude-desc');
-  if (elMcpClaudeDesc) elMcpClaudeDesc.innerHTML = t('mcp_claude_desc');
-  const elBtnCopyMcpConfig = document.getElementById('btn-copy-mcp-config');
-  if (elBtnCopyMcpConfig) elBtnCopyMcpConfig.textContent = t('btn_copy_mcp_config');
-  const elMcpGeminiTitle = document.getElementById('t-mcp-gemini-title');
-  if (elMcpGeminiTitle) elMcpGeminiTitle.textContent = t('mcp_gemini_title');
-  const elMcpGeminiDesc = document.getElementById('t-mcp-gemini-desc');
-  if (elMcpGeminiDesc) elMcpGeminiDesc.innerHTML = t('mcp_gemini_desc');
-  const elBtnCopyGeminiSnippet = document.getElementById('btn-copy-gemini-snippet');
-  if (elBtnCopyGeminiSnippet) elBtnCopyGeminiSnippet.textContent = t('btn_copy_gemini_snippet');
-  const elMcpToolsTitle = document.getElementById('t-mcp-tools-title');
-  if (elMcpToolsTitle) elMcpToolsTitle.textContent = t('mcp_tools_title');
-
 
   if (currentTab === 'conntrack') renderConnections();
   renderProfiles(allProfiles);
@@ -3223,12 +3280,10 @@ function switchTab(tabId) {
 
   if (tabId === 'profiles') { loadProfiles(); loadSubscription(); }
   if (tabId === 'conntrack') loadConntrack();
+  if (tabId === 'crashes') loadCrashes();
   if (tabId === 'settings') {
     loadSettings();
     loadApps();
-  }
-  if (tabId === 'mcp') {
-    loadMcpTab();
   }
 }
 
@@ -3588,11 +3643,16 @@ function updateSubscriptionLastSyncDisplay(lastSync) {
   el.textContent = (subLastSync > 0) ? new Date(subLastSync).toLocaleString() : t('sub_never_synced');
 }
 
-function addSubscriptionRow(url = '', pin = '') {
+function addSubscriptionRow(url = '', pin = '', subId = '') {
   const list = document.getElementById('subscription-list');
   if (!list) return;
   const row = document.createElement('div');
   row.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap';
+  // 订阅的本地 id：**必须原样带回服务端**（save / sync）。服务端的关联键是它而不是 URL，
+  // 所以「在控制台里改订阅链接」不会断掉用量历史 / 同步计时 / 节点归属；
+  // 丢了它，服务端只能当"新增了一条订阅"处理 —— 那正是这次要消灭的漂移。
+  // 新建的行没有 subId（服务端在保存时分配），提交时留空即可。
+  if (subId) row.dataset.subId = subId;
 
   const urlInput = document.createElement('input');
   urlInput.type = 'text';
@@ -3623,6 +3683,8 @@ function addSubscriptionRow(url = '', pin = '') {
 
 function collectSubscriptions() {
   return Array.from(document.querySelectorAll('#subscription-list > div')).map(row => ({
+    // 新增行没有 subId（dataset 里没有该键）→ 空串，由服务端分配。
+    subId: row.dataset.subId || '',
     url: (row.querySelector('.sub-row-url')?.value || '').trim(),
     pin: (row.querySelector('.sub-row-pin')?.value || '').trim()
   })).filter(s => s.url);
@@ -3637,7 +3699,7 @@ async function loadSubscription() {
     const list = document.getElementById('subscription-list');
     if (list) {
       list.innerHTML = '';
-      subs.forEach(s => addSubscriptionRow(s.url || '', s.pin || ''));
+      subs.forEach(s => addSubscriptionRow(s.url || '', s.pin || '', s.subId || ''));
       if (!subs.length) addSubscriptionRow();
     }
     updateSubscriptionLastSyncDisplay(data.lastSync);
@@ -3738,7 +3800,7 @@ function renderProfiles(profiles) {
         <button class="fav-star ${p.favorite ? 'on' : ''}" onclick="toggleFavorite('${p.id}')" title="${t(p.favorite ? 'fav_remove' : 'fav_add')}">${p.favorite ? '⭐' : '☆'}</button>
         <span class="profile-name">${escapeHtml(p.name)}</span>
         <span class="profile-badge">${((p.tunnelType === 'kcptun' ? 'KCP' : (p.tunnelType || 'TLS'))).toUpperCase()}</span>
-        ${p.sourceSubscriptionUrl ? `<span class="profile-badge" title="${escapeHtml(p.sourceSubscriptionUrl)}">${t('badge_from_subscription')}</span>` : ''}
+        ${p.subName ? `<span class="profile-badge" title="${escapeHtml(p.subName)}">${t('badge_from_subscription')}</span>` : ''}
       </div>
       <div class="profile-addr">🌐 ${escapeHtml(p.sshAddr)}</div>
       ${p.note ? `<div class="profile-addr" style="color:var(--text-muted)">📝 ${escapeHtml(p.note)}</div>` : ''}
@@ -3971,7 +4033,17 @@ const LV_KEY_TO_ID = {
   PADDING_MIN_BYTES: 'edit-node-padding-min-bytes', MASQUE_ALPN: 'edit-node-masque-alpn'
 };
 
-const lvVal = id => { const e = document.getElementById(id); return e ? (e.value || '').trim() : ''; };
+// 凭据框（见 SECRET_INPUT_IDS）在**显示态**是「空框 + hint」，服务端给的哨兵暂存在 `dataset.secret`。
+// 但校验读的是「这个字段有没有值」：空框 ≠ 没有凭据，否则已存密码的节点会被 `computeFieldVerdict`
+// 误报「必填」（AUTH_PASS / AUTH_TOKEN / KCP_PASSWORD，以及依赖 sshPassFallbackAvailable 的
+// UDP_PSK / ICMP_PSK）。所以空框时回落到哨兵，语义与本改动之前「框里就是 *****」完全一致 ——
+// 4220/4226/4233 那三处 `!isSecretMask(...)` 旁路正是为此而写。非凭据字段没有 dataset.secret，不受影响。
+// ⚠️ 提交用的 payload 不读本函数（submitEditProfileImpl 直接读 .value），所以这里回落到哨兵不会污染请求体。
+const lvVal = id => {
+  const e = document.getElementById(id);
+  if (!e) return '';
+  return (e.value || e.dataset.secret || '').trim();
+};
 
 // 谓词（逐条对应 native）
 function isHostPortJP(v){ const m=/^([^\s:/]+|\[[0-9a-fA-F:.]+\]):(\d{1,5})$/.exec(v); return !!m && +m[2]>=1 && +m[2]<=65535; }
@@ -4039,6 +4111,103 @@ function readEditorSnapshot(){
   };
 }
 
+// 后端对凭据字段（ProfileSecrets.SECRET_FIELDS）一律返回这个掩码，必须与 Kotlin 侧
+// ProfileSecrets.MASK 保持一致。它在表单里代表"已保存的凭据"：用户不动就原样提交回去，
+// 服务端识别成"保持原值"。所以它要和真实输入区分开 —— 否则会在长度校验上误报"PSK 太短"。
+const SECRET_MASK = '*****';
+function isSecretMask(v) { return v === SECRET_MASK; }
+
+// 凭据框的 DOM id —— 必须与 Kotlin 侧 ProfileSecrets.SECRET_FIELDS 一一对应（9 个）。
+// 加凭据字段时三处要同改：ProfileSecrets.SECRET_FIELDS、ProfileManager.SECRET_IO_FIELDS、这里。
+const SECRET_INPUT_IDS = [
+  'edit-node-pass', 'edit-node-key-pass', 'edit-node-private-key',
+  'edit-node-auth-token', 'edit-node-auth-pass',
+  'edit-node-icmp-psk', 'edit-node-udp-custom-psk', 'edit-node-dns-psk', 'edit-node-kcp-pass'
+];
+
+// 「无值态」的 placeholder 快照（由 applyI18n 拍），有已保存值时要拿 hint 顶掉它。
+const SECRET_BASE_PH = Object.create(null);
+
+// 凭据框的显示规则：**框里不放值**，只放 hint；真值（掩码）暂存到 `dataset.secret`。
+//   · 未动过 + 框为空 → 提交前把哨兵还原回框里 → 服务端识别成「保持原值」
+//   · 用户输入了      → 提交用户输入的明文
+//   · 点了「删除」    → dataset.secret 被删掉 → 提交空串 → 服务端清空该凭据
+//
+// 为什么不让掩码直接占着 value：用户看到的会是一坨 `*****`（`privateKey` textarea、
+// `dnsTunnelPsk`、`proxyAuthToken` 这 3 个是 type=text，字面可见），而不是
+// 「这个节点已经配了密码」这个真正有用的信息；而且 `edit_pass_placeholder` 里
+// 写着"留空则保持原密码不变"，那个 hint 永远没机会露面。
+//
+// ⚠️ 别改成"让接口直接返回 ENC: 密文"：KeystoreUtils 的 AAD 是固定包名，密文
+// 可重放、可跨字段贴，拿到它就等于拿到能兑换明文的钥匙；且写入侧一旦比对不中
+// 会把密文再加密一层（ENC:ENC:），解密只剥一层 ⇒ 密码变成字面量，节点静默连不上。
+function secretGroupOf(el) { return el.closest('.form-group') || el.parentElement; }
+
+function secretClearButton(el) {
+  const group = secretGroupOf(el);
+  if (!group) return null;
+  let btn = group.querySelector('.secret-clear');
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'secret-clear';
+    btn.onclick = () => {
+      delete el.dataset.secret;
+      el.value = '';
+      refreshSecretDisplay();
+      el.focus();
+    };
+    group.appendChild(btn);
+  }
+  btn.textContent = t('btn_delete');
+  btn.title = t('btn_delete');
+  return btn;
+}
+
+// 只刷新显示（placeholder / 删除按钮），**不动** `dataset.secret`。
+// i18n 重跑、提交结束后的恢复都走它 —— 那时框里的值已不代表"服务端给了掩码"。
+function refreshSecretDisplay() {
+  for (const id of SECRET_INPUT_IDS) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const group = secretGroupOf(el);
+    const hasSecret = !!el.dataset.secret;
+    el.placeholder = hasSecret ? t('secret_saved_hint') : (SECRET_BASE_PH[id] || '');
+    el.classList.toggle('has-secret', hasSecret);
+    if (group) group.classList.toggle('has-secret', hasSecret);
+    secretClearButton(el);
+  }
+}
+
+// 由 openEditModal 在回填完（此刻框里是服务端给的掩码）之后调用**一次**：
+// 把掩码从框里挪进 `dataset.secret`。此后只能再用 refreshSecretDisplay()。
+function applySecretMaskDisplay() {
+  for (const id of SECRET_INPUT_IDS) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    if (el.value) el.dataset.secret = el.value; else delete el.dataset.secret;
+    el.value = '';
+  }
+  refreshSecretDisplay();
+}
+
+// 提交前：把未被用户改动的框还原成掩码，让下游既有的 9 处 value 读取逻辑原样工作。
+function revealSecretSentinels() {
+  for (const id of SECRET_INPUT_IDS) {
+    const el = document.getElementById(id);
+    if (el && el.value === '' && el.dataset.secret) el.value = el.dataset.secret;
+  }
+}
+
+// 提交后（保存成功、或校验失败提前 return）：把还原进去的哨兵收回来，恢复「空框 + hint」。
+function hideSecretSentinels() {
+  for (const id of SECRET_INPUT_IDS) {
+    const el = document.getElementById(id);
+    if (el && el.dataset.secret && el.value === el.dataset.secret) el.value = '';
+  }
+  refreshSecretDisplay();
+}
+
 function computeFieldVerdict(s){
   const errors = {}, warnings = {};
   const req = 'error_field_required';
@@ -4065,20 +4234,20 @@ function computeFieldVerdict(s){
     need('DNS_SERVERS', !!s.dnsServers && isDnsServerListJP(s.dnsServers), 'error_invalid_dns_servers');
     need('DNS_DOMAIN', !!s.dnsDomain);
     if(s.noisePublicKey && ['a','aaaa'].includes(s.dnsRecordType.toLowerCase())) errors.DNS_RECORD_TYPE='error_dns_noise_record_type';
-    warn('DNS_PSK', s.dnsPsk && s.dnsPsk.length<16, 'warn_psk_short');
+    warn('DNS_PSK', s.dnsPsk && !isSecretMask(s.dnsPsk) && s.dnsPsk.length<16, 'warn_psk_short');
     if(s.dnsMarker && (/\s/.test(s.dnsMarker) || s.dnsMarker.length>32)) errors.DNS_MARKER='error_invalid_marker';
   }
   if(s.spec.noise && s.noisePublicKey) need('NOISE_KEY', isNoisePublicKeyJP(s.noisePublicKey), 'error_noise_public_key');
   if(s.spec.udpOptions){
     need('UDP_PSK', !!s.udpPsk || s.sshPassFallbackAvailable, 'error_udp_psk_required');
-    warn('UDP_PSK', s.udpPsk && s.udpPsk.length<16, 'warn_psk_short');
+    warn('UDP_PSK', s.udpPsk && !isSecretMask(s.udpPsk) && s.udpPsk.length<16, 'warn_psk_short');
     need('UDP_MAGIC', isUdpMagicJP(s.udpMagic), 'error_udp_magic');
     need('UDP_MAX_PKT', intOrBlankInRangeJP(s.udpMaxPkt,0,65535), 'error_invalid_number');
     need('UDP_MTU_PROBE', isUdpMtuProbeJP(s.udpMtuProbe), 'error_invalid_mtu_probe');
   }
   if(s.spec.icmpOptions){
     need('ICMP_PSK', !!s.icmpPsk || s.sshPassFallbackAvailable, 'error_icmp_psk');
-    warn('ICMP_PSK', s.icmpPsk && s.icmpPsk.length<16, 'warn_psk_short');
+    warn('ICMP_PSK', s.icmpPsk && !isSecretMask(s.icmpPsk) && s.icmpPsk.length<16, 'warn_psk_short');
     need('ICMP_MAGIC', isIcmpMagicJP(s.icmpMagic), 'error_icmp_magic');
   }
   if(s.spec.kcpOptions){
@@ -4578,6 +4747,10 @@ async function openEditModal(id) {
   // 初始化实时校验：首次打开挂载监听，重开清空已触碰标记与既有错误
   wireLiveValidation();
   lvResetTouched();
+
+  // 凭据框：把服务端给的掩码从框里挪进 dataset.secret（显示成「空框 + hint」）。
+  // 必须排在上面那批回填之后 —— 它读的就是那些赋值留下的 value。
+  applySecretMaskDisplay();
 }
 
 function closeEditModal() {
@@ -4639,6 +4812,18 @@ function toggleSelectAllNodeApps() {
 }
 
 async function submitEditProfile() {
+  // 凭据框的语义是「空 = 未修改」（见 SECRET_INPUT_IDS 上方的注释）。提交前先把哨兵还原回
+  // 框里，下游那 9 处 `document.getElementById(...).value` 一字不用改；无论保存成功、
+  // 还是实时校验失败提前 return，退出时都恢复成「空框 + hint」的显示形态。
+  revealSecretSentinels();
+  try {
+    await submitEditProfileImpl();
+  } finally {
+    hideSecretSentinels();
+  }
+}
+
+async function submitEditProfileImpl() {
   const id = document.getElementById('edit-profile-id').value;
   const name = document.getElementById('edit-node-name').value.trim();
   const sshAddr = document.getElementById('edit-node-ssh-addr').value.trim();
@@ -5021,6 +5206,7 @@ const appsCache = { data: null, at: 0, inflight: null };
 let appsDirty = false;            // 应用勾选存在未保存改动
 let appsRenderedSig = null;       // 当前已渲染列表的指纹，用于跳过无意义重绘
 let settingsPrefetched = false;
+let settingsApplied = false;      // /api/settings 已回填过设置表单（区别于 appsDirty 的「未保存改动」）
 
 // 带缓存与并发去重的 GET（同一资源同时只允许一个请求在飞）。
 // force=true 时附加 refresh=1，让后端丢掉自己的清单缓存一起重建。
@@ -5159,8 +5345,15 @@ async function loadWebDav() {
     document.getElementById('input-webdav-pin').placeholder = d.hasPin ? '••••••' : '';
     document.getElementById('input-webdav-auto').value = d.auto ? '1' : '0';
     document.getElementById('input-webdav-interval').value = d.intervalHours || 24;
+    // 同步模式：后端只回 id（upload/download/both），文案由前端自己映射，不去比本地化标签串
+    webdavSyncMode = (d.syncMode === 'download' || d.syncMode === 'both') ? d.syncMode : 'upload';
+    const modeSel = document.getElementById('input-webdav-sync-mode');
+    if (modeSel) modeSel.value = webdavSyncMode;
+    renderWebDavModeTexts();
+    // 仅上传看「上次备份」；会拉取的模式看「上次同步」（两者都在后端落库）
+    const stamp = webdavSyncMode === 'upload' ? (d.lastBackup || 0) : (d.lastSync || 0);
     const last = document.getElementById('display-webdav-last');
-    if (last) last.textContent = d.lastBackup > 0 ? new Date(d.lastBackup).toLocaleString() : t('never_updated');
+    if (last) last.textContent = stamp > 0 ? new Date(stamp).toLocaleString() : t('never_updated');
   } catch (_) {}
 }
 
@@ -5182,11 +5375,21 @@ async function webdavSaveConfig() {
         pass: document.getElementById('input-webdav-pass').value,
         pin: pin,
         auto: document.getElementById('input-webdav-auto').value === '1',
-        intervalHours: parseInt(document.getElementById('input-webdav-interval').value) || 24
+        intervalHours: parseInt(document.getElementById('input-webdav-interval').value) || 24,
+        syncMode: webdavSyncMode
       })
     });
-    if (res.ok) showToast(t('webdav_saved'));
-    else showToast(t('webdav_failed_generic'));
+    if (res.ok) {
+      // 后端会回一份"落库后的模式"：若它被规范化（比如非法值落回 upload），前端跟着回填
+      const d = await res.json().catch(() => ({}));
+      if (d.syncMode === 'upload' || d.syncMode === 'download' || d.syncMode === 'both') {
+        webdavSyncMode = d.syncMode;
+        const modeSel = document.getElementById('input-webdav-sync-mode');
+        if (modeSel) modeSel.value = webdavSyncMode;
+        renderWebDavModeTexts();
+      }
+      showToast(t('webdav_saved'));
+    } else showToast(t('webdav_failed_generic'));
   } catch (_) {
     showToast(t('webdav_failed_generic'));
   }
@@ -5194,9 +5397,79 @@ async function webdavSaveConfig() {
   return true;
 }
 
-async function webdavBackupNow() {
+// 主按钮文案 key：仅上传 = 「立即备份」；会拉取的模式 = 「立即同步」
+function webdavPrimaryLabelKey() {
+  return webdavSyncMode === 'upload' ? 'btn_webdav_backup' : 'btn_webdav_sync';
+}
+
+// 同步模式相关的两处文案：主按钮 + 「上次备份/上次同步」标签。
+// 语言切换时 applyI18n 会重调本函数，所以这里不缓存、每次都按当前语言重取。
+function renderWebDavModeTexts() {
+  const btn = document.getElementById('t-btn-webdav-backup');
+  if (btn) btn.textContent = t(webdavPrimaryLabelKey());
+  const lastLabel = document.getElementById('t-label-webdav-last');
+  if (lastLabel) {
+    lastLabel.textContent = t(webdavSyncMode === 'upload' ? 'label_webdav_last' : 'label_webdav_last_sync');
+  }
+}
+
+// 下拉框 onchange：只切前端方向感（文案 + 显示的时间戳），落库交给「保存配置」/主按钮
+function onWebDavSyncModeChange() {
+  const sel = document.getElementById('input-webdav-sync-mode');
+  if (sel) webdavSyncMode = sel.value === 'download' || sel.value === 'both' ? sel.value : 'upload';
+  renderWebDavModeTexts();
+  loadWebDavLastStamp();
+}
+
+// 单独取一次「上次备份/上次同步」时间戳（切模式后立刻刷新，不等整份配置重拉）
+async function loadWebDavLastStamp() {
+  try {
+    const res = await fetch('/api/webdav?token=' + token);
+    if (!res.ok) return;
+    const d = await res.json();
+    const stamp = webdavSyncMode === 'upload' ? (d.lastBackup || 0) : (d.lastSync || 0);
+    const last = document.getElementById('display-webdav-last');
+    if (last) last.textContent = stamp > 0 ? new Date(stamp).toLocaleString() : t('never_updated');
+  } catch (_) {}
+}
+
+// 主按钮：先存配置，再按模式分发到「备份」或「同步」
+async function webdavPrimaryNow() {
   if (!await webdavSaveConfig()) return;
-  await webdavAction('/api/webdav/backup', 'webdav_backup_ok', {count: 0});
+  if (webdavSyncMode === 'upload') {
+    await webdavAction('/api/webdav/backup', 'webdav_backup_ok', {count: 0});
+  } else {
+    await webdavSyncAction();
+  }
+}
+
+// 走 /api/webdav/sync：后端按 mtime 决胜负后可能拉也可能推，这里只负责把结果讲清楚
+async function webdavSyncAction() {
+  try {
+    const res = await fetch('/api/webdav/sync?token=' + token, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({mode: webdavSyncMode})
+    });
+    const d = await res.json().catch(() => ({}));
+    if (res.ok && d.status === 'success') {
+      // 优先用后端本地化好的分区名（pulledText）；没有再退回“拉取 N 项”
+      const detail = d.pulled > 0
+        ? (d.pulledText || t('webdav_sync_pulled', {count: d.pulled}))
+        : t('webdav_sync_uptodate');
+      showToast(t('webdav_sync_ok', {detail: detail}));
+      if (d.pulled > 0) {
+        // 拉取可能覆盖了节点与全局设置，两边都重拉
+        loadProfiles();
+        loadSettings(true);
+      }
+      loadWebDav();
+    } else {
+      showToast(t('webdav_sync_failed') + (d.error ? (': ' + d.error) : ''));
+    }
+  } catch (_) {
+    showToast(t('webdav_sync_failed'));
+  }
 }
 
 async function webdavRestoreNow() {
@@ -5317,6 +5590,9 @@ function applySettingsFields(data) {
     }
     if (document.getElementById('input-mcp-port')) {
       document.getElementById('input-mcp-port').value = data.mcpServerPort || 37180;
+      // 端口输入框从此持有后端设置值。mcpConsoleUrl 靠这个标志决定要不要信它——
+      // 在此之前读到的只是 HTML 写死的 value="37180"，不等于用户配置的端口。
+      settingsApplied = true;
     }
     if (document.getElementById('select-mcp-auth-mode')) {
       document.getElementById('select-mcp-auth-mode').value = String(data.mcpAuthMode ?? 0);
@@ -5324,7 +5600,7 @@ function applySettingsFields(data) {
     if (document.getElementById('input-mcp-secret')) {
       document.getElementById('input-mcp-secret').value = data.mcpAuthSecret || '';
     }
-    loadMcpTab(data);
+    updateMcpTabVisibility(data);
 
     // 6. Auth Token
     settingsTokens.randomToken = data.randomToken || token;
@@ -5347,68 +5623,37 @@ function applySettingsFields(data) {
   } catch (_) {}
 }
 
-function loadMcpTab(settingsData) {
+// ── MCP 控制台入口 ──
+// 「MCP 控制台」不是页签而是外链：MCP Server 自带独立 Dashboard，这里只负责跳转，
+// 页签显隐跟随设置里的 mcpServerEnabled（见 updateMcpTabVisibility），关着就整条隐藏。
+
+// 控制台地址跟 MCP 监听端口走。WebUI 经常是跨设备/经端口转发访问的，所以不能沿用
+// 早期硬编码的 http://127.0.0.1:37180：host 取当前 WebUI 主机，port 按优先级取。
+function mcpConsoleUrl() {
   const host = window.location.hostname || '127.0.0.1';
-  const port = document.getElementById('input-mcp-port')?.value || settingsData?.mcpServerPort || 37180;
 
-  const portVal = document.getElementById('mcp-stat-port-val');
-  if (portVal) portVal.textContent = port;
+  // 优先级：设置页渲染后的实时输入框（含用户尚未点保存的改动）→ 预取的设置缓存 → 默认值。
+  // 不能拿「输入框非空」当判据：input-mcp-port 自带 value="37180"，首次进页面时它非空但
+  // 不是用户设的端口，直接读会跳到错的端口。settingsApplied 由 applySettingsFields 置位，
+  // 标志这个输入框已被后端设置填充过。
+  const portInput = document.getElementById('input-mcp-port');
+  let port = (portInput && settingsApplied) ? parseInt(portInput.value) : NaN;
+  if (!port) port = parseInt(settingsCache.data?.mcpServerPort);
+  if (!port) port = 37180;
 
-  const isOnline = (settingsData?.mcpIsRunning !== false);
-  const badge = document.getElementById('mcp-stat-status-badge');
-  if (badge) {
-    badge.textContent = isOnline ? 'ONLINE' : 'STOPPED';
-    badge.className = 'stat-value ' + (isOnline ? 'success' : 'danger');
-  }
-
-  const mcpDashUrl = 'http://' + host + ':' + port;
-  const mcpHttpUrl = 'http://' + host + ':' + port + '/mcp';
-  const dashBtn = document.getElementById('btn-open-mcp-dashboard');
-  if (dashBtn) dashBtn.href = mcpDashUrl;
-
-  const jsonSnippet = document.getElementById('mcp-json-snippet');
-  if (jsonSnippet) {
-    jsonSnippet.textContent = JSON.stringify({
-      mcpServers: {
-        "stun-device": {
-          type: 'http',
-          url: mcpHttpUrl
-        }
-      }
-    }, null, 2);
-  }
-
-  const geminiSnippet = document.getElementById('mcp-gemini-snippet');
-  if (geminiSnippet) {
-    geminiSnippet.textContent = `import google.generativeai as genai, requests
-
-${t('mcp_gemini_c1')}
-tools = requests.get("http://${host}:${port}/gemini/declarations").json()
-
-${t('mcp_gemini_c2')}
-genai.configure(api_key="YOUR_GEMINI_API_KEY")
-chat = genai.GenerativeModel("gemini-2.0-flash", tools=tools["functionDeclarations"]).start_chat(enable_automatic_function_calling=True)
-
-${t('mcp_gemini_c3')}
-response = chat.send_message("${t('mcp_gemini_prompt')}")
-print(response.text)`;
-  }
+  return 'http://' + host + ':' + port + '/';
 }
 
-function copyMcpJsonConfig() {
-  const el = document.getElementById('mcp-json-snippet');
-  if (el) {
-    copyToClipboard(el.textContent);
-    showToast(t('toast_mcp_config_copied'));
-  }
+function openMcpDashboard() {
+  window.open(mcpConsoleUrl(), '_blank', 'noopener,noreferrer');
 }
 
-function copyMcpGeminiSnippet() {
-  const el = document.getElementById('mcp-gemini-snippet');
-  if (el) {
-    copyToClipboard(el.textContent);
-    showToast(t('toast_gemini_snippet_copied'));
-  }
+// 页签在 index.html 里默认 display:none，首次拿到设置数据再按开关决定。
+// 判定口径与设置页开关一致：mcpServerEnabled !== false 即视为开启。
+function updateMcpTabVisibility(data) {
+  const tab = document.getElementById('t-tab-mcp');
+  if (!tab) return;
+  tab.style.display = (data && data.mcpServerEnabled !== false) ? '' : 'none';
 }
 
 function onAuthModeChange(mode) {
@@ -5496,7 +5741,7 @@ async function saveAllSettings() {
       settingsTokens.customToken = data.customToken || '';
 
       updateAccessUrlPreview();
-      loadMcpTab(data);
+      updateMcpTabVisibility(data);
       showToast(t('settings_save_success'));
       try {
         const newUrlObj = new URL(data.effectiveUrl || document.getElementById('display-access-url').value);
@@ -5641,6 +5886,134 @@ function copyLogs() {
   showToast(t('logs_copied'));
 }
 
+// ── 崩溃历史 ──
+// 后端把每次 JVM 未捕获异常（CrashHandler）与 Go 引擎 Panic（StunRepository.onCrash）
+// 追加写进 filesDir/crash_history.jsonl，这里只做查询、删除与展开。
+// 服务端返回的每一段文本都必须过 escapeHtml：崩溃堆栈里常带本机路径、URL、参数这类
+// 敏感信息，直接拼 innerHTML 等于把它们暴露给页面内的任何脚本。
+
+let crashesCache = [];
+const crashDetailOpen = new Set();
+
+function crashTypeLabel(type) {
+  if (type === 'jvm') return t('crash_type_jvm');
+  if (type === 'go_panic') return t('crash_type_go');
+  return type || 'unknown';
+}
+
+function crashMetaHtml(c) {
+  const items = [
+    c.version ? '<span>📦 ' + escapeHtml(c.version) + '</span>' : '',
+    c.android ? '<span>🤖 ' + escapeHtml(c.android) + '</span>' : '',
+    c.device ? '<span>📱 ' + escapeHtml(c.device) + '</span>' : '',
+    c.thread ? '<span>🧵 ' + escapeHtml(c.thread) + '</span>' : ''
+  ].filter(Boolean);
+  return items.length ? '<div class="crash-meta">' + items.join('') + '</div>' : '';
+}
+
+async function loadCrashes() {
+  const list = document.getElementById('crash-list');
+  list.innerHTML = '<div class="crash-empty">' + escapeHtml(t('crash_loading')) + '</div>';
+  try {
+    const res = await fetch('/api/crashes?token=' + token);
+    const data = await res.json();
+    if (!res.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
+    crashesCache = Array.isArray(data.crashes) ? data.crashes : [];
+    renderCrashes();
+  } catch (err) {
+    list.innerHTML = '<div class="crash-empty">' +
+      escapeHtml(t('crash_load_failed', { error: err.message })) + '</div>';
+  }
+}
+
+function renderCrashes() {
+  const list = document.getElementById('crash-list');
+  const filterEl = document.getElementById('select-crash-type');
+  const filter = filterEl ? filterEl.value : 'ALL';
+  const rows = crashesCache.filter(c => filter === 'ALL' || c.type === filter);
+
+  const countEl = document.getElementById('crash-count');
+  if (countEl) countEl.textContent = t('crash_count', { count: rows.length, total: crashesCache.length });
+
+  if (!rows.length) {
+    list.innerHTML = '<div class="crash-empty">' +
+      escapeHtml(crashesCache.length ? t('crash_none_filtered') : t('crash_empty')) + '</div>';
+    return;
+  }
+
+  list.innerHTML = rows.map(c => {
+    const open = crashDetailOpen.has(c.id);
+    return '<div class="crash-item" data-id="' + escapeHtml(c.id) + '">' +
+      '<div class="crash-item-head">' +
+        '<span class="crash-type crash-type-' + escapeHtml(c.type) + '">' +
+          escapeHtml(crashTypeLabel(c.type)) + '</span>' +
+        '<span class="crash-time">' + escapeHtml(c.time) + '</span>' +
+        '<span class="crash-item-actions">' +
+          '<button class="btn btn-sm" onclick="copyCrashReport(' + c.id + ')">📋</button>' +
+          '<button class="btn btn-sm btn-danger" onclick="deleteCrash(' + c.id + ')">🗑</button>' +
+        '</span>' +
+      '</div>' +
+      (c.exception ? '<div class="crash-exception">' + escapeHtml(c.exception) + '</div>' : '') +
+      (c.message ? '<div class="crash-message">' + escapeHtml(c.message) + '</div>' : '') +
+      crashMetaHtml(c) +
+      (open ? '<pre class="crash-report">' + escapeHtml(c.report) + '</pre>' : '') +
+      '<button class="crash-toggle" onclick="toggleCrashDetail(' + c.id + ')">' +
+        escapeHtml(open ? t('crash_hide_detail') : t('crash_show_detail')) + '</button>' +
+    '</div>';
+  }).join('');
+}
+
+function toggleCrashDetail(id) {
+  if (crashDetailOpen.has(id)) crashDetailOpen.delete(id);
+  else crashDetailOpen.add(id);
+  renderCrashes();
+}
+
+function copyCrashReport(id) {
+  const c = crashesCache.find(x => x.id === id);
+  if (!c) return;
+  copyToClipboard(c.report || '');
+  showToast(t('crash_copied'));
+}
+
+async function deleteCrash(id) {
+  if (!confirm(t('crash_delete_confirm'))) return;
+  try {
+    const res = await fetch('/api/crashes/delete?token=' + token, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: id })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
+    crashesCache = crashesCache.filter(x => x.id !== id);
+    crashDetailOpen.delete(id);
+    renderCrashes();
+    showToast(t('crash_deleted'));
+  } catch (err) {
+    showToast(t('crash_delete_failed', { error: err.message }));
+  }
+}
+
+async function clearCrashHistory() {
+  if (!crashesCache.length) {
+    showToast(t('crash_already_empty'));
+    return;
+  }
+  if (!confirm(t('crash_clear_confirm', { count: crashesCache.length }))) return;
+  try {
+    const res = await fetch('/api/crashes/clear?token=' + token, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
+    crashesCache = [];
+    crashDetailOpen.clear();
+    renderCrashes();
+    showToast(t('crash_cleared', { count: (data && data.deleted) || 0 }));
+  } catch (err) {
+    showToast(t('crash_clear_failed', { error: err.message }));
+  }
+}
+
 initTheme();
 initLang();
 fetchStatus();
@@ -5653,11 +6026,15 @@ setInterval(() => {
 }, 2000);
 
 // 设置页签数据预取：排在首屏关键请求之后、用空闲时段补齐，这样第一次点「系统设置」时
-// 数据已在内存里，直接渲染即可。只预热数据缓存，不碰 DOM，因此不会影响首屏。
+// 数据已在内存里，直接渲染即可。除预热缓存外只多写一处 DOM：MCP 控制台的显隐。
+// 页签默认隐藏，必须拿到设置才知道要不要显示，而 loadSettings 只在打开设置页时才跑，
+// 不挂到这里的话首次进入页面时该页签永远不会出现。
 function scheduleSettingsPrefetch() {
   if (settingsPrefetched) return;
   settingsPrefetched = true;
-  fetchCached(settingsCache, '/api/settings', SETTINGS_TTL_MS, false).catch(() => {});
+  fetchCached(settingsCache, '/api/settings', SETTINGS_TTL_MS, false)
+    .then(updateMcpTabVisibility)
+    .catch(() => {});
   fetchCached(appsCache, '/api/apps', APPS_TTL_MS, false).catch(() => {});
 }
 if (typeof requestIdleCallback === 'function') {

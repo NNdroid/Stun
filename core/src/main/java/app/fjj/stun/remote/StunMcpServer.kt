@@ -9,6 +9,7 @@ import androidx.core.content.ContextCompat
 import app.fjj.stun.repo.LogLevel
 import app.fjj.stun.repo.Profile
 import app.fjj.stun.repo.ProfileManager
+import app.fjj.stun.repo.ProfileSecrets
 import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.StunLogger
 import app.fjj.stun.repo.StunRepository
@@ -154,7 +155,14 @@ object StunMcpServer {
     // Active OAuth 2.0 Tokens: token -> expiry timestamp
     private val activeOAuthTokens = ConcurrentHashMap<String, Long>()
     private val activeAuthCodes = ConcurrentHashMap<String, Long>()
-    private val gson = Gson()
+    /**
+     * 只读出口用的 Gson：凡是把 `Profile` 序列化出去（`get_profile_detail` 工具、
+     * `stun://profiles` 资源）都会把凭据字段换成 [ProfileSecrets.MASK]，不再把
+     * SSH 密码 / PEM 私钥 / 代理 token / 隧道 PSK 明文送进 AI 客户端的会话上下文。
+     *
+     * 需要真值的 `export_profiles` 用的是独立 `Gson()` 实例（加密后再给出去），不受影响。
+     */
+    private val gson = ProfileSecrets.redactingGson()
     private val prettyGson = GsonBuilder().setPrettyPrinting().create()
 
     fun isRunning(): Boolean = isServerRunning.get()
@@ -187,17 +195,41 @@ object StunMcpServer {
         return "$scheme://$targetHost/mcp/sse"
     }
 
-    fun getClaudeConfigJson(context: Context? = null, scheme: String = "http", host: String? = null): String {
-        val targetHost = host ?: "${getLocalIpAddress()}:$serverPort"
-        val authMode = context?.let { SettingsManager.getMcpAuthMode(it) } ?: SettingsManager.MCP_AUTH_MODE_NONE
-        val apiKey = context?.let { SettingsManager.getMcpApiKey(it) } ?: ""
-
-        val authorization = when (authMode) {
-            SettingsManager.MCP_AUTH_MODE_API_KEY -> apiKey.takeIf { it.isNotBlank() }?.let { "Bearer $it" }
+    /**
+     * 配置片段里的 `Authorization` 头。[maskSecrets] 决定 API Key 给真值还是 `*****`。
+     *
+     * BASIC / OAUTH 两种模式本来就没法写死静态凭据（前者要现场 base64 用户名密码、
+     * 后者要运行时换取 access token），一直用的占位符 —— 只有 API_KEY 模式会把
+     * 真实密钥印进配置文本，所以只有它需要掩码分支。
+     */
+    private fun buildAuthorizationHeader(authMode: Int, apiKey: String, maskSecrets: Boolean): String? =
+        when (authMode) {
+            SettingsManager.MCP_AUTH_MODE_API_KEY ->
+                apiKey.takeIf { it.isNotBlank() }
+                    ?.let { "Bearer ${if (maskSecrets) ProfileSecrets.MASK else it}" }
             SettingsManager.MCP_AUTH_MODE_BASIC -> "Basic <BASE64_USER_PASS>"
             SettingsManager.MCP_AUTH_MODE_OAUTH -> "Bearer <OAUTH_ACCESS_TOKEN>"
             else -> null
         }
+
+    /**
+     * 生成 Claude Code 的 `.mcp.json` 片段。
+     *
+     * [maskSecrets] 为 true 时把 API Key 换成 `*****`：**页面渲染一律走这条**
+     * （控制台页面在局域网可达，明文 key 会随截屏/围观外流）；
+     * App 内"分享配置"要的是能直接粘贴使用的真值，传 false。
+     */
+    fun getClaudeConfigJson(
+        context: Context? = null,
+        scheme: String = "http",
+        host: String? = null,
+        maskSecrets: Boolean = false
+    ): String {
+        val targetHost = host ?: "${getLocalIpAddress()}:$serverPort"
+        val authMode = context?.let { SettingsManager.getMcpAuthMode(it) } ?: SettingsManager.MCP_AUTH_MODE_NONE
+        val apiKey = context?.let { SettingsManager.getMcpApiKey(it) } ?: ""
+
+        val authorization = buildAuthorizationHeader(authMode, apiKey, maskSecrets)
         val serverConfig = JsonObject().apply {
             addProperty("type", "http")
             addProperty("url", "$scheme://$targetHost/mcp")
@@ -212,7 +244,13 @@ object StunMcpServer {
         )
     }
 
-    fun getCodexConfigToml(context: Context? = null, scheme: String = "http", host: String? = null): String {
+    /** Codex `config.toml` 片段。掩码语义同 [getClaudeConfigJson]。 */
+    fun getCodexConfigToml(
+        context: Context? = null,
+        scheme: String = "http",
+        host: String? = null,
+        maskSecrets: Boolean = false
+    ): String {
         val targetHost = host ?: "${getLocalIpAddress()}:$serverPort"
         val authMode = context?.let { SettingsManager.getMcpAuthMode(it) } ?: SettingsManager.MCP_AUTH_MODE_NONE
         val apiKey = context?.let { SettingsManager.getMcpApiKey(it) } ?: ""
@@ -222,12 +260,7 @@ object StunMcpServer {
             .replace("\r", "\\r")
             .replace("\n", "\\n")
 
-        val authorization = when (authMode) {
-            SettingsManager.MCP_AUTH_MODE_API_KEY -> apiKey.takeIf { it.isNotBlank() }?.let { "Bearer $it" }
-            SettingsManager.MCP_AUTH_MODE_BASIC -> "Basic <BASE64_USER_PASS>"
-            SettingsManager.MCP_AUTH_MODE_OAUTH -> "Bearer <OAUTH_ACCESS_TOKEN>"
-            else -> null
-        }
+        val authorization = buildAuthorizationHeader(authMode, apiKey, maskSecrets)
         val headersBlock = authorization?.let {
             "\n\n[mcp_servers.stun_android.http_headers]\nAuthorization = \"${tomlString(it)}\""
         }.orEmpty()
@@ -1136,7 +1169,7 @@ url = "$scheme://$targetHost/mcp"$headersBlock
         addTool("list_profiles", "List all configured proxy nodes with summary details (ID, name, tunnel type, server, and selection status).", JsonObject())
 
         // 6. get_profile_detail
-        addTool("get_profile_detail", "Get complete configuration parameters for a specific profile node.", JsonObject().apply {
+        addTool("get_profile_detail", "Get complete configuration parameters for a specific profile node. Credential fields (pass, privateKey, keyPass, proxyAuthToken, proxyAuthPass and the per-tunnel PSKs) are returned masked as \"*****\" — real secrets are never exposed. Sending \"*****\" back to update_profile means \"keep the current value\".", JsonObject().apply {
             add("profileId", JsonObject().apply { addProperty("type", "string"); addProperty("description", "Profile ID") })
             add("profileName", JsonObject().apply { addProperty("type", "string"); addProperty("description", "Profile Name") })
         })
@@ -1327,8 +1360,13 @@ url = "$scheme://$targetHost/mcp"$headersBlock
             add("user", JsonObject().apply { addProperty("type", "string"); addProperty("description", "WebDAV account username") })
             add("pass", JsonObject().apply { addProperty("type", "string"); addProperty("description", "WebDAV password / app password") })
             add("pin", JsonObject().apply { addProperty("type", "string"); addProperty("description", "Backup PIN for encryption (letters+digits, ≥4)") })
-            add("auto", JsonObject().apply { addProperty("type", "boolean"); addProperty("description", "Enable daily auto-backup") })
+            add("auto", JsonObject().apply { addProperty("type", "boolean"); addProperty("description", "Enable the scheduled WebDAV task") })
             add("intervalHours", JsonObject().apply { addProperty("type", "integer"); addProperty("minimum", 1); addProperty("maximum", 720); addProperty("description", "Auto-backup interval in hours (1–720)") })
+            add("syncMode", JsonObject().apply {
+                addProperty("type", "string")
+                add("enum", com.google.gson.JsonArray().apply { add("upload"); add("download"); add("both") })
+                addProperty("description", "Sync direction: upload (push only, default), download (pull only), both (pull newer side, then push)")
+            })
         })
 
         // 21. list_backups
@@ -1336,6 +1374,15 @@ url = "$scheme://$targetHost/mcp"$headersBlock
 
         // 22. backup_now
         addTool("backup_now", "Trigger an immediate WebDAV backup (nodes + settings). Requires a fully configured WebDAV.", JsonObject())
+
+        // 22b. sync_now
+        addTool("sync_now", "Run one WebDAV sync using the configured sync mode. 'upload' behaves exactly like backup_now; 'download'/'both' also pull partitions whose server-side content is newer. Requires a fully configured WebDAV.", JsonObject().apply {
+            add("mode", JsonObject().apply {
+                addProperty("type", "string")
+                add("enum", com.google.gson.JsonArray().apply { add("upload"); add("download"); add("both") })
+                addProperty("description", "Optional one-off override; defaults to the configured sync mode")
+            })
+        })
 
         // 23. restore_backup
         addTool("restore_backup", "Restore from a specific WebDAV backup directory. Nodes are merged by ID; global settings are overwritten (except the backup PIN). Requires the dir name from list_backups.", JsonObject().apply {
@@ -1533,6 +1580,8 @@ url = "$scheme://$targetHost/mcp"$headersBlock
             }
 
             "create_profile" -> {
+                // 掩码值不是凭据，落库等于把密码设成 *****；剔除后落回默认空串。
+                ProfileSecrets.dropMaskedSecrets(args)
                 val name = args.get("name")?.asString ?: "New Profile"
                 val sshAddr = args.get("sshAddr")?.asString ?: "127.0.0.1:22"
                 // 旧别名（tls/base/ws/wss/h2c/grpcc/xhttpc/wt）已随 myssh 4735512 删除
@@ -1653,6 +1702,10 @@ url = "$scheme://$targetHost/mcp"$headersBlock
             }
 
             "update_profile" -> {
+                // 掩码哨兵：客户端可能把 get_profile_detail 读到的 ***** 原样写回，
+                // 那会把真实凭据整条覆盖成五个星号（节点连不上且用户看不出原因）。
+                // 剔除后下游的 args.has(...) 判断自然跳过这些字段，等于"保持原值"。
+                ProfileSecrets.dropMaskedSecrets(args)
                 val profileId = args.get("profileId")?.asString ?: ""
                 val existing = ProfileManager.getProfileById(context, profileId)
                 if (existing == null) {
@@ -1945,6 +1998,9 @@ url = "$scheme://$targetHost/mcp"$headersBlock
                     addProperty("auto", SettingsManager.isWebDavAutoBackupEnabled(context))
                     addProperty("intervalHours", SettingsManager.getWebDavBackupIntervalHours(context))
                     addProperty("lastBackup", SettingsManager.getWebDavLastBackupTime(context))
+                    // 同步模式：给机器读的一律用稳定 id（upload/download/both），不做本地化
+                    addProperty("syncMode", SettingsManager.getWebDavSyncMode(context).id)
+                    addProperty("lastSync", SettingsManager.getWebDavLastSyncTime(context))
                 }
                 gson.toJson(cfg)
             }
@@ -1957,12 +2013,21 @@ url = "$scheme://$targetHost/mcp"$headersBlock
                 SettingsManager.saveWebDavConfig(context, url, user, pass, pin)
                 args.get("auto")?.asBoolean?.let { SettingsManager.setWebDavAutoBackup(context, it) }
                 args.get("intervalHours")?.asInt?.let { SettingsManager.saveWebDavBackupIntervalHours(context, it.toLong()) }
+                // 换模式＝换方向，作废"已推过兜底快照"标记：新模式的第一次仍要先留后路
+                args.get("syncMode")?.asString?.let { raw ->
+                    val mode = app.fjj.stun.backup.WebDavSyncMode.fromId(raw)
+                    if (mode != SettingsManager.getWebDavSyncMode(context)) {
+                        SettingsManager.saveWebDavSyncMode(context, mode)
+                        SettingsManager.setWebDavSyncBootstrapped(context, false)
+                    }
+                }
                 WebDavBackupWorker.schedule(context)
                 val cfg = JsonObject().apply {
                     addProperty("url", SettingsManager.getWebDavUrl(context))
                     addProperty("user", SettingsManager.getWebDavUser(context))
                     addProperty("auto", SettingsManager.isWebDavAutoBackupEnabled(context))
                     addProperty("intervalHours", SettingsManager.getWebDavBackupIntervalHours(context))
+                    addProperty("syncMode", SettingsManager.getWebDavSyncMode(context).id)
                 }
                 "WebDAV config saved. " + gson.toJson(cfg)
             }
@@ -2009,6 +2074,28 @@ url = "$scheme://$targetHost/mcp"$headersBlock
                 }
             }
 
+            "sync_now" -> {
+                val config = app.fjj.stun.backup.WebDavBackupManager.Config(
+                    url = SettingsManager.getWebDavUrl(context),
+                    user = SettingsManager.getWebDavUser(context),
+                    pass = SettingsManager.getWebDavPass(context),
+                    pin = SettingsManager.getWebDavPin(context)
+                )
+                if (!config.isConfigured) "Error: WebDAV is not fully configured."
+                else try {
+                    val mode = args.get("mode")?.asString
+                        ?.let { app.fjj.stun.backup.WebDavSyncMode.fromId(it) }
+                        ?: SettingsManager.getWebDavSyncMode(context)
+                    val result = app.fjj.stun.backup.WebDavBackupManager.sync(context, config, mode)
+                    if (result.pushed) SettingsManager.saveWebDavLastBackupTime(context, System.currentTimeMillis())
+                    // 同 backup_now：分区用稳定 id，不做本地化
+                    "Sync(${mode.id}) complete: pulled=[${result.pulled.joinToString()}], " +
+                        "pushed=${result.pushed}, nodes=${result.profiles}, bootstrapped=${result.bootstrapped}."
+                } catch (e: Exception) {
+                    "Sync failed: ${e.message}"
+                }
+            }
+
             "restore_backup" -> {
                 val dir = args.get("dir")?.asString?.trim().orEmpty()
                 if (dir.isEmpty()) "Error: dir is required."
@@ -2037,6 +2124,8 @@ url = "$scheme://$targetHost/mcp"$headersBlock
                     addProperty("lastSync", lastSync)
                     add("subscriptions", gson.toJsonTree(subs.map { sub ->
                         JsonObject().apply {
+                            // 本地订阅 id：调用方按它引用某一条订阅（URL 是可变的）。
+                            addProperty("subId", sub.subId)
                             addProperty("url", sub.url)
                             // 响应头解析出的订阅名：有则给出，便于调用方按名称展示/引用
                             if (sub.name.isNotBlank()) addProperty("name", sub.name)
@@ -2151,7 +2240,7 @@ url = "$scheme://$targetHost/mcp"$headersBlock
         resources.add(JsonObject().apply {
             addProperty("uri", "stun://profiles")
             addProperty("name", "Stun Node Profiles")
-            addProperty("description", "List of all saved server nodes and protocols.")
+            addProperty("description", "List of all saved server nodes and protocols. Credentials are masked as \"*****\".")
             addProperty("mimeType", "application/json")
         })
 
@@ -2689,8 +2778,11 @@ url = "$scheme://$targetHost/mcp"$headersBlock
             .replace("&", "&amp;")
             .replace("<", "&lt;")
             .replace(">", "&gt;")
-        val configJson = htmlEscape(getClaudeConfigJson(context, scheme, host))
-        val codexConfigToml = htmlEscape(getCodexConfigToml(context, scheme, host))
+        // 控制台页面走掩码版本：这是浏览器打开的页面，明文 API Key 落在 DOM 里
+        // 就会随截屏 / 投屏 / 局域网访问外流。要可直接粘贴使用的完整配置，
+        // 走 App 设置页的"分享配置"（本地、用户主动触发）。
+        val configJson = htmlEscape(getClaudeConfigJson(context, scheme, host, maskSecrets = true))
+        val codexConfigToml = htmlEscape(getCodexConfigToml(context, scheme, host, maskSecrets = true))
 
         fun t(key: String): String = McpI18n.get(key, lang)
 
@@ -2796,7 +2888,7 @@ print(res.text)
         </div>
 
         <div class="card">
-            <h2>🛠️ ${t("tools_title")} (27)</h2>
+            <h2>🛠️ ${t("tools_title")} (28)</h2>
             <div class="grid">
                 <div class="tool-item"><div class="tool-name">get_vpn_status</div>${t("tool_get_vpn_status")}</div>
                 <div class="tool-item"><div class="tool-name">start_vpn</div>${t("tool_start_vpn")}</div>
@@ -2820,6 +2912,7 @@ print(res.text)
                 <div class="tool-item"><div class="tool-name">set_webdav_config</div>${t("tool_set_webdav_config")}</div>
                 <div class="tool-item"><div class="tool-name">list_backups</div>${t("tool_list_backups")}</div>
                 <div class="tool-item"><div class="tool-name">backup_now</div>${t("tool_backup_now")}</div>
+                <div class="tool-item"><div class="tool-name">sync_now</div>${t("tool_sync_now")}</div>
                 <div class="tool-item"><div class="tool-name">restore_backup</div>${t("tool_restore_backup")}</div>
                 <div class="tool-item"><div class="tool-name">list_subscriptions</div>${t("tool_list_subscriptions")}</div>
                 <div class="tool-item"><div class="tool-name">sync_subscriptions</div>${t("tool_sync_subscriptions")}</div>
@@ -2940,6 +3033,7 @@ print(res.text)
                 "tool_set_webdav_config" to "Configure WebDAV backup",
                 "tool_list_backups" to "List cloud backups",
                 "tool_backup_now" to "Backup now (encrypt & upload)",
+                "tool_sync_now" to "Sync now (upload / download / both)",
                 "tool_restore_backup" to "Restore from a backup",
                 "tool_list_subscriptions" to "List subscriptions",
                 "tool_sync_subscriptions" to "Sync all subscriptions",
@@ -3002,6 +3096,7 @@ print(res.text)
                 "tool_set_webdav_config" to "配置 WebDAV 云备份",
                 "tool_list_backups" to "列出云端备份版本",
                 "tool_backup_now" to "立即备份（加密上传）",
+                "tool_sync_now" to "立即同步（仅上传 / 仅下载 / 双向）",
                 "tool_restore_backup" to "从备份恢复",
                 "tool_list_subscriptions" to "列出订阅",
                 "tool_sync_subscriptions" to "同步所有订阅",
@@ -3064,6 +3159,7 @@ print(res.text)
                 "tool_set_webdav_config" to "WebDAV バックアップ設定",
                 "tool_list_backups" to "クラウドバックアップ一覧",
                 "tool_backup_now" to "今すぐバックアップ (暗号化)",
+                "tool_sync_now" to "今すぐ同期（アップロード / ダウンロード / 双方向）",
                 "tool_restore_backup" to "バックアップから復元",
                 "tool_list_subscriptions" to "サブスクリプション一覧",
                 "tool_sync_subscriptions" to "サブスクを同期",
@@ -3126,6 +3222,7 @@ print(res.text)
                 "tool_set_webdav_config" to "WebDAV-Backup einrichten",
                 "tool_list_backups" to "Cloud-Backups auflisten",
                 "tool_backup_now" to "Jetzt sichern (verschlüsseln & hochladen)",
+                "tool_sync_now" to "Jetzt synchronisieren (hochladen / herunterladen / beidseitig)",
                 "tool_restore_backup" to "Aus Backup wiederherstellen",
                 "tool_list_subscriptions" to "Abos auflisten",
                 "tool_sync_subscriptions" to "Alle Abos synchronisieren",
@@ -3188,6 +3285,7 @@ print(res.text)
                 "tool_set_webdav_config" to "Configurer la sauvegarde WebDAV",
                 "tool_list_backups" to "Lister les sauvegardes cloud",
                 "tool_backup_now" to "Sauvegarder maintenant (chiffrer & téléverser)",
+                "tool_sync_now" to "Synchroniser maintenant (envoi / réception / bidirectionnel)",
                 "tool_restore_backup" to "Restaurer depuis une sauvegarde",
                 "tool_list_subscriptions" to "Lister les abonnements",
                 "tool_sync_subscriptions" to "Synchroniser les abonnements",
@@ -3214,3 +3312,4 @@ print(res.text)
         }
     }
 }
+

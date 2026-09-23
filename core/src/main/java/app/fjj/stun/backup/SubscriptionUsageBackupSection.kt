@@ -15,8 +15,8 @@ import com.google.gson.reflect.TypeToken
  * （节点却恢复成功，用户看着"恢复完成"却少了订阅）。拆成独立文件后，旧版本只是
  * 不认识这个多出来的文件、忽略它，订阅列表照常恢复 —— 单向降级不炸。
  *
- * 注册顺序有约束：必须排在 [SubscriptionBackupSection] 之后。流量表以订阅 URL 为键，
- * 导入时要按"当前订阅列表"裁掉孤儿项，得先让订阅列表落盘。
+ * 注册顺序有约束：必须排在 [SubscriptionBackupSection] 之后。流量按**订阅身份**（subId）落行，
+ * 导入时要用"当前订阅列表"把认领不上本地行的孤儿快照滤掉，得先让订阅列表落盘。
  */
 object SubscriptionUsageBackupSection : BackupSection {
 

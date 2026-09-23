@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.content.res.Configuration
+import android.graphics.drawable.GradientDrawable
 import android.view.ContextThemeWrapper
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -13,9 +14,11 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import app.fjj.stun.R
+import app.fjj.stun.ui.view.ServerNoticeBox
 import com.google.android.material.card.MaterialCardView
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -108,14 +111,21 @@ class ConnectionDetailsInfoCardsLayoutTest {
 
     /**
      * 服务器提示（MOTD）是**服务端可控文本**，可能与普通字段值混淆 —— 它必须待在虚线框里。
-     * 断言的是"有背景 + 居中"，不是背景具体是什么形状：形状归 drawable，这里只守接线没丢。
+     *
+     * 框由 [ServerNoticeBox] 在运行时装（XML 里的 shape 颜色不吃 `?attr/`，写死色值就永远
+     * 不跟主题走），所以这里也走生产同一条路径。断言的是"有背景 + 居中"，不验具体颜色 ——
+     * 配色归 [ConnectionDetailsThemeTest]。
      */
     @Test
     fun `服务器提示值带虚线框背景且居中`() {
         val sheet = inflateSheet()
         val notice = sheet.findViewById<TextView>(R.id.tv_detail_ssh_notice)
         assertNotNull("找不到 tv_detail_ssh_notice：服务器提示行丢了", notice)
-        assertNotNull("服务器提示没有背景 —— 虚线框是它与普通字段值的唯一区分", notice.background)
+        ServerNoticeBox.applyTo(notice)
+        assertTrue(
+            "服务器提示没有虚线框背景 —— 框是它与普通字段值的唯一区分",
+            notice.background is GradientDrawable,
+        )
         assertEquals(
             "服务器提示应水平居中（与效果图一致）",
             Gravity.CENTER_HORIZONTAL,
@@ -130,8 +140,6 @@ class ConnectionDetailsInfoCardsLayoutTest {
             R.id.tv_globe_avatar_letter,
             R.id.tv_globe_name,
             R.id.tv_globe_server,
-            R.id.tv_globe_protocol_chip,
-            R.id.tv_globe_magic_chip,
             R.id.tv_globe_latency,
             R.id.tv_globe_last,
             R.id.tv_globe_traffic,

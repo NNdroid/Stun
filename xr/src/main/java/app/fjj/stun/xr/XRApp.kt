@@ -26,7 +26,7 @@ class XRApp : Application() {
         Thread { runCatching { KeystoreUtils.init(this) } }.apply { isDaemon = true; start() }
         runCatching {
             StunRepository.setupLogBridge()
-            StunRepository.registerEngineCallback()
+            StunRepository.registerEngineCallback(this)
             StunRepository.initCrashOutput(this)
         }
 

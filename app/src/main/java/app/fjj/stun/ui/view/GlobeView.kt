@@ -11,6 +11,7 @@ import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
+import android.graphics.SweepGradient
 import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.Choreographer
@@ -28,6 +29,7 @@ import app.fjj.stun.geo.StarfieldResampler
 import com.google.android.material.color.MaterialColors
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.atan2
 import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.floor
@@ -152,6 +154,18 @@ class GlobeView @JvmOverloads constructor(
      * （同一个点的采样值可能是白昼贴图，也可能是几乎全黑的夜面）。null = 用真实时间。
      */
     internal var sunEpochMillis: Long? = null
+
+    /**
+     * 球面光效开关（太阳光晕 / 贴图模式的球面高光）。**只为测试留的口子**：这两层都叠在晨昏贴图
+     * **之上**，恒亮的暖光与固定方向的高光会让"逐像素比贴图"的断言全体失真 —— 那几条测试的契约是
+     * "贴图与晨昏线对不对"，不是"光效画没画对"。默认都开着（出厂行为），要单独验下面那一层就关掉
+     * （见 `GlobeDayNightTest`、`GlobeViewTest`）。
+     *
+     * 分成两个而不是一个，是因为 `GlobeSunGlowTest` 验球面高光时**必须摘掉光晕、又不能把高光一起摘了**
+     * —— 光晕跟着太阳走、在两个对照点上的贡献不同，会盖过要比的那点亮度差。
+     */
+    internal var sunGlowEnabled: Boolean = true
+    internal var sphereSheenEnabled: Boolean = true
 
     /**
      * 把当前 [palette] 灌进那些"只在 init 定过一次色"的画笔。
@@ -327,6 +341,48 @@ class GlobeView @JvmOverloads constructor(
         color = colorOcean
         alpha = OCEAN_ALPHA
     }
+
+    /**
+     * **贴图模式**的球面高光 / 右下暗边。几何与 [oceanShader] 那支一模一样（左上 0.35R 处一块
+     * 反光、右下压暗），但改用中性白/黑 —— 贴图自己已经带颜色了，再糊一层 [Palette.ocean] 的
+     * 深蓝会把卫星影像整片染蓝，而中性白/黑只改明度、不改色相。
+     */
+    private val sheenPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private var sheenRadius = 0f
+
+    /**
+     * 太阳光晕。源图是**预渲染**的一张暖色径向渐变位图（见 [ensureSunGlowBitmap]），每帧只按
+     * 位置缩放贴上去 —— 理由同 [drawComet]：每帧新建 `RadialGradient` 等于每帧一个 shader 对象，
+     * 而光晕的图案跟"贴到哪儿"无关，只跟半径有关，缩放一张固定位图就够了。
+     */
+    private val sunGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { isFilterBitmap = true }
+    private var sunGlowBitmap: Bitmap? = null
+    private val sunGlowDst = RectF()
+
+    /** 直射点的单位球向量 scratch（[drawSunGlow] 每帧算一次）。 */
+    private val sunVector = FloatArray(3)
+
+    /**
+     * 球缘大气环。**一支** `SweepGradient` 提供角向配色（含 alpha），径向靠 [ATMO_BANDS] 条同心
+     * 描边各设不同 `paint.alpha` 来伪造衰减 —— 见 [drawAtmosphere]。
+     */
+    private val atmospherePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+
+    /** 直射点在相机平面上的投影 scratch：`[0]=S·east`、`[1]=S·north`、`[2]=S·forward`。 */
+    private val sunPlane = FloatArray(3)
+
+    /** 大气环的角向配色 shader，按 [atmosphereKey] 缓存（太阳几乎静止，绝大多数帧直接复用）。 */
+    private var atmosphereShader: SweepGradient? = null
+
+    /** 大气环 shader 的缓存键（角向 + `|S⊥|` + 半径都量化后拼成）。变了才重造。 */
+    private var atmosphereKey = ""
+
+    /**
+     * 球缘大气环开关。**只为测试留的口子**（默认开 = 出厂行为）：这层叠在球缘上，凡是在
+     * 球缘附近取样的像素断言都会被它改掉，而那些测试的契约是"晨昏贴图/光效对不对"，
+     * 不是"大气环画没画对"。要单独验大气环时反过来关掉光晕与高光（见 `GlobeAtmosphereTest`）。
+     */
+    internal var atmosphereEnabled: Boolean = true
 
     private val rimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -1010,13 +1066,29 @@ class GlobeView @JvmOverloads constructor(
             // 昼夜已经**烘进这一张**贴图里了：球面只画一次网格，不存在"每帧重新判定哪块是
             // 夜面、再裁出区域"这回事 —— 转动当然不可能翻面（见 [DayNightCompositor]）。
             drawComposite(canvas, cx, cy, radius, composite)
+            // 贴图带来的是**真实的**明暗（太阳在哪儿、哪儿是夜），但它并不告诉眼睛"这是个球"：
+            // 左上那块反光与右下的压暗仍得自己叠。画在屏幕空间而不是烘进贴图 —— 贴图网格是
+            // 5° 一列的（[MESH_COLS]），连续度二阶导不连续的话，光晕/高光这种平滑渐变会显出折线边。
+            if (sphereSheenEnabled) {
+                sheenPaint.shader = sphereSheen(cx, cy, radius)
+                canvas.drawCircle(cx, cy, radius, sheenPaint)
+            }
         } else {
             canvas.drawCircle(cx, cy, radius, oceanPaint)
             drawCoastline(canvas, cx, cy, radius)
             // 矢量回退也要有昼夜感（仅星空模式）：叠一层逐纹素烘出来的纯色夜空遮罩。
             if (starryMode) drawNightMask(canvas, cx, cy, radius)
         }
-        canvas.drawCircle(cx, cy, radius, rimPaint)
+        // 太阳光晕：贴图与矢量回退两条路都叠，且必须压在球面之上、弧线与标记之下（它是"光"，不是"物"）。
+        if (starryMode) drawSunGlow(canvas, cx, cy, radius)
+        // 星空模式：球缘由**大气环**接管（昼侧亮蓝、晨昏线一条薄暖色、夜侧只剩极弱冷辉光）。
+        // 原来那圈均匀描边在这里必须退场 —— 它昼夜同亮，正好违反"夜侧几乎看不到亮蓝"。
+        // 关掉大气环开关时退回旧行为（均匀描边），这样"关掉某一层"的测试基线不被改掉。
+        if (starryMode && atmosphereEnabled) {
+            drawAtmosphere(canvas, cx, cy, radius)
+        } else {
+            canvas.drawCircle(cx, cy, radius, rimPaint)
+        }
         drawArcs(canvas, cx, cy, radius)
         drawMarkers(canvas, cx, cy, radius)
         drawLabels(canvas)
@@ -1049,6 +1121,31 @@ class GlobeView @JvmOverloads constructor(
             )
         }
         return oceanPaint.shader!!
+    }
+
+    /**
+     * 贴图模式那层球面高光（见 [sheenPaint]）：与 [oceanShader] 同几何、同缓存策略，
+     * 只是把"往白/往黑混"的起点从 [Palette.ocean] 换成了纯白/纯黑。
+     *
+     * 半径变化时重建，否则复用 —— 与 [oceanShader] 一样，缓存键只有半径，所以
+     * **主题/模式换了颜色必须让缓存失效**；这里用的是与调色板无关的中性色，天然没这个问题。
+     */
+    private fun sphereSheen(cx: Float, cy: Float, radius: Float): Shader {
+        if (sheenRadius != radius) {
+            sheenRadius = radius
+            sheenPaint.shader = RadialGradient(
+                cx - radius * 0.35f, cy - radius * 0.35f, radius * 1.35f,
+                intArrayOf(SHEEN_HIGHLIGHT, Color.TRANSPARENT, SHEEN_SHADE),
+                floatArrayOf(0f, 0.55f, 1f), Shader.TileMode.CLAMP
+            )
+        }
+        return sheenPaint.shader!!
+    }
+
+    /** `x` 截到 `0..1` 之后的 3 次平滑（两端一阶导为 0），淡入淡出收尾用。 */
+    private fun smoothstep(x: Float): Float {
+        val t = x.coerceIn(0f, 1f)
+        return t * t * (3f - 2f * t)
     }
 
     /** 生成/复用星野位图：种子固定（每次布局一致），尺寸变化或首次进入星空模式才重建。 */
@@ -1300,6 +1397,200 @@ class GlobeView @JvmOverloads constructor(
         canvas.restore()
     }
 
+    /**
+     * 太阳光晕：跟着**当前太阳直射点**走的一块暖色柔光，画在球面之上、弧线与标记之下。
+     *
+     * 为什么需要它：球面原先只有一层**固定**的左上高光（[oceanShader] / [sphereSheen]），
+     * 它跟太阳在哪儿毫无关系 —— 看得出"这是个球"，但看不出"光从哪来"。有了跟着直射点走的
+     * 这团光，昼夜贴图那半明半暗才有了可见的原因（用户问的"为啥没有太阳光晕"就是这个）。
+     *
+     * 三条边界条件：
+     * - 直射点在**背面**（`depth <= 0`）时整块不画 —— 那颗球上此刻根本没有太阳；
+     * - 趋近**球缘**时按 [SUN_GLOW_FADE_DEPTH] 渐隐，否则一团光硬顶在边上看得出"贴在屏幕上"；
+     * - 裁到球内绘制，不让光溢到太空里。
+     */
+    private fun drawSunGlow(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
+        if (!sunGlowEnabled) return
+        GlobeProjection.unitVector(subsolarLonDeg, subsolarLatDeg, sunVector, 0)
+        // 与 [drawMarkers] 同一条"背面不画"的判据：depth 就是直射点与盘心的夹角余弦。
+        val depth = sunVector[0] * basis.zx + sunVector[1] * basis.zy + sunVector[2] * basis.zz
+        if (depth <= 0f) return
+        val visibility = smoothstep(depth / SUN_GLOW_FADE_DEPTH)
+        if (visibility <= 0f) return
+
+        val bmp = ensureSunGlowBitmap() ?: return
+        toScreen(sunVector[0], sunVector[1], sunVector[2], cx, cy, radius)
+        val glowRadius = radius * SUN_GLOW_RADIUS_RATIO
+        sunGlowPaint.alpha = (SUN_GLOW_MAX_ALPHA * visibility).toInt().coerceIn(0, 255)
+        sunGlowDst.set(
+            projection[0] - glowRadius, projection[1] - glowRadius,
+            projection[0] + glowRadius, projection[1] + glowRadius,
+        )
+        canvas.save()
+        compositeClipPath.reset()
+        compositeClipPath.addCircle(cx, cy, radius, Path.Direction.CW)
+        canvas.clipPath(compositeClipPath)
+        canvas.drawBitmap(bmp, null, sunGlowDst, sunGlowPaint)
+        canvas.restore()
+    }
+
+    /**
+     * 球缘的**大气层**：昼侧亮蓝、晨昏线一条很薄的暖色、夜侧只剩极弱的冷辉光。
+     *
+     * ## 为什么只需要一个标量
+     * 球缘上的点，它的法线就是它自己的单位向量 `v`（正交投影下可见半球是 `v·forward ≥ 0`，
+     * 球缘正是 `v·forward = 0` 的那整圈）。所以"这里受不受阳光"就是 `nd = v·S`：
+     * `+1` 太阳正照（正午）、`0` 晨昏线、`-1` 午夜。一整圈的观感全由这一个标量决定 ——
+     * 不需要裁切、不需要多边形，因此**不可能**在转动时闪（与 [DayNightCompositor] 同一条思路）。
+     *
+     * ## 屏幕角 ↔ nd
+     * 球缘在屏幕上就是半径 R 的圆，用屏幕角 α 参数化（`α = atan2(dy, dx)`，屏幕 y 朝下）：
+     * 该点相对盘心的 (右, 上) 分量是 `(cos α, −sin α)`。于是
+     *
+     * ```
+     * nd(α) = S·v(α) = (S·east)·cos α − (S·north)·sin α = A·cos(α + ψ)
+     * ```
+     *
+     * 其中 `A = |S⊥|` 是太阳方向**在相机平面上**的投影长度、`ψ = atan2(S·north, S·east)`。
+     *
+     * ⚠️ **不能把 A 归一化掉**：`A` 小意味着太阳几乎在相机正后方，那时整圈球缘都逼近晨昏线
+     * ——现实里就是"背对太阳看地球，球缘一圈都是日落"。归一化会把它伪装成"一圈里有一半是正午"，
+     * 恰好丢掉最漂亮的那一幕。
+     *
+     * ## 角向配色怎么落到画布上
+     * `SweepGradient` 的色标位置 `p` 就对应屏幕角 `α = 2πp`（Android 从 3 点钟起**顺时针**，
+     * 与屏幕坐标 y 朝下一致）。所以按 `p = i/M` 采样 `nd = A·cos(2πp + ψ)` 算出颜色即可，
+     * 不需要任何额外旋转换算。
+     *
+     * ## 径向衰减
+     * Canvas 一步做不出"角向配色 + 径向 alpha"（`SweepGradient` 只管角向），所以按 [ATMO_BANDS]
+     * 叠若干条**同心描边**：共用同一支 shader，各自设不同的 `paint.alpha`（`Paint` 的 alpha 会
+     * 乘在 shader 输出上）。每帧只有 K 次 drawCircle。
+     */
+    private fun drawAtmosphere(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
+        if (!atmosphereEnabled) return
+        GlobeProjection.unitVector(subsolarLonDeg, subsolarLatDeg, sunVector, 0)
+        GlobeProjection.project(sunVector[0], sunVector[1], sunVector[2], basis, sunPlane, 0)
+        val se = sunPlane[0]      // S · east（屏幕 +x 方向）
+        val sn = sunPlane[1]      // S · north（屏幕 −y 方向）
+        val perp = hypot(se, sn)  // |S⊥|
+
+        val psi = atan2(sn, se)
+        val key = "%d|%d|%d".format(
+            (psi / Math.toRadians(ATMO_ANGLE_STEP_DEG.toDouble())).roundToInt(),
+            (perp / ATMO_PERP_STEP).roundToInt(),
+            radius.roundToInt(),
+        )
+        var shader = atmosphereShader
+        if (shader == null || key != atmosphereKey) {
+            val colors = IntArray(ATMO_SWEEP_STEPS + 1)
+            val positions = FloatArray(ATMO_SWEEP_STEPS + 1)
+            val step = TWO_PI / ATMO_SWEEP_STEPS
+            for (i in 0..ATMO_SWEEP_STEPS) {
+                colors[i] = atmosphereColorAt(perp * cos(step * i + psi))
+                positions[i] = i.toFloat() / ATMO_SWEEP_STEPS
+            }
+            shader = SweepGradient(cx, cy, colors, positions)
+            atmosphereShader = shader
+            atmosphereKey = key
+        }
+        atmospherePaint.shader = shader
+
+        val inner = radius * ATMO_INNER_RATIO
+        val outer = radius * ATMO_OUTER_RATIO
+        val bandWidth = (outer - inner) / ATMO_BANDS
+        // 稍微重叠一点：不叠的话抗锯齿会在两条带的接缝上留一圈"没盖住"的细线。
+        atmospherePaint.strokeWidth = bandWidth * 1.08f
+        for (k in 0 until ATMO_BANDS) {
+            val t = (k + 0.5f) / ATMO_BANDS
+            val weight = if (t <= ATMO_PEAK_T) {
+                rampEdge(t, 0f, ATMO_PEAK_T)
+            } else {
+                rampEdge(t, 1f, ATMO_PEAK_T)
+            }
+            atmospherePaint.alpha = (ATMO_PEAK_ALPHA * weight).toInt().coerceIn(0, 255)
+            canvas.drawCircle(cx, cy, inner + (k + 0.5f) * bandWidth, atmospherePaint)
+        }
+        atmospherePaint.shader = null
+    }
+
+    /**
+     * 球缘大气环在 `nd = v·S`（球缘点法线与太阳方向的点积）处的颜色，含 alpha。
+     *
+     * 三段自下而上按 SRC_OVER 叠：**极弱冷辉光**（夜侧）→ **暖色带**（晨昏线）→ **白昼亮蓝**。
+     * 顺序有讲究：暖色带必须压在冷辉光**之上**，否则最漂亮的晨昏线暖光会被冷色冲淡；
+     * 而白昼蓝最后叠不会盖掉暖色带 —— `nd ≈ 0` 处白昼蓝的权重本来就是 0。
+     *
+     * 纯函数（不读任何字段），所以单测可以直接按 `nd` 断言整套配色规律，不必渲染。
+     */
+    internal fun atmosphereColorAt(nd: Float): Int {
+        val night = rampEdge(nd, ATMO_NIGHT_START, ATMO_NIGHT_FULL)
+        // 暖色是个**峰**而不是坡：峰值在 nd=0，两侧各按 ATMO_WARM_BAND 收窄。
+        val warmT = 1f - abs(nd) / ATMO_WARM_BAND
+        val warm = if (warmT <= 0f) 0f else warmT * warmT * (3f - 2f * warmT)
+        val day = rampEdge(nd, ATMO_DAY_START, ATMO_DAY_FULL)
+
+        var out = 0
+        out = srcOver(out, ATMO_NIGHT_RGB, (ATMO_NIGHT_MAX_ALPHA * night).toInt())
+        out = srcOver(out, ATMO_WARM_RGB, (ATMO_WARM_MAX_ALPHA * warm).toInt())
+        out = srcOver(out, ATMO_DAY_RGB, (ATMO_DAY_MAX_ALPHA * day).toInt())
+        return out
+    }
+
+    /**
+     * 把 `x` 从 `[from]` 映到 `[to]`（截断到 0..1）再做两端一阶导为 0 的平滑。
+     * `from > to` 也成立（"越负越强"的夜侧要用反向区间），所以不假设两者的大小关系。
+     */
+    private fun rampEdge(x: Float, from: Float, to: Float): Float {
+        if (from == to) return if (x >= to) 1f else 0f
+        return smoothstep((x - from) / (to - from))
+    }
+
+    /**
+     * 标准 SRC_OVER：把不透明的 `(rgb, alpha)` 叠到 [dst]（可能带 alpha）之上。
+     *
+     * 这里必须手算而不是用 `PorterDuffXfermode` —— 这套混合发生在**一帧之内的同一个 shader 里**
+     * （色标本身要就是叠好的 ARGB），没有任何一层可以借给 xfermode。
+     */
+    private fun srcOver(dst: Int, rgb: Int, alpha: Int): Int {
+        val a = alpha.coerceIn(0, 255)
+        if (a == 0) return dst
+        if (a == 255) return (0xFF shl 24) or (rgb and 0x00FFFFFF)
+        val da = (dst ushr 24) and 0xFF
+        val outA = a + da * (255 - a) / 255
+        if (outA == 0) return 0
+        val keep = da * (255 - a) / 255
+        fun ch(shift: Int): Int =
+            (((rgb shr shift) and 0xFF) * a + ((dst shr shift) and 0xFF) * keep) / outA
+        return (outA shl 24) or (ch(16) shl 16) or (ch(8) shl 8) or ch(0)
+    }
+
+    /**
+     * 预渲染一次太阳光晕位图：中心暖白 → 外圈琥珀 → 全透明。四个档位把能量尽量压在靠中心处，
+     * 用 [drawSunGlow] 里那个 `alpha` 统一缩放强度 —— 只有一张图，不用按半径重建。
+     */
+    private fun ensureSunGlowBitmap(): Bitmap? {
+        sunGlowBitmap?.takeIf { !it.isRecycled }?.let { return it }
+        val size = SUN_GLOW_TEX_SIZE
+        val half = size / 2f
+        val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(
+                half, half, half,
+                intArrayOf(
+                    Color.argb(235, 255, 250, 234),
+                    Color.argb(140, 255, 237, 192),
+                    Color.argb(48, 255, 212, 138),
+                    Color.argb(0, 255, 188, 108),
+                ),
+                floatArrayOf(0f, 0.3f, 0.65f, 1f), Shader.TileMode.CLAMP
+            )
+        }
+        Canvas(bmp).drawCircle(half, half, half, paint)
+        sunGlowBitmap = bmp
+        return bmp
+    }
+
     // ── 贴图球面网格的复用缓冲（行主序，`drawBitmapMesh` 要的顺序） ──
 
     /** [GlobeProjection.unitVector] / [GlobeProjection.project] 的输出 scratch。 */
@@ -1309,12 +1600,31 @@ class GlobeView @JvmOverloads constructor(
     private val meshVerts = FloatArray((MESH_COLS + 1) * (MESH_ROWS + 1) * 2)
 
     /**
-     * 逐行算网格用的 scratch：投影出的 (right, up) 与"这一列在不在正面"。
-     * 必须先整行算完再写顶点 —— 背面列的落点要**按整行的正面区间**插值（见 [buildTextureMesh]）。
+     * **整张**网格的 scratch（不再是逐行）：每个顶点投影出的 (right, up, depth) 与"它在不在正面"。
+     *
+     * 必须先整张投完再写顶点 —— 背面顶点的落点要按**整列的正面区间**算（见 [buildTextureMesh]），
+     * 而"这一列有哪些行是正面"只有把这一列所有行都投完才知道。
      */
-    private val meshRight = FloatArray(MESH_COLS + 1)
-    private val meshUp = FloatArray(MESH_COLS + 1)
-    private val meshFront = BooleanArray(MESH_COLS + 1)
+    private val meshRight = FloatArray((MESH_COLS + 1) * (MESH_ROWS + 1))
+    private val meshUp = FloatArray((MESH_COLS + 1) * (MESH_ROWS + 1))
+    private val meshDepth = FloatArray((MESH_COLS + 1) * (MESH_ROWS + 1))
+    private val meshFront = BooleanArray((MESH_COLS + 1) * (MESH_ROWS + 1))
+
+    /** 这一顶点是不是塌到"本列的视界交点"上去（仅"单侧背面段"为真，见 [buildTextureMesh]）。 */
+    private val meshCrossed = BooleanArray((MESH_COLS + 1) * (MESH_ROWS + 1))
+
+    // 每列 / 每行的正面统计，背面顶点查塌陷目标用。
+    private val colFrontCount = IntArray(MESH_COLS + 1)
+    private val colFirstFront = IntArray(MESH_COLS + 1)
+    private val colLastFront = IntArray(MESH_COLS + 1)
+    private val rowFrontCount = IntArray(MESH_ROWS + 1)
+    private val rowFirstFront = IntArray(MESH_ROWS + 1)
+    private val rowLastFront = IntArray(MESH_ROWS + 1)
+
+    /** 每列的视界交点（已归一到半径 1，即"落在球缘上"）与其有效性。 */
+    private val colCrossRight = FloatArray(MESH_COLS + 1)
+    private val colCrossUp = FloatArray(MESH_COLS + 1)
+    private val colCrossValid = BooleanArray(MESH_COLS + 1)
 
     // ── 贴图锚点 ──
     //
@@ -1325,7 +1635,7 @@ class GlobeView @JvmOverloads constructor(
     // 烘的时候就让第 0 列落在 [anchorLonFor] 给出的世界经度上，于是"循环移位"和"逐纹素合成"
     // 合并成同一次遍历：少一次 2MB 位图拷贝，也少一整套失效/分槽逻辑。
     // 接缝仍在相机对足点（背面），背面临界列仍靠"整段塌到相邻正面列"退化成零面积 ——
-    // 这套约定没变，见 [buildTextureMesh] 与 [writeTextureRow]。
+    // 这套约定没变，见 [buildTextureMesh]。
 
     /**
      * 按当前相机姿态铺一遍网格，行主序写进 [meshVerts]（屏幕坐标）。
@@ -1343,128 +1653,175 @@ class GlobeView @JvmOverloads constructor(
      * `drawBitmapMesh 的贴图坐标是隐式均匀网格_不随顶点位置移动`。
      *
      * ## 背面怎么处理
-     * 背面（`v·forward < 0`）的点在正交投影下不可见，但隐式网格不能"抽掉"列。
-     * 做法是把每一段**数组里连续**的背面列，整段塌到与它相邻的那个正面边界列的**同一个位置**上：
-     * 段内四边形四个角两两重合 ⇒ 面积恒为 0，画了等于没画（见 [writeTextureRow]）。详见 [writeTextureRow]。
+     * 背面（`v·forward < 0`）的点在正交投影下不可见，但隐式网格不能"抽掉"列，只能让它们**跟邻居重合**
+     * ——四边形四角只剩两个位置 ⇒ 面积恒为 0 ⇒ 一条边都不画（`零面积格子画不画` 钉着这条后端事实）。
+     * 反过来，只要有一列背面顶点被摆到别处，它跟邻居之间那个四边形就会**横跨整个盘面**、
+     * 把那一行的贴图糊满正面：观感就是"北半球整块陆地被太平洋盖掉"。
+     *
+     * 塌陷方向**每帧按可见边界的走向选**（就是下面 `collapseByRow` 那两行，推导写在代码处）；
+     * 选定之后，逐列分支里还要再按**这一列的背面段**形态分流（因此分两轮：先整张投影，再写顶点）：
+     *
+     * - **逐列分支里的「单侧段」** —— 背面段只贴着网格的一条纬线端（顶行或底行，即高俯仰时的极冠段）：
+     *   整段塌到**本列的视界交点**（该经线上 `depth` 过零的那个纬度，投影后归一到半径 1 ⇒ 落在球缘上）。
+     *   段内四边形四角两两重合、面积恒 0；它与相邻**正面行**之间那个四边形则塌成一条**贴着球缘的窄带**，
+     *   正好画出这一格可见的那一条边（宽 ≤ 1.5%R）。
+     *   ⚠️ 这里必须"逐列"而不是"逐行"：整列塌到同一个球缘点，相邻两行的顶点才落得**一样近**。
+     *   旧写法是逐行塌到"本行挨着的正面列"，而整行正面那行与部分背面那行**正面区间不一致**时，
+     *   两行的塌陷目标会隔开几十度方位角 ⇒ 那个四边形变成横跨球缘的**弦形三角**，
+     *   把低 10° 的贴图糊到高 10° 的位置上。症状正是"上下转动时盘的最上方/最下方偶尔缺一角"：
+     *   `GlobeMeshOverlapProbeTest` 量到四边形面积和一度超出 πR² 5%（pitch 60°）。
+     *
+     * - **两端都被正面行包夹的段**：只能用逐行规则（塌到本行正面区间挨着的那一列）。这种段只出现在
+     *   `depth` 恰好过零、被 [BACK_EPS] 判成正面的**极点行包夹**的中间段（俯仰≈0 时相机对足点那条经线）；
+     *   把整段塌到球缘的哪一端，另一端的边界四边形都会横跨盘面。
+     *
+     * 兜底两条（现规则下都不可达，留着防御）：整列没有正面顶点 ⇒ 退回逐行规则；整行也没有正面列
+     * ⇒ 整行塌成一个视界点。
      */
     private fun buildTextureMesh(cx: Float, cy: Float, radius: Float, anchorLonDeg: Float) {
         val total = MESH_COLS + 1
-        var k = 0
-        for (row in 0..MESH_ROWS) {
+        val rows = MESH_ROWS + 1
+
+        colFrontCount.fill(0)
+        rowFrontCount.fill(0)
+        colCrossValid.fill(false)
+        colFirstFront.fill(rows)
+        colLastFront.fill(-1)
+
+        // ── 第一轮：整张投影 ──
+        for (row in 0 until rows) {
             val lat = 90f - 180f * row / MESH_ROWS
-            // 整行先投一遍：背面列的落点要按**整行的正面区间**来插值，不能边投边写。
-            var frontCount = 0
-            var deepest = 0
-            var deepestDepth = -2f
+            val base = row * total
+            rowFirstFront[row] = total
+            rowLastFront[row] = -1
             for (col in 0 until total) {
                 val lon = anchorLonDeg + 360f * col / MESH_COLS
                 GlobeProjection.unitVector(lon, lat, meshVector, 0)
                 GlobeProjection.project(
                     meshVector[0], meshVector[1], meshVector[2], basis, projection, 0,
                 )
-                meshRight[col] = projection[0]
-                meshUp[col] = projection[1]
+                val i = base + col
+                meshRight[i] = projection[0]
+                meshUp[i] = projection[1]
+                meshDepth[i] = projection[2]
+                meshCrossed[i] = false
                 // ⚠️ 判据要留负容差：极点那一行整行的 depth 都是 cos 90° 的浮点尾巴（≈±1e-17），
                 // 严格 `> 0` 会让"正/背面"由噪声决定，把极点整行推到视界上去。
-                meshFront[col] = projection[2] > -BACK_EPS
-                if (meshFront[col]) frontCount++
-                if (projection[2] > deepestDepth) {
-                    deepestDepth = projection[2]
-                    deepest = col
+                val front = projection[2] > -BACK_EPS
+                meshFront[i] = front
+                if (front) {
+                    colFrontCount[col]++
+                    if (row < colFirstFront[col]) colFirstFront[col] = row
+                    colLastFront[col] = row
+                    rowFrontCount[row]++
+                    if (col < rowFirstFront[row]) rowFirstFront[row] = col
+                    rowLastFront[row] = col
                 }
             }
-            k = writeTextureRow(k, total, frontCount, deepest, lat, cx, cy, radius)
+        }
+
+        // ── 塌陷方向：按**可见边界在网格里的走向**选 ──
+        //
+        // 边界（`depth = 0` 那条大圆，投影后就是球缘）在网格里是一条斜着穿的曲线。塌陷必须**横穿**
+        // 它：整条线（行或列）塌到同一个点，段内四边形才退化；横穿时相邻线的塌陷目标才挨得近。
+        // 顺着它塌则会塌到"与本线几乎相切的交点"上，相邻线的交点会沿球缘甩开几十度（实测面积和
+        // 冲到 1.24）。而它朝哪边斜只取决于相机纬度：
+        //
+        //   边界在网格里的斜率 d(行)/d(列) = |cot(相机纬度)| · (每列经度跨度 / 每行纬度跨度)
+        //
+        // camLat = 0 时边界就是一条**经线**（斜率 ∞）⇒ 只有按**行**塌才横穿；camLat → ±90 时边界
+        // 退化成**纬线**（斜率 0）⇒ 只有按**列**塌才横穿。阈值取斜率 1（即网格里的 45°）。
+        val latRad = latDeg * PI / 180.0
+        val boundaryRowPerCol =
+            abs(cos(latRad) / sin(latRad)) * (360.0 / MESH_COLS) / (180.0 / MESH_ROWS)
+        val collapseByRow = boundaryRowPerCol > 1.0
+
+        // ── 每列的视界交点；给"单侧背面段"打上塌到它的标记 ──
+        if (!collapseByRow) for (col in 0 until total) {
+            val frontCount = colFrontCount[col]
+            if (frontCount == 0 || frontCount == rows) continue
+            val topBack = colFirstFront[col] != 0
+            val bottomBack = colLastFront[col] != rows - 1
+            if (topBack == bottomBack) continue   // 两端都被正面行包夹 ⇒ 逐行规则
+            val runFirst = if (topBack) 0 else colLastFront[col] + 1
+            val runLast = if (topBack) colFirstFront[col] - 1 else rows - 1
+            val frontRow = if (topBack) runLast + 1 else runFirst - 1
+            val backRow = if (topBack) runLast else runFirst
+            val crossRight = crossingRight(col, frontRow, backRow, total, anchorLonDeg)
+            if (!crossRight) continue
+            colCrossValid[col] = true
+            for (row in runFirst..runLast) meshCrossed[row * total + col] = true
+        }
+
+        // ── 第二轮：写顶点（行主序） ──
+        var k = 0
+        for (row in 0 until rows) {
+            val base = row * total
+            for (col in 0 until total) {
+                val i = base + col
+                when {
+                    meshFront[i] ->
+                        putVertex(k, meshRight[i], meshUp[i], cx, cy, radius)
+
+                    // 边界更"横"（相机纬度大）⇒ 按列塌：整列背面段塌到本列的球缘交点。
+                    !collapseByRow && meshCrossed[i] ->
+                        putVertex(k, colCrossRight[col], colCrossUp[col], cx, cy, radius)
+
+                    // 边界更"竖"（相机贴近赤道）⇒ 按行塌：塌到本行正面区间挨着的那一列上
+                    // （同行 ⇒ 与左右邻居重合）。逐列规则算不出交点的列也走这里兜底。
+                    else -> {
+                        val anchor = if (rowFrontCount[row] == 0) {
+                            -1
+                        } else if (col < rowFirstFront[row]) {
+                            rowFirstFront[row]
+                        } else {
+                            rowLastFront[row]
+                        }
+                        if (anchor < 0) {
+                            putVertex(k, 0f, if (row * 2 < rows) 1f else -1f, cx, cy, radius)
+                        } else {
+                            putVertex(k, meshRight[base + anchor], meshUp[base + anchor], cx, cy, radius)
+                        }
+                    }
+                }
+                k += 2
+            }
         }
     }
 
     /**
-     * 写一行的顶点：正面列用真实投影位置，背面列**整段塌到相邻的正面边界列**上。返回新的写指针。
+     * 算第 [col] 列的**视界交点**并写进 [colCrossRight] / [colCrossUp]，返回是否算出来了。
      *
-     * ## 背面列为什么只能"塌成零面积"
-     * 正交投影把背面各点投在盘**内**，而隐式网格不能抽掉列，所以背面列必须被安置到某个位置。
-     * 唯一安全的去处是"让它跟左右邻居重合"——四边形四角只剩两个位置 ⇒ 面积恒为 0 ⇒ 一条边都不画
-     * （零面积不画有回归测试钉着：`零面积格子画不画`）。反过来，只要有一列背面顶点被摆到别的方向
-     * ——哪怕只是相邻两行摆向了盘的两侧——它们之间那个四边形就会**横跨整个盘面**，
-     * 把接缝那一行的贴图糊满正面：观感就是"北半球整块陆地被太平洋盖掉"。
-     *
-     * 历史写法踩的正是这个坑：把背面列的方位角从 `az(last)` 线性插值到 `az(first)`。方位角本身没错，
-     * 但那两个角在相机"正对的那一行"（行内存在一个 `(right, up) ≈ (0, 0)` 的对跖列）恰好相差 180°，
-     * `atan2(sin, cos)` 归一化后走 +180° 还是 −180° 完全由浮点噪声决定；于是相邻两行各自朝盘的
-     * 另一侧绕，夹在中间的那个四边形就成了横跨盘面的"带"。
-     *
-     * ## 现在的做法
-     * 直接从数组结构上消灭这个可能：背面列被**数组**（注意不是环）切成两段 ——
-     * `[0, first-1]` 紧挨 `first`、`[last+1, MESH_COLS]` 紧挨 `last` —— 各自塌到贴着的那一列上。
-     * 段内每个四边形四角重合；两个接缝四边形是"正面边界列 vs 塌到它身上的背面列"，四角同样只剩两个
-     * 位置；而这两段之间**根本没有四边形**（列 0 与列 MESH_COLS 在网格里不构成格子，网格不环绕）。
-     * 于是整行背面一个像素都不画，且与相机姿态无关：没有方位角、没有插值、没有 ±180° 的符号歧义。
-     *
-     * ⚠️ 前提是正面列在数组里必须是**一整段**（背面才是首尾两段）。接缝若落在正面里，背面就成了一段、
-     * 两端各贴一个正面列，其中一头必然跨盘。所以贴图要烘成"缝落在相机对足点上"—— 见 [anchorLonFor]。
+     * 该经线上的 `depth = A·cos(纬度) + B·sin(纬度)` 是个余弦（只过零一次），所以在"相邻的正面行
+     * [frontRow] 与背面行 [backRow]"之间线性插值就能拿到过零纬度。投影后**归一到半径 1**：
+     * 交点按定义就在球缘上，而插值得到的纬度会差那么一点点（±0.4px 量级），不归一的话
+     * 那里会留一条发丝宽的缝。
      */
-    private fun writeTextureRow(
-        k0: Int,
+    private fun crossingRight(
+        col: Int,
+        frontRow: Int,
+        backRow: Int,
         total: Int,
-        frontCount: Int,
-        deepest: Int,
-        lat: Float,
-        cx: Float,
-        cy: Float,
-        radius: Float,
-    ): Int {
-        var k = k0
-        when {
-            // 整行都在背面（正对着另一极时的极冠）：整行塌成一个视界点，四角两两重合 ⇒ 面积恒 0。
-            frontCount == 0 -> {
-                var right = meshRight[deepest]
-                var up = meshUp[deepest]
-                val len = hypot(right, up)
-                if (len < 1e-4f) {
-                    right = 0f
-                    up = if (lat >= 0f) 1f else -1f
-                } else {
-                    right /= len
-                    up /= len
-                }
-                repeat(total) {
-                    putVertex(k, right, up, cx, cy, radius)
-                    k += 2
-                }
-            }
-            // 整行都在正面（凑近看本极那一带会出现）：照实投。
-            frontCount == total -> for (col in 0 until total) {
-                putVertex(k, meshRight[col], meshUp[col], cx, cy, radius)
-                k += 2
-            }
-            else -> {
-                val p = meshFront.indexOfFirst { it }
-                var first = p
-                var last = p
-                // 从任意一个正面列出发，两个方向各走一遍就是这段环绕区间的两端。
-                // 走法是"是正面列才挪"，越界那一步自然停住；repeat 只用来封顶，防死循环。
-                repeat(frontCount) {
-                    if (meshFront[(first - 1 + total) % total]) first = (first - 1 + total) % total
-                }
-                repeat(frontCount) {
-                    if (meshFront[(last + 1) % total]) last = (last + 1) % total
-                }
-                for (col in 0 until total) {
-                    if (meshFront[col]) {
-                        putVertex(k, meshRight[col], meshUp[col], cx, cy, radius)
-                    } else {
-                        // 背面列整段塌到**它在数组里挨着的那个正面边界列**上（col < first 的那段贴
-                        // first，col > last 的那段贴 last）。于是这段里每一个四边形 —— 包括与正面
-                        // 相接的那两个 —— 四角只剩两个位置，面积恒为 0 ⇒ 一条边都不画（零面积不画
-                        // 有回归测试钉着，见 `零面积格子画不画`）。
-                        val anchor = if (col < first) first else last
-                        putVertex(k, meshRight[anchor], meshUp[anchor], cx, cy, radius)
-                    }
-                    k += 2
-                }
-            }
-        }
-        return k
+        anchorLonDeg: Float,
+    ): Boolean {
+        val d1 = meshDepth[frontRow * total + col]
+        val d2 = meshDepth[backRow * total + col]
+        val denom = d1 - d2
+        val t = if (abs(denom) < 1e-6f) 0.5f else (d1 / denom).coerceIn(0f, 1f)
+        val lat1 = 90f - 180f * frontRow / MESH_ROWS
+        val lat2 = 90f - 180f * backRow / MESH_ROWS
+        val latCross = lat1 + (lat2 - lat1) * t
+        GlobeProjection.unitVector(anchorLonDeg + 360f * col / MESH_COLS, latCross, meshVector, 0)
+        GlobeProjection.project(
+            meshVector[0], meshVector[1], meshVector[2], basis, projection, 0,
+        )
+        val len = hypot(projection[0], projection[1])
+        if (len < 1e-3f) return false
+        colCrossRight[col] = projection[0] / len
+        colCrossUp[col] = projection[1] / len
+        return true
     }
+
 
     /** 写一个顶点：`(right, up)` 是正交投影出的屏幕方向（单位 = 球半径）。 */
     private fun putVertex(index: Int, right: Float, up: Float, cx: Float, cy: Float, radius: Float) {
@@ -2113,6 +2470,110 @@ class GlobeView @JvmOverloads constructor(
         private const val NIGHT_MASK_MAX_ALPHA = 210
 
         /**
+         * 贴图模式球面高光的两个端色。中性白/黑、α 都压在 100 以下：它只是"球感"，不是主体，
+         * 压过贴图本身就把真实的陆海明暗盖掉了。数值取到和 [oceanShader] 的混色比例观感相当。
+         */
+        private const val SHEEN_HIGHLIGHT = 0x30FFFFFF
+        private const val SHEEN_SHADE = 0x48000000
+
+        /**
+         * 太阳光晕的半径，相对球半径。0.9 就是"几乎铺满整个可见半球但不越过球缘"——
+         * 玻璃球式的柔光本来就该大而淡，太小会看起来像个贴上去的圆点。
+         */
+        private const val SUN_GLOW_RADIUS_RATIO = 0.9f
+
+        /**
+         * 太阳光晕的最大不透明度（乘在预渲染位图自己的 α 上）。压在 120 以下：
+         * 直射点附近该"亮起来"，但不该把贴图细节糊成一团白。
+         */
+        private const val SUN_GLOW_MAX_ALPHA = 120
+
+        /**
+         * 直射点趋近视界时的淡出深度。depth 是直射点与盘心的夹角余弦（1 = 正对盘心、0 = 正好在球缘），
+         * 到球缘时"太阳"已经落到地平线下，不该再往盘面上打光。
+         */
+        private const val SUN_GLOW_FADE_DEPTH = 0.30f
+
+        /** 太阳光晕预渲染位图的边长（像素）。柔光没有细节要保留，缩放糊一点反而更自然。 */
+        private const val SUN_GLOW_TEX_SIZE = 256
+
+        // ── 球缘大气层（见 [drawAtmosphere] / [atmosphereColorAt]） ──
+        //
+        // 现实里球缘那圈光是**沿视线穿过一整条大气**的散射：太阳照得到它，它才亮。所以它的亮度和
+        // 颜色只由一件事决定 —— 该球缘点的法线与太阳方向的点积 `nd`（+1 = 太阳正照、0 = 晨昏线、
+        // -1 = 午夜）。这正是用户要的三段：昼侧亮蓝、晨昏线一条很薄的暖色、夜侧几乎看不见。
+
+        /**
+         * 大气环的内缘 / 外缘，相对球半径。整条带约占 7% 半径（R≈282px 时 ≈20px）。
+         *
+         * 内缘**很浅**（只往盘内 2.2%）：真实大气几乎全部在固体球面**之外**，往盘内伸太多的话，
+         * 球缘内侧那圈本来就很亮的地形（极地冰盖、云带）会被大气色一起裹进去，
+         * 暖带看起来就成"糊在冰面上的一块亮斑"而不是"贴边的光弧"。
+         */
+        private const val ATMO_INNER_RATIO = 0.978f
+        private const val ATMO_OUTER_RATIO = 1.048f
+
+        /**
+         * 径向分几条**同心 stroke** 来伪造柔和衰减。
+         *
+         * Canvas 没有"角向配色 + 径向 alpha"的一步到位画法：`SweepGradient` 只能给角向，
+         * 想要径向衰减就得叠多次。这里用 K 条同心描边共用同一支 sweep shader、各自设不同
+         * `paint.alpha` —— 每帧只有 K 次 drawCircle，比"逐角向分段的 drawArc"（要 N×K 次）省两个数量级。
+         */
+        private const val ATMO_BANDS = 8
+
+        /**
+         * 径向峰值落在带内的相对位置（0 = 内缘、1 = 外缘）。取 0.42 ⇒ 最亮那条落在 **1.007R**：
+         * 大气最亮的地方本来就在固体球面**紧外面**，不在球面本身上。往外留的尾巴也比内缘长
+         * （大气是往外逸散的，外缘该比内缘糊）。
+         */
+        private const val ATMO_PEAK_T = 0.42f
+
+        /**
+         * 径向峰值那一条带的 `paint.alpha`。取 255 = 完全不削色标的 alpha —— 径向曲线只负责
+         * **削两侧**，峰值的实际不透明度由 [atmosphereColorAt] 按 `nd` 决定。
+         */
+        private const val ATMO_PEAK_ALPHA = 255
+
+        /** `SweepGradient` 的角向采样档数（色标数 = 它 + 1）。1° 一档。 */
+        private const val ATMO_SWEEP_STEPS = 360
+
+        /** 缓存键的量化步长：太阳方向角按这个度数、`|S⊥|` 按这个步长量化后才重造 shader。 */
+        private const val ATMO_ANGLE_STEP_DEG = 2f
+        private const val ATMO_PERP_STEP = 0.01f
+
+        /**
+         * 白昼侧大气亮蓝。取**偏青的浅蓝**而不是饱和蓝：真实地球白昼球缘是被阳光照亮的大气 +
+         * 云顶，偏白亮；压太深会变成一条塑料蓝边。
+         */
+        private const val ATMO_DAY_RGB = 0x8FD8FF
+        private const val ATMO_DAY_MAX_ALPHA = 215
+
+        /**
+         * 晨昏线暖色带（橙红 → 暖粉）。`nd = 0` 处最强，两侧各按 [ATMO_WARM_BAND] 收窄。
+         *
+         * 带宽必须窄：`nd = A·cos(角)` 在 nd=0 附近对角度的导数最大，所以哪怕 nd 只给 0.10，
+         * 映射到球缘上也只有 ±6° 左右的弧；再宽就成了一条环绕的橙腰带，不是"很薄的一层"。
+         * 峰值 alpha 压在 150 以下 —— 用户明确要"不要太饱和"。
+         */
+        private const val ATMO_WARM_RGB = 0xFF8A5C
+        private const val ATMO_WARM_MAX_ALPHA = 150
+        private const val ATMO_WARM_BAND = 0.10f
+
+        /**
+         * 夜侧那层极弱的冷色空气辉光。只保证"球缘还看得见"，不制造亮蓝。
+         * 40 时球缘在星空里几乎完全消失；52 仍属"极微弱"，但轮廓读得出来。
+         */
+        private const val ATMO_NIGHT_RGB = 0x3E6E9E
+        private const val ATMO_NIGHT_MAX_ALPHA = 52
+        private const val ATMO_NIGHT_START = -0.12f
+        private const val ATMO_NIGHT_FULL = -0.55f
+
+        /** 白昼蓝的爬升区间（nd）：从 [ATMO_DAY_START] 起爬、到 [ATMO_DAY_FULL] 满值。 */
+        private const val ATMO_DAY_START = 0.06f
+        private const val ATMO_DAY_FULL = 0.42f
+
+        /**
          * 贴图球面网格的格数。**列数是按整张 360° 贴图算的**（每列 5°），不是按可见半球
          * —— 网格必须整张锚定，可见那半圈自然就是其中 36 列。行是 180°（每行 10°）。
          *
@@ -2127,7 +2588,7 @@ class GlobeView @JvmOverloads constructor(
 
         /**
          * 判定"这一列在正面"时给 depth 留的负容差。极点行整行的 depth 都是 `cos 90°` 的浮点尾巴
-         * （量级 1e-17），严格 `> 0` 会让正/背面由噪声决定 —— 见 [writeTextureRow]。
+         * （量级 1e-17），严格 `> 0` 会让正/背面由噪声决定 —— 见 [buildTextureMesh]。
          */
         private const val BACK_EPS = 1e-4f
 

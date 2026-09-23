@@ -34,5 +34,14 @@ interface ProfileDao {
 
     @Query("UPDATE profiles SET lastConnectedAt = :epochMs WHERE id = :id")
     fun updateLastConnectedAt(id: String, epochMs: Long)
+
+    /**
+     * 归属某条订阅的节点数。
+     *
+     * ⚠️ 调用方必须自己挡掉空 `subId`：手动节点的 `subId` 就是空串，
+     * `subId = ''` 会**匹配全部手动节点**（"删订阅时顺带删它的节点"会变成清库）。
+     */
+    @Query("SELECT COUNT(*) FROM profiles WHERE subId = :subId")
+    fun countBySubId(subId: String): Int
 }
 

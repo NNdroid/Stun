@@ -13,7 +13,6 @@
     <string name="connection_exit">Exit address</string>
     <string name="connection_exit_pending">Fetching exit address…</string>
     <string name="connection_last_connected">Last connected</string>
-    <string name="connection_magic_format">Magic: %1$s</string>
     <string name="connection_label_protocol">Protocol</string>
     <string name="connection_label_magic">Magic marker</string>
     <string name="connection_label_note">Note</string>
@@ -58,4 +57,22 @@
     <string name="connection_auxiliary_info_subtitle">Other technical details &amp; server notices</string>
     <string name="connection_last_connected_short">Last: %1$s</string>
     <string name="connection_globe_reset_view">Reset view</string>
+
+    <!-- 动画二维码：密文超过单张二维码容量时的分片传输（发送端弹窗 + 接收端连续扫码页）。
+         qr_stream_scan_progress_format 里的 %% 是字面百分号 —— 写成单个 % 会被 aapt 当成非法占位符。 -->
+    <string name="qr_stream_info_format">Frame %1$d/%2$d · round %3$d</string>
+    <string name="qr_stream_hint_format">Split into %1$d frames and looping. On the other device, choose Scan QR code and keep it pointed at this screen.</string>
+    <string name="qr_stream_pause">Pause</string>
+    <string name="qr_stream_resume">Resume</string>
+    <string name="qr_stream_speed_slow">Slow</string>
+    <string name="qr_stream_speed_medium">Medium</string>
+    <string name="qr_stream_speed_fast">Fast</string>
+
+    <string name="qr_stream_scan_title">Scan QR code</string>
+    <string name="qr_stream_scan_waiting">Point the camera at the QR code</string>
+    <string name="qr_stream_scan_progress_format">Received %1$d/%2$d frames · %3$d%%</string>
+    <string name="qr_stream_scan_hint">Keep the sender\'s screen inside the frame until it finishes. Large payloads are sent as an animated QR code.</string>
+    <string name="qr_stream_scan_checksum_failed">The assembled data failed verification. Please scan again.</string>
+    <string name="qr_stream_scan_too_large">This transfer is too large to receive.</string>
+    <string name="qr_stream_camera_denied">Camera permission is required to scan QR codes.</string>
 </resources>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="qr_stream_info_format">Frame %1$d/%2$d · Runde %3$d</string>
+    <string name="qr_stream_hint_format">In %1$d Frames aufgeteilt und in Schleife. Wählen Sie auf dem anderen Gerät „QR-Code scannen“ und halten Sie es auf diesen Bildschirm.</string>
+    <string name="qr_stream_pause">Pause</string>
+    <string name="qr_stream_resume">Fortsetzen</string>
+    <string name="qr_stream_speed_slow">Langsam</string>
+    <string name="qr_stream_speed_medium">Mittel</string>
+    <string name="qr_stream_speed_fast">Schnell</string>
+
+    <string name="qr_stream_scan_title">QR-Code scannen</string>
+    <string name="qr_stream_scan_waiting">Kamera auf den QR-Code richten</string>
+    <string name="qr_stream_scan_progress_format">%1$d/%2$d Frames empfangen · %3$d%%</string>
+    <string name="qr_stream_scan_hint">Halten Sie den Bildschirm des Senders im Rahmen, bis der Empfang abgeschlossen ist. Große Datenmengen werden als animierter QR-Code gesendet.</string>
+    <string name="qr_stream_scan_checksum_failed">Die zusammengesetzten Daten konnten nicht verifiziert werden. Bitte erneut scannen.</string>
+    <string name="qr_stream_scan_too_large">Diese Übertragung ist zu groß zum Empfangen.</string>
+    <string name="qr_stream_camera_denied">Zum Scannen von QR-Codes ist die Kameraberechtigung erforderlich.</string>
+</resources>

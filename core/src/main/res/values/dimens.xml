@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  节点列表宽屏多列的共享阈值（见 app.fjj.stun.util.GridSpans）。
+
+  放 core 是为了让 app / tv / car / xr 四个模块用**同一条规则**；模块可以用同名资源覆盖
+  自己那份（TV 就在 tv/src/main/res/values/dimens.xml 里把每列最小宽抬到 480dp）。
+
+  ⚠️ 改这两个值会同时改四个模块的列数，改前想清楚。
+-->
+<resources>
+
+    <!-- 多列门槛：列表可用宽度窄于它就一直单列。 -->
+    <dimen name="node_grid_min_width">600dp</dimen>
+
+    <!-- 每列至少这么宽：拿可用宽度整除它得到列数。360dp ≈ 一个窄手机宽度，
+         item_profile 那套版式在这个宽度下是验证过的（低于它名字/metadata 就该折行了）。 -->
+    <dimen name="node_grid_min_column">360dp</dimen>
+
+</resources>
