@@ -1,28 +1,453 @@
 diff --git a/Android.mk b/Android.mk
-index beb2ea3..ae31620 100644
 --- a/Android.mk
 +++ b/Android.mk
-@@ -16,9 +16,17 @@
- LOCAL_PATH := $(call my-dir)
- TUNNEL_PATH := $(LOCAL_PATH)
+@@ -15,14 +15,23 @@
  
--include $(TUNNEL_PATH)/third-part/yaml/Android.mk
- include $(TUNNEL_PATH)/third-part/lwip/Android.mk
-+
+ TOP_PATH := $(call my-dir)
+ 
+-ifeq ($(filter $(modules-get-list),yaml),)
+-    include $(TOP_PATH)/third-part/yaml/Android.mk
 +ifeq ($(filter yaml,$(SUB_MODULES)),)
 +SUB_MODULES += yaml
-+include $(TUNNEL_PATH)/third-part/yaml/Android.mk
-+endif
++include $(TOP_PATH)/third-part/yaml/Android.mk
+ endif
+-ifeq ($(filter $(modules-get-list),lwip),)
+-    include $(TOP_PATH)/third-part/lwip/Android.mk
++
++ifeq ($(filter lwip,$(SUB_MODULES)),)
++SUB_MODULES += lwip
++include $(TOP_PATH)/third-part/lwip/Android.mk
+ endif
+-ifeq ($(filter $(modules-get-list),hev-task-system),)
+-    include $(TOP_PATH)/third-part/hev-task-system/Android.mk
 +
 +ifeq ($(filter hev-task-system,$(SUB_MODULES)),)
 +SUB_MODULES += hev-task-system
- include $(TUNNEL_PATH)/third-part/hev-task-system/Android.mk
-+endif
++include $(TOP_PATH)/third-part/hev-task-system/Android.mk
+ endif
  
- LOCAL_PATH := $(TUNNEL_PATH)
- SRCDIR := $(LOCAL_PATH)/src
+ LOCAL_PATH = $(TOP_PATH)
+@@ -46,7 +55,7 @@
+ ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
+ LOCAL_CFLAGS += -mfpu=neon
+ endif
+-LOCAL_STATIC_LIBRARIES := yaml lwip hev-task-system
++LOCAL_STATIC_LIBRARIES := libyaml liblwip libhev-task-system
+ LOCAL_LDFLAGS += -Wl,-z,max-page-size=16384
+ LOCAL_LDFLAGS += -Wl,-z,common-page-size=16384
+ include $(BUILD_SHARED_LIBRARY)
+diff --git a/src/hev-domain-sniff.h b/src/hev-domain-sniff.h
+new file mode 100644
+--- /dev/null
++++ b/src/hev-domain-sniff.h
+@@ -0,0 +1,14 @@
++#ifndef __HEV_DOMAIN_SNIFF_H__
++#define __HEV_DOMAIN_SNIFF_H__
++
++#include <stddef.h>
++
++/*
++ * Returns 1 when a trustworthy domain was recovered, 0 when the payload is
++ * complete/unsupported and must stay on the original IP, and -1 when more
++ * bytes may complete a TLS/HTTP header.
++ */
++int hev_domain_sniff (const unsigned char *buf, size_t len, char *domain,
++                      size_t domain_len);
++
++#endif /* __HEV_DOMAIN_SNIFF_H__ */
+diff --git a/src/hev-domain-sniff.c b/src/hev-domain-sniff.c
+new file mode 100644
+--- /dev/null
++++ b/src/hev-domain-sniff.c
+@@ -0,0 +1,243 @@
++#include <arpa/inet.h>
++#include <ctype.h>
++#include <stdint.h>
++#include <string.h>
++
++#include "hev-domain-sniff.h"
++
++static uint16_t
++read_be16 (const unsigned char *p)
++{
++    return ((uint16_t)p[0] << 8) | p[1];
++}
++
++static size_t
++read_be24 (const unsigned char *p)
++{
++    return ((size_t)p[0] << 16) | ((size_t)p[1] << 8) | p[2];
++}
++
++static int
++valid_domain_char (unsigned char c)
++{
++    return isalnum (c) || c == '.' || c == '-' || c == '_';
++}
++
++static int
++copy_domain (const unsigned char *src, size_t len, char *dst, size_t dstlen)
++{
++    unsigned char ipbuf[16];
++    int has_alpha = 0;
++    size_t i;
++
++    if (!src || !dst || len == 0 || len > 253 || dstlen <= len)
++        return 0;
++    if (src[0] == '.' || src[len - 1] == '.')
++        return 0;
++
++    for (i = 0; i < len; i++) {
++        if (!valid_domain_char (src[i]))
++            return 0;
++        if (isalpha (src[i]))
++            has_alpha = 1;
++        dst[i] = (char)tolower (src[i]);
++    }
++    dst[len] = '\0';
++
++    /* Never turn a literal address back into SOCKS ATYP=DOMAIN. */
++    if (inet_pton (AF_INET, dst, ipbuf) == 1 ||
++        inet_pton (AF_INET6, dst, ipbuf) == 1)
++        return 0;
++
++    /* Avoid treating an all-numeric token as a host name. */
++    return has_alpha;
++}
++
++static int
++http_method (const unsigned char *buf, size_t len)
++{
++    static const char *methods[] = {
++        "GET ", "POST ", "HEAD ", "PUT ", "DELETE ", "OPTIONS ",
++        "CONNECT ", "PATCH ", "TRACE ",
++    };
++    size_t i;
++
++    for (i = 0; i < sizeof (methods) / sizeof (methods[0]); i++) {
++        size_t n = strlen (methods[i]);
++        if (len >= n && memcmp (buf, methods[i], n) == 0)
++            return 1;
++    }
++    return 0;
++}
++
++static int
++sniff_http (const unsigned char *buf, size_t len, char *domain,
++            size_t domain_len)
++{
++    size_t pos;
++
++    if (!http_method (buf, len))
++        return 0;
++
++    for (pos = 0; pos + 1 < len; ) {
++        size_t end = pos;
++        size_t value, value_end;
++
++        while (end + 1 < len && !(buf[end] == '\r' && buf[end + 1] == '\n'))
++            end++;
++        if (end + 1 >= len)
++            return -1;
++        if (end == pos)
++            return 0;
++
++        if (end - pos >= 5 &&
++            tolower (buf[pos]) == 'h' && tolower (buf[pos + 1]) == 'o' &&
++            tolower (buf[pos + 2]) == 's' && tolower (buf[pos + 3]) == 't' &&
++            buf[pos + 4] == ':') {
++            value = pos + 5;
++            while (value < end && (buf[value] == ' ' || buf[value] == '\t'))
++                value++;
++            value_end = end;
++            while (value_end > value &&
++                   (buf[value_end - 1] == ' ' || buf[value_end - 1] == '\t'))
++                value_end--;
++
++            /* Strip :port from a conventional hostname. IPv6 literals are
++             * rejected by copy_domain and therefore intentionally untouched. */
++            if (value < value_end && buf[value] != '[') {
++                size_t i;
++                for (i = value; i < value_end; i++) {
++                    if (buf[i] == ':') {
++                        value_end = i;
++                        break;
++                    }
++                }
++            }
++            return copy_domain (buf + value, value_end - value, domain,
++                                domain_len);
++        }
++        pos = end + 2;
++    }
++    return -1;
++}
++
++static int
++sniff_tls (const unsigned char *buf, size_t len, char *domain,
++           size_t domain_len)
++{
++    size_t record_len, hs_len, end, pos, ext_end;
++    const unsigned char *sni = NULL;
++    size_t sni_len = 0;
++    int encrypted_name = 0;
++
++    if (len == 0 || buf[0] != 0x16)
++        return 0;
++    if (len < 5)
++        return -1;
++
++    record_len = read_be16 (buf + 3);
++    if (record_len < 4)
++        return 0;
++    if (len < 5 + record_len)
++        return -1;
++    if (buf[5] != 0x01)
++        return 0;
++
++    hs_len = read_be24 (buf + 6);
++    if (hs_len + 4 > record_len)
++        return 0;
++    end = 9 + hs_len;
++    if (end > len)
++        return -1;
++
++    /* legacy_version + random */
++    pos = 9 + 2 + 32;
++    if (pos >= end)
++        return 0;
++
++    /* legacy_session_id */
++    if (pos + 1 > end)
++        return 0;
++    pos += 1 + buf[pos];
++    if (pos + 2 > end)
++        return 0;
++
++    /* cipher_suites */
++    {
++        size_t n = read_be16 (buf + pos);
++        pos += 2 + n;
++    }
++    if (pos + 1 > end)
++        return 0;
++
++    /* legacy_compression_methods */
++    pos += 1 + buf[pos];
++    if (pos == end)
++        return 0;
++    if (pos + 2 > end)
++        return 0;
++
++    ext_end = pos + 2 + read_be16 (buf + pos);
++    pos += 2;
++    if (ext_end > end)
++        return 0;
++
++    while (pos + 4 <= ext_end) {
++        uint16_t type = read_be16 (buf + pos);
++        size_t ext_len = read_be16 (buf + pos + 2);
++        const unsigned char *ext;
++        size_t epos, eend;
++
++        pos += 4;
++        if (pos + ext_len > ext_end)
++            return 0;
++        ext = buf + pos;
++
++        /* ECH / legacy ESNI: the visible SNI may be a cover name and must not
++         * be used to replace the original destination. */
++        if (type == 0xfe0d || type == 0xffce)
++            encrypted_name = 1;
++
++        if (type == 0x0000 && ext_len >= 5) {
++            size_t list_len = read_be16 (ext);
++            if (list_len + 2 > ext_len) {
++                pos += ext_len;
++                continue;
++            }
++            epos = 2;
++            eend = 2 + list_len;
++            while (epos + 3 <= eend) {
++                uint8_t name_type = ext[epos];
++                size_t name_len = read_be16 (ext + epos + 1);
++                epos += 3;
++                if (epos + name_len > eend)
++                    break;
++                if (name_type == 0 && name_len > 0 && !sni) {
++                    sni = ext + epos;
++                    sni_len = name_len;
++                }
++                epos += name_len;
++            }
++        }
++        pos += ext_len;
++    }
++
++    if (encrypted_name || !sni)
++        return 0;
++    return copy_domain (sni, sni_len, domain, domain_len);
++}
++
++int
++hev_domain_sniff (const unsigned char *buf, size_t len, char *domain,
++                  size_t domain_len)
++{
++    int res;
++
++    if (!buf || !domain || domain_len == 0)
++        return 0;
++
++    res = sniff_tls (buf, len, domain, domain_len);
++    if (res != 0)
++        return res;
++    return sniff_http (buf, len, domain, domain_len);
++}
+diff --git a/src/hev-socks5-session-tcp.h b/src/hev-socks5-session-tcp.h
+--- a/src/hev-socks5-session-tcp.h
++++ b/src/hev-socks5-session-tcp.h
+@@ -45,6 +45,8 @@
+ HevSocks5SessionTCP *hev_socks5_session_tcp_new (struct tcp_pcb *pcb,
+                                                  HevTaskMutex *mutex);
+ 
++void hev_socks5_session_tcp_sniff (HevSocks5SessionTCP *self);
++
+ #endif /* __HEV_SOCKS5_SESSION_TCP_H__ */
+diff --git a/src/hev-socks5-session-tcp.c b/src/hev-socks5-session-tcp.c
+--- a/src/hev-socks5-session-tcp.c
++++ b/src/hev-socks5-session-tcp.c
+@@ -7,6 +7,7 @@
+  ============================================================================
+  */
+ 
++#include <arpa/inet.h>
+ #include <errno.h>
+ #include <string.h>
+@@ -20,6 +21,7 @@
+ 
+ #include "hev-utils.h"
+ #include "hev-config.h"
++#include "hev-domain-sniff.h"
+ #include "hev-logger.h"
+ #include "hev-config-const.h"
+ #include "hev-socks5-tunnel.h"
+@@ -177,6 +179,86 @@
+     return self;
+ }
+ 
++static uint16_t
++hev_socks5_session_tcp_port (HevSocks5SessionTCP *self)
++{
++    HevSocks5Addr *addr = self->base.addr;
++
++    if (!addr)
++        return 0;
++    if (addr->atype == HEV_SOCKS5_ADDR_TYPE_IPV4)
++        return addr->ipv4.port;
++    if (addr->atype == HEV_SOCKS5_ADDR_TYPE_IPV6)
++        return addr->ipv6.port;
++    return 0;
++}
++
++static void
++hev_socks5_session_tcp_set_domain (HevSocks5SessionTCP *self,
++                                   const char *domain, uint16_t port)
++{
++    HevSocks5Addr addr;
++    HevSocks5Addr *copy;
++    int len;
++
++    hev_socks5_addr_from_name (&addr, domain, port);
++    len = hev_socks5_addr_len (&addr);
++    if (len <= 0)
++        return;
++    copy = hev_malloc (len);
++    if (!copy)
++        return;
++    memcpy (copy, &addr, len);
++    if (self->base.addr)
++        hev_free (self->base.addr);
++    self->base.addr = copy;
++}
++
++void
++hev_socks5_session_tcp_sniff (HevSocks5SessionTCP *self)
++{
++    unsigned char buf[8192];
++    char domain[256];
++    uint16_t raw_port;
++    int port, tries, i;
++
++    if (!self || !self->base.addr ||
++        self->base.addr->atype == HEV_SOCKS5_ADDR_TYPE_NAME)
++        return;
++
++    raw_port = hev_socks5_session_tcp_port (self);
++    if (!raw_port)
++        return;
++    port = ntohs (raw_port);
++    tries = port == 443 ? 8 : (port == 80 ? 4 : 1);
++
++    for (i = 0; i < tries; i++) {
++        size_t n = 0;
++
++        hev_task_mutex_lock (self->mutex);
++        if (self->queue) {
++            n = self->queue->tot_len;
++            if (n > sizeof (buf))
++                n = sizeof (buf);
++            n = pbuf_copy_partial (self->queue, buf, n, 0);
++        }
++        hev_task_mutex_unlock (self->mutex);
++
++        if (n > 0) {
++            int res = hev_domain_sniff (buf, n, domain, sizeof (domain));
++            if (res > 0) {
++                LOG_D ("%p recovered domain %s", self, domain);
++                hev_socks5_session_tcp_set_domain (self, domain, raw_port);
++                return;
++            }
++            if (res == 0)
++                return;
++        }
++
++        if (i + 1 < tries)
++            hev_task_sleep (10);
++    }
++}
++
+ static int
+ hev_socks5_session_tcp_bind (HevSocks5 *self, int fd,
+                              const struct sockaddr *dest)
+diff --git a/src/hev-socks5-tunnel.c b/src/hev-socks5-tunnel.c
+--- a/src/hev-socks5-tunnel.c
++++ b/src/hev-socks5-tunnel.c
+@@ -151,6 +151,15 @@
+     hev_object_unref (HEV_OBJECT (s));
+ }
+ 
++static void
++hev_socks5_tcp_session_task_entry (void *data)
++{
++    HevSocks5SessionTCP *tcp = data;
++
++    hev_socks5_session_tcp_sniff (tcp);
++    hev_socks5_session_task_entry (data);
++}
++
+ static err_t
+ tcp_accept_handler (void *arg, struct tcp_pcb *pcb, err_t err)
+ {
+@@ -179,7 +188,7 @@
+     hev_socks5_session_set_task (HEV_SOCKS5_SESSION (tcp), task);
+     node = hev_socks5_session_get_node (HEV_SOCKS5_SESSION (tcp));
+     hev_socks5_tunnel_insert_session (node);
+-    hev_task_run (task, hev_socks5_session_task_entry, tcp);
++    hev_task_run (task, hev_socks5_tcp_session_task_entry, tcp);
+     hev_task_wakeup (task_lwip_timer);
+ 
+     return ERR_OK;
 diff --git a/src/hev-jni.c b/src/hev-jni.c
-index 9698555..f073f1e 100644
 --- a/src/hev-jni.c
 +++ b/src/hev-jni.c
 @@ -26,7 +26,7 @@
@@ -33,8 +458,7 @@ index 9698555..f073f1e 100644
 +#define CLSNAME TTunnelService
  #endif
  /* clang-format on */
- 
-@@ -54,10 +54,10 @@ static void native_stop_service (JNIEnv *env, jobject thiz);
+@@ -54,10 +54,10 @@
  static jlongArray native_get_stats (JNIEnv *env, jobject thiz);
  
  static JNINativeMethod native_methods[] = {
@@ -46,5 +470,3 @@ index 9698555..f073f1e 100644
 +    { "TTunnelStopService", "()V", (void *)native_stop_service },
 +    { "TTunnelGetStats", "()[J", (void *)native_get_stats },
  };
- 
- static void
