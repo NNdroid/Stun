@@ -29,7 +29,12 @@ import app.fjj.stun.repo.StunRepository
  */
 internal class TrafficStatsSink(context: Context) {
 
-    private val appContext = context.applicationContext
+    // 不能在构造期解引用 applicationContext：两个 Service 都把本类写成字段初始化器
+    // （构造期执行），而 Service 的 base context 要到 attachBaseContext 才注入，
+    // 那时 getApplicationContext() 必然 NPE（ActivityThread.handleCreateService 崩溃）。
+    // 首次 ingest/flushPending 发生在会话跑起来之后，attach 早已完成；by lazy 默认
+    // SYNCHRONIZED，统计回调在 IO 线程并发触达也安全。
+    private val appContext: Context by lazy { context.applicationContext }
     private var lastTx = 0L
     private var lastRx = 0L
 
