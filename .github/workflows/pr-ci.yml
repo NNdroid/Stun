@@ -39,5 +39,14 @@ jobs:
       - name: Verify JNI patches from a clean checkout
         run: ./gradlew :core:applyJniPatches --stacktrace --no-daemon
 
+      - name: Test domain sniff parser
+        run: |
+          cc -Wall -Wextra -Werror \
+            -Icore/jni/hev-socks5-tproxy/src \
+            core/jni/hev-socks5-tproxy/src/hev-domain-sniff.c \
+            core/jni/tests/domain_sniff_test.c \
+            -o /tmp/domain-sniff-test
+          /tmp/domain-sniff-test
+
       - name: Unit tests and native debug build
         run: ./gradlew :core:testDebugUnitTest :core:assembleDebug --stacktrace --no-daemon
