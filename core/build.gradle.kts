@@ -10,7 +10,7 @@ plugins {
 // Task to automatically patch JNI submodules (Config Cache Safe)
 // ========================================================
 val applyJniPatches = tasks.register("applyJniPatches") {
-    description = ""
+    description = "Applies checked JNI submodule patches and fails on patch drift"
     val jniDirectory = project.layout.projectDirectory.dir("jni")
 
     doLast {
@@ -21,30 +21,76 @@ val applyJniPatches = tasks.register("applyJniPatches") {
             return@doLast
         }
 
+        fun gitApply(submoduleDir: File, vararg args: String): Pair<Int, String> {
+            val process = ProcessBuilder("git", "apply", *args)
+                .directory(submoduleDir)
+                .redirectErrorStream(true)
+                .start()
+            val output = process.inputStream.bufferedReader().use { it.readText() }
+            return process.waitFor() to output
+        }
+
         println("=== Starting JNI Submodule Patching ===")
 
-        patchesDir.listFiles { _, name -> name.endsWith(".patch") }?.forEach { patchFile ->
-            val submoduleName = patchFile.name.replace(".patch", "")
-            val submoduleDir = File(jniDir, submoduleName)
+        patchesDir.listFiles { _, name -> name.endsWith(".patch") }
+            ?.sortedBy { it.name }
+            ?.forEach { patchFile ->
+                val submoduleName = patchFile.name.removeSuffix(".patch")
+                val submoduleDir = File(jniDir, submoduleName)
 
-            if (submoduleDir.exists()) {
-                println("📦 Processing: $submoduleName")
-                try {
-                    val process = ProcessBuilder("git", "apply", "--ignore-whitespace", "--reject", patchFile.absolutePath)
-                        .directory(submoduleDir)
-                        .start()
-
-                    process.waitFor()
-
-                    println("✅ $submoduleName patch applied or already present")
-                } catch (e: Exception) {
-                    println("⚠️ Skipping $submoduleName: ${e.message}")
+                if (!submoduleDir.isDirectory) {
+                    throw GradleException("JNI submodule directory not found: ${submoduleDir.absolutePath}")
                 }
-            } else {
-                println("❌ Submodule directory not found: ${submoduleDir.absolutePath}")
+
+                println("📦 Processing: $submoduleName")
+                val patchPath = patchFile.absolutePath
+                val (checkCode, checkOutput) = gitApply(
+                    submoduleDir,
+                    "--ignore-whitespace",
+                    "--check",
+                    patchPath,
+                )
+
+                if (checkCode == 0) {
+                    val (applyCode, applyOutput) = gitApply(
+                        submoduleDir,
+                        "--ignore-whitespace",
+                        patchPath,
+                    )
+                    if (applyCode != 0) {
+                        throw GradleException(
+                            "Failed to apply JNI patch for $submoduleName:\n$applyOutput"
+                        )
+                    }
+                    println("✅ $submoduleName patch applied")
+                    return@forEach
+                }
+
+                // An incremental Gradle invocation may see the patch already applied in
+                // the working tree. Reverse-check is the reliable/idempotent test for it.
+                val (reverseCode, reverseOutput) = gitApply(
+                    submoduleDir,
+                    "--ignore-whitespace",
+                    "--reverse",
+                    "--check",
+                    patchPath,
+                )
+                if (reverseCode == 0) {
+                    println("✅ $submoduleName patch already applied")
+                    return@forEach
+                }
+
+                throw GradleException(
+                    buildString {
+                        appendLine("JNI patch drift detected for $submoduleName.")
+                        appendLine("Forward check:")
+                        appendLine(checkOutput.ifBlank { "(no output)" })
+                        appendLine("Reverse check:")
+                        append(reverseOutput.ifBlank { "(no output)" })
+                    }
+                )
             }
-        }
-        println("=== JNI Patching Complete ===")
+        println("=== JNI Submodule Patching Complete ===")
     }
 }
 
@@ -86,7 +132,7 @@ val downloadRulesDat = tasks.register("downloadRulesDat") {
     description = "Downloads geoip.dat and geosite.dat"
     val outputDir = project.layout.projectDirectory.dir("src/main/assets/rules-dat").asFile
     val filesToDownload = mapOf(
-        "geoip.dat" to "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geoip.dat",
+        "geoip.dat" to "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geosite.dat".replace("geosite.dat", "geoip.dat"),
         "geosite.dat" to "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geosite.dat"
     )
 
@@ -119,10 +165,10 @@ android {
 
     defaultConfig {
         minSdk = 28
-        
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
-        
+
         ndk {
             abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86"))
         }
@@ -202,7 +248,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
-    
+
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.zxing.android.embedded)
     // 压住 core 版本，理由见 gradle/libs.versions.toml 的 zxing-core
