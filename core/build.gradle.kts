@@ -132,7 +132,7 @@ val downloadRulesDat = tasks.register("downloadRulesDat") {
     description = "Downloads geoip.dat and geosite.dat"
     val outputDir = project.layout.projectDirectory.dir("src/main/assets/rules-dat").asFile
     val filesToDownload = mapOf(
-        "geoip.dat" to "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geosite.dat".replace("geosite.dat", "geoip.dat"),
+        "geoip.dat" to "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geoip.dat",
         "geosite.dat" to "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geosite.dat"
     )
 
