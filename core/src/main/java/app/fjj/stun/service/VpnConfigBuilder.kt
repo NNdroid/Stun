@@ -102,6 +102,9 @@ object VpnConfigBuilder {
             put("server_certificate_finger_print", profile.serverCertFingerprint)
             put("dns_addr", ":${dnsPort}")
             put("udpgw_version", udpgwVersion)
+            // Let myssh probe the SSH exit itself.  The address family used to
+            // reach the SSH server is not sufficient to infer its egress family.
+            put("ipv6_egress_mode", "auto")
             // myssh dialer binds outbound connections to this interface when non-blank.
             // Null-safe reads: Gson leaves String fields null when a shared/imported
             // JSON omits them (Kotlin defaults do not apply on reflective parsing).
