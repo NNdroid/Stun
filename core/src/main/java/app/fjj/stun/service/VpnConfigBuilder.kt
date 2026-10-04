@@ -102,6 +102,9 @@ object VpnConfigBuilder {
             put("server_certificate_finger_print", profile.serverCertFingerprint)
             put("dns_addr", ":${dnsPort}")
             put("udpgw_version", udpgwVersion)
+            // Unified outbound auto mode is target-driven. Public IPv6 probes are
+            // diagnostics only and do not suppress A/AAAA or reject literal IPs.
+            put("ipv6_egress_mode", "auto")
             // myssh dialer binds outbound connections to this interface when non-blank.
             // Null-safe reads: Gson leaves String fields null when a shared/imported
             // JSON omits them (Kotlin defaults do not apply on reflective parsing).
