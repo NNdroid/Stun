@@ -100,10 +100,12 @@ new file mode 100644
 +    }
 +    dst[len] = '\0';
 +
++    /* Never turn a literal address back into SOCKS ATYP=DOMAIN. */
 +    if (inet_pton (AF_INET, dst, ipbuf) == 1 ||
 +        inet_pton (AF_INET6, dst, ipbuf) == 1)
 +        return 0;
 +
++    /* Avoid treating an all-numeric token as a host name. */
 +    return has_alpha;
 +}
 +
@@ -156,6 +158,8 @@ new file mode 100644
 +                   (buf[value_end - 1] == ' ' || buf[value_end - 1] == '\t'))
 +                value_end--;
 +
++            /* Strip :port from a conventional hostname. IPv6 literals are
++             * rejected by copy_domain and therefore intentionally untouched. */
 +            if (value < value_end && buf[value] != '[') {
 +                size_t i;
 +                for (i = value; i < value_end; i++) {
@@ -202,16 +206,19 @@ new file mode 100644
 +    if (end > len)
 +        return -1;
 +
++    /* legacy_version + random */
 +    pos = 9 + 2 + 32;
 +    if (pos >= end)
 +        return 0;
 +
++    /* legacy_session_id */
 +    if (pos + 1 > end)
 +        return 0;
 +    pos += 1 + buf[pos];
 +    if (pos + 2 > end)
 +        return 0;
 +
++    /* cipher_suites */
 +    {
 +        size_t n = read_be16 (buf + pos);
 +        pos += 2 + n;
@@ -219,6 +226,7 @@ new file mode 100644
 +    if (pos + 1 > end)
 +        return 0;
 +
++    /* legacy_compression_methods */
 +    pos += 1 + buf[pos];
 +    if (pos == end)
 +        return 0;
@@ -241,6 +249,8 @@ new file mode 100644
 +            return 0;
 +        ext = buf + pos;
 +
++        /* ECH / legacy ESNI: the visible SNI may be a cover name and must not
++         * be used to replace the original destination. */
 +        if (type == 0xfe0d || type == 0xffce)
 +            encrypted_name = 1;
 +
