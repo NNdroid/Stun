@@ -330,7 +330,7 @@ diff --git a/src/hev-socks5-session-tcp.c b/src/hev-socks5-session-tcp.c
  #include "hev-logger.h"
  
  #include "hev-socks5-session-tcp.h"
-@@ -39,6 +43,79 @@
+@@ -39,6 +43,81 @@
      return self;
  }
  
