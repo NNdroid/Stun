@@ -25,16 +25,45 @@ jobs:
           submodules: recursive
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: core/jni/myssh/go.mod
+          cache-dependency-path: core/jni/myssh/go.sum
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
       - name: Make Gradle wrapper executable
         run: chmod +x gradlew
+
+      - name: Set up gomobile
+        run: |
+          export ANDROID_NDK_HOME=$(find "$ANDROID_HOME/ndk" -maxdepth 1 -mindepth 1 | sort -V | tail -n 1)
+          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> "$GITHUB_ENV"
+          echo "Using Android NDK: $ANDROID_NDK_HOME"
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          go install golang.org/x/mobile/cmd/gobind@latest
+          gomobile init
+
+      - name: Build myssh compile classes
+        working-directory: core/jni/myssh
+        run: |
+          set -euo pipefail
+          mkdir -p ../../libs
+          VERSION="v1.0.$(date -u +%Y%m%d)-$(git rev-parse --short=7 HEAD)"
+          LDFLAGS="-s -w -X 'myssh.Version=$VERSION' -X 'myssh.DebugStr=false'"
+          gomobile bind -target=android -androidapi 28 -ldflags="$LDFLAGS" -trimpath -o ../../libs/myssh.ci.aar .
+          rm -rf /tmp/myssh-ci-aar
+          mkdir -p /tmp/myssh-ci-aar
+          unzip -q ../../libs/myssh.ci.aar classes.jar -d /tmp/myssh-ci-aar
+          cp /tmp/myssh-ci-aar/classes.jar ../../libs/myssh-classes.jar
+          test -s ../../libs/myssh-classes.jar
 
       - name: Verify JNI patches from a clean checkout
         run: ./gradlew :core:applyJniPatches --stacktrace --no-daemon
