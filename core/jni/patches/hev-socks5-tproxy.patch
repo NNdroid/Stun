@@ -300,7 +300,7 @@ new file mode 100644
 diff --git a/src/hev-socks5-session-tcp.h b/src/hev-socks5-session-tcp.h
 --- a/src/hev-socks5-session-tcp.h
 +++ b/src/hev-socks5-session-tcp.h
-@@ -42,6 +42,8 @@
+@@ -42,4 +42,6 @@
  HevSocks5SessionTCP *hev_socks5_session_tcp_new (struct sockaddr_in6 *addr,
                                                   int fd);
  
