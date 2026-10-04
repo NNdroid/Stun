@@ -465,6 +465,30 @@
         </div>
       </div>
     </div>
+    <!-- 8. 保活与后台（让 Web 控制台在进程被回收后自动回来） -->
+    <div class="card">
+      <div class="card-header">
+        <span id="t-settings-keepalive-title" class="card-title">🔋 保活与后台</span>
+      </div>
+      <div class="form-grid">
+        <div class="form-group" style="grid-column: 1 / -1; display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:16px">
+          <div>
+            <div id="t-label-ka-magisk" style="font-size:0.92rem;font-weight:700">Magisk service.d 开机保活</div>
+            <div id="t-desc-ka-magisk" class="setting-desc">向 /data/adb/service.d 写入保活脚本：开机自动拉起 Stun，进程被杀后自动重启，控制台随时可访问。需要 root。</div>
+            <div id="t-state-ka-magisk" class="setting-desc" style="margin-top:4px"></div>
+          </div>
+          <input type="checkbox" id="switch-ka-magisk" style="width:20px;height:20px;cursor:pointer" onchange="onKeepAliveToggle('magisk', this)">
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1; display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:16px">
+          <div>
+            <div id="t-label-ka-shizuku" style="font-size:0.92rem;font-weight:700">Shizuku 保活（免 root）</div>
+            <div id="t-desc-ka-shizuku" class="setting-desc">每 15 分钟巡检一次：进程被回收就重新拉起控制台，并借 Shizuku 反复确认电池白名单，避免 Doze 掐掉后台。需 Shizuku 正在运行。</div>
+            <div id="t-state-ka-shizuku" class="setting-desc" style="margin-top:4px"></div>
+          </div>
+          <input type="checkbox" id="switch-ka-shizuku" style="width:20px;height:20px;cursor:pointer" onchange="onKeepAliveToggle('shizuku', this)">
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- 6. 实时日志 -->

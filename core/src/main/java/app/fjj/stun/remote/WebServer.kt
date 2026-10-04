@@ -14,6 +14,8 @@ import androidx.core.content.ContextCompat
 import app.fjj.stun.backup.WebDavBackupManager
 import app.fjj.stun.backup.WebDavSyncMode
 import app.fjj.stun.repo.Profile
+import app.fjj.stun.repo.ProfileArgReader
+import app.fjj.stun.repo.ProfileFields
 import app.fjj.stun.repo.ProfileManager
 import app.fjj.stun.repo.ProfileSecrets
 import app.fjj.stun.repo.SettingsManager
@@ -331,107 +333,13 @@ object WebServer {
                             val existing = ProfileManager.getProfileById(appContext, id)
                                 ?: return@post call.respond(HttpStatusCode.NotFound, mapOf("error" to "Profile not found"))
 
-                            val requestedTunnelType = (body["tunnelType"] as? String) ?: existing.tunnelType
-                            val requestedCustomPath = (body["customPath"] as? String)?.trim() ?: existing.customPath
-                            val requestedEnableCustomPath = if (requestedTunnelType == Profile.TUNNEL_TYPE_MASQUE) {
-                                (body["enableCustomPath"] as? Boolean)
-                                    ?: if (body.containsKey("customPath")) requestedCustomPath.isNotBlank() else existing.enableCustomPath
-                            } else {
-                                false
-                            }
-
-                            val updated = existing.copy(
-                                name = (body["name"] as? String)?.trim()?.ifBlank { existing.name } ?: existing.name,
-                                sshAddr = (body["sshAddr"] as? String)?.trim()?.ifBlank { existing.sshAddr } ?: existing.sshAddr,
-                                user = (body["user"] as? String)?.trim() ?: existing.user,
-                                pass = (body["pass"] as? String) ?: existing.pass,
-                                authType = (body["authType"] as? String) ?: existing.authType,
-                                privateKey = (body["privateKey"] as? String) ?: existing.privateKey,
-                                keyPass = (body["keyPass"] as? String) ?: existing.keyPass,
-                                tunnelType = requestedTunnelType,
-                                proxyAddr = (body["proxyAddr"] as? String)?.trim() ?: existing.proxyAddr,
-                                customHost = (body["customHost"] as? String)?.trim() ?: existing.customHost,
-                                serverName = (body["serverName"] as? String)?.trim() ?: existing.serverName,
-                                customPath = requestedCustomPath,
-                                enableCustomPath = requestedEnableCustomPath,
-                                httpPayload = (body["httpPayload"] as? String)?.trim() ?: existing.httpPayload,
-                                disableStatusCheck = (body["disableStatusCheck"] as? Boolean) ?: existing.disableStatusCheck,
-                                alpn = (body["alpn"] as? String)?.trim() ?: existing.alpn,
-                                proxyAuthRequired = (body["proxyAuthRequired"] as? Boolean) ?: existing.proxyAuthRequired,
-                                proxyAuthToken = (body["proxyAuthToken"] as? String)?.trim() ?: existing.proxyAuthToken,
-                                proxyAuthUser = (body["proxyAuthUser"] as? String)?.trim() ?: existing.proxyAuthUser,
-                                proxyAuthPass = (body["proxyAuthPass"] as? String) ?: existing.proxyAuthPass,
-                                verifyFingerprint = (body["verifyFingerprint"] as? Boolean) ?: existing.verifyFingerprint,
-                                serverFingerprint = (body["serverFingerprint"] as? String)?.trim() ?: existing.serverFingerprint,
-                                verifyCertFingerprint = (body["verifyCertFingerprint"] as? Boolean) ?: existing.verifyCertFingerprint,
-                                serverCertFingerprint = (body["serverCertFingerprint"] as? String)?.trim() ?: existing.serverCertFingerprint,
-                                dnsTunnelDomain = (body["dnsTunnelDomain"] as? String)?.trim() ?: existing.dnsTunnelDomain,
-                                dnsTunnelServers = (body["dnsTunnelServers"] as? String)?.trim() ?: existing.dnsTunnelServers,
-                                dnsTunnelType = (body["dnsTunnelType"] as? String)?.trim() ?: existing.dnsTunnelType,
-                                dnsTunnelPublicKey = (body["dnsTunnelPublicKey"] as? String)?.trim()
-                                    ?: (body["dns_tunnel_public_key"] as? String)?.trim()
-                                    ?: existing.dnsTunnelPublicKey,
-                                dnsTunnelEDNS0 = (body["dnsTunnelEDNS0"] as? Boolean) ?: existing.dnsTunnelEDNS0,
-                                dnsTunnelPsk = (body["dnsTunnelPsk"] as? String)?.trim() ?: existing.dnsTunnelPsk,
-                                dnsTunnelMarker = (body["dnsTunnelMarker"] as? String)?.trim() ?: existing.dnsTunnelMarker,
-                                kcpPassword = (body["kcpPassword"] as? String) ?: existing.kcpPassword,
-                                kcpCrypt = (body["kcpCrypt"] as? String)?.trim() ?: existing.kcpCrypt,
-                                kcpMode = (body["kcpMode"] as? String)?.trim()?.takeIf { it in listOf("normal", "fast", "fast2", "fast3") } ?: existing.kcpMode,
-                                kcpSndWnd = (body["kcpSndWnd"] as? Number)?.toInt()?.coerceAtLeast(0) ?: existing.kcpSndWnd,
-                                kcpRcvWnd = (body["kcpRcvWnd"] as? Number)?.toInt()?.coerceAtLeast(0) ?: existing.kcpRcvWnd,
-                                kcpMtu = (body["kcpMtu"] as? Number)?.toInt()?.coerceAtLeast(0) ?: existing.kcpMtu,
-                                kcpNoComp = (body["kcpNoComp"] as? Boolean) ?: existing.kcpNoComp,
-                                kcpSmuxVer = (body["kcpSmuxVer"] as? Number)?.toInt() ?: existing.kcpSmuxVer,
-                                kcpKeepAlive = (body["kcpKeepAlive"] as? Number)?.toInt()?.coerceAtLeast(0) ?: existing.kcpKeepAlive,
-                                kcpDataShards = (body["kcpDataShards"] as? Number)?.toInt() ?: existing.kcpDataShards,
-                                kcpParityShards = (body["kcpParityShards"] as? Number)?.toInt() ?: existing.kcpParityShards,
-                                udpCustomPsk = (body["udpCustomPsk"] as? String) ?: existing.udpCustomPsk,
-                                udpCustomMagic = (body["udpCustomMagic"] as? String)?.trim() ?: existing.udpCustomMagic,
-                                udpCustomPublicKey = (body["udpCustomPublicKey"] as? String)?.trim()
-                                    ?: (body["udp_custom_public_key"] as? String)?.trim()
-                                    ?: existing.udpCustomPublicKey,
-                                udpCustomPaths = (body["udpCustomPaths"] as? Number)?.toInt()?.coerceAtLeast(0)
-                                    ?: existing.udpCustomPaths,
-                                udpCustomSockets = (body["udpCustomSockets"] as? Number)?.toInt()?.coerceAtLeast(0) ?: existing.udpCustomSockets,
-                                udpCustomSendWindow = (body["udpCustomSendWindow"] as? Number)?.toInt()?.coerceAtLeast(0) ?: existing.udpCustomSendWindow,
-                                udpCustomMaxPkt = (body["udpCustomMaxPkt"] as? Number)?.toInt()?.coerceAtLeast(0) ?: existing.udpCustomMaxPkt,
-                                udpCustomMtuProbe = (body["udpCustomMtuProbe"] as? String)?.trim() ?: existing.udpCustomMtuProbe,
-                                // 2026-09-15 parity 修复：以下 8 个字段 JS payload 一直在发，
-                                // 服务端此前不受理导致静默丢弃 —— tunnelTlsEnabled 丢了会存出
-                                // 「raw+TLS 但 proxy_addr 空」的自相矛盾配置，icmpCustomPsk 丢了
-                                // 会被 VpnConfigBuilder 回退成 SSH 密码（碰巧能连，最难发现）。
-                                tunnelTlsEnabled = (body["tunnelTlsEnabled"] as? Boolean) ?: existing.tunnelTlsEnabled,
-                                icmpCustomPsk = (body["icmpCustomPsk"] as? String) ?: existing.icmpCustomPsk,
-                                icmpCustomMagic = (body["icmpCustomMagic"] as? String)?.trim() ?: existing.icmpCustomMagic,
-                                icmpCustomMtuMode = (body["icmpCustomMtuMode"] as? String)?.trim() ?: existing.icmpCustomMtuMode,
-                                icmpCustomMaxPayload = (body["icmpCustomMaxPayload"] as? Number)?.toInt()?.coerceAtLeast(0)
-                                    ?: existing.icmpCustomMaxPayload,
-                                icmpCustomPaceMS = (body["icmpCustomPaceMS"] as? Number)?.toInt()?.coerceAtLeast(0)
-                                    ?: existing.icmpCustomPaceMS,
-                                icmpCustomIdRange = (body["icmpCustomIdRange"] as? String)?.trim() ?: existing.icmpCustomIdRange,
-                                icmpCustomPublicKey = (body["icmpCustomPublicKey"] as? String)?.trim()
-                                    ?: existing.icmpCustomPublicKey,
-                                xhttpChunkSizeKB = (body["xhttpChunkSizeKB"] as? Number)?.toInt()?.coerceAtLeast(0) ?: existing.xhttpChunkSizeKB,
-                                xhttpStreamMode = (body["xhttpStreamMode"] as? String)?.trim()?.takeIf { it in listOf("auto", "stream", "poll") } ?: existing.xhttpStreamMode,
-                                bindInterface = (body["bindInterface"] as? String)?.trim() ?: existing.bindInterface,
-                                heartbeatIntervalMs = (body["heartbeatIntervalMs"] as? Number)?.toInt()?.coerceAtLeast(0) ?: existing.heartbeatIntervalMs,
-                                paddingMinBytes = (body["paddingMinBytes"] as? Number)?.toInt() ?: existing.paddingMinBytes,
-                                masqueAlpn = (body["masqueAlpn"] as? String)?.trim() ?: existing.masqueAlpn,
-                                noisePublicKey = (body["noisePublicKey"] as? String)?.trim() ?: (body["noise_public_key"] as? String)?.trim() ?: existing.noisePublicKey,
-                                dnsOverride = (body["dnsOverride"] as? Boolean) ?: existing.dnsOverride,
-                                remoteDns = (body["remoteDns"] as? String)?.trim() ?: existing.remoteDns,
-                                localDns = (body["localDns"] as? String)?.trim() ?: existing.localDns,
-                                udpgwVersion = (body["udpgwVersion"] as? String) ?: existing.udpgwVersion,
-                                udpgwAddr = (body["udpgwAddr"] as? String)?.trim() ?: existing.udpgwAddr,
-                                geositeDirect = (body["geositeDirect"] as? String)?.trim() ?: existing.geositeDirect,
-                                geoipDirect = (body["geoipDirect"] as? String)?.trim() ?: existing.geoipDirect,
-                                appFilterOverride = (body["appFilterOverride"] as? Boolean) ?: existing.appFilterOverride,
-                                filterMode = (body["filterMode"] as? Number)?.toInt() ?: existing.filterMode,
-                                filterApps = (body["filterApps"] as? String)?.trim() ?: existing.filterApps,
-                                // 手机端连接详情面板的备注/星标；webui 此前无入口且服务端不受理。
-                                note = (body["note"] as? String)?.trim() ?: existing.note,
-                                favorite = (body["favorite"] as? Boolean) ?: existing.favorite
-                            )
+// 字段规则已收口到 [ProfileFields]（与 MCP 的 create/update 共用唯一事实来源）。
+                            // 原来这里是 107 行 copy(...) 平铺，与 MCP 那份各写一遍同样的
+                            // trim/clamp/枚举规则，已因此出过两次静默丢参事故。
+                            // ⚠️ 掩码剔除必须先做：dropMaskedSecrets 把 ***** 置 null，
+                            // ProfileArgReader 把 null 视为"键不存在" ⇒ 自然退化成"保持原值"。
+                            ProfileFields.applyTo(ProfileArgReader.of(body), existing)
+                            val updated = existing
 
                             ProfileManager.updateProfile(appContext, updated)
                             StunLogger.i(TAG, "Web console updated profile: ${updated.name} ($id)")
@@ -1198,6 +1106,60 @@ object WebServer {
                         }
                     }
 
+                    // ── 保活与后台（Magisk service.d / Shizuku）──
+                    //
+                    // 刻意**不**并进 /api/settings/save，有两个理由：
+                    // 1. 这两个开关一保存就要动设备（root 往 /data/adb 写脚本、可能要弹 Shizuku
+                    //    授权），同步做完可能超过 libsu 的 90s 超时，把整次"批量保存"一起拖挂；
+                    // 2. 开关需要在失败时**立刻回滚到未开启**，塞进批量保存里做不到那种反馈粒度。
+                    get("/api/keepalive/status") {
+                        if (!call.checkToken(appContext)) return@get
+                        val bundle = withContext(Dispatchers.IO) { KeepAliveManager.statusBundle(appContext) }
+                        call.respond(HttpStatusCode.OK, bundle)
+                    }
+
+                    post("/api/keepalive/magisk") {
+                        if (!call.checkToken(appContext)) return@post
+                        val enabled = (runCatching { call.receive<Map<String, Any>>() }.getOrNull()
+                            ?.get("enabled") as? Boolean) ?: false
+                        val outcome = withContext(Dispatchers.IO) {
+                            if (enabled) KeepAliveManager.installServiceD(appContext)
+                            else KeepAliveManager.removeServiceD()
+                        }
+                        // 只有动作真的成功才落库 —— 开关必须与设备上的真实状态一致，绝不撒谎。
+                        if (outcome is KeepAliveManager.Outcome.Ok) {
+                            SettingsManager.saveMagiskServiceDEnabled(appContext, enabled)
+                        } else {
+                            StunLogger.w(TAG, "keepalive/magisk enabled=$enabled failed: ${(outcome as KeepAliveManager.Outcome.Failed).code}")
+                        }
+                        call.respond(
+                            if (outcome is KeepAliveManager.Outcome.Ok) HttpStatusCode.OK else HttpStatusCode.BadRequest,
+                            keepAlivePayload(outcome, appContext)
+                        )
+                    }
+
+                    post("/api/keepalive/shizuku") {
+                        if (!call.checkToken(appContext)) return@post
+                        val body = runCatching { call.receive<Map<String, Any>>() }.getOrNull()
+                        val enabled = body?.get("enabled") as? Boolean ?: false
+                        // 远端 WebUI：Shizuku 授权弹窗是显示在**设备屏幕**上的，用户多半不在跟前，
+                        // 所以默认不主动弹窗，只回报状态让 UI 提示去设备上处理。
+                        val requestPermission = body?.get("requestPermission") as? Boolean ?: false
+                        val outcome = withContext(Dispatchers.IO) {
+                            if (enabled) KeepAliveManager.enableShizukuKeepAlive(appContext, requestPermission)
+                            else KeepAliveManager.disableShizukuKeepAlive(appContext)
+                        }
+                        if (outcome is KeepAliveManager.Outcome.Ok) {
+                            SettingsManager.saveShizukuKeepAliveEnabled(appContext, enabled)
+                        } else {
+                            StunLogger.w(TAG, "keepalive/shizuku enabled=$enabled failed: ${(outcome as KeepAliveManager.Outcome.Failed).code}")
+                        }
+                        call.respond(
+                            if (outcome is KeepAliveManager.Outcome.Ok) HttpStatusCode.OK else HttpStatusCode.BadRequest,
+                            keepAlivePayload(outcome, appContext)
+                        )
+                    }
+
                     post("/api/settings/update-geodata") {
                         if (!call.checkToken(appContext)) return@post
                         withContext(Dispatchers.IO) {
@@ -1295,6 +1257,9 @@ object WebServer {
             }.start(wait = false)
 
             val fullUrl = getEffectiveUrl(context, actualPort)
+            // 粘滞标记：保活 worker 靠它判断"这台设备本来就跑控制台"，从而不必在
+            // 从没起过控制台的设备上（如手机端）凭空开一个监听端口。只置位不清除。
+            SettingsManager.markWebConsoleEverStarted(appContext)
             StunLogger.i(TAG, "WebServer started → $fullUrl")
             return actualPort
         }
@@ -1311,6 +1276,18 @@ object WebServer {
     }
 
     fun isRunning() = isRunning.get()
+
+    /**
+     * 保活开关接口的统一响应体。
+     *
+     * `code` 是给前端拿去**本地化**的失败码（服务端不拼文案），`status` 把动作之后的真实状态
+     * 一起回传 —— 前端据此把开关回滚到与设备一致的位置，而不是盲目相信用户刚才那一下点击。
+     */
+    private fun keepAlivePayload(outcome: KeepAliveManager.Outcome, ctx: Context): Map<String, Any?> = mapOf(
+        "ok" to (outcome is KeepAliveManager.Outcome.Ok),
+        "code" to (outcome as? KeepAliveManager.Outcome.Failed)?.code,
+        "status" to KeepAliveManager.statusBundle(ctx)
+    )
 
     fun getLocalIp(context: Context): String {
         try {

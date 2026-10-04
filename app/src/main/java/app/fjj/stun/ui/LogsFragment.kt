@@ -35,6 +35,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import app.fjj.stun.util.ClipboardUtils
 
 class LogsFragment : Fragment() {
 
@@ -65,10 +66,11 @@ class LogsFragment : Fragment() {
                     if (fullLogs.isBlank()) {
                         Toast.makeText(requireContext(), getString(CoreR.string.logs_empty), Toast.LENGTH_SHORT).show()
                     } else {
-                        val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        val clip = ClipData.newPlainText(getString(CoreR.string.logs_title_full), fullLogs)
-                        clipboard.setPrimaryClip(clip)
-                        Toast.makeText(requireContext(), getString(CoreR.string.copy_success), Toast.LENGTH_SHORT).show()
+                        ClipboardUtils.copy(
+                            requireContext(),
+                            getString(CoreR.string.logs_title_full),
+                            fullLogs,
+                        )
                     }
                     true
                 }

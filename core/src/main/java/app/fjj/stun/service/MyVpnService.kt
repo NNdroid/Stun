@@ -20,7 +20,7 @@ import kotlinx.coroutines.*
 import hev.htp.TTunnelService
 import app.fjj.stun.repo.*
 import app.fjj.stun.util.AppBootstrap
-import app.fjj.stun.util.ShizukuUtils
+import app.fjj.stun.util.BackgroundExemptions
 import myssh.SysInfoCallback
 import myssh.TrafficCallback
 import java.io.File
@@ -47,9 +47,8 @@ class MyVpnService : VpnService() {
     private var currentMemSys = 0.0
     private var currentGoroutines = 0L
     
-    private var lastSessionTx = 0L
-    private var lastSessionRx = 0L
-    
+    private val statsSink = TrafficStatsSink(this)
+
     private var currentProfileName: String = ""
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -85,6 +84,9 @@ class MyVpnService : VpnService() {
         const val CHANNEL_ID = "StunVpnChannel"
         const val NOTIFICATION_ID = 1001
         const val VPN_MTU = 1500
+
+        /** `hev-socks5-tunnel` 的 YAML 配置（见 startHevTunnelEngine）。 */
+        private const val FILE_HEV_TUNNEL_CONF = "hev-socks5-tunnel.conf"
 
         /** 断开后等待循环自行退出的上限，超时才强制停服务（见 stopVpnService 的看门狗）。 */
         const val STOP_WATCHDOG_MS = 5000L
@@ -285,7 +287,7 @@ class MyVpnService : VpnService() {
                 updateUnderlyingNetworks()
                 startTrafficMonitor()
 
-                applyShizukuOptimizations()
+                BackgroundExemptions.applyViaShizuku(packageName)
 
                 StunRepository.proxy.wgWait()
 
@@ -323,32 +325,32 @@ class MyVpnService : VpnService() {
     }
 
     private fun applyAppFiltering(builder: Builder, profile: Profile) {
-        val appFilterOverride = profile.appFilterOverride
-        val filterApps = if (appFilterOverride) profile.filterApps else SettingsManager.getFilterApps(this)
-        val filterMode = if (appFilterOverride) profile.filterMode else SettingsManager.getFilterMode(this)
+        // 与 tproxy 模式共用 [AppFilterResolver]：override 语义（profile 自带 vs 全局）只在这里
+        // 定义一次，两种模式不可能再各写一份而悄悄漂移。
+        val filter = AppFilterResolver.resolve(
+            overrideEnabled = profile.appFilterOverride,
+            profileFilterApps = profile.filterApps,
+            profileFilterMode = profile.filterMode,
+            globalFilterApps = SettingsManager.getFilterApps(this),
+            globalFilterMode = SettingsManager.getFilterMode(this),
+        )
+        if (filter.isEmpty) return
 
-        if (filterApps.isNotBlank()) {
-            val apps = filterApps.split(",").map { it.trim() }.filter { it.isNotBlank() }
-            apps.forEach { app ->
-                try {
-                    if (filterMode == 1) builder.addAllowedApplication(app)
-                    else builder.addDisallowedApplication(app)
-                } catch (e: Exception) {
-                    StunLogger.w(TAG, "Failed to filter app: $app")
-                }
+        filter.packages.forEach { app ->
+            try {
+                if (filter.isAllowList) builder.addAllowedApplication(app)
+                else builder.addDisallowedApplication(app)
+            } catch (e: Exception) {
+                StunLogger.w(TAG, "Failed to filter app: $app")
             }
         }
     }
 
-    private fun applyShizukuOptimizations() {
-        if (ShizukuUtils.isReady()) {
-            ShizukuUtils.addSelfToBatteryWhitelist(packageName)
-            ShizukuUtils.setStandbyBucketActive(packageName)
-        }
-    }
-
     private fun startHevTunnelEngine(fd: Int) {
-        val confFile = File(cacheDir, "tproxy.conf")
+        // 文件名刻意与 tproxy 模式错开：历史上两边都写 `cacheDir/tproxy.conf`，而 tproxy 模式的
+        // `tproxy.sh` 会 source 同名文件 —— 用户先跑 VPN 再切 tproxy，脚本就会 source 到这份
+        // YAML。tproxy 侧已改名 `tproxy_rules.conf`，这里也用回自己的名字，双向断掉这个耦合。
+        val confFile = File(cacheDir, FILE_HEV_TUNNEL_CONF)
         try {
             FileOutputStream(confFile).use { it.write(VpnConfigBuilder.buildHevSocks5TunnelConfig(SOCKS_PORT).toByteArray()) }
             
@@ -405,14 +407,9 @@ class MyVpnService : VpnService() {
 
     private fun saveFinalTrafficStats() {
         // 只补最后一段尚未落库的增量，避免与 updateStats 的逐次累加重复（否则整段流量会被加两次）。
-        // 会话期间 updateStats 已把每段 delta 写入 DB，这里兜底补齐「最后一次回调到会话结束」之间的差值。
-        val dTx = if (currentTxTotal >= lastSessionTx) currentTxTotal - lastSessionTx else 0L
-        val dRx = if (currentRxTotal >= lastSessionRx) currentRxTotal - lastSessionRx else 0L
-        if (dTx > 0 || dRx > 0) {
-            SettingsManager.getSelectedProfileId(this)?.let { id ->
-                ProfileManager.addTrafficStats(this, id, dTx, dRx)
-            }
-        }
+        // 会话期间 updateStats 已把每段 delta 写入 DB，这里兜底补齐「最后一次回调到会话结束」之间的差值；
+        // 基准住在 statsSink 里（不重连清零），所以走 flushPending 而不是自己算 delta。
+        statsSink.flushPending(currentTxTotal, currentRxTotal)
         currentTxTotal = 0L
         currentRxTotal = 0L
     }
@@ -497,29 +494,13 @@ class MyVpnService : VpnService() {
     private fun updateStats(txRate: Long, rxRate: Long, txTotal: Long, rxTotal: Long, activeConns: Long, totalConns: Long) {
         currentTxRate = txRate
         currentRxRate = rxRate
-
-        // 按 Go 全局累计值的逐帧差值增量落库：避免把整个进程累计值整段重复写入，
-        // 也保证节点列表的流量统计能随 DB 变更实时刷新（lastSessionTx 跨重连保留，不在此清零）。
-        val deltaTx = if (txTotal >= lastSessionTx) txTotal - lastSessionTx else 0L
-        val deltaRx = if (rxTotal >= lastSessionRx) rxTotal - lastSessionRx else 0L
-        lastSessionTx = txTotal
-        lastSessionRx = rxTotal
-        if (deltaTx > 0 || deltaRx > 0) {
-            SettingsManager.getSelectedProfileId(this)?.let { id ->
-                ProfileManager.addTrafficStats(this, id, deltaTx, deltaRx)
-            }
-        }
-
         currentTxTotal = txTotal
         currentRxTotal = rxTotal
         currentActiveConns = activeConns
         currentTotalConns = totalConns
 
-        StunRepository.txRate.postValue(txRate)
-        StunRepository.rxRate.postValue(rxRate)
-        StunRepository.txTotal.postValue(txTotal)
-        StunRepository.rxTotal.postValue(rxTotal)
-        StunRepository.recordRateSample(txRate, rxRate)
+        // 增量落库 / LiveData 刷新全在 sink 里，两种服务模式共用一份（口径漂移过一次，见 TrafficStatsSink）。
+        statsSink.ingest(txRate, rxRate, txTotal, rxTotal)
 
         refreshNotification()
     }
@@ -532,16 +513,17 @@ class MyVpnService : VpnService() {
         refreshNotification()
     }
 
-    private var lastNotificationUpdateTime = 0L
+    private val speedThrottle = SpeedRefreshThrottle()
+
     private fun refreshNotification() {
         if (!SettingsManager.getShowNotificationSpeed(this)) {
             return
         }
-        val currentTime = System.currentTimeMillis()
-        if (currentTime - lastNotificationUpdateTime < 2000L) {
+        // 节流间隔与 tproxy 模式共用 [SpeedRefreshThrottle.DEFAULT_INTERVAL_MS]：
+        // 两种服务模式的刷新频率必须一致，否则切换模式时通知的"跳动感"会突变。
+        if (!speedThrottle.shouldRefresh()) {
             return
         }
-        lastNotificationUpdateTime = currentTime
 
         val statusText = "↑ ${app.fjj.stun.util.AppUtils.formatSpeed(currentTxRate)} (${app.fjj.stun.util.AppUtils.formatBytes(currentTxTotal)}) " +
                 "↓ ${app.fjj.stun.util.AppUtils.formatSpeed(currentRxRate)} (${app.fjj.stun.util.AppUtils.formatBytes(currentRxTotal)}) | " +

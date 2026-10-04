@@ -46,6 +46,19 @@ object SettingsManager {
     private const val KEY_LANGUAGE = "language"
     private const val KEY_SHOW_NOTIFICATION_SPEED = "show_notification_speed"
 
+    // 保活开关（Web 控制台「保活与后台」卡片）。默认关：两条路径都会在设备上动手脚
+    // （service.d 往 /data/adb 写脚本 / Shizuku 反复改省电豁免），必须用户显式开。
+    private const val KEY_MAGISK_SERVICE_D_ENABLED = "magisk_service_d_enabled"
+    private const val KEY_SHIZUKU_KEEPALIVE_ENABLED = "shizuku_keepalive_enabled"
+
+    // 「这台设备上 Web 控制台曾经成功启动过」的粘滞标记（**只置位，永不清除**）。
+    // 保活 worker 靠它决定要不要把 WebServer 拉起来：电视端 MainActivity 每次都启 WebServer
+    // ⇒ 标记为 true；而手机端从来不起 WebServer ⇒ 标记恒 false ⇒ 保活不会在手机上
+    // 凭空开一个 5858 监听端口（那等于无端多暴露一个攻击面）。
+    // 刻意不做成「当前是否在运行」：TV 的 onDestroy 会 WebServer.stop()，若跟着清标记，
+    // 用户一退出应用保活就失效了 —— 而保活要的恰恰是把它再拉回来。
+    private const val KEY_WEB_CONSOLE_EVER_STARTED = "web_console_ever_started"
+
     // 带宽测速（下行/上行）配置项：默认走 Cloudflare speed 端点，可在设置中覆盖
     private const val KEY_SPEED_TEST_DOWN_URL = "speed_test_down_url"
     private const val KEY_SPEED_TEST_UP_URL = "speed_test_up_url"
@@ -338,6 +351,19 @@ object SettingsManager {
 
     fun getShowNotificationSpeed(context: Context): Boolean = getPrefs(context).getBoolean(KEY_SHOW_NOTIFICATION_SPEED, true)
     fun saveShowNotificationSpeed(context: Context, enabled: Boolean) = getPrefs(context).edit { putBoolean(KEY_SHOW_NOTIFICATION_SPEED, enabled) }
+
+    // ── 保活开关 ──
+    // ⚠️ 这两个 flag 只是「用户意图」。真实状态要看 KeepAliveManager：
+    //    service.d 脚本可能因刷机/还原 /data/adb 而消失，Shizuku 也可能没在跑。
+    //    所以读取设置的地方**不要**假设 flag 为 true 就等于保活真的在生效。
+    fun isMagiskServiceDEnabled(context: Context): Boolean = getPrefs(context).getBoolean(KEY_MAGISK_SERVICE_D_ENABLED, false)
+    fun saveMagiskServiceDEnabled(context: Context, enabled: Boolean) = getPrefs(context).edit { putBoolean(KEY_MAGISK_SERVICE_D_ENABLED, enabled) }
+
+    fun isShizukuKeepAliveEnabled(context: Context): Boolean = getPrefs(context).getBoolean(KEY_SHIZUKU_KEEPALIVE_ENABLED, false)
+    fun saveShizukuKeepAliveEnabled(context: Context, enabled: Boolean) = getPrefs(context).edit { putBoolean(KEY_SHIZUKU_KEEPALIVE_ENABLED, enabled) }
+
+    fun isWebConsoleEverStarted(context: Context): Boolean = getPrefs(context).getBoolean(KEY_WEB_CONSOLE_EVER_STARTED, false)
+    fun markWebConsoleEverStarted(context: Context) = getPrefs(context).edit { putBoolean(KEY_WEB_CONSOLE_EVER_STARTED, true) }
 
     // ── 带宽测速（下行/上行，经节点隧道真实吞吐）配置 ──
     fun getSpeedTestDownUrl(context: Context): String =

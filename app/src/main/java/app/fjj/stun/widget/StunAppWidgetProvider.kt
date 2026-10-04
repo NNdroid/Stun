@@ -26,6 +26,7 @@ import app.fjj.stun.service.MyTransparentProxyService
 import app.fjj.stun.service.MyVpnService
 import app.fjj.stun.ui.MainActivity
 import app.fjj.stun.ui.VpnQuickActionActivity
+import app.fjj.stun.util.AppUtils
 import app.fjj.stun.util.ExitInfoStore
 import app.fjj.stun.util.LocaleHelper
 import kotlinx.coroutines.CoroutineScope
@@ -235,15 +236,20 @@ abstract class StunWidgetProviderBase : AppWidgetProvider() {
             val compactSpeed = shape == WidgetShape.MINI || shape == WidgetShape.CAPSULE
             val tx = if (showLiveTraffic) StunRepository.txRate.value ?: 0L else 0L
             val rx = if (showLiveTraffic) StunRepository.rxRate.value ?: 0L else 0L
+            // 速率文案收口 AppUtils（core）。此前这里手写一份只做到 MB，
+            // 1GB/s 会显示成 "1024.0 MB/s"；紧凑格式由 AppUtils.formatSpeedCompact 提供，
+            // 单位阶梯与完整格式一致（到 TB）。
             views.setTextViewText(
                 R.id.widget_tv_speed_up,
-                if (showLiveTraffic) formatSpeed(tx, short = compactSpeed)
-                else ctx.getString(if (compactSpeed) R.string.widget_placeholder_speed_short else R.string.widget_placeholder_speed)
+                if (showLiveTraffic) {
+                    if (compactSpeed) AppUtils.formatSpeedCompact(tx) else AppUtils.formatSpeed(tx)
+                } else ctx.getString(if (compactSpeed) R.string.widget_placeholder_speed_short else R.string.widget_placeholder_speed)
             )
             views.setTextViewText(
                 R.id.widget_tv_speed_down,
-                if (showLiveTraffic) formatSpeed(rx, short = compactSpeed)
-                else ctx.getString(if (compactSpeed) R.string.widget_placeholder_speed_short else R.string.widget_placeholder_speed)
+                if (showLiveTraffic) {
+                    if (compactSpeed) AppUtils.formatSpeedCompact(rx) else AppUtils.formatSpeed(rx)
+                } else ctx.getString(if (compactSpeed) R.string.widget_placeholder_speed_short else R.string.widget_placeholder_speed)
             )
             views.setTextColor(
                 R.id.widget_tv_speed_up,
@@ -466,16 +472,6 @@ abstract class StunWidgetProviderBase : AppWidgetProvider() {
                 canvas.drawRoundRect(left, height - h, left + barW, height.toFloat(), 2f, 2f, paint)
             }
             return bmp
-        }
-
-        internal fun formatSpeed(bytesPerSec: Long, short: Boolean = false): String {
-            if (bytesPerSec <= 0) return if (short) "0" else "0 B/s"
-            if (bytesPerSec < 1024) return "$bytesPerSec B/s"
-            val kb = bytesPerSec / 1024.0
-            if (kb < 1024) return String.format(Locale.US, "%.1f KB/s", kb)
-            val mb = kb / 1024.0
-            if (short) return String.format(Locale.US, "%.1fM", mb)
-            return String.format(Locale.US, "%.1f MB/s", mb)
         }
 
         internal fun formatLastConnected(timestamp: Long): String {

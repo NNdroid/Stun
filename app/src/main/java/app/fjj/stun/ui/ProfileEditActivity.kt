@@ -25,6 +25,9 @@ import app.fjj.stun.databinding.ViewProfileUdpCustomOptionsBinding
 import app.fjj.stun.core.R as CoreR
 import app.fjj.stun.repo.Profile
 import app.fjj.stun.ui.viewmodel.ProfileEditViewModel
+import app.fjj.stun.ui.UserFeedback
+import app.fjj.stun.util.ClipboardUtils
+import app.fjj.stun.util.ProfileKeyValidator
 import app.fjj.stun.util.revealAboveBottomPadding
 import androidx.activity.viewModels
 import android.content.ClipData
@@ -346,7 +349,8 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
                     withContext(Dispatchers.Main) {
                         binding.btnFetchSshFingerprint.isEnabled = true
                         val msg = e.localizedMessage ?: e.message ?: "Unknown error"
-                        Toast.makeText(this@ProfileEditActivity, getString(CoreR.string.error_prefix, msg), Toast.LENGTH_LONG).show()
+                        UserFeedback.error(this@ProfileEditActivity, binding.root,
+                    getString(CoreR.string.error_prefix, msg))
                     }
                 }
             }
@@ -380,7 +384,8 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
                     withContext(Dispatchers.Main) {
                         binding.btnFetchCertFingerprint.isEnabled = true
                         val msg = e.localizedMessage ?: e.message ?: "Unknown error"
-                        Toast.makeText(this@ProfileEditActivity, getString(CoreR.string.error_prefix, msg), Toast.LENGTH_LONG).show()
+                        UserFeedback.error(this@ProfileEditActivity, binding.root,
+                    getString(CoreR.string.error_prefix, msg))
                     }
                 }
             }
@@ -408,7 +413,8 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
                     withContext(Dispatchers.Main) {
                         binding.btnDetailsSsh.isEnabled = true
                         val msg = e.localizedMessage ?: e.message ?: "Unknown error"
-                        Toast.makeText(this@ProfileEditActivity, getString(CoreR.string.error_prefix, msg), Toast.LENGTH_LONG).show()
+                        UserFeedback.error(this@ProfileEditActivity, binding.root,
+                    getString(CoreR.string.error_prefix, msg))
                     }
                 }
             }
@@ -440,7 +446,8 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
                     withContext(Dispatchers.Main) {
                         binding.btnDetailsCert.isEnabled = true
                         val msg = e.localizedMessage ?: e.message ?: "Unknown error"
-                        Toast.makeText(this@ProfileEditActivity, getString(CoreR.string.error_prefix, msg), Toast.LENGTH_LONG).show()
+                        UserFeedback.error(this@ProfileEditActivity, binding.root,
+                    getString(CoreR.string.error_prefix, msg))
                     }
                 }
             }
@@ -501,7 +508,8 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
                 Toast.makeText(this, getString(CoreR.string.profile_saved), Toast.LENGTH_SHORT).show()
                 finish()
             } else {
-                Toast.makeText(this, getString(CoreR.string.error_unknown), Toast.LENGTH_LONG).show()
+                UserFeedback.error(this@ProfileEditActivity, binding.root,
+                    getString(CoreR.string.error_unknown))
             }
         }
     }
@@ -924,15 +932,20 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
                 !privateKey.contains("BEGIN") || !privateKey.contains("PRIVATE KEY") ->
                     setError(binding.layoutPrivateKey, CoreR.string.error_invalid_private_key)
                 else -> {
-                    val checkResult = myssh.Myssh.checkIfKeyEncrypted(privateKey)
-                    if (checkResult == 1L) {
-                        val inputPass = binding.etKeyPass.text.toString()
-                        val actualPass = inputPass.ifEmpty { currentProfile.keyPass }
-                        if (actualPass.isEmpty() || !myssh.Myssh.validatePassphrase(privateKey, actualPass)) {
+                    // 三态判定收口 [ProfileKeyValidator]（与 Home / 快捷动作共用一份）。
+                    // 这里与另两处的差别只在**提示挂在哪个输入框**，判定逻辑必须一致 ——
+                    // 旧代码三处各写一遍，其中一处让 JNI 异常直接放行。
+                    val checkResult = ProfileKeyValidator.validate(
+                        privateKey = privateKey,
+                        // 口令优先取用户刚输入的，编辑既有节点时回落到已存的密文
+                        keyPass = binding.etKeyPass.text.toString().ifEmpty { currentProfile.keyPass },
+                    )
+                    when (checkResult) {
+                        ProfileKeyValidator.Result.PassphraseInvalid ->
                             setError(binding.layoutKeyPass, CoreR.string.error_invalid_key_password)
-                        }
-                    } else if (checkResult == 2L) {
-                        setError(binding.layoutPrivateKey, CoreR.string.error_invalid_private_key)
+                        ProfileKeyValidator.Result.PrivateKeyUnusable ->
+                            setError(binding.layoutPrivateKey, CoreR.string.error_invalid_private_key)
+                        else -> Unit
                     }
                 }
             }
@@ -975,7 +988,11 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
             dnsTunnelType = if (isDns) binding.spinnerDnsRecordType.text.toString().ifBlank { "txt" } else currentProfile.dnsTunnelType,
             dnsTunnelPublicKey = if (isDns) publicKey else currentProfile.dnsTunnelPublicKey,
             dnsTunnelEDNS0 = if (isDns) binding.switchDnsTunnelEdns0.isChecked else currentProfile.dnsTunnelEDNS0,
-            dnsTunnelPsk = if (isDns) binding.etDnsTunnelPsk.text.toString().trim() else currentProfile.dnsTunnelPsk,
+            // ⚠️ 凭据**不 trim**：与本块其余凭据（pass / privateKey / keyPass / kcpPassword /
+            // udpCustomPsk / icmpCustomPsk / proxyAuthToken / proxyAuthPass）以及 WebUI 保存路径保持一致。
+            // 首尾空白是 PSK 语义的一部分；trim 还会把"只输入空格"变成空串 ⇒ 静默清空该凭据。
+            // （`dnsTunnelMarker` 不是凭据，保持 trim。）
+            dnsTunnelPsk = if (isDns) binding.etDnsTunnelPsk.text.toString() else currentProfile.dnsTunnelPsk,
             dnsTunnelMarker = if (isDns) binding.etDnsTunnelMarker.text.toString().trim() else currentProfile.dnsTunnelMarker,
             kcpPassword = kcpOptions?.etKcpPassword?.text?.toString() ?: currentProfile.kcpPassword,
             kcpCrypt = kcpOptions?.spinnerKcpCrypt?.text?.toString()?.ifBlank { "none" } ?: currentProfile.kcpCrypt,
@@ -1197,11 +1214,9 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
             .show()
     }
 
+    /** 复制收口 [ClipboardUtils]：原先这里自己写一遍 CM + ClipData + Toast。 */
     private fun copyToClipboard(label: String, text: String) {
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-        val clip = ClipData.newPlainText(label, text)
-        clipboard?.setPrimaryClip(clip)
-        Toast.makeText(this, getString(CoreR.string.copied_to_clipboard), Toast.LENGTH_SHORT).show()
+        ClipboardUtils.copy(this, label, text)
     }
 
     override fun dispatchTouchEvent(ev: android.view.MotionEvent?): Boolean {

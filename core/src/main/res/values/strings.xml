@@ -489,7 +489,6 @@
     <string name="copy_details">Copy Info</string>
     <string name="copy_fingerprint">Copy Fingerprint</string>
     <string name="apply_fingerprint">Apply Fingerprint</string>
-    <string name="copied_to_clipboard">Copied to clipboard</string>
     <string name="fetching_details">Querying server details…</string>
     <string name="info_target_address">Target Address</string>
     <string name="info_server_banner">Server Version</string>
@@ -647,6 +646,7 @@
     <string name="app_crash_dialog_title">⚠️ App Crashed Previously</string>
     <string name="app_crash_dialog_msg">The app encountered an unexpected error during the last session. You can copy or share this log to help diagnose the issue:</string>
     <string name="app_crash_dialog_copy">Copy Log</string>
+    <string name="app_crash_dialog_size_suffix"> (%1$d chars)</string>
     <string name="app_crash_dialog_copied">Crash log copied to clipboard</string>
     <string name="app_crash_dialog_share">Share</string>
     <string name="app_crash_dialog_dismiss">Dismiss</string>

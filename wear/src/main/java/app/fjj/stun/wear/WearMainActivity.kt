@@ -21,10 +21,12 @@ import app.fjj.stun.repo.VpnState
 import app.fjj.stun.service.MyTransparentProxyService
 import app.fjj.stun.service.MyVpnService
 import app.fjj.stun.util.AppUtils
+import app.fjj.stun.util.CrashHandler
 import app.fjj.stun.wear.databinding.ActivityWearMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import app.fjj.stun.ui.UserFeedback
 
 class WearMainActivity : AppCompatActivity() {
 
@@ -39,7 +41,8 @@ class WearMainActivity : AppCompatActivity() {
         if (result.resultCode == RESULT_OK) {
             checkAndRequestNotificationPermission()
         } else {
-            Toast.makeText(this, getString(CoreR.string.vpn_permission_denied), Toast.LENGTH_SHORT).show()
+            UserFeedback.error(this, binding.root,
+                    getString(CoreR.string.vpn_permission_denied))
         }
     }
 
@@ -49,7 +52,8 @@ class WearMainActivity : AppCompatActivity() {
         if (granted) {
             startSelectedService()
         } else {
-            Toast.makeText(this, getString(CoreR.string.notification_permission_required), Toast.LENGTH_SHORT).show()
+            UserFeedback.error(this, binding.root,
+                    getString(CoreR.string.notification_permission_required))
         }
     }
 
@@ -65,9 +69,7 @@ class WearMainActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerView() {
-        val selectedId = SettingsManager.getSelectedProfileId(this)
         adapter = ProfileAdapterWear(
-            selectedProfileId = selectedId,
             onProfileClick = { profile ->
                 when {
                     isVpnTransitioning ->
@@ -163,26 +165,21 @@ class WearMainActivity : AppCompatActivity() {
 
     private fun showCrashDialog(crashLog: String) {
         if (isFinishing || isDestroyed) return
-        val paddingH = (16 * resources.displayMetrics.density).toInt()
-        val paddingV = (12 * resources.displayMetrics.density).toInt()
-        val textView = android.widget.TextView(this).apply {
-            text = crashLog
-            textSize = 11f
-            typeface = android.graphics.Typeface.MONOSPACE
-            setPadding(paddingH, paddingV, paddingH, paddingV)
-            // 跟随主题取色：写死白色在浅色主题的浅色弹窗里不可读
-            setTextColor(
-                com.google.android.material.color.MaterialColors.getColor(
-                    this, com.google.android.material.R.attr.colorOnSurface
-                )
-            )
-        }
-        val scrollView = android.widget.ScrollView(this).apply { addView(textView) }
-        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-            .setTitle(getString(CoreR.string.crash_dialog_title))
-            .setView(scrollView)
-            .setPositiveButton(getString(CoreR.string.close), null)
-            .show()
+        // 弹窗构造收口到 CrashHandler（core）。此前这里抄了一份，且比别端少一样东西：
+        // **连"文本可选中"都没有**，加上没有复制/分享按钮 —— 手表上崩溃日志完全无法导出。
+        // 字号同样误用 `textSize = 11f`（px 而非 sp）。
+        CrashHandler.showCrashDialog(
+            this,
+            crashLog,
+            CrashHandler.CrashDialogStyle(
+                titleRes = CoreR.string.crash_dialog_title,
+                // 手表屏幕小：字号更小、留白更少
+                textSizeSp = 11f,
+                horizontalPaddingDp = 12,
+                verticalPaddingDp = 8,
+                feedbackAnchor = binding.root,
+            ),
+        )
     }
 
     private fun loadProfiles() {

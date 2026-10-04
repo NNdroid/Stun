@@ -38,8 +38,8 @@ const I18N = {
     edit_name_placeholder: "例如：东京高速节点",
     edit_ssh_addr_placeholder: "IP:Port 或 域名:端口",
     edit_user_placeholder: "例如：root",
-    edit_pass_placeholder: "留空则保持原密码不变",
     secret_saved_hint: "已保存 · 留空则不修改",
+    secret_empty_hint: "未设置",
     edit_key_pass_placeholder: "无口令可留空",
     edit_proxy_addr_placeholder: "IP:Port 或 域名:端口",
     edit_custom_host_placeholder: "例如：cloudflare.com",
@@ -468,6 +468,29 @@ label_tunnel_tls: '🔒 TLS 加密',
     opt_mcp_auth_oauth: '🛡️ OAuth 2.0 (Token / Code 授权)',
     label_mcp_secret: 'MCP 访问密钥 / 密码 (Secret / Key)：',
     mcp_secret_placeholder: '留空则免密或使用默认密钥',
+
+    // 保活与后台（Keep-alive & background）
+    // Web 控制台是跑在 app 进程里的 object，进程被回收就没了；这两个开关就是把它拉回来的手段。
+    settings_keepalive_title: '🔋 保活与后台',
+    label_ka_magisk: 'Magisk service.d 开机保活',
+    desc_ka_magisk: '向 /data/adb/service.d 写入保活脚本：开机自动拉起 Stun，进程被杀后自动重启，控制台随时可访问。需要 root。',
+    label_ka_shizuku: 'Shizuku 保活（免 root）',
+    desc_ka_shizuku: '每 15 分钟巡检一次：进程被回收就重新拉起控制台，并借 Shizuku 反复确认电池白名单，避免 Doze 掐掉后台。需 Shizuku 正在运行。',
+    ka_enabled: '保活已开启',
+    ka_disabled: '保活已关闭',
+    ka_fail_generic: '操作失败，设备状态未改变',
+    ka_fail_no_root: '未获取 root 权限，无法写入 service.d',
+    ka_fail_script_write_failed: '保活脚本写入失败（可能被 SELinux 或 Root 策略拦截）',
+    ka_fail_shizuku_not_running: 'Shizuku 未在运行，请先启动 Shizuku',
+    ka_fail_shizuku_no_permission: '未获得 Shizuku 授权，请在设备上打开 Stun 授予权限',
+    ka_magisk_active: '● 保活脚本已安装，开机自动拉起',
+    ka_magisk_off: '○ 未开启',
+    ka_magisk_script_lost: '⚠ 开关是开的，但脚本已不存在（刷机或还原 /data/adb 会清掉它），请关掉再打开以重装',
+    ka_no_root: '○ 未获取 root，无法开启',
+    ka_shizuku_active: '● 保活已开启',
+    ka_shizuku_ready: 'Shizuku 已就绪',
+    ka_shizuku_no_perm: 'Shizuku 未授权',
+    ka_shizuku_stopped: 'Shizuku 未运行',
     subscription_title: '📡 订阅管理',
     subscription_url_placeholder: 'https://example.com/sub 或订阅链接',
     btn_sub_sync: '🔄 立即同步',
@@ -493,8 +516,8 @@ label_tunnel_tls: '🔒 TLS 加密',
     edit_name_placeholder: "例如：東京高速節點",
     edit_ssh_addr_placeholder: "IP:Port 或 網域名稱:連接埠",
     edit_user_placeholder: "例如：root",
-    edit_pass_placeholder: "留空則保持原密碼不變",
     secret_saved_hint: "已儲存 · 留空則不修改",
+    secret_empty_hint: "未設定",
     edit_key_pass_placeholder: "無口令可留空",
     edit_proxy_addr_placeholder: "IP:Port 或 網域名稱:連接埠",
     edit_custom_host_placeholder: "例如：cloudflare.com",
@@ -923,6 +946,28 @@ label_tunnel_tls: '🔒 TLS 加密',
     opt_mcp_auth_oauth: '🛡️ OAuth 2.0 (Token / Code 授權)',
     label_mcp_secret: 'MCP 存取金鑰 / 密碼 (Secret / Key)：',
     mcp_secret_placeholder: '留空則免密或使用預設金鑰',
+
+    // 保活與背景（Keep-alive & background）
+    settings_keepalive_title: '🔋 保活與背景',
+    label_ka_magisk: 'Magisk service.d 開機保活',
+    desc_ka_magisk: '向 /data/adb/service.d 寫入保活腳本：開機自動拉起 Stun，進程被殺後自動重啟，主控台隨時可存取。需要 root。',
+    label_ka_shizuku: 'Shizuku 保活（免 root）',
+    desc_ka_shizuku: '每 15 分鐘巡檢一次：進程被回收就重新拉起主控台，並藉 Shizuku 反覆確認電池白名單，避免 Doze 掐掉背景。需 Shizuku 正在執行。',
+    ka_enabled: '保活已開啟',
+    ka_disabled: '保活已關閉',
+    ka_fail_generic: '操作失敗，裝置狀態未改變',
+    ka_fail_no_root: '未取得 root 權限，無法寫入 service.d',
+    ka_fail_script_write_failed: '保活腳本寫入失敗（可能被 SELinux 或 Root 策略攔截）',
+    ka_fail_shizuku_not_running: 'Shizuku 未在執行，請先啟動 Shizuku',
+    ka_fail_shizuku_no_permission: '未取得 Shizuku 授權，請在裝置上開啟 Stun 授予權限',
+    ka_magisk_active: '● 保活腳本已安裝，開機自動拉起',
+    ka_magisk_off: '○ 未開啟',
+    ka_magisk_script_lost: '⚠ 開關是開的，但腳本已不存在（刷機或還原 /data/adb 會清掉它），請關掉再打開以重裝',
+    ka_no_root: '○ 未取得 root，無法開啟',
+    ka_shizuku_active: '● 保活已開啟',
+    ka_shizuku_ready: 'Shizuku 已就緒',
+    ka_shizuku_no_perm: 'Shizuku 未授權',
+    ka_shizuku_stopped: 'Shizuku 未執行',
     subscription_title: '📡 訂閱管理',
     subscription_url_placeholder: 'https://example.com/sub 或訂閱連結',
     btn_sub_sync: '🔄 立即同步',
@@ -948,8 +993,8 @@ label_tunnel_tls: '🔒 TLS 加密',
     edit_name_placeholder: "e.g. Tokyo Fast Node",
     edit_ssh_addr_placeholder: "IP:Port or Domain:Port",
     edit_user_placeholder: "e.g. root",
-    edit_pass_placeholder: "Leave empty to keep existing password",
     secret_saved_hint: "Saved · leave empty to keep",
+    secret_empty_hint: "Not set",
     edit_key_pass_placeholder: "Leave empty if unencrypted",
     edit_proxy_addr_placeholder: "IP:Port or Domain:Port",
     edit_custom_host_placeholder: "e.g. cloudflare.com",
@@ -1378,6 +1423,30 @@ label_tunnel_tls: '🔒 TLS encryption',
     opt_mcp_auth_oauth: '🛡️ OAuth 2.0 (Token / Code grant)',
     label_mcp_secret: 'MCP Access Secret / Key:',
     mcp_secret_placeholder: 'Leave empty for no auth or default key',
+
+    // Keep-alive & background
+    // The web console is a plain object living in the app process: when the process is
+    // reclaimed it is simply gone. These two switches are the ways to bring it back.
+    settings_keepalive_title: '🔋 Keep-alive & background',
+    label_ka_magisk: 'Magisk service.d keep-alive on boot',
+    desc_ka_magisk: 'Writes a keep-alive script into /data/adb/service.d: launches Stun at boot and restarts it if the process is killed, so the console stays reachable. Requires root.',
+    label_ka_shizuku: 'Shizuku keep-alive (no root)',
+    desc_ka_shizuku: 'Checks every 15 minutes: brings the console back if the process was reclaimed, and re-asserts the battery whitelist through Shizuku so Doze cannot throttle it. Requires Shizuku running.',
+    ka_enabled: 'Keep-alive enabled',
+    ka_disabled: 'Keep-alive disabled',
+    ka_fail_generic: 'Operation failed; device state unchanged',
+    ka_fail_no_root: 'No root permission, cannot write to service.d',
+    ka_fail_script_write_failed: 'Failed to write the keep-alive script (SELinux or a root policy may have blocked it)',
+    ka_fail_shizuku_not_running: 'Shizuku is not running — start it first',
+    ka_fail_shizuku_no_permission: 'Shizuku permission not granted — open Stun on the device to grant it',
+    ka_magisk_active: '● Script installed, launches automatically at boot',
+    ka_magisk_off: '○ Off',
+    ka_magisk_script_lost: '⚠ Switch is on but the script is gone (a flash or restore wipes /data/adb) — turn it off then on to reinstall',
+    ka_no_root: '○ No root, cannot enable',
+    ka_shizuku_active: '● Keep-alive enabled',
+    ka_shizuku_ready: 'Shizuku ready',
+    ka_shizuku_no_perm: 'Shizuku not authorized',
+    ka_shizuku_stopped: 'Shizuku not running',
     subscription_title: '📡 Subscription',
     subscription_url_placeholder: 'https://example.com/sub or subscription link',
     btn_sub_sync: '🔄 Sync Now',
@@ -1403,8 +1472,8 @@ label_tunnel_tls: '🔒 TLS encryption',
     edit_name_placeholder: "例: 東京高速ノード",
     edit_ssh_addr_placeholder: "IP:ポート または ドメイン:ポート",
     edit_user_placeholder: "例: root",
-    edit_pass_placeholder: "変更しない場合は空のまま",
     secret_saved_hint: "保存済み · 空欄なら変更しません",
+    secret_empty_hint: "未設定",
     edit_key_pass_placeholder: "パスフレーズがない場合は空欄",
     edit_proxy_addr_placeholder: "IP:ポート または ドメイン:ポート",
     edit_custom_host_placeholder: "例: cloudflare.com",
@@ -1833,6 +1902,28 @@ label_tunnel_tls: '🔒 TLS 暗号化',
     opt_mcp_auth_oauth: '🛡️ OAuth 2.0 (Token / Code 認可)',
     label_mcp_secret: 'MCP アクセスキー / シークレット：',
     mcp_secret_placeholder: '空欄でパスワードなし・デフォルトキー使用',
+
+    // 自動復旧とバックグラウンド（Keep-alive & background）
+    settings_keepalive_title: '🔋 自動復旧とバックグラウンド',
+    label_ka_magisk: 'Magisk service.d による自動復旧',
+    desc_ka_magisk: '/data/adb/service.d に自動復旧スクリプトを書き込み、起動時に Stun を自動で立ち上げます。プロセスが終了しても再起動するため、コンソールにいつでもアクセスできます。root 権限が必要です。',
+    label_ka_shizuku: 'Shizuku による自動復旧（root 不要）',
+    desc_ka_shizuku: '15 分ごとに確認し、プロセスが回収された場合はコンソールを再起動します。Shizuku 経由でバッテリー除外を毎回再適用するため、Doze に扼止されません。Shizuku の起動が必要です。',
+    ka_enabled: '自動復旧を有効にしました',
+    ka_disabled: '自動復旧を無効にしました',
+    ka_fail_generic: '操作に失敗しました。デバイスの状態は変更されていません',
+    ka_fail_no_root: 'root 権限がないため service.d に書き込めません',
+    ka_fail_script_write_failed: 'スクリプトの書き込みに失敗しました（SELinux または root ポリシーにブロックされた可能性があります）',
+    ka_fail_shizuku_not_running: 'Shizuku が起動していません。先に Shizuku を起動してください',
+    ka_fail_shizuku_no_permission: 'Shizuku の権限が許可されていません。デバイスで Stun を開いて権限を許可してください',
+    ka_magisk_active: '● スクリプトは導入済み。起動時に自動で立ち上がります',
+    ka_magisk_off: '○ 無効',
+    ka_magisk_script_lost: '⚠ スイッチはオンですがスクリプトが存在しません（ファクトリーリセットや /data/adb の復元で消えます）。オフにしてからオンにして再インストールしてください',
+    ka_no_root: '○ root 権限がないため有効にできません',
+    ka_shizuku_active: '● 自動復旧は有効です',
+    ka_shizuku_ready: 'Shizuku は利用可能です',
+    ka_shizuku_no_perm: 'Shizuku の権限が許可されていません',
+    ka_shizuku_stopped: 'Shizuku が起動していません',
     subscription_title: '📡 購読管理',
     subscription_url_placeholder: 'https://example.com/sub または購読リンク',
     btn_sub_sync: '🔄 今すぐ同期',
@@ -1858,8 +1949,8 @@ label_tunnel_tls: '🔒 TLS 暗号化',
     edit_name_placeholder: "z.B. Tokio Highspeed-Knoten",
     edit_ssh_addr_placeholder: "IP:Port oder Domain:Port",
     edit_user_placeholder: "z.B. root",
-    edit_pass_placeholder: "Leer lassen für unverändertes Passwort",
     secret_saved_hint: "Gespeichert · leer lassen = unverändert",
+    secret_empty_hint: "Nicht gesetzt",
     edit_key_pass_placeholder: "Leer lassen wenn unverschlüsselt",
     edit_proxy_addr_placeholder: "IP:Port oder Domain:Port",
     edit_custom_host_placeholder: "z.B. cloudflare.com",
@@ -2288,6 +2379,30 @@ label_tunnel_tls: '🔒 TLS-Verschlüsselung',
     opt_mcp_auth_oauth: '🛡️ OAuth 2.0 (Token / Code-Autorisierung)',
     label_mcp_secret: 'MCP Zugriffsschlüssel / Geheimnis:',
     mcp_secret_placeholder: 'Leer lassen für keinen Auth oder Standardschlüssel',
+
+    // Keep-alive & Hintergrund
+    // Die Web-Konsole ist ein einfaches Objekt im App-Prozess: Wird der Prozess beendet,
+    // ist sie einfach weg. Diese beiden Schalter holen sie zurück.
+    settings_keepalive_title: '🔋 Keep-alive & Hintergrund',
+    label_ka_magisk: 'Magisk service.d Keep-alive beim Booten',
+    desc_ka_magisk: 'Schreibt ein Keep-alive-Skript nach /data/adb/service.d: Startet Stun beim Booten und startet es neu, wenn der Prozess beendet wird – die Konsole bleibt so erreichbar. Erfordert root.',
+    label_ka_shizuku: 'Shizuku Keep-alive (ohne root)',
+    desc_ka_shizuku: 'Prüft alle 15 Minuten: Startet die Konsole neu, wenn der Prozess beendet wurde, und setzt über Shizuku die Batterie-Ausnahmeliste erneut, damit Doze sie nicht drosselt. Erfordert laufendes Shizuku.',
+    ka_enabled: 'Keep-alive aktiviert',
+    ka_disabled: 'Keep-alive deaktiviert',
+    ka_fail_generic: 'Vorgang fehlgeschlagen, Gerätezustand unverändert',
+    ka_fail_no_root: 'Keine root-Berechtigung, kann nicht in service.d schreiben',
+    ka_fail_script_write_failed: 'Keep-alive-Skript konnte nicht geschrieben werden (möglicherweise durch SELinux oder eine root-Richtlinie blockiert)',
+    ka_fail_shizuku_not_running: 'Shizuku läuft nicht – bitte zuerst Shizuku starten',
+    ka_fail_shizuku_no_permission: 'Keine Shizuku-Berechtigung – bitte Stun auf dem Gerät öffnen und die Berechtigung erteilen',
+    ka_magisk_active: '● Skript installiert, startet beim Booten automatisch',
+    ka_magisk_off: '○ Aus',
+    ka_magisk_script_lost: '⚠ Schalter ist an, aber das Skript fehlt (Flash oder Wiederherstellung löscht /data/adb) – zum Neuinstallieren aus- und wieder einschalten',
+    ka_no_root: '○ Kein root, kann nicht aktiviert werden',
+    ka_shizuku_active: '● Keep-alive aktiv',
+    ka_shizuku_ready: 'Shizuku bereit',
+    ka_shizuku_no_perm: 'Shizuku nicht autorisiert',
+    ka_shizuku_stopped: 'Shizuku läuft nicht',
     subscription_title: '📡 Abonnement',
     subscription_url_placeholder: 'https://example.com/sub oder Abonnement-Link',
     btn_sub_sync: '🔄 Jetzt synchronisieren',
@@ -2313,8 +2428,8 @@ label_tunnel_tls: '🔒 TLS-Verschlüsselung',
     edit_name_placeholder: "Ex: Nœud haut débit Tokyo",
     edit_ssh_addr_placeholder: "IP:Port ou Domaine:Port",
     edit_user_placeholder: "Ex: root",
-    edit_pass_placeholder: "Laisser vide pour conserver le mot de passe",
     secret_saved_hint: "Enregistré · laisser vide pour conserver",
+    secret_empty_hint: "Non défini",
     edit_key_pass_placeholder: "Laisser vide si non chiffré",
     edit_proxy_addr_placeholder: "IP:Port ou Domaine:Port",
     edit_custom_host_placeholder: "Ex: cloudflare.com",
@@ -2742,7 +2857,31 @@ label_tunnel_tls: '🔒 Chiffrement TLS',
     opt_mcp_auth_basic: '👤 HTTP Basic (identifiant & mot de passe)',
     opt_mcp_auth_oauth: '🛡️ OAuth 2.0 (Token / Code grant)',
     label_mcp_secret: 'Clé secrète / accès MCP :',
-    mcp_secret_placeholder: 'Laisser vide pour sans auth ou clé par défaut',
+    mcp_secret_placeholder: "Laisser vide pour sans auth ou clé par défaut",
+
+    // Maintien actif & arrière-plan
+    // La console web est un simple objet dans le processus applicatif : si le processus est
+    // tué, elle disparaît. Ces deux interrupteurs sont les moyens de la ramener.
+    settings_keepalive_title: '🔋 Maintien actif & arrière-plan',
+    label_ka_magisk: 'Maintien au démarrage Magisk service.d',
+    desc_ka_magisk: "Écrit un script de maintien dans /data/adb/service.d : lance Stun au démarrage et le relance si le processus est tué, afin que la console reste toujours accessible. Nécessite root.",
+    label_ka_shizuku: 'Maintien via Shizuku (sans root)',
+    desc_ka_shizuku: "Vérifie toutes les 15 minutes : relance la console si le processus a été tué et réaffirme via Shizuku la liste d'exemption de batterie pour éviter que Doze ne la bride. Nécessite Shizuku en cours d'exécution.",
+    ka_enabled: 'Maintien activé',
+    ka_disabled: 'Maintien désactivé',
+    ka_fail_generic: "Échec de l'opération, état de l'appareil inchangé",
+    ka_fail_no_root: 'Aucune permission root, impossible d’écrire dans service.d',
+    ka_fail_script_write_failed: "Échec de l'écriture du script de maintien (SELinux ou une politique root l'a peut-être bloqué)",
+    ka_fail_shizuku_not_running: "Shizuku n'est pas démarré — lancez d'abord Shizuku",
+    ka_fail_shizuku_no_permission: "Permission Shizuku non accordée — ouvrez Stun sur l'appareil pour l'accorder",
+    ka_magisk_active: '● Script installé, lancement automatique au démarrage',
+    ka_magisk_off: '○ Désactivé',
+    ka_magisk_script_lost: "⚠ L'interrupteur est activé mais le script a disparu (un flash ou une restauration efface /data/adb) — désactivez puis réactivez pour réinstaller",
+    ka_no_root: '○ Pas de root, activation impossible',
+    ka_shizuku_active: '● Maintien activé',
+    ka_shizuku_ready: 'Shizuku prêt',
+    ka_shizuku_no_perm: 'Shizuku non autorisé',
+    ka_shizuku_stopped: "Shizuku n'est pas démarré",
     subscription_title: '📡 Abonnement',
     subscription_url_placeholder: 'https://example.com/sub ou lien d\'abonnement',
     btn_sub_sync: '🔄 Synchroniser maintenant',
@@ -3139,17 +3278,20 @@ function applyI18n() {
     'edit-node-ssh-addr': 'edit_ssh_addr_placeholder',
     'edit-node-note': 'edit_note_placeholder',
     'edit-node-user': 'edit_user_placeholder',
-    'edit-node-pass': 'edit_pass_placeholder',
+    'edit-node-pass': 'secret_empty_hint',
     'edit-node-key-pass': 'edit_key_pass_placeholder',
     'edit-node-proxy-addr': 'edit_proxy_addr_placeholder',
     'edit-node-custom-host': 'edit_custom_host_placeholder',
     'edit-node-server-name': 'edit_server_name_placeholder',
     'edit-node-custom-path': 'edit_custom_path_placeholder',
     'edit-node-udp-custom-psk': 'edit_udp_psk_placeholder',
+    'edit-node-icmp-psk': 'secret_empty_hint',
     'edit-node-noise-public-key': 'edit_noise_pk_placeholder',
     'edit-node-ssh-fingerprint': 'edit_ssh_fp_placeholder',
     'edit-node-cert-fingerprint': 'edit_cert_fp_placeholder',
     'edit-node-auth-token': 'edit_auth_token_placeholder',
+    'edit-node-auth-pass': 'secret_empty_hint',
+    'edit-node-kcp-pass': 'secret_empty_hint',
     'node-app-search': 'search_placeholder',
     'input-custom-token': 'custom_token_placeholder',
     'profile-json-input': 'import_placeholder',
@@ -3204,6 +3346,21 @@ function applyI18n() {
     const el = document.getElementById(id);
     if (el) el.textContent = t(mcpAuthOptKeys[i]);
   });
+
+  // Keep-alive Card (Magisk service.d / Shizuku)
+  // 全用带守卫的写法：本卡是后加的，别让缺节点把整个 applyI18n 带崩。
+  ['t-settings-keepalive-title|settings_keepalive_title',
+   't-label-ka-magisk|label_ka_magisk',
+   't-desc-ka-magisk|desc_ka_magisk',
+   't-label-ka-shizuku|label_ka_shizuku',
+   't-desc-ka-shizuku|desc_ka_shizuku'].forEach(pair => {
+    const [id, key] = pair.split('|');
+    const el = document.getElementById(id);
+    if (el) el.textContent = t(key);
+  });
+  // 两条状态行**故意不在这里写死**：它们要同时反映「开关意图」和「设备真实状态」
+  // （例如脚本已被刷机冲掉），只能由 renderKeepAliveStatus 用最新状态重绘。
+  if (lastKeepAliveStatus) renderKeepAliveStatus(lastKeepAliveStatus);
 
   if (currentTab === 'conntrack') renderConnections();
   renderProfiles(allProfiles);
@@ -4135,8 +4292,15 @@ const SECRET_BASE_PH = Object.create(null);
 //
 // 为什么不让掩码直接占着 value：用户看到的会是一坨 `*****`（`privateKey` textarea、
 // `dnsTunnelPsk`、`proxyAuthToken` 这 3 个是 type=text，字面可见），而不是
-// 「这个节点已经配了密码」这个真正有用的信息；而且 `edit_pass_placeholder` 里
-// 写着"留空则保持原密码不变"，那个 hint 永远没机会露面。
+// 「这个节点已经配了密码」这个真正有用的信息。
+//
+// 「空 / 有值」这一态**不需要协议层新增字段**：服务端 maskInPlace 刻意保留空串
+// （`''` = 未设置，`*****` = 已设置），前端经 applySecretMaskDisplay 落到
+// `dataset.secret` 的有无，refreshSecretDisplay 据此二分渲染：
+//   · 有值 → `secret_saved_hint`（已保存 · 留空则不修改）+ 「删除」按钮
+//   · 无值 → 该字段的格式提示，没有提示的字段用 `secret_empty_hint`（未设置）
+// 两个分支都必须是**描述该状态本身**的句子，不能互相借用（曾经无值态借用
+// 「留空则保持原密码不变」，对没设过密码的节点就是在撒谎）。
 //
 // ⚠️ 别改成"让接口直接返回 ENC: 密文"：KeystoreUtils 的 AAD 是固定包名，密文
 // 可重放、可跨字段贴，拿到它就等于拿到能兑换明文的钥匙；且写入侧一旦比对不中
@@ -4172,7 +4336,11 @@ function refreshSecretDisplay() {
     if (!el) continue;
     const group = secretGroupOf(el);
     const hasSecret = !!el.dataset.secret;
-    el.placeholder = hasSecret ? t('secret_saved_hint') : (SECRET_BASE_PH[id] || '');
+    // 无值态：优先用该字段自己的格式提示（例如 auth-token 的「例如：Token_Secret_888」、
+    // dns-psk 的「留空=匿名；须与服务端一致」），没有提示的字段回落到统一的「未设置」。
+    // ⚠️ 这里绝不能借用一个为"有值"语境写的句子：未设置时框里说「留空则保持原密码不变」
+    // 会让用户以为已经存过一个密码 —— 那正是「分不清是空还是有值」的来源。
+    el.placeholder = hasSecret ? t('secret_saved_hint') : (SECRET_BASE_PH[id] || t('secret_empty_hint'));
     el.classList.toggle('has-secret', hasSecret);
     if (group) group.classList.toggle('has-secret', hasSecret);
     secretClearButton(el);
@@ -4856,8 +5024,12 @@ async function submitEditProfileImpl() {
   const verifyCertFingerprint = document.getElementById('edit-node-verify-cert').checked;
   const serverCertFingerprint = document.getElementById('edit-node-cert-fingerprint').value.trim();
 
+  // ⚠️ 提交 payload 里凭据一律**不 trim**（与后端 `?: existing` 的"空串=显式清空"语义配套）：
+  // 首尾空白是密码/PSK 语义的一部分，trim 会把"只输入空格"变成空串 ⇒ 后端当成"清空"写入，
+  // 用户以为改了值、实际把凭据删了却看不出原因。校验侧（lvVal / readEditorSnapshot）仍照常
+  // trim —— 那是刻意的"空白=未填"守卫，两条路径分工不同，见 SECRET_BASE_PH 下方的显示规则注释。
   const proxyAuthRequired = document.getElementById('edit-node-proxy-auth').checked;
-  const proxyAuthToken = document.getElementById('edit-node-auth-token').value.trim();
+  const proxyAuthToken = document.getElementById('edit-node-auth-token').value;
   const proxyAuthUser = document.getElementById('edit-node-auth-user').value.trim();
   const proxyAuthPass = document.getElementById('edit-node-auth-pass').value;
 
@@ -4904,7 +5076,7 @@ async function submitEditProfileImpl() {
   const udpCustomMtuProbe = document.getElementById('edit-node-udp-custom-mtu-probe').value;
 
   // ICMP Custom（此前 payload 引用了未声明变量 → 所有 webui 保存 ReferenceError）
-  const icmpCustomPsk = document.getElementById('edit-node-icmp-psk').value.trim();
+  const icmpCustomPsk = document.getElementById('edit-node-icmp-psk').value;
   const icmpCustomMagicRaw = document.getElementById('edit-node-icmp-magic').value.trim();
   const icmpCustomMagic = icmpCustomMagicRaw;
   // icmpCustomFamily removed in myssh 152c556
@@ -4913,7 +5085,7 @@ async function submitEditProfileImpl() {
   const icmpCustomPaceMS = Math.max(0, parseInt(document.getElementById('edit-node-icmp-pace').value) || 0);
   const icmpCustomIdRange = document.getElementById('edit-node-icmp-id-range').value.trim();
 
-  const dnsTunnelPsk = document.getElementById('edit-node-dns-psk').value.trim();
+  const dnsTunnelPsk = document.getElementById('edit-node-dns-psk').value;
   const dnsTunnelMarker = document.getElementById('edit-node-dns-marker').value.trim();
 
   const noisePublicKey = document.getElementById('edit-node-noise-public-key').value.trim();
@@ -5552,6 +5724,8 @@ async function webdavAction(path, okKey, okParams, body = {}) {
 async function loadSettings(force) {
   const data = await fetchCached(settingsCache, '/api/settings', SETTINGS_TTL_MS, force);
   if (data) applySettingsFields(data);
+  // 保活状态走独立端点（要起 root shell 核实脚本还在不在，不该塞进批量设置里）
+  loadKeepAliveStatus();
 }
 
 function applySettingsFields(data) {
@@ -5753,6 +5927,86 @@ async function saveAllSettings() {
     }
   } catch (_) {
     showToast(t('settings_save_failed'));
+  }
+}
+
+// ── 保活与后台（Magisk service.d / Shizuku）────────────────────────
+// 这两个开关**不走** /api/settings/save，而是各自一个专用端点。三个原因：
+//  1. 一保存就要动设备（root 往 /data/adb 写脚本、可能要弹 Shizuku 授权），同步做完可能
+//     撞上 libsu 的 90s 超时，把整次"批量保存其他设置"一起拖挂；
+//  2. 失败要能**立刻**把开关弹回未开启。塞进批量保存里只会得到一个笼统的"保存失败"；
+//  3. 状态行必须同时表达「开关意图」和「设备现实」（脚本可能已被刷机冲掉）。
+let lastKeepAliveStatus = null;
+
+// 失败码 → 本地化文案。t() 对缺失键会**原样返回键名**，那种"英文提示"其实是漏了翻译，
+// 所以这里必须显式兜底，不能直接把 key 丢给用户。
+function keepAliveFailMessage(code) {
+  const key = 'ka_fail_' + (code || 'unknown');
+  const translated = t(key);
+  return translated === key ? t('ka_fail_generic') : translated;
+}
+
+function renderKeepAliveStatus(st) {
+  if (!st) return;
+  lastKeepAliveStatus = st;
+
+  const mSwitch = document.getElementById('switch-ka-magisk');
+  const sSwitch = document.getElementById('switch-ka-shizuku');
+  // 程序性回填 .checked 不会触发 onchange，所以这里覆盖不会反过来发请求。
+  if (mSwitch) mSwitch.checked = !!st.magiskEnabled;
+  if (sSwitch) sSwitch.checked = !!st.shizukuEnabled;
+
+  const mState = document.getElementById('t-state-ka-magisk');
+  if (mState) {
+    if (st.magiskEnabled && !st.magiskInstalled) mState.textContent = t('ka_magisk_script_lost');
+    else if (st.magiskEnabled) mState.textContent = t('ka_magisk_active');
+    else if (!st.hasRoot) mState.textContent = t('ka_no_root');
+    else mState.textContent = t('ka_magisk_off');
+  }
+
+  const sState = document.getElementById('t-state-ka-shizuku');
+  if (sState) {
+    const byState = {
+      READY: 'ka_shizuku_ready',
+      NO_PERMISSION: 'ka_shizuku_no_perm',
+      NOT_RUNNING: 'ka_shizuku_stopped'
+    };
+    const env = t(byState[st.shizukuState] || 'ka_shizuku_stopped');
+    sState.textContent = st.shizukuEnabled ? t('ka_shizuku_active') + ' · ' + env : env;
+  }
+}
+
+async function loadKeepAliveStatus() {
+  try {
+    const res = await fetch('/api/keepalive/status?token=' + token);
+    if (res.ok) renderKeepAliveStatus(await res.json());
+  } catch (_) { /* 拿不到状态就保持现状，不打断设置页 */ }
+}
+
+async function onKeepAliveToggle(kind, el) {
+  const wanted = el.checked;
+  el.disabled = true;
+  try {
+    const res = await fetch('/api/keepalive/' + kind + '?token=' + token, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      // requestPermission=false：Shizuku 授权弹窗显示在**设备屏幕**上，而 WebUI 常是远程操作，
+      // 用户多半不在跟前。默认只回报状态，由状态行提示去设备上处理。
+      body: JSON.stringify({ enabled: wanted, requestPermission: false })
+    });
+    const data = await res.json().catch(() => null);
+    if (data && data.status) renderKeepAliveStatus(data.status);
+    if (!res.ok || !data || !data.ok) {
+      el.checked = !wanted;   // 回滚到设备上的真实状态，而不是盲信用户那一下点击
+      showToast(keepAliveFailMessage(data && data.code));
+    } else {
+      showToast(t(wanted ? 'ka_enabled' : 'ka_disabled'));
+    }
+  } catch (_) {
+    el.checked = !wanted;
+    showToast(t('settings_save_failed'));
+  } finally {
+    el.disabled = false;
   }
 }
 

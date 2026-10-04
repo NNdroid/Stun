@@ -93,4 +93,102 @@ class WebUiSecretFieldParityTest {
             dead.isEmpty(),
         )
     }
+
+    // ── 「空 / 有值」文案护栏 ──
+    //
+    // ⚠️ 这一态**不需要协议层新增 `isXxxNullOrEmpty`**：服务端 `ProfileSecrets.maskInPlace`
+    // 刻意保留空串，所以线上 `''` = 未设置、`*****` = 已设置，前端据 `dataset.secret` 的有无二分渲染。
+    // 再补一个布尔字段等于把同一个 bit 抄成两份（`pass:"*****"` + `empty:true` 这种矛盾组合拦不住），
+    // 而写入侧 `dropMaskedSecrets` 只认 `*****` ⇒ 两份迟早分叉。
+    //
+    // 曾经的真实缺陷在文案层，两头都让用户分不清「空」还是「有值」：
+    // 1. `edit-node-pass` 的无值态借用了 `edit_pass_placeholder`（「留空则保持原密码不变」）——
+    //    那是**有值语境**的句子，对从没设过密码的节点就是在撒谎；
+    // 2. `auth-pass` / `icmp-psk` / `kcp-pass` 连 placeholder 都没有 ⇒ 未设置时框内一片空白。
+
+    /** 抽 `const phMap = { ... };` 的 DOM id → i18n 键。 */
+    private fun phMapEntries(js: String): Map<String, String> {
+        val start = js.indexOf("const phMap = {")
+        assertTrue("app.js 里找不到 phMap（被改名或删除了？）", start >= 0)
+        val end = js.indexOf("};", start)
+        assertTrue("phMap 没有闭合", end > start)
+        return Regex("""'([^']+)':\s*'([^']+)'""")
+            .findAll(js.substring(start, end))
+            .associate { it.groupValues[1] to it.groupValues[2] }
+    }
+
+    /**
+     * i18n 区间（`const I18N = {` 到顶层闭合）。
+     * 必须限定范围：`^\s{4}key:` 这个模式在文件别处也可能撞上同缩进的键。
+     */
+    private fun i18nRegion(js: String): String {
+        val start = js.indexOf("const I18N = {")
+        assertTrue("app.js 里找不到 const I18N", start >= 0)
+        val end = js.indexOf("\n};", start)
+        assertTrue("I18N 没有闭合", end > start)
+        return js.substring(start, end)
+    }
+
+    /** 某 i18n 键在区间里出现的次数（= 覆盖到的语言块数）。 */
+    private fun i18nKeyCount(i18n: String, key: String): Int =
+        Regex("""^\s{4}${Regex.escape(key)}:\s*['"]""", RegexOption.MULTILINE).findAll(i18n).count()
+
+    /** 以 `secret_saved_hint` 为基准自校准语言块数，免得把"6 个语言"硬编码在这里。 */
+    private fun localeCount(i18n: String): Int {
+        val n = i18nKeyCount(i18n, "secret_saved_hint")
+        assertTrue("基准键 secret_saved_hint 只出现 $n 次，i18n 结构变了？", n >= 2)
+        return n
+    }
+
+    @Test
+    fun `phMap 引用的 i18n 键覆盖全部语言块`() {
+        val js = asset("app.js")
+        val i18n = i18nRegion(js)
+        val locales = localeCount(i18n)
+        val bad = phMapEntries(js).values.distinct()
+            .filter { i18nKeyCount(i18n, it) != locales }
+            .map { "$it(${i18nKeyCount(i18n, it)}/$locales)" }
+        assertTrue(
+            "这些 phMap 引用的 i18n 键没有覆盖全部 $locales 个语言块" +
+                "（键名拼错 / 键被删 / 只加了默认语言）: $bad",
+            bad.isEmpty(),
+        )
+    }
+
+    @Test
+    fun `每个凭据框都有无值态文案来源`() {
+        val html = asset("index.html")
+        val inPhMap = phMapEntries(asset("app.js")).keys
+        // 只认同一个标签内的 placeholder（`[^>]*` 不会跨标签）。
+        val htmlPh = Regex("id=\"([^\"]+)\"[^>]*placeholder=\"([^\"]*)\"")
+            .findAll(html).associate { it.groupValues[1] to it.groupValues[2] }
+        val blank = fieldToDomId.values.filter { id ->
+            id !in inPhMap && htmlPh[id].isNullOrBlank()
+        }
+        assertTrue(
+            "这些凭据框没有任何无值态文案 —— 未设置时框内一片空白，用户分不清是空还是有值: $blank",
+            blank.isEmpty(),
+        )
+    }
+
+    @Test
+    fun `无值态不得借用有值态文案`() {
+        val js = asset("app.js")
+        val borrowed = phMapEntries(js)
+            .filterKeys { it in fieldToDomId.values }
+            .filterValues { it == "secret_saved_hint" }
+        assertTrue(
+            "凭据框的无值态 placeholder 指向了有值态的 hint（对未设置的字段就是在撒谎）: $borrowed",
+            borrowed.isEmpty(),
+        )
+        assertTrue(
+            "refreshSecretDisplay 的无值分支必须回落到 secret_empty_hint，不能留空串",
+            js.contains("|| t('secret_empty_hint')"),
+        )
+        assertTrue(
+            "`edit_pass_placeholder`（「留空则保持原密码不变」）是**有值语境**的句子，" +
+                "不得再作为无值态文案出现在 app.js 里",
+            !js.contains("edit_pass_placeholder"),
+        )
+    }
 }

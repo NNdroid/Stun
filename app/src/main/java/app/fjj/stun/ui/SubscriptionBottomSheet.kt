@@ -35,6 +35,7 @@ import app.fjj.stun.repo.SubscriptionManager
 import app.fjj.stun.repo.SubscriptionManager.SubEntry
 import app.fjj.stun.repo.SubscriptionManager.SubSyncStatus
 import app.fjj.stun.ui.view.TrafficBarChartView
+import app.fjj.stun.util.ClipboardUtils
 import app.fjj.stun.util.AppUtils
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -365,9 +366,7 @@ class SubscriptionBottomSheet : BottomSheetDialogFragment() {
                 when (item.itemId) {
                     MENU_EDIT -> toggleExpand(id)
                     MENU_COPY -> {
-                        val cm = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                        cm?.setPrimaryClip(ClipData.newPlainText("url", row.entry.url))
-                        toast(CoreR.string.copy_success)
+                        ClipboardUtils.copy(requireContext(), "url", row.entry.url)
                     }
                     MENU_DELETE -> confirmRemove(id)
                 }
@@ -796,10 +795,7 @@ class SubscriptionBottomSheet : BottomSheetDialogFragment() {
 
             /** 复制用量快照：粘到聊天窗/工单里直接能读，比截图省事。 */
             private fun copyUsage(payload: String) {
-                val ctx = itemView.context
-                val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                cm?.setPrimaryClip(ClipData.newPlainText("subscription-usage", payload))
-                Toast.makeText(ctx, ctx.getString(CoreR.string.copy_success), Toast.LENGTH_SHORT).show()
+                ClipboardUtils.copy(itemView.context, "subscription-usage", payload)
             }
         }
 

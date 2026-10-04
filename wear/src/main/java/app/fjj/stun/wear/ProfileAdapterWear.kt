@@ -1,56 +1,41 @@
 package app.fjj.stun.wear
 
-import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.recyclerview.widget.RecyclerView
 import app.fjj.stun.repo.Profile
+import app.fjj.stun.ui.ProfileRowAdapter
 import app.fjj.stun.wear.databinding.ItemProfileWearBinding
+import com.google.android.material.card.MaterialCardView
 
+/**
+ * 手表端节点列表。逻辑全在 [ProfileRowAdapter]（core），这里只负责
+ * inflate `item_profile_wear.xml` 并把 view 交给基类。
+ *
+ * 手表是唯一**没有地址与延迟控件**的一端（48dp 小屏只放得下名称 + 协议徽章），
+ * 所以 [ProfileRowAdapter] 构造时传 `showAddress = false, showDelay = false`。
+ */
 class ProfileAdapterWear(
-    private var selectedProfileId: String?,
-    private val onProfileClick: (Profile) -> Unit
-) : RecyclerView.Adapter<ProfileAdapterWear.WearViewHolder>() {
+    onProfileClick: (Profile) -> Unit,
+) : ProfileRowAdapter(
+    onProfileClick = onProfileClick,
+    // 小屏细描边才不至于挤掉文字
+    selectedStrokeWidthPx = 4,
+    showAddress = false,
+    showDelay = false,
+) {
 
-    private val profiles = mutableListOf<Profile>()
-
-    fun updateProfiles(newProfiles: List<Profile>, selectedId: String?) {
-        profiles.clear()
-        profiles.addAll(newProfiles)
-        selectedProfileId = selectedId
-        notifyDataSetChanged()
-    }
-
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): WearViewHolder {
+    override fun createRowViews(parent: ViewGroup): ProfileRowAdapter.RowViews {
         val binding = ItemProfileWearBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return WearViewHolder(binding)
-    }
-
-    override fun onBindViewHolder(holder: WearViewHolder, position: Int) {
-        holder.bind(profiles[position])
-    }
-
-    override fun getItemCount(): Int = profiles.size
-
-    inner class WearViewHolder(private val binding: ItemProfileWearBinding) : RecyclerView.ViewHolder(binding.root) {
-        fun bind(profile: Profile) {
-            val isSelected = profile.id == selectedProfileId
-
-            binding.tvWearItemName.text = profile.name
-            binding.tvWearItemType.text = profile.tunnelType.uppercase()
-            binding.wearItemActiveDot.visibility = if (isSelected) View.VISIBLE else View.GONE
-
-            val primaryColor = com.google.android.material.color.MaterialColors.getColor(
-                binding.root, androidx.appcompat.R.attr.colorPrimary
-            )
-
-            binding.cardWearItem.strokeColor = if (isSelected) primaryColor else Color.TRANSPARENT
-            binding.cardWearItem.strokeWidth = if (isSelected) 4 else 0
-
-            binding.root.setOnClickListener {
-                onProfileClick(profile)
-            }
+        return object : ProfileRowAdapter.RowViews {
+            override val root: View = binding.root
+            override val card: MaterialCardView = binding.cardWearItem
+            override val activeDot: View = binding.wearItemActiveDot
+            override val name = binding.tvWearItemName
+            override val type = binding.tvWearItemType
+            // 布局里没有这两项 —— 传 null 而不是隐藏的 View，隐藏 ≠ 不存在
+            override val address = null
+            override val delay = null
         }
     }
 }

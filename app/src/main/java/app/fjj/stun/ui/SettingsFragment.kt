@@ -33,6 +33,7 @@ import app.fjj.stun.databinding.ActivitySettingsBinding
 import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.ui.viewmodel.SettingsState
 import app.fjj.stun.ui.viewmodel.SettingsViewModel
+import app.fjj.stun.util.ClipboardUtils
 import app.fjj.stun.util.revealAboveBottomPadding
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -282,18 +283,15 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
                     } else {
                         "Claude Code MCP Config" to app.fjj.stun.remote.StunMcpServer.getClaudeConfigJson(requireContext())
                     }
-                    val clipboard = requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText(label, config))
-                    Toast.makeText(requireContext(), getString(CoreR.string.mcp_server_config_copied), Toast.LENGTH_SHORT).show()
+                    // 专用文案（不是通用 copy_success）：这里复制的不是普通文本，是配置片段
+                    ClipboardUtils.copy(requireContext(), label, config, getString(CoreR.string.mcp_server_config_copied))
                 }
                 .show()
         }
 
         binding.btnCopyDbWebUrl.setOnClickListener {
             val url = app.fjj.stun.dbwebui.DbWebServer.getEffectiveUrl(requireContext())
-            val clipboard = requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("db_web_url", url))
-            Toast.makeText(requireContext(), getString(CoreR.string.db_web_url_copied), Toast.LENGTH_SHORT).show()
+            ClipboardUtils.copy(requireContext(), "db_web_url", url, getString(CoreR.string.db_web_url_copied))
         }
 
         binding.btnSave.setOnClickListener {

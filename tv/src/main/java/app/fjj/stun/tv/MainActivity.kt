@@ -26,6 +26,7 @@ import app.fjj.stun.service.MyVpnService
 import app.fjj.stun.service.VpnConfigBuilder
 import app.fjj.stun.util.ExitIpProbe
 import app.fjj.stun.util.GridSpans
+import app.fjj.stun.util.CrashHandler
 import app.fjj.stun.util.PingResults
 import com.google.android.material.button.MaterialButton
 import app.fjj.stun.core.R as CoreR
@@ -34,6 +35,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 import app.fjj.stun.tv.databinding.ActivityMainBinding
+import app.fjj.stun.ui.UserFeedback
 
 class MainActivity : FragmentActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -47,7 +49,8 @@ class MainActivity : FragmentActivity() {
         if (result.resultCode == RESULT_OK) {
             startVpn()
         } else {
-            Toast.makeText(this, getString(CoreR.string.tv_vpn_permission_denied), Toast.LENGTH_SHORT).show()
+            UserFeedback.error(this@MainActivity, binding.root,
+                    getString(CoreR.string.tv_vpn_permission_denied))
         }
     }
 
@@ -601,34 +604,23 @@ class MainActivity : FragmentActivity() {
 
     private fun showCrashDialog(crashLog: String, isPrevious: Boolean) {
         if (isFinishing || isDestroyed) return
-        val titleRes = if (isPrevious) CoreR.string.crash_dialog_title_prev else CoreR.string.crash_dialog_title
-
-        val paddingH = (24 * resources.displayMetrics.density).toInt()
-        val paddingV = (16 * resources.displayMetrics.density).toInt()
-
-        val textView = android.widget.TextView(this).apply {
-            text = crashLog
-            textSize = 13f
-            typeface = android.graphics.Typeface.MONOSPACE
-            setTextIsSelectable(true)
-            setPadding(paddingH, paddingV, paddingH, paddingV)
-            // 跟随主题取色：写死白色在浅色主题的浅色弹窗里不可读
-            setTextColor(
-                com.google.android.material.color.MaterialColors.getColor(
-                    this, com.google.android.material.R.attr.colorOnSurface
-                )
-            )
-        }
-
-        val scrollView = android.widget.ScrollView(this).apply {
-            addView(textView)
-        }
-
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle(getString(titleRes))
-            .setView(scrollView)
-            .setPositiveButton(getString(CoreR.string.close), null)
-            .show()
+        // 弹窗构造收口到 CrashHandler（core）。此前这里抄了一份：**没有复制也没有分享按钮**，
+        // 日志在电视上完全出不来；字号还用 `textSize = 13f`（px 而非 sp），
+        // 3x 密度屏上等效仅 4.3sp 且不跟随系统字体缩放。
+        CrashHandler.showCrashDialog(
+            this,
+            crashLog,
+            CrashHandler.CrashDialogStyle(
+                titleRes = if (isPrevious) CoreR.string.crash_dialog_title_prev
+                else CoreR.string.crash_dialog_title,
+                // 电视 10 尺界面，13sp 更大更好读
+                textSizeSp = 13f,
+                horizontalPaddingDp = 24,
+                verticalPaddingDp = 16,
+                // Snackbar 锚点：电视上用 activity 的内容视图
+                feedbackAnchor = binding.root,
+            ),
+        )
     }
 
     private var publicIpJob: kotlinx.coroutines.Job? = null
@@ -848,7 +840,8 @@ class MainActivity : FragmentActivity() {
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, getString(CoreR.string.speed_test_error, e.message), Toast.LENGTH_SHORT).show()
+                    UserFeedback.error(this@MainActivity, binding.root,
+                    getString(CoreR.string.speed_test_error, e.message))
                 }
             } finally {
                 withContext(Dispatchers.Main) {

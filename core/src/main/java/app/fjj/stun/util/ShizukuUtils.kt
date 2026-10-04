@@ -11,6 +11,31 @@ import java.io.InputStreamReader
 import kotlin.concurrent.thread
 import kotlin.coroutines.resume
 
+/** Shizuku 的三态。**唯一**判定入口是 [ShizukuUtils.state]，不要在调用点重新拼 `isAvailable/isReady`。 */
+enum class ShizukuState {
+    /** 服务在跑且已授权 —— 可以执行命令。 */
+    READY,
+
+    /** 服务在跑但没授权 —— 需要用户在设备上确认（弹窗只显示在设备屏幕上）。 */
+    NO_PERMISSION,
+
+    /** Shizuku 没运行 / 版本过低 —— 任何操作都不可能成功。 */
+    NOT_RUNNING,
+}
+
+/**
+ * **Shizuku 能力的唯一入口。**
+ *
+ * 这里只放"和 Shizuku 本身打交道"的三件事：状态判定、授权、执行命令。
+ * **刻意不放**"给 app 加省电豁免"这类业务意图 —— 那属于 [BackgroundExemptions]，
+ * 因为同一意图还有一条 root 通道（见那里的说明）。原先两者混在一起，导致"加白名单"这段
+ * 在仓库里被复制了 4 份（两个 Service 各一份、`KeepAliveManager` 一份、`HomeFragment` 一份），
+ * 而且 4 份都各自包了一层 `if (isReady())` —— 而真正执行的两个函数内部还会再判一次。
+ *
+ * Shizuku API 的两个坑（都在这里被兜住了，别在调用点重复处理）：
+ *  - `pingBinder()` 在极少数 ROM 上抛的是 `Error`/链接错误，不是 `Exception`；
+ *  - 授权结果只能靠 listener 回调，没有同步查询接口。
+ */
 object ShizukuUtils {
     private const val TAG = "ShizukuUtils"
     const val SHIZUKU_REQUEST_CODE = 1001
@@ -30,18 +55,22 @@ object ShizukuUtils {
     /**
      * isReady：先查服务，再查权限
      */
-    fun isReady(): Boolean {
-        // 如果没有安装或未启动，直接返回 false，防止崩溃
-        if (!isAvailable()) {
-            return false
-        }
+    fun isReady(): Boolean = state() == ShizukuState.READY
 
-        // 服务可用时，再检查是否被授权
-        return try {
+    /**
+     * 三态判定。这是全仓库唯一一处"Shizuku 到底能不能用"的推断。
+     *
+     * ⚠️ 顺序有讲究：先 `isAvailable()`（服务在跑吗），再 `checkSelfPermission()`（授权了吗）。
+     * 反过来会在 Shizuku 没启动时直接去问权限，那一步会抛。
+     */
+    fun state(): ShizukuState {
+        if (!isAvailable()) return ShizukuState.NOT_RUNNING
+        val granted = try {
             Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
         } catch (e: Exception) {
             false
         }
+        return if (granted) ShizukuState.READY else ShizukuState.NO_PERMISSION
     }
 
     /**
@@ -104,74 +133,69 @@ object ShizukuUtils {
         Shizuku.requestPermission(SHIZUKU_REQUEST_CODE)
     }
 
-    fun addSelfToBatteryWhitelist(packageName: String) {
-        if (!isReady()) return
+    /**
+     * Shizuku 命令执行器（**阻塞**版，等命令跑完并返回退出码）。
+     *
+     * 「做完要确认结果」的路径必须用这个：拿不到退出码就只能盲写设置，一旦命令实际失败，
+     * 设置页上的开关就会撒谎（显示已开启，实际什么都没生效）。返回 -1 = 异常/取不到退出码。
+     */
+    fun executeShellCommand(command: Array<String>): Int {
+        var remoteProcess: moe.shizuku.server.IRemoteProcess? = null
+        return try {
+            val binder = Shizuku.getBinder()
+            val service = moe.shizuku.server.IShizukuService.Stub.asInterface(binder)
+            remoteProcess = service.newProcess(command, null, null)
 
-        // Doze 模式 (deviceidle) 是从 Android 6.0 (API 23 / M) 引入s的
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            // 彻底抛弃反射，改用极度稳定的 cmd 指令
-            val command = arrayOf("cmd", "deviceidle", "whitelist", "+$packageName")
-            executeShellCommandSafely(command)
-        } else {
-            // Android 6.0 以下没有此机制，直接跳过
-            StunLogger.i("ShizukuUtils", "Android < 6.0, battery whitelist not needed")
-        }
-    }
+            remoteProcess?.inputStream?.let { pfd ->
+                val reader = BufferedReader(InputStreamReader(ParcelFileDescriptor.AutoCloseInputStream(pfd)))
+                var line: String?
+                while (reader.readLine().also { line = it } != null) {
+                    // StunLogger.d(TAG, "Shell Output: $line")
+                }
+            }
 
-    fun setStandbyBucketActive(packageName: String) {
-        if (!isReady()) return
+            // 同时消耗错误流，万无一失
+            remoteProcess?.errorStream?.let { pfd ->
+                val reader = BufferedReader(InputStreamReader(ParcelFileDescriptor.AutoCloseInputStream(pfd)))
+                var line: String?
+                while (reader.readLine().also { line = it } != null) {
+                    // StunLogger.e(TAG, "Shell Error: $line")
+                }
+            }
 
-        // 应用活跃桶 (Standby Buckets) 是从 Android 9.0 (API 28 / P) 引入的
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            val command = arrayOf("am", "set-standby-bucket", packageName, "active")
-            executeShellCommandSafely(command)
-        } else {
-            // Android 9.0 以下没有此机制，直接跳过
-            StunLogger.i("ShizukuUtils", "Android < 9.0, standby bucket not needed")
+            // 阻塞等待执行完毕
+            val exitCode = remoteProcess?.waitFor() ?: -1
+
+            if (exitCode == 0) {
+                StunLogger.i(TAG, "✅ Executed: ${command.joinToString(" ")}")
+            } else {
+                StunLogger.e(TAG, "❌ Execution failed (exit code $exitCode): ${command.joinToString(" ")}")
+            }
+            exitCode
+        } catch (e: Exception) {
+            StunLogger.e(TAG, "Exception while running Shizuku command: ${command.joinToString(" ")}", e)
+            -1
+        } finally {
+            remoteProcess?.destroy()
         }
     }
 
     /**
-     * Shizuku 命令执行器
+     * 一次性 fire-and-forget 版：丢到后台线程跑，只记日志，不等结果、也不返回退出码。
+     *
+     * 给"写了就行、不需要确认"的路径用（如省电豁免这种"重复断言无害"的加固动作）。
+     * ⚠️ 涉及开关/设置的写入**不要**用它 —— 那必须用 [executeShellCommand] 拿退出码，
+     * 否则失败时开关会撒谎。
      */
-    private fun executeShellCommandSafely(command: Array<String>) {
+    fun executeShellCommandAsync(command: Array<String>) {
         thread(name = "ShizukuShellWorker") {
-            var remoteProcess: moe.shizuku.server.IRemoteProcess? = null
-            try {
-                val binder = Shizuku.getBinder()
-                val service = moe.shizuku.server.IShizukuService.Stub.asInterface(binder)
-                remoteProcess = service.newProcess(command, null, null)
-
-                remoteProcess?.inputStream?.let { pfd ->
-                    val reader = BufferedReader(InputStreamReader(ParcelFileDescriptor.AutoCloseInputStream(pfd)))
-                    var line: String?
-                    while (reader.readLine().also { line = it } != null) {
-                        // StunLogger.d(TAG, "Shell Output: $line")
-                    }
-                }
-
-                // 同时消耗错误流，万无一失
-                remoteProcess?.errorStream?.let { pfd ->
-                    val reader = BufferedReader(InputStreamReader(ParcelFileDescriptor.AutoCloseInputStream(pfd)))
-                    var line: String?
-                    while (reader.readLine().also { line = it } != null) {
-                        // StunLogger.e(TAG, "Shell Error: $line")
-                    }
-                }
-
-                // 阻塞等待执行完毕
-                val exitCode = remoteProcess?.waitFor() ?: -1
-
-                if (exitCode == 0) {
-                    StunLogger.i(TAG, "✅ Executed: ${command.joinToString(" ")}")
-                } else {
-                    StunLogger.e(TAG, "❌ Execution failed (exit code $exitCode): ${command.joinToString(" ")}")
-                }
-            } catch (e: Exception) {
-                StunLogger.e(TAG, "Exception while running Shizuku command: ${command.joinToString(" ")}", e)
-            } finally {
-                remoteProcess?.destroy()
-            }
+            executeShellCommand(command)
         }
     }
+
+    /**
+     * API 级别门槛。低于门槛的机制根本不存在，直接跳过并记日志 ——
+     * 调用点不必再各自写一遍 `Build.VERSION.SDK_INT` 判断。
+     */
+    fun isAtLeast(api: Int): Boolean = Build.VERSION.SDK_INT >= api
 }

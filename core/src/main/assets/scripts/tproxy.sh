@@ -167,11 +167,17 @@ load_config() {
         log Warn "CONFIG_DIR not specified, fallback to script directory: $CONFIG_DIR"
     fi
 
-    if [ -f "$CONFIG_DIR/tproxy.conf" ]; then
-        log Info "Sourcing configuration file: $CONFIG_DIR/tproxy.conf"
-        . "$CONFIG_DIR/tproxy.conf"
+    # NOTE: the config file name is also hardcoded in TransparentProxyConfigBuilder /
+    # MyTransparentProxyService (FILE_TPROXY_RULES). Keep the two in sync — renaming one
+    # side only makes the script silently fall back to its built-in defaults, and `start`
+    # still exits 0, so the failure is invisible (wrong ports, no DNS hijack).
+    # It must NOT be called tproxy.conf: that name used to be shared with the VPN mode's
+    # hev-socks5-tunnel YAML, and this `source` would then parse a YAML file as shell.
+    if [ -f "$CONFIG_DIR/tproxy_rules.conf" ]; then
+        log Info "Sourcing configuration file: $CONFIG_DIR/tproxy_rules.conf"
+        . "$CONFIG_DIR/tproxy_rules.conf"
     else
-        log Info "No tproxy.conf found in $CONFIG_DIR, using script defaults + environment variables"
+        log Info "No tproxy_rules.conf found in $CONFIG_DIR, using script defaults + environment variables"
     fi
 
     log Info "Loading configuration from environment or defaults..."
@@ -1749,7 +1755,7 @@ Options:
       Default: the directory where this script is located.
       
       Files that may be read from or written to in this directory:
-      • tproxy.conf          (optional) user configuration overrides
+      • tproxy_rules.conf    (optional) user configuration overrides
       • runtime_tproxy.conf  (generated/used during runtime for cleanup)
       • cn.zone              (China IPv4 CIDR list, auto-downloaded if missing/old)
       • cn_ipv6.zone         (China IPv6 CIDR list, auto-downloaded if IPv6 enabled)

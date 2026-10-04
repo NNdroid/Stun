@@ -39,12 +39,16 @@ import app.fjj.stun.ui.qr.AnimatedQrScanActivity
 import app.fjj.stun.ui.qr.QrLogoBadge
 import app.fjj.stun.ui.view.GlobeView
 import app.fjj.stun.ui.view.ServerNoticeBox
+import app.fjj.stun.ui.UserFeedback
 
 import app.fjj.stun.service.MyTransparentProxyService
 import app.fjj.stun.service.MyVpnService
 import app.fjj.stun.service.VpnConfigBuilder
 import app.fjj.stun.service.VpnControls
 import app.fjj.stun.util.*
+// CrashHandler 在 core 模块：包名同前缀但不同 Gradle module，`app.fjj.stun.util.*`
+// 那个通配 import **只覆盖 app 模块自己的包**，不覆盖 core 的，必须单列。
+import app.fjj.stun.util.CrashHandler
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -143,7 +147,7 @@ class HomeFragment : Fragment() {
             startVpnService()
         } else {
             finishStartRequest()
-            Toast.makeText(requireContext(), getString(CoreR.string.vpn_permission_denied), Toast.LENGTH_SHORT).show()
+            UserFeedback.error(requireContext(), _binding?.root, getString(CoreR.string.vpn_permission_denied))
         }
     }
 
@@ -249,7 +253,7 @@ class HomeFragment : Fragment() {
             importProfileFromJsonString(jsonString)
         } catch (e: Exception) {
             StunLogger.e("HomeFragment", "Scan QR Code failed", e)
-            Toast.makeText(requireContext(), getString(CoreR.string.invalid_qr), Toast.LENGTH_SHORT).show()
+            UserFeedback.error(requireContext(), _binding?.root, getString(CoreR.string.invalid_qr))
         }
     }
 
@@ -296,7 +300,7 @@ class HomeFragment : Fragment() {
             } catch (e: Exception) {
                 StunLogger.e("HomeFragment", "Scan QR Code failed", e)
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(requireContext(), getString(CoreR.string.invalid_qr), Toast.LENGTH_SHORT).show()
+                    UserFeedback.error(requireContext(), _binding?.root, getString(CoreR.string.invalid_qr))
                 }
             }
         }
@@ -789,9 +793,7 @@ class HomeFragment : Fragment() {
             ctx.getString(R.string.widget_label_uptime) to details.tvDetailUptime.text,
         )
         val text = rows.joinToString("\n") { (label, value) -> "$label: $value" }
-        val clipboard = ctx.getSystemService(android.content.ClipboardManager::class.java) ?: return
-        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("StunConnection", text))
-        Toast.makeText(ctx, getString(CoreR.string.copy_success), Toast.LENGTH_SHORT).show()
+        ClipboardUtils.copy(ctx, "StunConnection", text)
     }
 
     // ──────────────────────────────────────────────────────────── 拓扑地球
@@ -1393,46 +1395,19 @@ class HomeFragment : Fragment() {
     }
 
     private fun showCrashDialog(crashLog: String, isPrevious: Boolean = false) {
-        val ctx = context ?: return
-        val titleRes = if (isPrevious) CoreR.string.crash_dialog_title_prev else CoreR.string.crash_dialog_title
-
-        val density = resources.displayMetrics.density
-        val paddingH = (16 * density).toInt()
-        val dialogHeight = (resources.displayMetrics.heightPixels * 0.80f).toInt()
-        val dialogWidth = (resources.displayMetrics.widthPixels * 0.95f).toInt()
-
-        val textView = TextView(ctx).apply {
-            text = crashLog
-            textSize = 11f
-            typeface = android.graphics.Typeface.MONOSPACE
-            setTextIsSelectable(true)
-            setPadding(paddingH, paddingH / 2, paddingH, paddingH)
-        }
-
-        val scrollView = android.widget.ScrollView(ctx).apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dialogHeight
-            )
-            clipToPadding = false
-        }
-        scrollView.addView(textView, ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ))
-
-        val dialog = MaterialAlertDialogBuilder(ctx)
-            .setTitle(getString(titleRes) + " (${crashLog.length} chars)")
-            .setView(scrollView)
-            .setPositiveButton(getString(CoreR.string.copy)) { _, _ ->
-                val clipboard = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                val clip = android.content.ClipData.newPlainText("CrashLog", crashLog)
-                clipboard.setPrimaryClip(clip)
-                Snackbar.make(binding.root, getString(CoreR.string.copy_success) + " (${crashLog.length} chars)", Snackbar.LENGTH_LONG).show()
-            }
-            .setNegativeButton(getString(CoreR.string.close), null)
-            .create()
-
-        dialog.show()
-        dialog.window?.setLayout(dialogWidth, dialogHeight)
+        val activity = activity ?: return
+        // 弹窗构造收口到 CrashHandler（core）。此前这里抄了一份，少了**分享**按钮、
+        // 且把窗口高度写死成屏幕 80%（短日志下方一大片空白）、字号用 px 而非 sp。
+        CrashHandler.showCrashDialog(
+            activity,
+            crashLog,
+            CrashHandler.CrashDialogStyle(
+                titleRes = if (isPrevious) CoreR.string.crash_dialog_title_prev
+                else CoreR.string.crash_dialog_title,
+                // 复制反馈走 Snackbar（保持改前行为）：Toast 在横屏 / 多窗口下会被遮住。
+                feedbackAnchor = _binding?.root,
+            ),
+        )
     }
 
     private fun updateUiState(state: VpnState?) {
@@ -1614,17 +1589,17 @@ class HomeFragment : Fragment() {
         }.start()
     }
 
+    /**
+     * 借 Shizuku 给自己加后台豁免。原先这里是「加白名单 + 待机桶」的第 4 份复制，
+     * 现在与两个 Service、`KeepAliveManager` 共用 [BackgroundExemptions]。
+     */
     private suspend fun applyShizukuKeepAlive(): Boolean {
-        return if (ShizukuUtils.isReady()) {
-            val granted = ShizukuUtils.requestPermissionAwait()
-            if (granted) {
-                ShizukuUtils.addSelfToBatteryWhitelist(requireContext().packageName)
-                ShizukuUtils.setStandbyBucketActive(requireContext().packageName)
-            }
-            granted
-        } else {
-            false
+        if (ShizukuUtils.state() != ShizukuState.READY) return false
+        val granted = ShizukuUtils.requestPermissionAwait()
+        if (granted) {
+            BackgroundExemptions.applyViaShizuku(requireContext().packageName)
         }
+        return granted
     }
 
     /** 筛选 tab 计数：全部 / 收藏 / 最近（连过的）。列表全空时整行隐藏，只留空态插画。 */
@@ -1813,7 +1788,7 @@ class HomeFragment : Fragment() {
             },
             onFailed = {
                 dialog.dismiss()
-                Toast.makeText(requireContext(), getString(CoreR.string.main_qr_fail), Toast.LENGTH_SHORT).show()
+                UserFeedback.error(requireContext(), _binding?.root, getString(CoreR.string.main_qr_fail))
             },
         )
 
@@ -1826,7 +1801,7 @@ class HomeFragment : Fragment() {
 
         fun showShareFailure() {
             dialog.dismiss()
-            Toast.makeText(requireContext(), getString(CoreR.string.main_qr_fail), Toast.LENGTH_SHORT).show()
+            UserFeedback.error(requireContext(), _binding?.root, getString(CoreR.string.main_qr_fail))
         }
 
         /** 超限时的退路：切成 N 帧循环播放，接收端边扫边拼（协议见 [AnimatedQrProtocol]）。 */
@@ -1947,9 +1922,7 @@ class HomeFragment : Fragment() {
             val payload = sharedEncryptedPayload
             if (payload != null) {
                 val uri = "stun://$payload"
-                val clipboard = requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-                clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("Stun Node URI", uri))
-                Toast.makeText(requireContext(), getString(CoreR.string.copy_success), Toast.LENGTH_SHORT).show()
+                ClipboardUtils.copy(requireContext(), "Stun Node URI", uri)
             }
         }
 
@@ -2117,7 +2090,8 @@ class HomeFragment : Fragment() {
                 profileId = selectedProfile.id
                 if (profileId.isEmpty()) {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(ctx, getString(CoreR.string.error_no_profile_selected), Toast.LENGTH_SHORT).show()
+                        UserFeedback.error(requireContext(), _binding?.root,
+                    getString(CoreR.string.error_no_profile_selected))
                     }
                     return@launch
                 }
@@ -2217,7 +2191,7 @@ class HomeFragment : Fragment() {
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(requireContext(), getString(CoreR.string.speed_test_error, e.message), Toast.LENGTH_SHORT).show()
+                    UserFeedback.error(requireContext(), _binding?.root, getString(CoreR.string.speed_test_error, e.message))
                 }
             }
         }
@@ -2234,22 +2208,22 @@ class HomeFragment : Fragment() {
 
     private fun validateSelectedProfile(profile: Profile): Boolean {
         if (profile.id.isEmpty() || profile.sshAddr.isEmpty()) {
-            Toast.makeText(requireContext(), getString(CoreR.string.error_no_profile_selected), Toast.LENGTH_SHORT).show()
+            UserFeedback.error(requireContext(), _binding?.root, getString(CoreR.string.error_no_profile_selected))
             return false
         }
         if (profile.authType == Profile.AUTH_TYPE_PASSWORD && profile.pass.isEmpty()) {
-            Toast.makeText(requireContext(), getString(CoreR.string.error_field_required), Toast.LENGTH_SHORT).show()
+            UserFeedback.error(requireContext(), _binding?.root, getString(CoreR.string.error_field_required))
             return false
         }
         if (profile.authType == Profile.AUTH_TYPE_PRIVATEKEY) {
             if (profile.privateKey.isEmpty()) {
-                Toast.makeText(requireContext(), getString(CoreR.string.error_field_required), Toast.LENGTH_SHORT).show()
+                UserFeedback.error(requireContext(), _binding?.root, getString(CoreR.string.error_field_required))
                 return false
             }
-            val checkResult = myssh.Myssh.checkIfKeyEncrypted(profile.privateKey)
-            if (checkResult == 1L) {
-                val decryptedPass = KeystoreUtils.decrypt(profile.keyPass)
-                if (decryptedPass.isEmpty() || !myssh.Myssh.validatePassphrase(profile.privateKey, decryptedPass)) {
+            // 三态判定收口 [ProfileKeyValidator]：原先这里与 VpnQuickActionActivity 各写一份
+            // 且已漂移（那份把「私钥损坏」混进 else 静默失败；这份则让 JNI 异常直接放行）。
+            when (ProfileKeyValidator.validate(profile)) {
+                ProfileKeyValidator.Result.PassphraseInvalid -> {
                     MaterialAlertDialogBuilder(requireContext())
                         .setTitle(CoreR.string.error_invalid_key_password)
                         .setMessage(CoreR.string.error_invalid_key_password)
@@ -2257,9 +2231,11 @@ class HomeFragment : Fragment() {
                         .show()
                     return false
                 }
-            } else if (checkResult == 2L) {
-                Toast.makeText(requireContext(), getString(CoreR.string.error_invalid_private_key), Toast.LENGTH_SHORT).show()
-                return false
+                ProfileKeyValidator.Result.PrivateKeyUnusable -> {
+                    UserFeedback.error(requireContext(), _binding?.root, getString(CoreR.string.error_invalid_private_key))
+                    return false
+                }
+                else -> Unit // 明文私钥 / 口令已校验通过
             }
         }
         return true
@@ -2292,7 +2268,7 @@ class HomeFragment : Fragment() {
                 
                 isStopping = false
                 if (SettingsManager.getServiceMode(requireContext()) == SettingsManager.SERVICE_MODE_TPROXY) {
-                    if (!withContext(Dispatchers.IO) { ExecUtils.checkIsRootPermission() }) {
+                    if (!withContext(Dispatchers.IO) { RootShell.isRoot() }) {
                         Snackbar.make(binding.root, getString(CoreR.string.error_root_required), Snackbar.LENGTH_LONG).show()
                         finishStartRequest()
                         return@launch
@@ -2378,7 +2354,7 @@ class HomeFragment : Fragment() {
                         requireContext().contentResolver.openOutputStream(uri)?.use { it.write(encryptedJson.toByteArray()) }
                         withContext(Dispatchers.Main) { Toast.makeText(requireContext(), getString(CoreR.string.export_success), Toast.LENGTH_SHORT).show() }
                     } catch (e: Exception) {
-                        withContext(Dispatchers.Main) { Toast.makeText(requireContext(), getString(CoreR.string.export_failed, e.message), Toast.LENGTH_SHORT).show() }
+                        UserFeedback.error(requireContext(), _binding?.root, getString(CoreR.string.export_failed, e.message))
                     }
                 }
             true
@@ -2411,11 +2387,11 @@ class HomeFragment : Fragment() {
                     } else {
                         // User said they don't need backward compatibility, but in case they try to import an old plaintext file, we can still parse it or reject it.
                         // Since they said "I do not need backward compatibility", let's just reject it for strict security.
-                        Toast.makeText(requireContext(), getString(CoreR.string.error_unsupported_backup), Toast.LENGTH_LONG).show()
+                        UserFeedback.error(requireContext(), _binding?.root, getString(CoreR.string.error_unsupported_backup))
                     }
                 }
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) { Toast.makeText(requireContext(), getString(CoreR.string.import_failed, e.message), Toast.LENGTH_SHORT).show() }
+                UserFeedback.error(requireContext(), _binding?.root, getString(CoreR.string.import_failed, e.message))
             }
         }
     }
@@ -2435,7 +2411,7 @@ class HomeFragment : Fragment() {
                 }
                 withContext(Dispatchers.Main) { Toast.makeText(requireContext(), getString(CoreR.string.import_success, count), Toast.LENGTH_SHORT).show() }
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) { Toast.makeText(requireContext(), getString(CoreR.string.import_failed, e.message), Toast.LENGTH_SHORT).show() }
+                UserFeedback.error(requireContext(), _binding?.root, getString(CoreR.string.import_failed, e.message))
             }
         }
     }

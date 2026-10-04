@@ -31,7 +31,7 @@ import java.io.File
  * 规则库原先用 `last_update_time` 判「要不要重铺」，而那个字段是**用户可见的「上次更新」**
  * （设置页把 0 显示成 "Never"，WebUI 也读它），只在**在线下载成功**后才写。于是它一旦为 0
  * （首次安装、或从来没下载成功过），旧判定 `lastUpdate <= 0` 就恒真 ⇒ **每次冷启动重铺 12.9MB**。
- * 现在规则库和 TProxy 三件套共用 [needsDeploy]：**上次部署依据存在文件自己的 mtime 上**，
+ * 现在规则库和 TProxy 三件套共用 [AssetDeployer.needsDeploy]：**上次部署依据存在文件自己的 mtime 上**，
  * 不需要任何额外状态，也不动「上次更新」的展示语义。
  *
  * ## 为什么 `awaitAssets` 用独立的 `CompletableDeferred` 而不是 `async{}`
@@ -40,7 +40,7 @@ import java.io.File
  * 一个无父 Job 的 `CompletableDeferred` 只让**等待方**收到 CancellationException，
  * 部署任务本身照跑完，后到的等待方仍能正常拿到结果。
  * 反过来，部署失败时也必须 `complete()`：卡住 await 只会让 VPN 永远起不来，
- * 失败详情已经进日志，运行期还有 [needsDeploy] 的存在性判定兜底。
+ * 失败详情已经进日志，运行期还有 [AssetDeployer.needsDeploy] 的存在性判定兜底。
  */
 object AppBootstrap {
 
@@ -166,7 +166,7 @@ object AppBootstrap {
     private fun readApkUpdateTimeMs(context: Context): Long = try {
         context.packageManager.getPackageInfo(context.packageName, 0).lastUpdateTime
     } catch (e: Exception) {
-        // 读不到就当 0：[needsDeploy] 退化为「只补缺失文件」，比「每次都重铺」保守。
+        // 读不到就当 0：[AssetDeployer.needsDeploy] 退化为「只补缺失文件」，比「每次都重铺」保守。
         StunLogger.w(TAG, "Failed to read APK install time, falling back to missing-file-only mode: ${e.message}")
         0L
     }
@@ -183,49 +183,22 @@ object AppBootstrap {
     private fun deployRuleSet(context: Context, apkUpdateTimeMs: Long) {
         val geoip = File(context.cacheDir, FILE_GEOIP)
         val geosite = File(context.cacheDir, FILE_GEOSITE)
-        if (!needsDeploy(geoip, apkUpdateTimeMs) && !needsDeploy(geosite, apkUpdateTimeMs)) return
+        if (!AssetDeployer.needsDeploy(geoip, apkUpdateTimeMs) && !AssetDeployer.needsDeploy(geosite, apkUpdateTimeMs)) return
 
         StunLogger.i(TAG, "Rule-set needs redeploy (missing/empty file or APK upgraded), extracting bundled assets...")
-        if (needsDeploy(geoip, apkUpdateTimeMs)) {
-            ExecUtils.copyAssetToCache(context, ASSET_GEOIP, FILE_GEOIP)
-        }
-        if (needsDeploy(geosite, apkUpdateTimeMs)) {
-            ExecUtils.copyAssetToCache(context, ASSET_GEOSITE, FILE_GEOSITE)
-        }
+        AssetDeployer.deployIfNeeded(context, ASSET_GEOIP, FILE_GEOIP, apkUpdateTimeMs)
+        AssetDeployer.deployIfNeeded(context, ASSET_GEOSITE, FILE_GEOSITE, apkUpdateTimeMs)
     }
 
     /**
      * TProxy 运行期三件套（二进制 + 两个脚本）。
      *
-     * 原实现**每次启动都无条件重拷**，且只 `setExecutable(true)`。这里与规则库共用 [needsDeploy]。
+     * 原实现**每次启动都无条件重拷**，且只 `setExecutable(true)`。这里与规则库共用
+     * [AssetDeployer.needsDeploy]。
      */
     private fun deployTproxyRuntime(context: Context, apkUpdateTimeMs: Long) {
-        if (needsDeploy(File(context.cacheDir, BIN_TPROXY), apkUpdateTimeMs)) {
-            ExecUtils.binaryDeploy(context, BIN_TPROXY)
-        }
-        if (needsDeploy(File(context.cacheDir, SCRIPT_TPROXY), apkUpdateTimeMs)) {
-            ExecUtils.scriptDeploy(context, SCRIPT_TPROXY)
-        }
-        if (needsDeploy(File(context.cacheDir, SCRIPT_WATCHDOG), apkUpdateTimeMs)) {
-            ExecUtils.scriptDeploy(context, SCRIPT_WATCHDOG)
-        }
+        AssetDeployer.deployIfNeeded(context, "bin/${android.os.Build.SUPPORTED_ABIS[0]}/$BIN_TPROXY", BIN_TPROXY, apkUpdateTimeMs, executable = true)
+        AssetDeployer.deployIfNeeded(context, "scripts/$SCRIPT_TPROXY", SCRIPT_TPROXY, apkUpdateTimeMs, executable = true)
+        AssetDeployer.deployIfNeeded(context, "scripts/$SCRIPT_WATCHDOG", SCRIPT_WATCHDOG, apkUpdateTimeMs, executable = true)
     }
-
-    /**
-     * 「这个 cacheDir 副本要不要重新铺」——**唯一**的部署判定，规则库与 TProxy 三件套共用。
-     *
-     * 三个条件分别对应三种失效：
-     * - `!exists()`：`cacheDir` 会被系统在存储紧张时清理，而任何时间戳标记都不会被一起清掉，
-     *   只比时间戳会把「文件已被清走」的机器判成已部署，连接时才炸；
-     * - `length() == 0L`：拷贝中途失败（磁盘满 / 进程被杀）会留下一个 0 字节文件，
-     *   它 mtime 很新、容易骗过下面那条时间比较；
-     * - `lastModified() < apkUpdateTimeMs`：APK 升级后资产可能变了，需要重铺。
-     *   用副本自己的 mtime 跟 APK 安装时间比，就**不必再引入任何 prefs 标记**——
-     *   「上次部署依据」这个记忆直接存在文件上（`ExecUtils` 落盘时不会动 mtime）。
-     *
-     * 边界：`apkUpdateTimeMs` 读到 0 时退化为「只补缺失/空文件」；设备时钟被往回调时可能
-     * 漏铺一次（下一次文件被清或时钟恢复正常即自愈）。
-     */
-    internal fun needsDeploy(file: File, apkUpdateTimeMs: Long): Boolean =
-        !file.exists() || file.length() == 0L || file.lastModified() < apkUpdateTimeMs
 }

@@ -38,6 +38,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import app.fjj.stun.ui.UserFeedback
 
 enum class DeviceReachability(val priority: Int, val colorRes: Int) {
     REACHABLE(0, CoreR.color.status_connected),     // 0: Green (绿 - 在线/可用)
@@ -359,7 +360,7 @@ class TvDevicePickerBottomSheet : BottomSheetDialogFragment() {
                     Toast.makeText(requireContext(), getString(CoreR.string.tv_push_success, device.name), Toast.LENGTH_LONG).show()
                     dismiss()
                 } else {
-                    Toast.makeText(requireContext(), getString(CoreR.string.push_failed), Toast.LENGTH_LONG).show()
+                    UserFeedback.error(requireContext(), view, getString(CoreR.string.push_failed))
                 }
             }
         }
@@ -384,7 +385,7 @@ class TvDevicePickerBottomSheet : BottomSheetDialogFragment() {
                     Toast.makeText(requireContext(), getString(CoreR.string.car_push_success), Toast.LENGTH_LONG).show()
                     dismiss()
                 } else {
-                    Toast.makeText(requireContext(), getString(CoreR.string.push_failed), Toast.LENGTH_LONG).show()
+                    UserFeedback.error(requireContext(), view, getString(CoreR.string.push_failed))
                 }
             }
         }
@@ -645,7 +646,7 @@ class TvDevicePickerBottomSheet : BottomSheetDialogFragment() {
                         commandInProgress = false
                         updateUi(newStatus)
                         if (!sent) {
-                            Toast.makeText(requireContext(), getString(CoreR.string.remote_command_failed), Toast.LENGTH_SHORT).show()
+                            UserFeedback.error(requireContext(), view, getString(CoreR.string.remote_command_failed))
                         }
                     }
                 }
@@ -665,7 +666,7 @@ class TvDevicePickerBottomSheet : BottomSheetDialogFragment() {
                         commandInProgress = false
                         updateUi(newStatus)
                         if (!sent) {
-                            Toast.makeText(requireContext(), getString(CoreR.string.remote_command_failed), Toast.LENGTH_SHORT).show()
+                            UserFeedback.error(requireContext(), view, getString(CoreR.string.remote_command_failed))
                         }
                     }
                 }
@@ -675,7 +676,7 @@ class TvDevicePickerBottomSheet : BottomSheetDialogFragment() {
         dialogBinding.btnDialogSwitchProfile.setOnClickListener {
             val profiles = currentTvStatus?.profiles ?: emptyList()
             if (profiles.isEmpty()) {
-                Toast.makeText(requireContext(), getString(CoreR.string.tv_remote_no_profiles), Toast.LENGTH_SHORT).show()
+                UserFeedback.error(requireContext(), view, getString(CoreR.string.tv_remote_no_profiles))
                 return@setOnClickListener
             }
 

@@ -90,6 +90,9 @@ class AnimatedQrScanActivity : BaseActivity(), BarcodeCallback {
         if (granted) {
             startPreview()
         } else {
+            // ⚠️ 这里**刻意用 Toast 而不是 [UserFeedback.error]**：下一行就是 finish()，
+            // Activity 立刻销毁，Snackbar 还没显示就随 Activity 一起没了 ——
+            // 反馈等于没给。Toast 走系统窗口，不受 Activity 生命周期影响。
             Toast.makeText(this, R.string.qr_stream_camera_denied, Toast.LENGTH_LONG).show()
             finish()
         }

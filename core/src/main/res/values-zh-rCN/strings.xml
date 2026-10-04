@@ -483,7 +483,6 @@
     <string name="copy_details">复制全部</string>
     <string name="copy_fingerprint">复制指纹</string>
     <string name="apply_fingerprint">填入指纹</string>
-    <string name="copied_to_clipboard">已复制到剪贴板</string>
     <string name="fetching_details">正在查询服务端详情…</string>
     <string name="info_target_address">目标地址</string>
     <string name="info_server_banner">服务端版本</string>
@@ -657,6 +656,7 @@
     <string name="app_crash_dialog_title">⚠️ 应用上次异常退出</string>
     <string name="app_crash_dialog_msg">应用在上次运行时发生了未捕获的异常。您可以复制或分享此错误日志以便排查诊断：</string>
     <string name="app_crash_dialog_copy">复制错误日志</string>
+    <string name="app_crash_dialog_size_suffix">（%1$d 字符）</string>
     <string name="app_crash_dialog_copied">崩溃日志已复制到剪贴板</string>
     <string name="app_crash_dialog_share">分享日志</string>
     <string name="app_crash_dialog_dismiss">关闭</string>

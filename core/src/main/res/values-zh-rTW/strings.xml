@@ -474,7 +474,6 @@
     <string name="copy_details">複製全部</string>
     <string name="copy_fingerprint">複製指紋</string>
     <string name="apply_fingerprint">填入指紋</string>
-    <string name="copied_to_clipboard">已複製至剪貼簿</string>
     <string name="fetching_details">正在查詢伺服端詳情…</string>
     <string name="info_target_address">目標位址</string>
     <string name="info_server_banner">伺服端版本</string>
@@ -658,6 +657,7 @@
     <string name="app_crash_dialog_title">⚠️ 應用上次異常退出</string>
     <string name="app_crash_dialog_msg">應用在上次運行時發生了未捕獲的異常。您可以複製或分享此錯誤日誌以便排查診斷：</string>
     <string name="app_crash_dialog_copy">複製錯誤日誌</string>
+    <string name="app_crash_dialog_size_suffix">（%1$d 個字元）</string>
     <string name="app_crash_dialog_copied">崩潰日誌已複製到剪貼簿</string>
     <string name="app_crash_dialog_share">分享日誌</string>
     <string name="app_crash_dialog_dismiss">關閉</string>

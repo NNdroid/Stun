@@ -19,6 +19,7 @@ import app.fjj.stun.repo.VpnState
 import app.fjj.stun.service.VpnConfigBuilder
 import app.fjj.stun.service.VpnControls
 import app.fjj.stun.util.AppUtils
+import app.fjj.stun.util.CrashHandler
 import app.fjj.stun.util.GridSpans
 import app.fjj.stun.util.PingResults
 import com.google.android.material.snackbar.Snackbar
@@ -27,6 +28,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import app.fjj.stun.ui.UserFeedback
 
 class CarMainActivity : AppCompatActivity() {
 
@@ -41,7 +43,8 @@ class CarMainActivity : AppCompatActivity() {
         if (result.resultCode == RESULT_OK) {
             checkAndRequestNotificationPermission()
         } else {
-            Toast.makeText(this, getString(CoreR.string.vpn_permission_denied), Toast.LENGTH_SHORT).show()
+            UserFeedback.error(this@CarMainActivity, binding.root,
+                    getString(CoreR.string.vpn_permission_denied))
         }
     }
 
@@ -51,7 +54,8 @@ class CarMainActivity : AppCompatActivity() {
         if (granted) {
             startSelectedService()
         } else {
-            Toast.makeText(this, getString(CoreR.string.notification_permission_required), Toast.LENGTH_SHORT).show()
+            UserFeedback.error(this@CarMainActivity, binding.root,
+                    getString(CoreR.string.notification_permission_required))
         }
     }
 
@@ -219,9 +223,7 @@ class CarMainActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerView() {
-        val selectedId = SettingsManager.getSelectedProfileId(this)
         adapter = ProfileAdapterCar(
-            selectedProfileId = selectedId,
             onProfileClick = { profile ->
                 if (!isVpnRunning && !isVpnTransitioning) {
                     SettingsManager.setSelectedProfileId(this, profile.id)
@@ -285,27 +287,19 @@ class CarMainActivity : AppCompatActivity() {
 
     private fun showCrashDialog(crashLog: String) {
         if (isFinishing || isDestroyed) return
-        val paddingH = (24 * resources.displayMetrics.density).toInt()
-        val paddingV = (16 * resources.displayMetrics.density).toInt()
-        val textView = android.widget.TextView(this).apply {
-            text = crashLog
-            textSize = 13f
-            typeface = android.graphics.Typeface.MONOSPACE
-            setTextIsSelectable(true)
-            setPadding(paddingH, paddingV, paddingH, paddingV)
-            // 跟随主题取色：写死白色在浅色主题的浅色弹窗里不可读
-            setTextColor(
-                com.google.android.material.color.MaterialColors.getColor(
-                    this, com.google.android.material.R.attr.colorOnSurface
-                )
-            )
-        }
-        val scrollView = android.widget.ScrollView(this).apply { addView(textView) }
-        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-            .setTitle(getString(CoreR.string.crash_dialog_title))
-            .setView(scrollView)
-            .setPositiveButton(getString(CoreR.string.close), null)
-            .show()
+        // 弹窗构造收口到 CrashHandler（core）。此前这里抄了一份：**没有复制也没有分享按钮**
+        // （车机崩了日志完全出不来），字号还用 `textSize = 13f`（px 而非 sp）。
+        CrashHandler.showCrashDialog(
+            this,
+            crashLog,
+            CrashHandler.CrashDialogStyle(
+                titleRes = CoreR.string.crash_dialog_title,
+                textSizeSp = 13f,
+                horizontalPaddingDp = 24,
+                verticalPaddingDp = 16,
+                feedbackAnchor = binding.root,
+            ),
+        )
     }
 
     private fun loadProfiles() {
@@ -396,15 +390,19 @@ class CarMainActivity : AppCompatActivity() {
                 val results = PingResults.parse(this@CarMainActivity, jsonResStr)
 
                 withContext(Dispatchers.Main) {
-                    profiles.forEach { p ->
-                        adapter.updateDelay(p.id, results[p.id] ?: getString(CoreR.string.latency_network_error))
+                    // 批量回填：整轮测速只刷一次。原来是逐个 updateDelay ⇒ N 个节点触发
+                    // N 次 notifyDataSetChanged，节点多时在大屏上肉眼可见地卡。
+                    val filled = profiles.associate { p ->
+                        p.id to (results[p.id] ?: getString(CoreR.string.latency_network_error))
                     }
+                    adapter.updateDelays(filled)
                     Toast.makeText(this@CarMainActivity, getString(CoreR.string.speed_test_completed), Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@CarMainActivity, getString(CoreR.string.speed_test_error, e.message), Toast.LENGTH_SHORT).show()
+                    UserFeedback.error(this@CarMainActivity, binding.root,
+                    getString(CoreR.string.speed_test_error, e.message))
                 }
             } finally {
                 withContext(Dispatchers.Main) {

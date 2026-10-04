@@ -482,7 +482,6 @@
     <string name="copy_details">Info kopieren</string>
     <string name="copy_fingerprint">Fingerabdruck kopieren</string>
     <string name="apply_fingerprint">Fingerabdruck anwenden</string>
-    <string name="copied_to_clipboard">In die Zwischenablage kopiert</string>
     <string name="fetching_details">Serverdetails werden abgefragt…</string>
     <string name="info_target_address">Zieladresse</string>
     <string name="info_server_banner">Server-Version</string>
@@ -656,6 +655,7 @@
     <string name="app_crash_dialog_title">⚠️ App zuvor unerwartet beendet</string>
     <string name="app_crash_dialog_msg">Die App hat bei der vorherigen Ausführung einen unerwarteten Fehler festgestellt. Sie können dieses Protokoll kopieren oder teilen:</string>
     <string name="app_crash_dialog_copy">Protokoll kopieren</string>
+    <string name="app_crash_dialog_size_suffix"> (%1$d Zeichen)</string>
     <string name="app_crash_dialog_copied">Absturzprotokoll in Zwischenablage kopiert</string>
     <string name="app_crash_dialog_share">Teilen</string>
     <string name="app_crash_dialog_dismiss">Schließen</string>

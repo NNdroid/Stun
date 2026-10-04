@@ -481,7 +481,6 @@
     <string name="copy_details">情報をコピー</string>
     <string name="copy_fingerprint">指紋をコピー</string>
     <string name="apply_fingerprint">指紋を適用</string>
-    <string name="copied_to_clipboard">クリップボードにコピーしました</string>
     <string name="fetching_details">サーバー情報を取得中…</string>
     <string name="info_target_address">宛先アドレス</string>
     <string name="info_server_banner">サーバーバージョン</string>
@@ -655,6 +654,7 @@
     <string name="app_crash_dialog_title">⚠️ 前回アプリが異常終了しました</string>
     <string name="app_crash_dialog_msg">前回実行中に予期せぬエラーが発生しました。ログをコピーまたは共有して診断に役立ててください：</string>
     <string name="app_crash_dialog_copy">ログをコピー</string>
+    <string name="app_crash_dialog_size_suffix"> (%1$d 文字)</string>
     <string name="app_crash_dialog_copied">クラッシュログをクリップボードにコピーしました</string>
     <string name="app_crash_dialog_share">共有</string>
     <string name="app_crash_dialog_dismiss">閉じる</string>

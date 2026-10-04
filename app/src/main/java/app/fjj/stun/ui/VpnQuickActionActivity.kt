@@ -16,8 +16,8 @@ import app.fjj.stun.repo.StunRepository
 import app.fjj.stun.repo.VpnState
 import app.fjj.stun.service.MyTransparentProxyService
 import app.fjj.stun.service.MyVpnService
-import app.fjj.stun.util.ExecUtils
-import app.fjj.stun.util.KeystoreUtils
+import app.fjj.stun.util.RootShell
+import app.fjj.stun.util.ProfileKeyValidator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -71,7 +71,7 @@ class VpnQuickActionActivity : AppCompatActivity() {
             val mode = SettingsManager.getServiceMode(this@VpnQuickActionActivity)
             if (mode == SettingsManager.SERVICE_MODE_TPROXY) {
                 val rooted = withContext(Dispatchers.IO) {
-                    runCatching { ExecUtils.checkIsRootPermission() }.getOrDefault(false)
+                    runCatching { RootShell.isRoot() }.getOrDefault(false)
                 }
                 if (!rooted) {
                     // 需要界面上的 root 错误提示
@@ -99,28 +99,22 @@ class VpnQuickActionActivity : AppCompatActivity() {
     }
 
     /**
-     * 与 HomeFragment.validateSelectedProfile 对齐的静默校验子集。
-     * 返回 false 表示无法在不弹界面（缺节点、口令缺失/错误）的情况下启动，
+     * 与 [HomeFragment.validateSelectedProfile] **共用** [ProfileKeyValidator] 的静默校验子集。
+     * 返回 false 表示无法在不弹界面（缺节点、口令缺失/错误、私钥损坏）的情况下启动，
      * 调用方应回退到 MainActivity 的完整流程。
+     *
+     * ⚠️ 改前这里是独立实现，且把 `checkIfKeyEncrypted == 2`（私钥损坏）与异常一起
+     * 塞进 `else -> false`：用户点桌面快捷方式后看到的是"没反应"（静默跳回 MainActivity，
+     * 而完整流程同样会失败）。现在三态由同一个类判定，两处行为不可能再不一致。
      */
     private suspend fun canConnectQuietly(profile: Profile): Boolean = withContext(Dispatchers.IO) {
         if (profile.id.isEmpty() || profile.sshAddr.isEmpty()) return@withContext false
         if (profile.authType == Profile.AUTH_TYPE_PASSWORD && profile.pass.isEmpty()) return@withContext false
         if (profile.authType == Profile.AUTH_TYPE_PRIVATEKEY) {
-            if (profile.privateKey.isEmpty()) return@withContext false
-            val encrypted = runCatching { myssh.Myssh.checkIfKeyEncrypted(profile.privateKey) }.getOrDefault(-1L)
-            when (encrypted) {
-                0L -> Unit
-                1L -> {
-                    val decrypted = KeystoreUtils.decrypt(profile.keyPass)
-                    val valid = decrypted.isNotEmpty() &&
-                        runCatching { myssh.Myssh.validatePassphrase(profile.privateKey, decrypted) }.getOrDefault(false)
-                    if (!valid) return@withContext false
-                }
-                else -> return@withContext false
-            }
+            ProfileKeyValidator.validate(profile).isUsable
+        } else {
+            true
         }
-        true
     }
 
     private fun stopActiveService() {

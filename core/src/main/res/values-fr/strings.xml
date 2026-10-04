@@ -468,7 +468,6 @@
     <string name="copy_details">Copier info</string>
     <string name="copy_fingerprint">Copier empreinte</string>
     <string name="apply_fingerprint">Appliquer empreinte</string>
-    <string name="copied_to_clipboard">Copié dans le presse-papier</string>
     <string name="fetching_details">Interrogation détails serveur…</string>
     <string name="info_target_address">Adresse cible</string>
     <string name="info_server_banner">Version serveur</string>
@@ -642,6 +641,7 @@
     <string name="app_crash_dialog_title">⚠️ L\'application a planté précédemment</string>
     <string name="app_crash_dialog_msg">L\'application a rencontré une erreur inattendue lors de la session précédente. Vous pouvez copier ou partager ce journal :</string>
     <string name="app_crash_dialog_copy">Copier le journal</string>
+    <string name="app_crash_dialog_size_suffix"> (%1$d car.)</string>
     <string name="app_crash_dialog_copied">Journal de crash copié dans le presse-papiers</string>
     <string name="app_crash_dialog_share">Partager</string>
     <string name="app_crash_dialog_dismiss">Fermer</string>
