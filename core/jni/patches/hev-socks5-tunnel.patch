@@ -1,7 +1,7 @@
 diff --git a/Android.mk b/Android.mk
 --- a/Android.mk
 +++ b/Android.mk
-@@ -15,14 +15,23 @@
+@@ -15,14 +15,19 @@
  
  TOP_PATH := $(call my-dir)
  
@@ -27,7 +27,7 @@ diff --git a/Android.mk b/Android.mk
  endif
  
  LOCAL_PATH = $(TOP_PATH)
-@@ -46,7 +55,7 @@
+@@ -46,7 +51,7 @@
  ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
  LOCAL_CFLAGS += -mfpu=neon
  endif
@@ -331,7 +331,7 @@ diff --git a/src/hev-socks5-session-tcp.c b/src/hev-socks5-session-tcp.c
  #include "hev-logger.h"
  #include "hev-config-const.h"
  #include "hev-socks5-tunnel.h"
-@@ -177,6 +179,86 @@
+@@ -177,6 +179,87 @@
      return self;
  }
  
