@@ -71,6 +71,12 @@
     <string name="udpgw_impl_desc">Wählen Sie, wie UDP-Traffic weitergeleitet wird.</string>
     <string name="udpgw_addr_desc">Lokale Listen-Adresse der gewählten Implementierung.</string>
     <string name="udpgw_addr_helper">Üblich ist 127.0.0.1:7300; tragen Sie die tatsächliche Adresse ein, falls geändert.</string>
+    <string name="udpgw_session_title">UDP-Sitzungslimits</string>
+    <string name="udpgw_session_desc">Obergrenze für gleichzeitige Sitzungen und wie lange eine ungenutzte bleibt.</string>
+    <string name="udp_max_sessions">Max. UDP-Sitzungen</string>
+    <string name="udp_max_sessions_helper">0 = Standard 1024</string>
+    <string name="udp_idle_timeout">UDP-Leerlaufzeit (Sek.)</string>
+    <string name="udp_idle_timeout_helper">0 = Standard 60 s</string>
     <string name="geo_data_config">Geodaten</string>
     <string name="geosite_url">GeoSite-URL</string>
     <string name="geoip_url">GeoIP-URL</string>
@@ -358,6 +364,8 @@
     <string name="desc_remote_dns_input">Remote-DNS-Serveradresse eingeben</string>
     <string name="desc_local_dns_input">Lokale DNS-Serveradresse eingeben</string>
     <string name="desc_udpgw_addr_input">UDP-Gateway-Adresse eingeben</string>
+    <string name="desc_udp_max_sessions_input">Maximale Anzahl gleichzeitiger UDP-Sitzungen eingeben</string>
+    <string name="desc_udp_idle_timeout_input">UDP-Leerlaufzeit in Sekunden eingeben</string>
     <string name="desc_geosite_direct_input">GeoSite-Tags für Direkt-Routing eingeben</string>
     <string name="desc_geoip_direct_input">GeoIP-Tags für Direkt-Routing eingeben</string>
     <string name="desc_filter_apps_input">Paketnamen zum Filtern eingeben</string>

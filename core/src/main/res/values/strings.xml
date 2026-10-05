@@ -88,6 +88,12 @@
     <string name="udpgw_impl_desc">Choose how UDP traffic is forwarded.</string>
     <string name="udpgw_addr_desc">Local listen address of the selected implementation.</string>
     <string name="udpgw_addr_helper">Usually 127.0.0.1:7300; enter your actual listen address if changed.</string>
+    <string name="udpgw_session_title">UDP Session Limits</string>
+    <string name="udpgw_session_desc">Cap concurrent sessions and how long an idle one is kept.</string>
+    <string name="udp_max_sessions">UDP Max Sessions</string>
+    <string name="udp_max_sessions_helper">0 = default 1024</string>
+    <string name="udp_idle_timeout">UDP Idle Timeout (sec)</string>
+    <string name="udp_idle_timeout_helper">0 = default 60s</string>
     <string name="geo_data_config">Geo Data</string>
     <string name="geosite_url">GeoSite URL</string>
     <string name="geoip_url">GeoIP URL</string>
@@ -99,10 +105,6 @@
     <string name="direct_routing">Routing Rules</string>
     <string name="geosite_direct">GeoSite Direct (e.g. cn,apple)</string>
     <string name="geoip_direct">GeoIP Direct (e.g. cn,private)</string>
-    <string name="udp_max_sessions">UDP Max Sessions</string>
-    <string name="udp_max_sessions_helper">0 = default 1024</string>
-    <string name="udp_idle_timeout">UDP Idle Timeout (sec)</string>
-    <string name="udp_idle_timeout_helper">0 = default 60s</string>
     <string name="geo_tag_picker_title">Select Geo Tags</string>
     <string name="geo_tag_search_hint">Search tags…</string>
     <string name="geo_tag_selected_count">%1$d selected</string>

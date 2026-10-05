@@ -73,6 +73,12 @@
     <string name="udpgw_impl_desc">选择 UDP 流量的转发方式。</string>
     <string name="udpgw_addr_desc">填写对应实现的本地监听地址。</string>
     <string name="udpgw_addr_helper">通常使用 127.0.0.1:7300，如已修改请填写实际监听地址。</string>
+    <string name="udpgw_session_title">UDP 会话限制</string>
+    <string name="udpgw_session_desc">限制并发会话数，以及空闲会话保留多久。</string>
+    <string name="udp_max_sessions">UDP 会话上限</string>
+    <string name="udp_max_sessions_helper">0 = 默认 1024</string>
+    <string name="udp_idle_timeout">UDP 空闲超时（秒）</string>
+    <string name="udp_idle_timeout_helper">0 = 默认 60 秒</string>
     <string name="geo_data_config">地理数据</string>
     <string name="geosite_url">GeoSite 地址</string>
     <string name="geoip_url">GeoIP 地址</string>
@@ -84,10 +90,6 @@
     <string name="direct_routing">分流规则</string>
     <string name="geosite_direct">GeoSite 直连 (如 cn,apple)</string>
     <string name="geoip_direct">GeoIP 直连 (如 cn,private)</string>
-    <string name="udp_max_sessions">UDP 会话上限</string>
-    <string name="udp_max_sessions_helper">0 = 默认 1024</string>
-    <string name="udp_idle_timeout">UDP 空闲超时 (秒)</string>
-    <string name="udp_idle_timeout_helper">0 = 默认 60 秒</string>
     <string name="geo_tag_picker_title">选择 Geo 标签</string>
     <string name="geo_tag_search_hint">搜索标签…</string>
     <string name="geo_tag_selected_count">已选 %1$d 个</string>

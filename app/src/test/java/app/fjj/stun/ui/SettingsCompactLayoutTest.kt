@@ -101,9 +101,11 @@ class SettingsCompactLayoutTest {
         val shapes = (0 until container.childCount)
             .map { "child#$it=${container.getChildAt(it).javaClass.simpleName}" }
         assertTrue(
-            "UDP 网关小节内应只剩 3 块（头部行 + 实现子卡 + 地址子卡），实际 ${container.childCount} 块：$shapes\n" +
-                "原来的第 4 块「小提示」（Tips 标题 + 两条 • 说明）必须整块删掉。",
-            container.childCount == 3,
+            "UDP 网关小节内应为 4 块（头部行 + 实现子卡 + 地址子卡 + 会话限制子卡），" +
+                "实际 ${container.childCount} 块：$shapes\n" +
+                "块数变多通常意味着又塞回了「小提示」子卡（Tips 标题 + 两条 • 说明）—— 那块必须整块删掉。\n" +
+                "注：会话限制子卡（UDP 会话上限 / 空闲超时）原先放在「自定义直连路由」小节，语义错位，已挪进来。",
+            container.childCount == 4,
         )
 
         val bullets = textViewsIn(card).map { it.text.toString() }.filter { it.trimStart().startsWith("•") }

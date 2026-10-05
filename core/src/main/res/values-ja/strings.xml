@@ -71,6 +71,12 @@
     <string name="udpgw_impl_desc">UDP トラフィックの転送方式を選択します。</string>
     <string name="udpgw_addr_desc">選択した実装のローカル監視アドレスを入力します。</string>
     <string name="udpgw_addr_helper">通常は 127.0.0.1:7300。変更した場合は実際の監視アドレスを入力してください。</string>
+    <string name="udpgw_session_title">UDP セッション制限</string>
+    <string name="udpgw_session_desc">同時セッション数の上限と、アイドル状態のセッションを保持する時間。</string>
+    <string name="udp_max_sessions">UDP セッション上限</string>
+    <string name="udp_max_sessions_helper">0 = 既定値 1024</string>
+    <string name="udp_idle_timeout">UDP アイドルタイムアウト（秒）</string>
+    <string name="udp_idle_timeout_helper">0 = 既定値 60 秒</string>
     <string name="geo_data_config">Geoデータ</string>
     <string name="geosite_url">GeoSite URL</string>
     <string name="geoip_url">GeoIP URL</string>
@@ -357,6 +363,8 @@
     <string name="desc_remote_dns_input">リモートDNSを入力</string>
     <string name="desc_local_dns_input">ローカルDNSを入力</string>
     <string name="desc_udpgw_addr_input">UDPゲートウェイアドレスを入力</string>
+    <string name="desc_udp_max_sessions_input">UDP 同時セッション数の上限を入力</string>
+    <string name="desc_udp_idle_timeout_input">UDP セッションのアイドルタイムアウト秒数を入力</string>
     <string name="desc_geosite_direct_input">GeoSiteタグを入力</string>
     <string name="desc_geoip_direct_input">GeoIPタグを入力</string>
     <string name="desc_filter_apps_input">パッケージ名を入力</string>

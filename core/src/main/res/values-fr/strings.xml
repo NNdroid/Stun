@@ -71,6 +71,12 @@
     <string name="udpgw_impl_desc">Choisissez comment le trafic UDP est transféré.</string>
     <string name="udpgw_addr_desc">Adresse d\'écoute locale de l\'implémentation choisie.</string>
     <string name="udpgw_addr_helper">Habituellement 127.0.0.1:7300 ; saisissez l\'adresse d\'écoute réelle si modifiée.</string>
+    <string name="udpgw_session_title">Limites de session UDP</string>
+    <string name="udpgw_session_desc">Plafond des sessions simultanées et durée de conservation d\'une session inactive.</string>
+    <string name="udp_max_sessions">Sessions UDP max.</string>
+    <string name="udp_max_sessions_helper">0 = 1024 par défaut</string>
+    <string name="udp_idle_timeout">Inactivité UDP (s)</string>
+    <string name="udp_idle_timeout_helper">0 = 60 s par défaut</string>
     <string name="geo_data_config">Données géo</string>
     <string name="geosite_url">URL GeoSite</string>
     <string name="geoip_url">URL GeoIP</string>
@@ -344,6 +350,8 @@
     <string name="desc_remote_dns_input">Entrer adresse DNS distant</string>
     <string name="desc_local_dns_input">Entrer adresse DNS local</string>
     <string name="desc_udpgw_addr_input">Entrer adresse passerelle UDP</string>
+    <string name="desc_udp_max_sessions_input">Entrer le nombre max. de sessions UDP simultanées</string>
+    <string name="desc_udp_idle_timeout_input">Entrer le délai d\'inactivité UDP en secondes</string>
     <string name="desc_geosite_direct_input">Entrer tags GeoSite pour direct</string>
     <string name="desc_geoip_direct_input">Entrer tags GeoIP pour direct</string>
     <string name="desc_filter_apps_input">Entrer noms de paquets à filtrer</string>

@@ -73,6 +73,12 @@
     <string name="udpgw_impl_desc">選擇 UDP 流量的轉發方式。</string>
     <string name="udpgw_addr_desc">填寫對應實作的本地監聽地址。</string>
     <string name="udpgw_addr_helper">通常使用 127.0.0.1:7300，如已修改請填寫實際監聽地址。</string>
+    <string name="udpgw_session_title">UDP 會話限制</string>
+    <string name="udpgw_session_desc">限制並發會話數，以及閒置會話保留多久。</string>
+    <string name="udp_max_sessions">UDP 會話上限</string>
+    <string name="udp_max_sessions_helper">0 = 預設 1024</string>
+    <string name="udp_idle_timeout">UDP 閒置逾時（秒）</string>
+    <string name="udp_idle_timeout_helper">0 = 預設 60 秒</string>
     <string name="geo_data_config">地理數據</string>
     <string name="geosite_url">GeoSite 地址</string>
     <string name="geoip_url">GeoIP 地址</string>
@@ -345,6 +351,8 @@
     <string name="desc_remote_dns_input">輸入遠端 DNS 伺服器位址</string>
     <string name="desc_local_dns_input">輸入本機 DNS 伺服器位址</string>
     <string name="desc_udpgw_addr_input">輸入 UDP 閘道器地址</string>
+    <string name="desc_udp_max_sessions_input">輸入 UDP 併發會話數上限</string>
+    <string name="desc_udp_idle_timeout_input">輸入 UDP 會話閒置逾時秒數</string>
     <string name="desc_geosite_direct_input">輸入直連 GeoSite 標籤</string>
     <string name="desc_geoip_direct_input">輸入直連 GeoIP 標籤</string>
     <string name="desc_filter_apps_input">輸入要過濾的包名</string>
