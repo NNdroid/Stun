@@ -193,6 +193,7 @@
     <string name="main_connect">接続</string>
     <string name="main_disconnect">切断</string>
     <string name="main_testing_latency">遅延を測定中…</string>
+    <string name="main_probing_exit">出口アドレスを確認中…</string>
     <string name="main_add_manually">手動で追加</string>
     <string name="main_scan_qr">QRスキャン</string>
     <string name="main_add_profile_title">ノードを追加</string>

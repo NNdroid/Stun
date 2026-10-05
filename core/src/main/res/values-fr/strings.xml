@@ -194,6 +194,7 @@
     <string name="main_connect">Connecter</string>
     <string name="main_disconnect">Déconnecter</string>
     <string name="main_testing_latency">Test de latence…</string>
+    <string name="main_probing_exit">Détection de l\'adresse de sortie…</string>
     <string name="main_add_manually">Ajouter manuellement</string>
     <string name="main_scan_qr">Scanner code QR</string>
     <string name="main_add_profile_title">Ajouter nœud</string>

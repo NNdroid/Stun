@@ -30,11 +30,24 @@ import org.json.JSONObject
  * 所以数值天然高于系统 ping（同一节点 200ms vs 30ms 是正常的）。
  * 详见 `LatencyBreakdown` —— 需要拆分展示时用那个。
  *
- * ## 为什么不受 tproxy bypass 影响
- * 探测流量由 Go 侧 `sshClient.Dial` 在**已建立的 SSH 通道内**发出，
- * 而 tproxy 的 bypass 只作用于 iptables `OUTPUT` 链（针对本进程 UID）。
- * 与 `ExitIpProbe` 相反：那个用 `HttpURLConnection` 从本进程发出，
- * 在 tproxy 模式下必然被 bypass、拿到本地出口 IP。
+ * ## 为什么不受 tproxy 旁路影响
+ * HTTP 流量由 Go 侧 `sshClient.Dial` 塞进**已建立的 SSH 通道**，不新建到公网地址的连接 ——
+ * 没有数据包走到 `OUTPUT` 链上按公网目的地址匹配，旁路规则无从下手。
+ * 这跟「旁路只作用于本进程 uid」无关：tproxy 在 `PREROUTING` 与 `OUTPUT` 同时生效，
+ * 重定向本身不按 uid 限定。
+ *
+ * [ExitIpProbe] 则要经受这一层：它要回答「App 自己的流量实际从哪出去」，只有真走一遍
+ * OS 栈才有答案。结果分两种，别把第二种当成常态：
+ *  - **mark 可用**（`SO_MARK probe succeeded`）：`tproxy.sh` 的 `-m mark -j ACCEPT` 排在
+ *    `_add_chain_jumps` 与 TPROXY/REDIRECT **之前**，只放行打了 mark 的隧道 socket；
+ *    ExitIpProbe 的 socket 没打 mark，会继续走到 APP_CHAIN → TPROXY，
+ *    **照常走隧道、显示远端 IP**。
+ *  - **mark 不可用**（`SO_MARK probe FAILED`，降级 uid 放行）：同一 uid 下无法区分 App 的
+ *    其它 socket，整个 App 被写进 `BYPASS_APPS_LIST` ⇒ 直连 ⇒ 显示**真实**出口 IP。
+ *
+ * 状态看 `MyTransparentProxyService` 的 `Rules: mark bypass ACTIVE|INACTIVE`。
+ * 所以「延迟正常但出口 IP 是本地的」不是隧道坏了，是第二种情况 —— 查 `SO_MARK probe`
+ * 那一行，而不是查规则或 GeoIP。
  *
  * 结果缓存在 [StunRepository.latencyMs]（-1 表示未测得），供底栏 / 详情 / 小组件读取。
  */

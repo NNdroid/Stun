@@ -569,7 +569,11 @@ class HomeFragment : Fragment() {
                 ?: getString(CoreR.string.main_connected)
             binding.tvStatusSubtitle.visibility = View.VISIBLE
             binding.tvStatusSubtitle.text = if (latencyTestInProgress) {
-                getString(CoreR.string.main_testing_latency)
+                // 连接中的这次「探测」实际是出口 IP 查询，断开态才是真正的延迟测试。
+                getString(
+                    if (connected) CoreR.string.main_probing_exit
+                    else CoreR.string.main_testing_latency,
+                )
             } else if (reconnecting) {
                 getString(CoreR.string.main_reconnecting)
             } else {
@@ -1265,8 +1269,10 @@ class HomeFragment : Fragment() {
         details.btnGlobeReset.setOnClickListener { details.globeTopology.resetView() }
         details.globeTopology.onZoomChanged = { renderGlobeResetState(details) }
         renderGlobeResetState(details)
-        val initialSheetBottomPadding = details.root.paddingBottom
-        ViewCompat.setOnApplyWindowInsetsListener(details.root) { view, insets ->
+        // inset 内边距加在**滚动容器**而不是外层定高容器上：clipToPadding=false 需要内边距落在
+        // 滚动视口内，末项才能滚到 inset 之下。加在外层会让滚动区域整体缩小，最后一项滚不进安全区。
+        val initialSheetBottomPadding = details.connectionDetailsSheet.paddingBottom
+        ViewCompat.setOnApplyWindowInsetsListener(details.connectionDetailsSheet) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             view.updatePadding(bottom = initialSheetBottomPadding + bars.bottom)
             insets
@@ -1363,7 +1369,14 @@ class HomeFragment : Fragment() {
         StunRepository.latencyMs.observe(viewLifecycleOwner) { latency ->
             if (_binding == null || !isAdded || latency == null || latency < 0L) return@observe
             latestLatencyLabel = "$latency ms"
-            if (isVpnRunning) renderConnectionIdentity()
+            if (isVpnRunning) {
+                // 列表行的延迟与底栏同源：连接成功后只有首次探测写过行内延迟位，之后 LatencyProber
+                // 每 60s 的新值只进底栏，行上会一直留着旧数。
+                activeBottomProfile?.id?.takeIf { it.isNotEmpty() }?.let {
+                    adapter.updateDelay(it, "$latency ms")
+                }
+                renderConnectionIdentity()
+            }
         }
         // 连接质量综合评分（星级 + 颜色）：延迟 / 抖动 / 出口稳定性三维合成，
         // 详情面板里以“质量 ★★★★☆”展示，颜色随评分走绿/琥珀/红。
@@ -2113,22 +2126,28 @@ class HomeFragment : Fragment() {
                     if (_binding != null && isAdded) {
                         latencyTestInProgress = true
                         binding.tvStatusSubtitle.visibility = View.VISIBLE
-                        binding.tvStatusSubtitle.text = getString(CoreR.string.main_testing_latency)
+                        // 连接中跑的是出口 IP 探测，断开态才是握手延迟测试 —— 副标题必须跟着语义走，
+                        // 否则说「测试延迟」而实际在查出口，和延迟位被写错是同一处失真。
+                        binding.tvStatusSubtitle.text = getString(
+                            if (testConnected) CoreR.string.main_probing_exit
+                            else CoreR.string.main_testing_latency,
+                        )
                         updateStatusContentDescription()
                     }
                 }
 
                 if (testConnected) {
-                    // This measures the IP lookup request over current app routing, not SSH RTT.
+                    // 连接中这一步跑的是出口 IP 查询，不是延迟测试。ExitIpProbe.latencyMs 量的是
+                    // 「这次 IP 查询花了多久」（一次完整 HTTPS 往返，常见 1–4s），与 SSH 握手延迟
+                    // 不是一个量级。写进延迟位会和 StunRepository.latencyMs（LatencyProber 经 Go
+                    // 真握手测出，底栏 / 详情面板 / 列表行的唯一数据源）互相覆盖：同一个格子随两条
+                    // 链路轮流变脸，数值还能差一个数量级 —— 这就是「连接成功后测了两次」。
+                    // 这里只取它的出口 IP 与位置，延迟位交给 latencyMs 观察者驱动。
                     val result = ExitIpProbe().run()
-                    val delayLabel = result?.let { "${it.latencyMs} ms" }
-                        ?: ctx.getString(CoreR.string.latency_network_error)
                     if (!isActive) return@launch
                     withContext(Dispatchers.Main) {
                         if (_binding != null && isAdded && activeBottomProfile?.id == profileId &&
                             StunRepository.vpnState.value == VpnState.CONNECTED) {
-                            adapter.updateDelay(profileId, delayLabel)
-                            latestLatencyLabel = delayLabel
                             setExitLocation(result)
                             latencyTestInProgress = false
                             renderConnectionIdentity()
@@ -2136,7 +2155,7 @@ class HomeFragment : Fragment() {
                     }
                 } else {
                     // Disconnected: retain the existing native node-connectivity test.
-                    val configJson = VpnConfigBuilder.buildMySshConfig(ctx, selectedProfile, 1080, 53)
+                    val configJson = VpnConfigBuilder.buildMySshConfig(ctx, selectedProfile)
                     val request = JSONArray().put(JSONObject().put("id", profileId).put("config", JSONObject(configJson)))
                     val response = StunRepository.proxy.pingNodes(request.toString(), "http://cp.cloudflare.com/generate_204", 8000L)
                     val result = parsePingResults(response)[profileId] ?: ctx.getString(CoreR.string.latency_network_error)
@@ -2155,11 +2174,12 @@ class HomeFragment : Fragment() {
                 if (!isActive) return@launch
                 withContext(Dispatchers.Main) {
                     if (_binding != null && isAdded) {
-                        if (profileId.isNotEmpty()) adapter.updateDelay(profileId, result)
-                        latestLatencyLabel = result
                         if (testConnected) {
+                            // 出口探测失败 ≠ 延迟异常：延迟位继续由 latencyMs 驱动，这里只清出口。
                             setExitLocation(null)
                         } else {
+                            adapter.updateDelay(profileId, result)
+                            latestLatencyLabel = result
                             renderDisconnectedIdentity(result)
                         }
                         updateStatusContentDescription()
@@ -2189,7 +2209,7 @@ class HomeFragment : Fragment() {
             try {
                 val reqArray = JSONArray()
                 profiles.forEach { p ->
-                    val configJson = VpnConfigBuilder.buildMySshConfig(requireContext(), p, 1080, 53)
+                    val configJson = VpnConfigBuilder.buildMySshConfig(requireContext(), p)
                     reqArray.put(JSONObject().put("id", p.id).put("config", JSONObject(configJson)))
                 }
                 // 与“选定节点测速”走同一套 Go 测速，目标/超时/方法论完全一致

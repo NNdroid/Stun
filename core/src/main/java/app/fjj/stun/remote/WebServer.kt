@@ -428,7 +428,7 @@ object WebServer {
                             val resultsMap = withContext(Dispatchers.IO) {
                                 val reqArray = org.json.JSONArray()
                                 profiles.forEach { p ->
-                                    val configJson = VpnConfigBuilder.buildMySshConfig(appContext, p, 1080, 53)
+                                    val configJson = VpnConfigBuilder.buildMySshConfig(appContext, p)
                                     reqArray.put(org.json.JSONObject().put("id", p.id).put("config", org.json.JSONObject(configJson)))
                                 }
 

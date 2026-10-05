@@ -46,7 +46,20 @@ object VpnConfigBuilder {
         }.toString()
     }
 
-    fun buildMySshConfig(context: Context, profile: Profile, socksPort: Int, dnsPort: Int): String {
+    /**
+     * @param socksPort / @param dnsPort 缺省取 [TProxyPorts] 的单一来源。
+     *
+     * 给默认值是为了让**只在乎测出延迟**的调用方不必知道端口：历史上 `HomeFragment` 与
+     * TV 端各写死了一份 `1080 / 53`，与服务实际监听的 `10808 / 10553` 不符。那三个错值
+     * 当时没炸，只是因为 Go 侧 `DialNode` 恰好不读 `local_addr` —— 一旦它改为尊重该字段
+     * 以复用连接，探测会全量失败且报错指向「网络不通」。默认值让这类副本无法再出现。
+     */
+    fun buildMySshConfig(
+        context: Context,
+        profile: Profile,
+        socksPort: Int = TProxyPorts.SOCKS,
+        dnsPort: Int = TProxyPorts.DNS,
+    ): String {
         val udpgwAddr = if (profile.dnsOverride) profile.udpgwAddr else SettingsManager.getUdpgwAddr(context)
         val udpgwVersion = if (profile.dnsOverride) profile.udpgwVersion else SettingsManager.getUdpgwVersion(context)
         val isMasque = profile.tunnelType == Profile.TUNNEL_TYPE_MASQUE

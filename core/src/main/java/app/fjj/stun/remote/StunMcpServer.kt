@@ -2052,7 +2052,7 @@ url = "$scheme://$targetHost/mcp"$headersBlock
 
     private fun testNodePingLatency(profile: Profile, context: Context): NodeLatency {
         val configJson = try {
-            VpnConfigBuilder.buildMySshConfig(context, profile, 1080, 53)
+            VpnConfigBuilder.buildMySshConfig(context, profile)
         } catch (e: Exception) {
             StunLogger.e(TAG, "test_node_latency buildMySshConfig failed: ${e.message}", e)
             return NodeLatency(-1, false, "config", e.message ?: "config build failed")

@@ -211,6 +211,7 @@
     <string name="main_connect">Connect</string>
     <string name="main_disconnect">Disconnect</string>
     <string name="main_testing_latency">Testing latency…</string>
+    <string name="main_probing_exit">Probing exit IP…</string>
     <string name="main_add_manually">Add Manually</string>
     <string name="main_scan_qr">Scan QR Code</string>
     <string name="main_add_profile_title">Add Node</string>
