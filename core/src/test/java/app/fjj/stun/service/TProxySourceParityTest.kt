@@ -1,9 +1,13 @@
 package app.fjj.stun.service
 
 import java.io.File
+import java.io.IOException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeFalse
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 /**
@@ -47,6 +51,26 @@ class TProxySourceParityTest {
         return source.substring(start, end)
     }
 
+    /**
+     * 取应用过滤 case（`case "$APP_PROXY_MODE" in` 的**最后一处**出现，前一处只是取值
+     * 校验、无分支体）里指定分支（`blacklist)` / `whitelist)` 到下一个 `;;`）的可执行
+     * 代码行。整行注释已剔除 —— 注释里也提到这些变量名，会把位置判断带偏。
+     *
+     * 找不到锚点 / 分支 / 闭合 `;;` 时返回 null，失败原因由调用方断言。
+     */
+    private fun appFilterBranch(mode: String): List<String>? {
+        val script = tproxySh
+        val caseAt = script.lastIndexOf("case \"\$APP_PROXY_MODE\" in")
+        if (caseAt < 0) return null
+        val branchLines = script.substring(caseAt).lineSequence().toList()
+        val startIdx = branchLines.indexOfFirst { it.trim() == "$mode)" }
+        if (startIdx < 0) return null
+        val endIdx = (startIdx + 1 until branchLines.size).firstOrNull { branchLines[it].trim() == ";;" }
+            ?: return null
+        return branchLines.subList(startIdx + 1, endIdx)
+            .filterNot { it.trimStart().startsWith("#") }
+    }
+
     // ── 1. 配置文件名两侧一致 ────────────────────────────────────────
 
     @Test
@@ -84,25 +108,12 @@ class TProxySourceParityTest {
      */
     @Test
     fun allowListBranchAppliesBypassBeforeProxy() {
-        // ⚠️ 必须锚到**最后一处** `case "$APP_PROXY_MODE" in`：脚本里出现两次
-        // （前一处只是取值合法性校验，无分支体；后一处才是真正的应用过滤链）。
+        // ⚠️ 锚点必须取**最后一处** `case "$APP_PROXY_MODE" in`（appFilterBranch 已处理）：
+        // 脚本里出现两次（前一处只是取值合法性校验，无分支体；后一处才是真正的应用过滤链）。
         // 同理 `whitelist)` 在 MAC 过滤链里也有一份，不锚定就会切错分支而假绿/假红。
-        val anchor = "case \"\$APP_PROXY_MODE\" in"
-        val script = tproxySh
-        val caseAt = script.lastIndexOf(anchor)
-        assertTrue(
-            "tproxy.sh 里找不到应用过滤的 case 语句（锚点出现 ${script.count { it == 'c' }} 个 'c'）",
-            caseAt >= 0,
-        )
-        val branchLines = script.substring(caseAt).lineSequence().toList()
-        val startIdx = branchLines.indexOfFirst { it.trim() == "whitelist)" }
-        assertTrue("应用过滤链里找不到 whitelist 分支", startIdx >= 0)
-        val endIdx = (startIdx + 1 until branchLines.size).firstOrNull { branchLines[it].trim() == ";;" }
-        assertTrue("whitelist 分支没有闭合的 ;;", endIdx != null)
-        // 只看可执行代码行：注释里也提到这两个变量名，会把位置判断带偏。
-        val code = branchLines.subList(startIdx + 1, endIdx!!)
-            .filterNot { it.trimStart().startsWith("#") }
-            .joinToString("\n")
+        val body = appFilterBranch("whitelist")
+        assertNotNull("应用过滤链里找不到 whitelist 分支（锚点丢失或分支未闭合）", body)
+        val code = body!!.joinToString("\n")
 
         val bypassAt = code.indexOf("BYPASS_APPS_LIST")
         val proxyAt = code.indexOf("PROXY_APPS_LIST")
@@ -122,6 +133,73 @@ class TProxySourceParityTest {
         )
         // 反事实：bypass 之后仍需保留链尾 ACCEPT，否则不在任何名单里的应用会掉出链尾。
         assertTrue("whitelist 分支缺链尾 -j ACCEPT", code.trimEnd().endsWith("-j ACCEPT"))
+    }
+
+    /**
+     * 应用过滤两个分支的结构必须配平。
+     *
+     * whitelist/bypass 改造恰好坏在**结构**上：blacklist 分支开头悬着一个没有 `do` 的
+     * `done`，whitelist 分支尾部混进一个缺 `done`/`fi` 的重复 bypass 块 —— `bash -n`
+     * 解析直接失败，而 [allowListBranchAppliesBypassBeforeProxy] 照绿（锚点切对了分支、
+     * 顺序与链尾断言也满足）。文本探针看不见 if/fi、for/done 的配对，所以单独钉住。
+     */
+    @Test
+    fun appFilterBranchesAreStructurallyBalanced() {
+        for (mode in listOf("blacklist", "whitelist")) {
+            val body = appFilterBranch(mode)
+            assertNotNull("应用过滤链里定位不到 $mode 分支", body)
+            val lines = body!!
+            // 只认**行首**的结构关键字：日志字符串里有 "bypass for UID"，按词边界数会把
+            // 英文介词当成循环开头。
+            val openIf = lines.count { Regex("^\\s*if\\b").containsMatchIn(it) }
+            val openLoop = lines.count { Regex("^\\s*(for|while|until)\\b").containsMatchIn(it) }
+            val closeIf = lines.count { Regex("^\\s*fi\\b").containsMatchIn(it) }
+            val closeLoop = lines.count { Regex("^\\s*done\\b").containsMatchIn(it) }
+            assertEquals(
+                "$mode 分支 if 与 fi 不配平（if=$openIf fi=$closeIf）—— 有块没闭合，脚本会解析失败",
+                openIf, closeIf,
+            )
+            assertEquals(
+                "$mode 分支循环与 done 不配平（open=$openLoop done=$closeLoop）—— 悬空/缺失的 done 会让脚本解析失败",
+                openLoop, closeLoop,
+            )
+            // bypass 块只能有一份：上次 whitelist 分支里就混进过第二个（未闭合的）bypass 块。
+            val acceptRules = lines.count { it.contains("--uid-owner") && it.contains("-j ACCEPT") }
+            assertEquals(
+                "$mode 分支里 uid 的 -j ACCEPT 规则只能有一条：出现两条说明 bypass 块被复制了一份",
+                1, acceptRules,
+            )
+        }
+    }
+
+    /**
+     * 整份脚本必须能被 bash 解析。文本探针（indexOf / 正则）看不见结构，
+     * 解析器看得见 —— 上次的损坏 `bash -n` 一秒就能报出来。
+     */
+    @Test
+    fun tproxyShParsesCleanly() {
+        assumeFalse(
+            "Windows 上 PATH 里的 bash 可能是 WSL 的（路径语义不同会假失败），解析检查交给 Linux CI",
+            System.getProperty("os.name")?.lowercase()?.contains("windows") == true,
+        )
+        val scriptFile = sequenceOf(
+            File("src/main/assets/scripts/tproxy.sh"),
+            File("core/src/main/assets/scripts/tproxy.sh"),
+        ).firstOrNull { it.isFile }
+        assertNotNull("找不到 tproxy.sh（工作目录不对）", scriptFile)
+        val process = try {
+            ProcessBuilder("bash", "-n", scriptFile!!.absolutePath)
+                .redirectErrorStream(true)
+                .start()
+        } catch (e: IOException) {
+            assumeTrue("bash 不可用，跳过解析检查：${e.message}", false)
+            return
+        }
+        val output = process.inputStream.bufferedReader().readText()
+        assertEquals(
+            "tproxy.sh 无法通过 bash -n 解析 —— 真机上脚本一启动就会失败：\n$output",
+            0, process.waitFor(),
+        )
     }
 
     // ── 2. tproxy.conf 这个名字彻底退役 ─────────────────────────────
