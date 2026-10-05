@@ -252,14 +252,17 @@ class MyTransparentProxyService : Service() {
         val helper = File(cacheDir, BIN_SOCKMARK)
         if (!helper.exists()) {
             // 部署没成功（assets 缺失 / 旧包没重新安装）——不注册，规则侧走 uid 降级。
-            StunLogger.w(TAG, "sockmark helper missing at ${helper.absolutePath}; falling back to uid bypass")
+            StunLogger.e(TAG, "sockmark helper missing at ${helper.absolutePath}; " +
+                "falling back to uid bypass — check AppBootstrap deployment and whether " +
+                "assets/bin/<abi>/sockmark is in the APK")
             StunRepository.proxy.registerSocketMarkHelper("", 0L, 0L)
             return false
         }
         // appPID 传 0：Go 侧用 os.Getpid() 自取，比在 Kotlin 这边再算一遍可靠。
         // ⚠️ gomobile 把 Go 的 `int` 映射成 Java `long`，所以 mark 与 pid 都要传 Long。
         StunRepository.proxy.registerSocketMarkHelper(helper.absolutePath, 0L, TProxyPorts.SOCKET_MARK.toLong())
-        StunLogger.i(TAG, "sockmark helper registered: ${helper.absolutePath} mark=0x${Integer.toHexString(TProxyPorts.SOCKET_MARK)}")
+        StunLogger.i(TAG, "sockmark helper registered: ${helper.absolutePath} " +
+            "size=${helper.length()} exec=${helper.canExecute()} mark=0x${Integer.toHexString(TProxyPorts.SOCKET_MARK)}")
 
         // 探测：**必须真的设一次 mark 成功**才敢让规则层走 mark 模式。
         // helper 虽是 App 自己 fork 的，但提权（su）、借 fd（pidfd_getfd，Linux 5.6+）、
@@ -269,13 +272,17 @@ class MyTransparentProxyService : Service() {
             StunRepository.proxy.probeSocketMark() == 1L
         } catch (e: UnsatisfiedLinkError) {
             // 旧 AAR 里没有这个方法：说明装的 APK 与当前 libs 不匹配，当作不可用。
-            StunLogger.w(TAG, "probeSocketMark unavailable (stale AAR?): ${e.message}")
+            StunLogger.e(TAG, "probeSocketMark unavailable — installed AAR is stale, " +
+                "rebuild the APK. ${e.message}")
             false
         }
         if (ok) {
             StunLogger.i(TAG, "SO_MARK probe succeeded; tunnel socket will bypass tproxy by mark")
         } else {
-            StunLogger.w(TAG, "SO_MARK probe failed; falling back to uid bypass (App traffic will not be proxied)")
+            StunLogger.e(TAG, "SO_MARK probe FAILED → falling back to uid bypass. " +
+                "Consequence: ALL App traffic (WebUI/MCP/exit-IP) goes direct. " +
+                "Full diagnostics were logged by Go under the [Mark-Diag] tag — " +
+                "grab them with: adb logcat | grep Mark-Diag")
         }
         return ok
     }
@@ -308,6 +315,7 @@ class MyTransparentProxyService : Service() {
         if (enabled) {
             StunLogger.i(TAG, "Enabling TProxy firewall rules...")
             // 规则文件每次重连都重写：分应用代理是运行期可改的，缓存里的旧文件不能当权威。
+            val markInUse = if (socketMarkAvailable) TProxyPorts.SOCKET_MARK else 0
             val shellConfig = TransparentProxyConfigBuilder.buildShellRules(
                 selfPackage = packageName,
                 tproxyPort = TPROXY_PORT,
@@ -316,9 +324,24 @@ class MyTransparentProxyService : Service() {
                 // ⚠️ 探测失败必须传 0：让 Builder 把 App 放回 BYPASS_APPS_LIST。
                 // 若此处仍传 SOCKET_MARK，隧道 socket 既没 mark 又不在旁路列表，
                 // 会被 TPROXY 抓回本地 socks5 —— 死循环，SSH 完全连不上。
-                socketMark = if (socketMarkAvailable) TProxyPorts.SOCKET_MARK else 0,
+                socketMark = markInUse,
             )
             File(cacheDir, FILE_TPROXY_RULES).writeText(shellConfig)
+            // 把**规则层的实际取值**打出来。排查"整个 App 都在绕过"时这是决定性证据：
+            // socketMarkAvailable=false ⇒ BYPASS_APPS_LIST 里有自己 ⇒ App 全部直连，
+            // 这与"mark 设上了但 iptables 没加规则"是两回事，日志能一句话区分。
+            val bypassLine = shellConfig.lineSequence()
+                .firstOrNull { it.trimStart().startsWith("BYPASS_APPS_LIST=") }
+                ?.trim() ?: "(缺失)"
+            val forceLine = shellConfig.lineSequence()
+                .firstOrNull { it.trimStart().startsWith("FORCE_MARK_BYPASS=") }
+                ?.trim() ?: "(缺失)"
+            if (markInUse != 0) {
+                StunLogger.i(TAG, "Rules: mark bypass ACTIVE  $forceLine | $bypassLine")
+            } else {
+                StunLogger.w(TAG, "Rules: mark bypass INACTIVE, whole App is bypassed by uid " +
+                    "⇒ WebUI/MCP/exit-IP will show your real IP. $forceLine | $bypassLine")
+            }
         } else {
             StunLogger.i(TAG, "Disabling TProxy firewall rules...")
         }
