@@ -194,6 +194,7 @@
     <string name="main_connect">Verbinden</string>
     <string name="main_disconnect">Trennen</string>
     <string name="main_testing_latency">Latenz wird getestet…</string>
+    <string name="main_probing_exit">Ausgangs-IP wird ermittelt…</string>
     <string name="main_add_manually">Manuell hinzufügen</string>
     <string name="main_scan_qr">QR-Code scannen</string>
     <string name="main_add_profile_title">Knoten hinzufügen</string>

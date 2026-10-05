@@ -195,6 +195,7 @@
     <string name="main_connect">连接</string>
     <string name="main_disconnect">断开</string>
     <string name="main_testing_latency">正在测试延迟...</string>
+    <string name="main_probing_exit">正在探测出口 IP...</string>
     <string name="main_add_manually">手动添加</string>
     <string name="main_scan_qr">扫码添加</string>
     <string name="main_add_profile_title">添加节点</string>
