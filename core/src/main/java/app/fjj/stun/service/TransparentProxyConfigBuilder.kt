@@ -110,8 +110,14 @@ internal object TransparentProxyConfigBuilder {
             BYPASS_CN_IP=0
             CN_IP_URL=https://push.4544.de/https://raw.githubusercontent.com/Hackl0us/GeoIP2-CN/release/CN-ip-cidr.txt
             CN_IPV6_URL=https://push.4544.de/https://ispip.clang.cn/all_cn_ipv6.txt
-            BYPASS_IPv4_LIST="127.0.0.0/8"
-            BYPASS_IPv6_LIST="::1/128"
+            # 不覆盖 BYPASS_IPv4_LIST / BYPASS_IPv6_LIST —— 交回 tproxy.sh 的 DEFAULT_*。
+            # 这里曾显式写成只含回环的 "127.0.0.0/8" / "::1/128"，把脚本默认值里的
+            # 224.0.0.0/4 240.0.0.0/4（多播）、10/8 172.16/12 192.168/16 169.254/16（内网与链路本地）
+            # 全部挤掉：多播地址落入 TPROXY 之后由 socks5 去直连，而 UDP 多播地址不能
+            # connect()，于是每几秒刷一条 `[ROUTER-Direct] ❌ Failed to establish direct UDP:
+            # dial udp [ff02::fb]:5353: connect: invalid argument`。
+            # 注意 tproxy.sh 对每个键都用 VAR:-DEFAULT 回退（缺键才取默认值）：
+            # 写成空串 `BYPASS_IPv4_LIST=""` 会真的空掉旁路表 —— 千万别用这种方式"留空"。
             PROXY_IPV6=1
             APP_PROXY_ENABLE=1
             APP_PROXY_MODE=${if (isAllowList) "whitelist" else "blacklist"}
