@@ -47,6 +47,7 @@ object AppBootstrap {
     private const val TAG = "AppBootstrap"
 
     private const val BIN_TPROXY = "hev-socks5-tproxy"
+    private const val BIN_SOCKMARK = "sockmark"
     private const val SCRIPT_TPROXY = "tproxy.sh"
     private const val SCRIPT_WATCHDOG = "watchdog.sh"
 
@@ -198,6 +199,10 @@ object AppBootstrap {
      */
     private fun deployTproxyRuntime(context: Context, apkUpdateTimeMs: Long) {
         AssetDeployer.deployIfNeeded(context, "bin/${android.os.Build.SUPPORTED_ABIS[0]}/$BIN_TPROXY", BIN_TPROXY, apkUpdateTimeMs, executable = true)
+        // sockmark：root 侧 SO_MARK 代理。App 进程无 CAP_NET_ADMIN，隧道 socket 打不了 mark，
+        // 由它代设（见 core/jni/sockmark/main.c）。tproxy 模式必需 —— 缺了 myssh 的 SSH socket
+        // 会被 TPROXY 抓回本地 socks5 形成死循环。
+        AssetDeployer.deployIfNeeded(context, "bin/${android.os.Build.SUPPORTED_ABIS[0]}/$BIN_SOCKMARK", BIN_SOCKMARK, apkUpdateTimeMs, executable = true)
         AssetDeployer.deployIfNeeded(context, "scripts/$SCRIPT_TPROXY", SCRIPT_TPROXY, apkUpdateTimeMs, executable = true)
         AssetDeployer.deployIfNeeded(context, "scripts/$SCRIPT_WATCHDOG", SCRIPT_WATCHDOG, apkUpdateTimeMs, executable = true)
     }

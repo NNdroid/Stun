@@ -929,6 +929,13 @@ setup_proxy_chain() {
         $cmd -t "$table" -A "PROXY_OUTPUT$suffix" -m mark --mark "$ROUTING_MARK" -j ACCEPT
         log Info "Added bypass for marked traffic with core mark $ROUTING_MARK (forced)"
         bypass_success=1
+    elif [ "$FORCE_MARK_BYPASS" -eq 1 ]; then
+        # App 侧已探测「SO_MARK 能设上」才生成 FORCE_MARK_BYPASS=1，但**内核是否带
+        # NETFILTER_XT_MATCH_MATCH 只能在这里判**（App 探测不到 xt match 模块）。
+        # 内核缺该 match 时 mark 规则加不上，隧道 socket 又已被 App 移出
+        # BYPASS_APPS_LIST ⇒ 必然死循环。这条必须响亮地报出来，否则症状只会是
+        # 「SSH 连不上」，根因完全无从推断。
+        log Error "FORCE_MARK_BYPASS=1 but kernel lacks NETFILTER_XT_MATCH_MARK — cannot add mark bypass, tunnel will loop"
     elif [ "$HAS_OWNER" -eq 1 ]; then
         $cmd -t "$table" -A "PROXY_OUTPUT$suffix" -m owner --uid-owner "$CORE_USER" --gid-owner "$CORE_GROUP" -j ACCEPT
         log Info "Added bypass for core user $CORE_USER:$CORE_GROUP"

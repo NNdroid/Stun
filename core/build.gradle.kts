@@ -94,11 +94,25 @@ val applyJniPatches = tasks.register("applyJniPatches") {
     }
 }
 
-// Automate moving the TProxy executable to assets (Now in :core)
+// 本仓自编译、需要在设备上执行的原生可执行文件。
+//  - hev-socks5-tproxy：TPROXY 转发核心（submodule，NDK 构建）
+//  - sockmark：root 侧 SO_MARK 代理（core/jni/sockmark，NDK 构建）。
+//    App 进程没有 CAP_NET_ADMIN，setsockopt(SO_MARK) 会 EPERM，隧道 socket 打不了 mark，
+//    只能由这个 root 二进制代设。缺了它 tproxy 模式下 myssh 的 SSH socket 会被 TPROXY
+//    抓回本地 socks5 形成死循环。
+// 两者都走 NDK 产物 → assets/bin/<abi> → AppBootstrap 部署到 cacheDir 这同一条链。
+//
+// ⚠️ 列表必须声明在 doLast **内部**（或在任务注册时 val 进局部变量再传进去）——
+// 顶层 script 属性被 doLast 闭包捕获时，配置缓存会拒绝反序列化
+// （"cannot deserialize Gradle script object references"），任务直接失败。
+private val nativeExecutables = listOf("hev-socks5-tproxy", "sockmark")
+
+// Automate moving the native executables to assets (Now in :core)
 val copyTProxyBinaries = tasks.register("copyTProxyBinaries") {
-    description = "Copies hev-socks5-tproxy from core build intermediates to assets"
+    description = "Copies hev-socks5-tproxy and sockmark from core build intermediates to assets"
     val projectDirectory = project.layout.projectDirectory
     val buildDirectory = project.layout.buildDirectory
+    val executables = nativeExecutables
 
     doLast {
         val abis = listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
@@ -110,18 +124,20 @@ val copyTProxyBinaries = tasks.register("copyTProxyBinaries") {
         }
 
         abis.forEach { abi ->
-            var found = false
-            coreBuildDir.walkBottomUp().forEach { file ->
-                if (file.isFile && file.name == "hev-socks5-tproxy" && file.parentFile.name == abi) {
-                    val destDir = projectDirectory.dir("src/main/assets/bin/$abi").asFile
-                    destDir.mkdirs()
-                    file.copyTo(File(destDir, "hev-socks5-tproxy"), overwrite = true)
-                    println("Copied $abi binary to assets from: ${file.path}")
-                    found = true
+            executables.forEach { exeName ->
+                var found = false
+                coreBuildDir.walkBottomUp().forEach { file ->
+                    if (file.isFile && file.name == exeName && file.parentFile.name == abi) {
+                        val destDir = projectDirectory.dir("src/main/assets/bin/$abi").asFile
+                        destDir.mkdirs()
+                        file.copyTo(File(destDir, exeName), overwrite = true)
+                        println("Copied $abi/$exeName to assets from: ${file.path}")
+                        found = true
+                    }
                 }
-            }
-            if (!found) {
-                println("Could not find hev-socks5-tproxy for ABI: $abi")
+                if (!found) {
+                    println("Could not find $exeName for ABI: $abi")
+                }
             }
         }
     }

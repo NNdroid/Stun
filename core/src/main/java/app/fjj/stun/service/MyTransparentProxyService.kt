@@ -66,6 +66,15 @@ class MyTransparentProxyService : Service() {
     private var wakeLock: android.os.PowerManager.WakeLock? = null
     private var wifiLock: android.net.wifi.WifiManager.WifiLock? = null
 
+    /**
+     * SO_MARK 通路是否真的可用（由 [registerSocketMarkHelper] 的探测决定）。
+     *
+     * 决定 [applyRules] 生成哪种旁路规则，**false 时必须回落到 uid 放行**：
+     * 隧道 socket 若既没 mark 又不在 `BYPASS_APPS_LIST` 里，会被 TPROXY 抓回
+     * 本地 socks5 造成死循环。@Volatile 是因为写入在服务主协程、读取在 applyRules 侧。
+     */
+    @Volatile private var socketMarkAvailable: Boolean = false
+
     private fun acquireLocks() {
         try {
             if (wakeLock == null) {
@@ -102,11 +111,14 @@ class MyTransparentProxyService : Service() {
         // Constants
         private const val CHANNEL_ID = "StunTransparentProxyChannel"
         private const val NOTIFICATION_ID = 3004
-        private const val SOCKS_PORT = 10808
-        private const val TPROXY_PORT = 10812
-        private const val DNS_HIJACK_PORT = 10553
+        // 端口取自 [TProxyPorts]（单一事实来源）。tproxy 的 TPROXY 端口与 SOCKS 分离，
+        // 三个值都与 tproxy.sh 的 DEFAULT_PROXY_TCP_PORT / DEFAULT_DNS_PORT 成对。
+        private const val SOCKS_PORT = TProxyPorts.TProxy.SOCKS
+        private const val TPROXY_PORT = TProxyPorts.TProxy.TPROXY
+        private const val DNS_HIJACK_PORT = TProxyPorts.TProxy.DNS
 
         private const val BIN_HEV_SOCKS5_TPROXY = "hev-socks5-tproxy"
+        private const val BIN_SOCKMARK = "sockmark"
         private const val FILE_HEV_SOCKS5_TPROXY_CONF = "hev-socks5-tproxy.conf"
         private const val FILE_HEV_SOCKS5_TPROXY_LOG = "tproxy.log"
 
@@ -189,6 +201,10 @@ class MyTransparentProxyService : Service() {
                 // 清零会导致每次会话开始把整个累计值重新写库，跨重连重复计数。基准跨重连保留。
                 val cfgStatus = StunRepository.proxy.loadGlobalConfig(VpnConfigBuilder.buildGlobalConfig(context, profile))
                 if (cfgStatus != 0L) throw RuntimeException("Global config load failed: $cfgStatus")
+                // 必须在 start 之前注册：start 内部立刻拨 SSH，socket 一旦建出来首个 SYN
+                // 就发出去，此时若还没有 mark 通路，SSH 连接会被自己的 TPROXY 抓回本地 socks5。
+                // 探测结果决定 applyRules 走 mark 还是 uid 旁路。
+                socketMarkAvailable = registerSocketMarkHelper()
                 val sshStatus = StunRepository.proxy.start(VpnConfigBuilder.buildMySshConfig(context, profile, SOCKS_PORT, DNS_HIJACK_PORT))
                 if (sshStatus != 0L) throw RuntimeException("SSH Core failed to start with status: $sshStatus")
                 StunLogger.i(TAG, "SSH Core started successfully.")
@@ -222,8 +238,49 @@ class MyTransparentProxyService : Service() {
         }
     }
 
-    private fun startCoreEngine() {
-        coreJob = serviceScope.launch {
+    /**
+     * 把 `sockmark` 二进制的位置与 mark 值交给 Go 侧，然后**真跑一次探测**。
+     *
+     * 由 Go 自己 fork 这个 helper（见 `core/jni/myssh/socket_mark_android.go`），而不是这里
+     * 另起一个进程：请求-响应必须与 socket 创建同生命周期，跨进程另起 helper 会让
+     * 「拿到 fd」与「helper 还活着」之间出现竞态窗口。Go 侧经 `su` 拿到 root 身份。
+     *
+     * @return mark 通路是否真的可用。**false 时 [applyRules] 必须回落到 uid 放行** ——
+     *   隧道 socket 若既没 mark 又不在旁路列表，会被 TPROXY 抓回本地 socks5 造成死循环。
+     */
+    private fun registerSocketMarkHelper(): Boolean {
+        val helper = File(cacheDir, BIN_SOCKMARK)
+        if (!helper.exists()) {
+            // 部署没成功（assets 缺失 / 旧包没重新安装）——不注册，规则侧走 uid 降级。
+            StunLogger.w(TAG, "sockmark helper missing at ${helper.absolutePath}; falling back to uid bypass")
+            StunRepository.proxy.registerSocketMarkHelper("", 0L, 0L)
+            return false
+        }
+        // appPID 传 0：Go 侧用 os.Getpid() 自取，比在 Kotlin 这边再算一遍可靠。
+        // ⚠️ gomobile 把 Go 的 `int` 映射成 Java `long`，所以 mark 与 pid 都要传 Long。
+        StunRepository.proxy.registerSocketMarkHelper(helper.absolutePath, 0L, TProxyPorts.SOCKET_MARK.toLong())
+        StunLogger.i(TAG, "sockmark helper registered: ${helper.absolutePath} mark=0x${Integer.toHexString(TProxyPorts.SOCKET_MARK)}")
+
+        // 探测：**必须真的设一次 mark 成功**才敢让规则层走 mark 模式。
+        // helper 虽是 App 自己 fork 的，但提权（su）、借 fd（pidfd_getfd，Linux 5.6+）、
+        // 以及某些 ROM 的 ptrace 策略都可能失败；而这些失败在拨号阶段只会表现为
+        // 「SSH 连不上」，根因极难定位。这里提前把失败暴露成一次明确的日志。
+        val ok = try {
+            StunRepository.proxy.probeSocketMark() == 1L
+        } catch (e: UnsatisfiedLinkError) {
+            // 旧 AAR 里没有这个方法：说明装的 APK 与当前 libs 不匹配，当作不可用。
+            StunLogger.w(TAG, "probeSocketMark unavailable (stale AAR?): ${e.message}")
+            false
+        }
+        if (ok) {
+            StunLogger.i(TAG, "SO_MARK probe succeeded; tunnel socket will bypass tproxy by mark")
+        } else {
+            StunLogger.w(TAG, "SO_MARK probe failed; falling back to uid bypass (App traffic will not be proxied)")
+        }
+        return ok
+    }
+
+    private fun startCoreEngine() {        coreJob = serviceScope.launch {
             val coreFile = File(cacheDir, BIN_HEV_SOCKS5_TPROXY)
             val configFile = File(cacheDir, FILE_HEV_SOCKS5_TPROXY_CONF)
             val logFile = File(cacheDir, FILE_HEV_SOCKS5_TPROXY_LOG)
@@ -256,6 +313,10 @@ class MyTransparentProxyService : Service() {
                 tproxyPort = TPROXY_PORT,
                 dnsPort = DNS_HIJACK_PORT,
                 appFilter = resolveAppFilter(),
+                // ⚠️ 探测失败必须传 0：让 Builder 把 App 放回 BYPASS_APPS_LIST。
+                // 若此处仍传 SOCKET_MARK，隧道 socket 既没 mark 又不在旁路列表，
+                // 会被 TPROXY 抓回本地 socks5 —— 死循环，SSH 完全连不上。
+                socketMark = if (socketMarkAvailable) TProxyPorts.SOCKET_MARK else 0,
             )
             File(cacheDir, FILE_TPROXY_RULES).writeText(shellConfig)
         } else {
@@ -477,6 +538,9 @@ class MyTransparentProxyService : Service() {
         // VPN 侧本来就有这一步（saveFinalTrafficStats），tproxy 之前漏了 —— 同一份逻辑两份实现，
         // 漏的那份只有切到透明代理模式才暴露。基准与回绕规则都在 sink 里，这里只传总量。
         // Room 不能在主线程查；teardownScope 不随 serviceScope 一起被 cancel（见其注释）。
+        //
+        // 取数与清零放在协程**外**同步做完：统计回调跑在别的线程，若在协程里再读一次，
+        // 这两个字段可能已经被新的一帧改写，导致落库的是「旧基准 + 新总量」而重复计数。
         val tx = currentTxTotal
         val rx = currentRxTotal
         currentTxTotal = 0L
@@ -485,6 +549,8 @@ class MyTransparentProxyService : Service() {
             statsSink.flushPending(tx, rx)
         }
 
+        // 先停核心、再停 tproxy：反过来的话停机过程自身产生的收尾流量（FIN/RST 等）
+        // 不会有下一帧回调，那一段就落在刚补齐的区间之外。
         stopTProxy()
         serviceScope.cancel()
         super.onDestroy()
