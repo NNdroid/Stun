@@ -53,7 +53,13 @@ internal object TransparentProxyConfigBuilder {
         // 绝不能把 selfPackage 写进 PROXY_APPS_LIST 作为「让 App 进代理」的手段：
         // whitelist 分支对它加的是 `-j RETURN`（继续往下走），最终落到 `PROXY_OUTPUT`
         // 链尾的 REDIRECT ⇒ 隧道 socket 被抓回本地 socks5 ⇒ **死循环**。
-        val selected = appFilter.packages.filterNot { it == selfPackage || it == "0:$selfPackage" }
+        // 用户手填的过滤列表里可能出现自己的三种形式，都得剔掉：裸包名 / `0:` 前缀 /
+        // `user:` 前缀（`parsePackageList` 对后两种原样透传）。`user:` 漏掉的话，
+        // blacklist + mark 模式下它会以 self 的 uid 命中 bypass 的 `-j ACCEPT` ——
+        // 整个 App 直连，mark 精确放行整个失效。
+        val selected = appFilter.packages.filterNot {
+            it == selfPackage || it == "0:$selfPackage" || it == "user:$selfPackage"
+        }
         val isAllowList = appFilter.isAllowList
         val markAvailable = socketMark != 0
 
@@ -79,11 +85,16 @@ internal object TransparentProxyConfigBuilder {
         // 与降级成 blacklist 是同一种事故。用户的名单只留在 PROXY_APPS_LIST 里。
         val withSelfInList: List<String> =
             if (isAllowList || !markAvailable) listOf(selfPackage) + selected else selected
+        // `find_packages_uid` 认两种条目：裸包名（按 user 0 解析）与 `uid:包名`（`0:com.foo`
+        // / `user:com.foo` / `10:com.foo`，包名本身不含冒号）。`parsePackageList` 对带前缀
+        // 形式原样透传，所以只给裸包名补 `0:`；已带前缀的绝不能再拼一层 —— `0:user:com.foo`
+        // 会被解析成「user 0 里一个叫 user 的包」，规则永远配不上，条目静默失效。
+        val uidEntry: (String) -> String = { if (it.contains(':')) it else "0:$it" }
         val bypassApps = when {
             isAllowList -> if (markAvailable) emptyList() else listOf(selfPackage)
             else -> withSelfInList
-        }.joinToString(" ") { "0:$it" }
-        val proxyApps = if (isAllowList) withSelfInList.joinToString(" ") { "0:$it" } else ""
+        }.joinToString(" ", transform = uidEntry)
+        val proxyApps = if (isAllowList) withSelfInList.joinToString(" ", transform = uidEntry) else ""
         val forceMarkBypass = if (socketMark != 0) 1 else 0
         val routingMark = if (socketMark != 0) "0x%x".format(socketMark) else ""
 

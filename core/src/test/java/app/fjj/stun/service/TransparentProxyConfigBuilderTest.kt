@@ -183,6 +183,37 @@ class TransparentProxyConfigBuilderTest {
         assertEquals("0:app.fjj.stun 0:com.foo", varOf(conf, "BYPASS_APPS_LIST"))
     }
 
+    @Test
+    fun selfIsDroppedFromEveryPrefixFormUsersCanType() {
+        // 用户手填自己有三种形式：裸包名 / `0:` 前缀 / `user:` 前缀（`parsePackageList`
+        // 对后两种原样透传）。`user:` 漏掉的话，blacklist + mark 模式下它会以 self 的 uid
+        // 命中 bypass 的 `-j ACCEPT` —— 整个 App 直连，mark 精确放行整个失效。
+        val conf = rules(
+            filter = AppFilter(AppFilterResolver.MODE_BLOCK, listOf(self, "0:$self", "user:$self", "com.foo")),
+        )
+        assertEquals("0:com.foo", varOf(conf, "BYPASS_APPS_LIST"))
+    }
+
+    @Test
+    fun handTypedUidPrefixedEntriesAreNotDoublePrefixed() {
+        // `find_packages_uid` 认两种条目：裸包名（按 user 0 解析）与 `uid:包名`。裸包名
+        // 补 `0:`；已带前缀的原样保留 —— 拼成 `0:user:com.foo` 会被解析成「user 0 里一个
+        // 叫 user 的包」，规则永远配不上，条目静默失效。
+        val filter = AppFilter(AppFilterResolver.MODE_ALLOW, listOf("com.foo", "0:com.bar", "user:com.baz"))
+        assertEquals(
+            "0:app.fjj.stun 0:com.foo 0:com.bar user:com.baz",
+            varOf(rules(filter = filter), "PROXY_APPS_LIST"),
+        )
+        // blacklist 侧走同一条 uidEntry，两种模式行为一致。
+        assertEquals(
+            "0:com.foo 0:com.bar user:com.baz",
+            varOf(
+                rules(filter = AppFilter(AppFilterResolver.MODE_BLOCK, listOf("com.foo", "0:com.bar", "user:com.baz"))),
+                "BYPASS_APPS_LIST",
+            ),
+        )
+    }
+
     // ── 分应用代理：两种模式的映射 ───────────────────────────────────
 
     @Test
