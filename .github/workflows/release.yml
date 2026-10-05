@@ -64,7 +64,9 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          # 从 go.mod 读版本，不硬编码：`go 1.26.1` 的 go.mod 用 Go 1.23 工具链会直接
+          # 报 "go.mod requires go >= 1.26.1" 而编译失败。升 go.mod 时这里自动跟随。
+          go-version-file: 'core/jni/myssh/go.mod'
           cache-dependency-path: 'core/jni/myssh/go.sum'
 
       - name: Set up JDK 17
@@ -76,14 +78,40 @@ jobs:
 
       - name: Set up Android NDK & gomobile
         run: |
-          # 自动获取 Ubuntu Runner 中已安装的 Android NDK 路径
-          export ANDROID_NDK_HOME=$(find $ANDROID_HOME/ndk -maxdepth 1 -mindepth 1 | sort -V | tail -n 1)
-          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
+          # 只认形如 27.0.12077973 的版本号目录。
+          # 不能用 `find ... | sort -V | tail -n 1`：那排的是**完整路径**，
+          # 而 `$ANDROID_HOME/ndk` 里可能混有非 NDK 目录（实测 Android Studio
+          # 装的 `magisk` 就按版本序排在 30.x 之后），会被 tail 选中并让
+          # ANDROID_NDK_HOME 指向一个没有 toolchains/ 的路径 —— 发版流程会
+          # 在一个与代码无关的地方失败，且错误信息完全不提 NDK 选择。
+          NDK_VERSION=$(find "$ANDROID_HOME/ndk" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' \
+            | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          if [ -z "$NDK_VERSION" ]; then
+            echo "::error::No Android NDK found under $ANDROID_HOME/ndk"
+            exit 1
+          fi
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
+          # 选中不等于可用：NDK r19 之前没有 toolchains/，gomobile 会报出
+          # 一堆与真实原因无关的错误，这里提前失败并说清是哪一步。
+          if [ ! -d "$ANDROID_NDK_HOME/toolchains" ]; then
+            echo "::error::$ANDROID_NDK_HOME has no toolchains/ — is it a real NDK?"
+            exit 1
+          fi
+          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> "$GITHUB_ENV"
           echo "Using Android NDK: $ANDROID_NDK_HOME"
-          
-          # 安装 gomobile 和 gobind
-          go install golang.org/x/mobile/cmd/gomobile@latest
-          go install golang.org/x/mobile/cmd/gobind@latest
+
+          # gomobile/gobind 必须与 core/jni/myssh/go.mod 里的 x/mobile 同版本：
+          # 产出的 AAR 布局要跟 core 的 compileOnly(classes.jar) 对得上。
+          # 发版尤其不能飘 —— @latest 换个版本就可能改变 AAR 结构，
+          # 让你在发出去的包上才发现问题。版本从 go.mod 读，自动跟随。
+          XMOBILES=$(awk '/golang.org\/x\/mobile /{print $2; exit}' core/jni/myssh/go.mod)
+          if [ -z "$XMOBILES" ]; then
+            echo "::error::golang.org/x/mobile not pinned in core/jni/myssh/go.mod"
+            exit 1
+          fi
+          echo "Pinning gomobile/gobind to x/mobile@$XMOBILES (from go.mod)"
+          go install "golang.org/x/mobile/cmd/gomobile@$XMOBILES"
+          go install "golang.org/x/mobile/cmd/gobind@$XMOBILES"
           gomobile init
 
       - name: Build myssh AAR from core/jni/myssh

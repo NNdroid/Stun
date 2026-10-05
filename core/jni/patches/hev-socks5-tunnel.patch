@@ -1,4 +1,5 @@
 diff --git a/Android.mk b/Android.mk
+index 2f65e6f..816f43f 100644
 --- a/Android.mk
 +++ b/Android.mk
 @@ -15,14 +15,19 @@
@@ -27,7 +28,7 @@ diff --git a/Android.mk b/Android.mk
  endif
  
  LOCAL_PATH = $(TOP_PATH)
-@@ -46,7 +51,7 @@
+@@ -45,7 +50,7 @@ LOCAL_CFLAGS += $(VERSION_CFLAGS)
  ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
  LOCAL_CFLAGS += -mfpu=neon
  endif
@@ -36,30 +37,12 @@ diff --git a/Android.mk b/Android.mk
  LOCAL_LDFLAGS += -Wl,-z,max-page-size=16384
  LOCAL_LDFLAGS += -Wl,-z,common-page-size=16384
  include $(BUILD_SHARED_LIBRARY)
-diff --git a/src/hev-domain-sniff.h b/src/hev-domain-sniff.h
-new file mode 100644
---- /dev/null
-+++ b/src/hev-domain-sniff.h
-@@ -0,0 +1,14 @@
-+#ifndef __HEV_DOMAIN_SNIFF_H__
-+#define __HEV_DOMAIN_SNIFF_H__
-+
-+#include <stddef.h>
-+
-+/*
-+ * Returns 1 when a trustworthy domain was recovered, 0 when the payload is
-+ * complete/unsupported and must stay on the original IP, and -1 when more
-+ * bytes may complete a TLS/HTTP header.
-+ */
-+int hev_domain_sniff (const unsigned char *buf, size_t len, char *domain,
-+                      size_t domain_len);
-+
-+#endif /* __HEV_DOMAIN_SNIFF_H__ */
 diff --git a/src/hev-domain-sniff.c b/src/hev-domain-sniff.c
 new file mode 100644
+index 0000000..3555de2
 --- /dev/null
 +++ b/src/hev-domain-sniff.c
-@@ -0,0 +1,243 @@
+@@ -0,0 +1,266 @@
 +#include <arpa/inet.h>
 +#include <ctype.h>
 +#include <stdint.h>
@@ -272,8 +255,13 @@ new file mode 100644
 +                uint8_t name_type = ext[epos];
 +                size_t name_len = read_be16 (ext + epos + 1);
 +                epos += 3;
++                /*
++                 * 列表项越界说明 host_name_list 没收全。若就此 break，
++                 * 末尾会因 !sni 而 return 0，被调用方读成「不是 TLS」——
++                 * 恰好把最常见的 SNI 场景判死。必须报「需要更多字节」。
++                 */
 +                if (epos + name_len > eend)
-+                    break;
++                    return -1;
 +                if (name_type == 0 && name_len > 0 && !sni) {
 +                    sni = ext + epos;
 +                    sni_len = name_len;
@@ -293,36 +281,93 @@ new file mode 100644
 +hev_domain_sniff (const unsigned char *buf, size_t len, char *domain,
 +                  size_t domain_len)
 +{
-+    int res;
++    int tls_res, http_res;
 +
 +    if (!buf || !domain || domain_len == 0)
 +        return 0;
 +
-+    res = sniff_tls (buf, len, domain, domain_len);
-+    if (res != 0)
-+        return res;
-+    return sniff_http (buf, len, domain, domain_len);
-+}
-diff --git a/src/hev-socks5-session-tcp.h b/src/hev-socks5-session-tcp.h
---- a/src/hev-socks5-session-tcp.h
-+++ b/src/hev-socks5-session-tcp.h
-@@ -45,4 +45,6 @@
- HevSocks5SessionTCP *hev_socks5_session_tcp_new (struct tcp_pcb *pcb,
-                                                  HevTaskMutex *mutex);
- 
-+void hev_socks5_session_tcp_sniff (HevSocks5SessionTCP *self);
++    /*
++     * 两条路都要跑，且「需要更多字节」(-1) 不能提前结束判定。
++     *
++     * sniff_tls 只在首字节是 0x16 时才可能成功，其余情况一律返回 0，
++     * 所以对明文 HTTP 而言 tls_res 恒为 0；反过来 sniff_http 对非 ASCII 开头
++     * 也会很快返回 0。把 -1 当成「不必再看」会让尚未收全的 TLS ClientHello
++     * 被误判为「不是 TLS」而永久放弃嗅探。
++     */
++    tls_res = sniff_tls (buf, len, domain, domain_len);
++    if (tls_res > 0)
++        return 1;
 +
- #endif /* __HEV_SOCKS5_SESSION_TCP_H__ */
++    http_res = sniff_http (buf, len, domain, domain_len);
++    if (http_res > 0)
++        return 1;
++
++    /* 两条路都还需要更多字节才可能成功。 */
++    if (tls_res < 0 || http_res < 0)
++        return -1;
++
++    /* 两条路都判定完成（不是 TLS/HTTP，或域名不可信）⇒ 保持原 IP。 */
++    return 0;
++}
+diff --git a/src/hev-domain-sniff.h b/src/hev-domain-sniff.h
+new file mode 100644
+index 0000000..9b03fb9
+--- /dev/null
++++ b/src/hev-domain-sniff.h
+@@ -0,0 +1,14 @@
++#ifndef __HEV_DOMAIN_SNIFF_H__
++#define __HEV_DOMAIN_SNIFF_H__
++
++#include <stddef.h>
++
++/*
++ * Returns 1 when a trustworthy domain was recovered, 0 when the payload is
++ * complete/unsupported and must stay on the original IP, and -1 when more
++ * bytes may complete a TLS/HTTP header.
++ */
++int hev_domain_sniff (const unsigned char *buf, size_t len, char *domain,
++                      size_t domain_len);
++
++#endif /* __HEV_DOMAIN_SNIFF_H__ */
+diff --git a/src/hev-jni.c b/src/hev-jni.c
+index 9698555..f073f1e 100644
+--- a/src/hev-jni.c
++++ b/src/hev-jni.c
+@@ -26,7 +26,7 @@
+ #define PKGNAME hev/htproxy
+ #endif
+ #ifndef CLSNAME
+-#define CLSNAME TProxyService
++#define CLSNAME TTunnelService
+ #endif
+ /* clang-format on */
+ 
+@@ -54,10 +54,10 @@ static void native_stop_service (JNIEnv *env, jobject thiz);
+ static jlongArray native_get_stats (JNIEnv *env, jobject thiz);
+ 
+ static JNINativeMethod native_methods[] = {
+-    { "TProxyStartService", "(Ljava/lang/String;I)V",
++    { "TTunnelStartService", "(Ljava/lang/String;I)V",
+       (void *)native_start_service },
+-    { "TProxyStopService", "()V", (void *)native_stop_service },
+-    { "TProxyGetStats", "()[J", (void *)native_get_stats },
++    { "TTunnelStopService", "()V", (void *)native_stop_service },
++    { "TTunnelGetStats", "()[J", (void *)native_get_stats },
+ };
+ 
+ static void
 diff --git a/src/hev-socks5-session-tcp.c b/src/hev-socks5-session-tcp.c
+index 7bcfa05..dbc5c65 100644
 --- a/src/hev-socks5-session-tcp.c
 +++ b/src/hev-socks5-session-tcp.c
-@@ -7,5 +7,6 @@
+@@ -7,6 +7,7 @@
   ============================================================================
   */
  
 +#include <arpa/inet.h>
  #include <errno.h>
  #include <string.h>
+ 
 @@ -21,6 +22,7 @@
  
  #include "hev-utils.h"
@@ -331,7 +376,7 @@ diff --git a/src/hev-socks5-session-tcp.c b/src/hev-socks5-session-tcp.c
  #include "hev-logger.h"
  #include "hev-config-const.h"
  #include "hev-socks5-tunnel.h"
-@@ -177,6 +179,87 @@
+@@ -192,6 +194,97 @@ hev_socks5_session_tcp_new (struct tcp_pcb *pcb, HevTaskMutex *mutex)
      return self;
  }
  
@@ -388,6 +433,14 @@ diff --git a/src/hev-socks5-session-tcp.c b/src/hev-socks5-session-tcp.c
 +    port = ntohs (raw_port);
 +    tries = port == 443 ? 8 : (port == 80 ? 4 : 1);
 +
++    /*
++     * 首包来自 self->queue（splice 消费前缓存下来的），不是 socket 缓冲区，
++     * 所以这里不需要等 socket 可读；重试只是给「队列尚空、稍后才填充」留窗口。
++     *
++     * -1（头部没收全，需要更多字节）必须与 0（数据完整但不是 TLS/HTTP）区分：
++     * 前者说明还该再读一轮，后者说明这个连接不用管了。混为一谈会让本该成功的
++     * 嗅探提前退出，或让已经确定失败的连接空转完剩余重试。
++     */
 +    for (i = 0; i < tries; i++) {
 +        size_t n = 0;
 +
@@ -407,8 +460,10 @@ diff --git a/src/hev-socks5-session-tcp.c b/src/hev-socks5-session-tcp.c
 +                hev_socks5_session_tcp_set_domain (self, domain, raw_port);
 +                return;
 +            }
++            /* 0 = 判定完成（不是 TLS/HTTP，或域名不可信）⇒ 不再重试。 */
 +            if (res == 0)
 +                return;
++            /* res < 0 ⇒ 头部未收全，队列里可能还有后续分段，继续读。 */
 +        }
 +
 +        if (i + 1 < tries)
@@ -419,10 +474,22 @@ diff --git a/src/hev-socks5-session-tcp.c b/src/hev-socks5-session-tcp.c
  static int
  hev_socks5_session_tcp_bind (HevSocks5 *self, int fd,
                               const struct sockaddr *dest)
+diff --git a/src/hev-socks5-session-tcp.h b/src/hev-socks5-session-tcp.h
+index 12ad520..b03c158 100644
+--- a/src/hev-socks5-session-tcp.h
++++ b/src/hev-socks5-session-tcp.h
+@@ -50,4 +50,6 @@ int hev_socks5_session_tcp_construct (HevSocks5SessionTCP *self,
+ HevSocks5SessionTCP *hev_socks5_session_tcp_new (struct tcp_pcb *pcb,
+                                                  HevTaskMutex *mutex);
+ 
++void hev_socks5_session_tcp_sniff (HevSocks5SessionTCP *self);
++
+ #endif /* __HEV_SOCKS5_SESSION_TCP_H__ */
 diff --git a/src/hev-socks5-tunnel.c b/src/hev-socks5-tunnel.c
+index 50cf41a..a46bb6a 100644
 --- a/src/hev-socks5-tunnel.c
 +++ b/src/hev-socks5-tunnel.c
-@@ -151,6 +151,15 @@
+@@ -159,6 +159,15 @@ hev_socks5_session_task_entry (void *data)
      hev_object_unref (HEV_OBJECT (s));
  }
  
@@ -438,7 +505,7 @@ diff --git a/src/hev-socks5-tunnel.c b/src/hev-socks5-tunnel.c
  static err_t
  tcp_accept_handler (void *arg, struct tcp_pcb *pcb, err_t err)
  {
-@@ -179,7 +188,7 @@
+@@ -187,7 +196,7 @@ tcp_accept_handler (void *arg, struct tcp_pcb *pcb, err_t err)
      hev_socks5_session_set_task (HEV_SOCKS5_SESSION (tcp), task);
      node = hev_socks5_session_get_node (HEV_SOCKS5_SESSION (tcp));
      hev_socks5_tunnel_insert_session (node);
@@ -447,26 +514,3 @@ diff --git a/src/hev-socks5-tunnel.c b/src/hev-socks5-tunnel.c
      hev_task_wakeup (task_lwip_timer);
  
      return ERR_OK;
-diff --git a/src/hev-jni.c b/src/hev-jni.c
---- a/src/hev-jni.c
-+++ b/src/hev-jni.c
-@@ -26,6 +26,6 @@
- #define PKGNAME hev/htproxy
- #endif
- #ifndef CLSNAME
--#define CLSNAME TProxyService
-+#define CLSNAME TTunnelService
- #endif
- /* clang-format on */
-@@ -54,8 +54,8 @@
- static jlongArray native_get_stats (JNIEnv *env, jobject thiz);
- 
- static JNINativeMethod native_methods[] = {
--    { "TProxyStartService", "(Ljava/lang/String;I)V",
-+    { "TTunnelStartService", "(Ljava/lang/String;I)V",
-       (void *)native_start_service },
--    { "TProxyStopService", "()V", (void *)native_stop_service },
--    { "TProxyGetStats", "()[J", (void *)native_get_stats },
-+    { "TTunnelStopService", "()V", (void *)native_stop_service },
-+    { "TTunnelGetStats", "()[J", (void *)native_get_stats },
- };

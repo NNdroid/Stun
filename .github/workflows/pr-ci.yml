@@ -44,11 +44,39 @@ jobs:
 
       - name: Set up gomobile
         run: |
-          export ANDROID_NDK_HOME=$(find "$ANDROID_HOME/ndk" -maxdepth 1 -mindepth 1 | sort -V | tail -n 1)
+          # 只认形如 27.0.12077973 的版本号目录。
+          # 不能用 `find ... | sort -V | tail -n 1`：那排的是**完整路径**，
+          # 而 `$ANDROID_HOME/ndk` 里可能混有非 NDK 目录（实测 Android Studio
+          # 装的 `magisk` 就按版本序排在 30.x 之后），会被 tail 选中并让
+          # ANDROID_NDK_HOME 指向一个没有 toolchains/ 的路径。
+          NDK_VERSION=$(find "$ANDROID_HOME/ndk" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' \
+            | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          if [ -z "$NDK_VERSION" ]; then
+            echo "::error::No Android NDK found under $ANDROID_HOME/ndk"
+            exit 1
+          fi
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
+          # 选中不等于可用：NDK r19 之前没有 toolchains/，gomobile 会报出
+          # 一堆与真实原因无关的错误，这里提前失败并说清是哪一步。
+          if [ ! -d "$ANDROID_NDK_HOME/toolchains" ]; then
+            echo "::error::$ANDROID_NDK_HOME has no toolchains/ — is it a real NDK?"
+            exit 1
+          fi
           echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> "$GITHUB_ENV"
           echo "Using Android NDK: $ANDROID_NDK_HOME"
-          go install golang.org/x/mobile/cmd/gomobile@latest
-          go install golang.org/x/mobile/cmd/gobind@latest
+
+          # gomobile/gobind 必须与 core/jni/myssh/go.mod 里的 x/mobile 同版本：
+          # 它们产出的 AAR 布局参与 core 的 compileOnly(classes.jar)，
+          # 工具链与库代码版本错配会在无关的后续提交上炸。
+          # 版本从 go.mod 读，改依赖时这个 pin 自动跟随。
+          XMOBILES=$(awk '/golang.org\/x\/mobile /{print $2; exit}' core/jni/myssh/go.mod)
+          if [ -z "$XMOBILES" ]; then
+            echo "::error::golang.org/x/mobile not pinned in core/jni/myssh/go.mod"
+            exit 1
+          fi
+          echo "Pinning gomobile/gobind to x/mobile@$XMOBILES (from go.mod)"
+          go install "golang.org/x/mobile/cmd/gomobile@$XMOBILES"
+          go install "golang.org/x/mobile/cmd/gobind@$XMOBILES"
           gomobile init
 
       - name: Build myssh compile classes

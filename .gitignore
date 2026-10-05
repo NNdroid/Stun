@@ -3,6 +3,9 @@
 build/
 obj/
 
+# Kotlin compiler scratch (errors-*.log / sessions/*.salive) — pure build output
+.kotlin/
+
 # Local configuration file (sdk path, etc)
 local.properties
 

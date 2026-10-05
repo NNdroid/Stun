@@ -1,4 +1,5 @@
 diff --git a/Android.mk b/Android.mk
+index 7771595..7924c56 100644
 --- a/Android.mk
 +++ b/Android.mk
 @@ -15,11 +15,14 @@
@@ -20,7 +21,7 @@ diff --git a/Android.mk b/Android.mk
  endif
  
  LOCAL_PATH = $(TOP_PATH)
-@@ -38,7 +41,7 @@
+@@ -38,7 +41,7 @@ LOCAL_CFLAGS += $(VERSION_CFLAGS)
  ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
  LOCAL_CFLAGS += -mfpu=neon
  endif
@@ -30,30 +31,12 @@ diff --git a/Android.mk b/Android.mk
  LOCAL_LDFLAGS += -Wl,-z,common-page-size=16384
 -include $(BUILD_SHARED_LIBRARY)
 +include $(BUILD_EXECUTABLE)
-diff --git a/src/hev-domain-sniff.h b/src/hev-domain-sniff.h
-new file mode 100644
---- /dev/null
-+++ b/src/hev-domain-sniff.h
-@@ -0,0 +1,14 @@
-+#ifndef __HEV_DOMAIN_SNIFF_H__
-+#define __HEV_DOMAIN_SNIFF_H__
-+
-+#include <stddef.h>
-+
-+/*
-+ * Returns 1 when a trustworthy domain was recovered, 0 when the payload is
-+ * complete/unsupported and must stay on the original IP, and -1 when more
-+ * bytes may complete a TLS/HTTP header.
-+ */
-+int hev_domain_sniff (const unsigned char *buf, size_t len, char *domain,
-+                      size_t domain_len);
-+
-+#endif /* __HEV_DOMAIN_SNIFF_H__ */
 diff --git a/src/hev-domain-sniff.c b/src/hev-domain-sniff.c
 new file mode 100644
+index 0000000..3555de2
 --- /dev/null
 +++ b/src/hev-domain-sniff.c
-@@ -0,0 +1,243 @@
+@@ -0,0 +1,266 @@
 +#include <arpa/inet.h>
 +#include <ctype.h>
 +#include <stdint.h>
@@ -266,8 +249,13 @@ new file mode 100644
 +                uint8_t name_type = ext[epos];
 +                size_t name_len = read_be16 (ext + epos + 1);
 +                epos += 3;
++                /*
++                 * 列表项越界说明 host_name_list 没收全。若就此 break，
++                 * 末尾会因 !sni 而 return 0，被调用方读成「不是 TLS」——
++                 * 恰好把最常见的 SNI 场景判死。必须报「需要更多字节」。
++                 */
 +                if (epos + name_len > eend)
-+                    break;
++                    return -1;
 +                if (name_type == 0 && name_len > 0 && !sni) {
 +                    sni = ext + epos;
 +                    sni_len = name_len;
@@ -287,30 +275,59 @@ new file mode 100644
 +hev_domain_sniff (const unsigned char *buf, size_t len, char *domain,
 +                  size_t domain_len)
 +{
-+    int res;
++    int tls_res, http_res;
 +
 +    if (!buf || !domain || domain_len == 0)
 +        return 0;
 +
-+    res = sniff_tls (buf, len, domain, domain_len);
-+    if (res != 0)
-+        return res;
-+    return sniff_http (buf, len, domain, domain_len);
-+}
-diff --git a/src/hev-socks5-session-tcp.h b/src/hev-socks5-session-tcp.h
---- a/src/hev-socks5-session-tcp.h
-+++ b/src/hev-socks5-session-tcp.h
-@@ -42,4 +42,6 @@
- HevSocks5SessionTCP *hev_socks5_session_tcp_new (struct sockaddr_in6 *addr,
-                                                  int fd);
- 
-+void hev_socks5_session_tcp_sniff (HevSocks5SessionTCP *self);
++    /*
++     * 两条路都要跑，且「需要更多字节」(-1) 不能提前结束判定。
++     *
++     * sniff_tls 只在首字节是 0x16 时才可能成功，其余情况一律返回 0，
++     * 所以对明文 HTTP 而言 tls_res 恒为 0；反过来 sniff_http 对非 ASCII 开头
++     * 也会很快返回 0。把 -1 当成「不必再看」会让尚未收全的 TLS ClientHello
++     * 被误判为「不是 TLS」而永久放弃嗅探。
++     */
++    tls_res = sniff_tls (buf, len, domain, domain_len);
++    if (tls_res > 0)
++        return 1;
 +
- #endif /* __HEV_SOCKS5_SESSION_TCP_H__ */
++    http_res = sniff_http (buf, len, domain, domain_len);
++    if (http_res > 0)
++        return 1;
++
++    /* 两条路都还需要更多字节才可能成功。 */
++    if (tls_res < 0 || http_res < 0)
++        return -1;
++
++    /* 两条路都判定完成（不是 TLS/HTTP，或域名不可信）⇒ 保持原 IP。 */
++    return 0;
++}
+diff --git a/src/hev-domain-sniff.h b/src/hev-domain-sniff.h
+new file mode 100644
+index 0000000..9b03fb9
+--- /dev/null
++++ b/src/hev-domain-sniff.h
+@@ -0,0 +1,14 @@
++#ifndef __HEV_DOMAIN_SNIFF_H__
++#define __HEV_DOMAIN_SNIFF_H__
++
++#include <stddef.h>
++
++/*
++ * Returns 1 when a trustworthy domain was recovered, 0 when the payload is
++ * complete/unsupported and must stay on the original IP, and -1 when more
++ * bytes may complete a TLS/HTTP header.
++ */
++int hev_domain_sniff (const unsigned char *buf, size_t len, char *domain,
++                      size_t domain_len);
++
++#endif /* __HEV_DOMAIN_SNIFF_H__ */
 diff --git a/src/hev-socks5-session-tcp.c b/src/hev-socks5-session-tcp.c
+index 55e05d3..76814a3 100644
 --- a/src/hev-socks5-session-tcp.c
 +++ b/src/hev-socks5-session-tcp.c
-@@ -7,15 +7,19 @@
+@@ -7,15 +7,22 @@
   ============================================================================
   */
  
@@ -318,8 +335,11 @@ diff --git a/src/hev-socks5-session-tcp.c b/src/hev-socks5-session-tcp.c
  #include <string.h>
 +#include <sys/socket.h>
  #include <unistd.h>
++#include <poll.h>
  
 +#include <hev-task.h>
++#include <hev-task-io.h>
++#include <hev-task-io-socket.h>
  #include <hev-socks5-tcp.h>
  #include <hev-socks5-misc.h>
  #include <hev-socks5-client-tcp.h>
@@ -330,7 +350,7 @@ diff --git a/src/hev-socks5-session-tcp.c b/src/hev-socks5-session-tcp.c
  #include "hev-logger.h"
  
  #include "hev-socks5-session-tcp.h"
-@@ -39,6 +43,81 @@
+@@ -41,6 +48,155 @@ hev_socks5_session_tcp_new (struct sockaddr_in6 *addr, int fd)
      return self;
  }
  
@@ -348,78 +368,203 @@ diff --git a/src/hev-socks5-session-tcp.c b/src/hev-socks5-session-tcp.c
 +    return 0;
 +}
 +
-+static void
-+hev_socks5_session_tcp_set_domain (HevSocks5SessionTCP *self,
-+                                   const char *domain, uint16_t port)
++/**
++ * 挂 POLLIN 等首包可读，返回可读时的字节数，-1 表示出错/超时。
++ *
++ * 必须用事件等待而不是 recv(MSG_DONTWAIT) 轮询：tproxy 的 fd 来自 accept，
++ * 此时还没进 splice 的事件循环，socket 缓冲区在 App 写入首包前一直是空的。
++ * 轮询 + 超时会在 TLS 握手完成前就放弃（移动端冷启动普遍 >100ms），
++ * 表现为「tproxy 下按域名分流不生效」。
++ *
++ * yielder 用 hev_socks5_task_io_yielder：它读 HEV_SOCKS5(self)->timeout，
++ * 尊重调用方设的 I/O 超时；timeout<0 时纯事件等待，不占用 CPU。
++ */
++static ssize_t
++hev_socks5_session_tcp_wait_peek (HevSocks5SessionTCP *self,
++                                  unsigned char *buf, size_t len)
 +{
-+    HevSocks5Addr addr;
-+    HevSocks5Addr *copy;
-+    int len;
++    HevTask *task = hev_task_self ();
++    ssize_t n;
 +
-+    hev_socks5_addr_from_name (&addr, domain, port);
-+    len = hev_socks5_addr_len (&addr);
-+    if (len <= 0)
-+        return;
-+    copy = hev_malloc (len);
-+    if (!copy)
-+        return;
-+    memcpy (copy, &addr, len);
-+    if (self->base.addr)
-+        hev_free (self->base.addr);
-+    self->base.addr = copy;
++    if (hev_task_add_fd (task, self->fd, POLLIN) < 0) {
++        /* add_fd 失败时退化为 mod_fd（fd 可能已注册）；两者都失败才放弃。 */
++        if (hev_task_mod_fd (task, self->fd, POLLIN) < 0)
++            return -1;
++    }
++
++    n = hev_task_io_socket_recv (self->fd, buf, len, MSG_PEEK,
++                                 hev_socks5_task_io_yielder,
++                                 HEV_SOCKS5 (self));
++
++    hev_task_del_fd (task, self->fd);
++
++    return n;
 +}
 +
-+void
-+hev_socks5_session_tcp_sniff (HevSocks5SessionTCP *self)
++int
++hev_socks5_session_tcp_reconnect (HevSocks5SessionTCP *self,
++                                  const char *domain, int port)
++{
++    struct sockaddr_in6 saddr;
++    HevTask *task;
++    int family;
++    int nfd, res;
++
++    if (!self || self->fd < 0 || !domain || !*domain)
++        return -1;
++
++    /* 协程友好的异步 DNS（配合 tproxy 自己的 DNS 会话），不阻塞事件循环。 */
++    res = hev_socks5_name_into_sockaddr6 (domain, port, &saddr, &family);
++    if (res < 0) {
++        LOG_I ("%p tproxy resolve [%s]:%d", self, domain, port);
++        return -1;
++    }
++
++    /*
++     * 直接用 hev_task_io_socket_socket 而不是 core 内部的 hev_socks5_socket
++     * （后者只在 src/core/src/hev-socks5-misc-priv.h 里声明，是私有头）。
++     * AF_INET6 + 0 的组合与 core 一致：实际用到的 IPv4 会被 hev_task 内部折算。
++     */
++    nfd = hev_task_io_socket_socket (AF_INET6, SOCK_STREAM, 0);
++    if (nfd < 0) {
++        LOG_E ("%p tproxy socket", self);
++        return -1;
++    }
++
++    task = hev_task_self ();
++    res = hev_task_add_fd (task, nfd, POLLOUT);
++    if (res < 0)
++        res = hev_task_mod_fd (task, nfd, POLLOUT);
++    if (res < 0) {
++        close (nfd);
++        return -1;
++    }
++
++    res = hev_task_io_socket_connect (nfd, (struct sockaddr *) &saddr,
++                                      sizeof (saddr),
++                                      hev_socks5_task_io_yielder,
++                                      HEV_SOCKS5 (self));
++    if (res < 0) {
++        LOG_I ("%p tproxy connect [%s]:%d", self, domain, port);
++        hev_task_del_fd (task, nfd);
++        close (nfd);
++        return -1;
++    }
++
++    hev_task_del_fd (task, nfd);
++
++    /* 到这里才替换：任何失败都不动 self->fd，调用方可以安全回落到 IP 直连。 */
++    hev_task_del_fd (task, self->fd);
++    close (self->fd);
++    self->fd = nfd;
++
++    LOG_I ("%p tproxy reconnected to [%s]:%d", self, domain, port);
++
++    return 0;
++}
++
++int
++hev_socks5_session_tcp_resolve_and_reconnect (HevSocks5SessionTCP *self)
 +{
 +    unsigned char buf[8192];
 +    char domain[256];
 +    uint16_t raw_port;
-+    int port, tries, i;
++    int port, res;
 +
-+    if (!self || !self->base.addr ||
++    if (!self || self->fd < 0 || !self->base.addr ||
 +        self->base.addr->atype == HEV_SOCKS5_ADDR_TYPE_NAME)
-+        return;
++        return 0;
 +
 +    raw_port = hev_socks5_session_tcp_port (self);
 +    if (!raw_port)
-+        return;
++        return 0;
 +    port = ntohs (raw_port);
-+    tries = port == 443 ? 8 : (port == 80 ? 4 : 1);
 +
-+    for (i = 0; i < tries; i++) {
-+        ssize_t n = recv (self->fd, buf, sizeof (buf),
-+                          MSG_PEEK | MSG_DONTWAIT);
-+        if (n > 0) {
-+            int res = hev_domain_sniff (buf, (size_t)n, domain,
-+                                        sizeof (domain));
-+            if (res > 0) {
-+                LOG_D ("%p recovered domain %s", self, domain);
-+                hev_socks5_session_tcp_set_domain (self, domain, raw_port);
-+                return;
-+            }
-+            if (res == 0)
-+                return;
-+        } else if (n == 0) {
-+            return;
-+        }
++    /* 只对明文 HTTP 有把握：SNI 路径要多等一个 RTT，收益不抵弱网上的首包延迟。 */
++    if (port != 80)
++        return 0;
 +
-+        if (i + 1 < tries)
-+            hev_task_sleep (10);
-+    }
++    res = (int) hev_socks5_session_tcp_wait_peek (self, buf, sizeof (buf));
++    if (res <= 0)
++        return 0;
++
++    if (hev_domain_sniff (buf, (size_t) res, domain, sizeof (domain)) <= 0)
++        return 0;
++
++    LOG_I ("%p recovered domain %s", self, domain);
++
++    /*
++     * 不碰 self->base.addr：tproxy 模式下没人读它（见 reconnect 的注释），
++     * 写它只会让后面 splice 之外的代码看到与实际连接不一致的目的地。
++     */
++    if (hev_socks5_session_tcp_reconnect (self, domain, port) < 0)
++        return 0;
++
++    return 1;
 +}
 +
  static void
  hev_socks5_session_tcp_splice (HevSocks5Session *base)
  {
+diff --git a/src/hev-socks5-session-tcp.h b/src/hev-socks5-session-tcp.h
+index 26a4b4b..49b905a 100644
+--- a/src/hev-socks5-session-tcp.h
++++ b/src/hev-socks5-session-tcp.h
+@@ -49,4 +49,33 @@ int hev_socks5_session_tcp_construct (HevSocks5SessionTCP *self,
+ HevSocks5SessionTCP *hev_socks5_session_tcp_new (struct sockaddr_in6 *addr,
+                                                  int fd);
+ 
++/**
++ * 等待首包、恢复域名，并按该域名重连（tproxy 模式的完整入口）。
++ *
++ * 事件驱动：挂 POLLIN 阻塞等待，而不是轮询 recv(MSG_DONTWAIT) + sleep。
++ * 前者在 tproxy 模式下才拿得到数据 —— 该模式的 fd 由 accept 得到、
++ * 尚未进入任何事件循环，socket 缓冲区在 App 写入首包前始终为空，
++ * 任何基于超时的忙等都会在 TLS 握手完成前放弃。
++ *
++ * 首包用 MSG_PEEK 窥探、未被消费，所以重连后客户端已发出的那份请求
++ * 仍能原样发往新目的地。
++ *
++ * @return 1 已按域名重连；0 未生效（保持原 IP 直连，调用方可继续）。
++ */
++int hev_socks5_session_tcp_resolve_and_reconnect (HevSocks5SessionTCP *self);
++
++/**
++ * tproxy 专用：按域名重新建连并替换 self->fd。
++ *
++ * tproxy 的目的地由内核经 IP_TRANSPARENT 绑在原 socket 上，
++ * 改 base.addr 对已建立的连接毫无影响（真正读它的只有 SOCKS5 握手，
++ * 而 tproxy 不走那条路）。因此要让域名生效必须自己重连。
++ *
++ * 失败时**保持原状**（不动 self->fd），让调用方回落到 IP 直连。
++ *
++ * @return 0 成功；-1 失败，self->fd 仍是原连接。
++ */
++int hev_socks5_session_tcp_reconnect (HevSocks5SessionTCP *self,
++                                      const char *domain, int port);
++
+ #endif /* __HEV_SOCKS5_SESSION_TCP_H__ */
 diff --git a/src/hev-socks5-worker.c b/src/hev-socks5-worker.c
+index fbb91ef..916cfa4 100644
 --- a/src/hev-socks5-worker.c
 +++ b/src/hev-socks5-worker.c
-@@ -87,6 +87,7 @@
+@@ -91,6 +91,19 @@ hev_socks5_tcp_session_task_entry (void *data)
      HevSocks5Worker *self = hev_socks5_worker_self ();
      HevSocks5SessionTCP *tcp = data;
  
-+    hev_socks5_session_tcp_sniff (tcp);
++    /*
++     * 域名嗅探 + 按域名重连（tproxy 模式）。
++     *
++     * sniff 内部挂事件等首包（不是轮询），返回时首包已到但**未被消费**
++     * （MSG_PEEK），所以重连后客户端已发出的那份请求仍能原样发往新目的地。
++     *
++     * tproxy 的目的地由内核经 IP_TRANSPARENT 绑在原 socket 上，改 base.addr
++     * 对已建立的连接毫无影响（真正读它的只有 SOCKS5 握手，而 tproxy 不走
++     * 那条路）—— 必须自己重连，域名分流才真的生效。重连失败时 sniff 保留
++     * 原状，直接回落到 IP 直连，不影响可用性。
++     */
++    hev_socks5_session_tcp_resolve_and_reconnect (tcp);
++
      hev_tproxy_session_run (HEV_TPROXY_SESSION (tcp));
  
      hev_list_del (&self->tcp_set, &tcp->node);

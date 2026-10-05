@@ -12,6 +12,10 @@ plugins {
 val applyJniPatches = tasks.register("applyJniPatches") {
     description = "Applies checked JNI submodule patches and fails on patch drift"
     val jniDirectory = project.layout.projectDirectory.dir("jni")
+    // Captured during configuration on purpose: touching Project (e.g. `projectDir`)
+    // inside doLast is exactly what breaks configuration-cache reuse. `displayPath`
+    // only ever formats a path for an error message, so a Directory handle is enough.
+    val projectDirectory = project.layout.projectDirectory
 
     doLast {
         val jniDir = jniDirectory.asFile
@@ -30,13 +34,99 @@ val applyJniPatches = tasks.register("applyJniPatches") {
             return process.waitFor() to output
         }
 
+        /** Arbitrary git invocation — must not go through [gitApply], which hardcodes `apply`. */
+        fun git(submoduleDir: File, vararg args: String): Pair<Int, String> {
+            val process = ProcessBuilder("git", *args)
+                .directory(submoduleDir)
+                .redirectErrorStream(true)
+                .start()
+            val output = process.inputStream.bufferedReader().use { it.readText() }
+            return process.waitFor() to output
+        }
+
+        fun gitCommit(submoduleDir: File): String =
+            git(submoduleDir, "rev-parse", "--short", "HEAD").second.trim()
+                .ifEmpty { "(unknown)" }
+
+        /**
+         * Porcelain status of the submodule, excluding nested-submodule noise.
+         *
+         * Uses `-z` so paths containing spaces stay unambiguous, and splits on NUL
+         * rather than newline. Nested submodules (everything under `third-part/`, plus
+         * `src/core`) commonly show as modified purely from a commit-pointer difference
+         * that predates this task; they are not produced by any patch, so listing them
+         * would bury the actual culprits.
+         *
+         * ⚠️ **Never write a glob containing a slash-star in a comment.** The two
+         * characters open a *nested* block comment inside this KDoc and swallow
+         * everything up to the next closing marker, silently deleting the following
+         * declarations. Gradle then reports a bare `Expecting '}'` on an unrelated
+         * line — hours of misdirected debugging. Write it as "everything under
+         * `third-part`" instead.
+         */
+        fun statusExcludingNestedSubmodules(submoduleDir: File): List<String> {
+            val (_, raw) = git(submoduleDir, "status", "--porcelain", "-z")
+            return raw.split('\u0000')
+                .filter { it.isNotBlank() }
+                .map { entry ->
+                    // Porcelain v1: "<2-char status><space><path>"
+                    val path = if (entry.length > 3) entry.substring(3) else entry
+                    path to entry
+                }
+                .filterNot { (path, _) ->
+                    path.startsWith("third-part/") || path.startsWith("src/core")
+                }
+                .map { (_, entry) -> entry }
+        }
+
+        /**
+         * Path to paste into a shell command in an error message.
+         *
+         * Prefers a repo-relative path, but must not throw when the submodule sits
+         * outside the project directory — an exception here would replace a helpful
+         * drift message with a confusing "Failed to determine relative path".
+         */
+        fun displayPath(target: File): String =
+            runCatching { target.relativeTo(projectDirectory.asFile).path }
+                .getOrElse { target.absolutePath }
+
         println("=== Starting JNI Submodule Patching ===")
+
+        /**
+         * 把 patch 文件名映射成它所针对的 submodule 目录。
+         *
+         * 命名规则：文件名去掉 `.patch` 后，`--` 之前是顶层 submodule 名
+         * （下划线转斜杠），`--` 之后是该 submodule 内部的相对路径
+         * （同样下划线转斜杠）。例如
+         *   `hev-socks5-tproxy.patch`             -> `hev-socks5-tproxy`
+         *   `hev-socks5-tproxy--src-core.patch`   -> `hev-socks5-tproxy/src/core`
+         *
+         * 为什么要支持第二层：`hev-socks5-client.c` / `hev-socks5-misc.c` 这些
+         * **连接与解析的核心逻辑住在 `src/core`**（它本身是个嵌套 submodule，
+         * 父仓库里是模式 160000 的 gitlink）。改它们（例如 connect 失败后按
+         * 另一个 IP 版本重试）无法靠改顶层文件绕过，只能直接改 core。
+         *
+         * 用 `--` 分隔、嵌套段内用 `-` 表示斜杠：顶层名里本来就有大量 `-`
+         * （`hev-socks5-tproxy`），不能再让它承担路径语义，所以嵌套段的
+         * 分隔符必须与顶层区分开。`a--b-c` 表达「顶层 a 下的 b/c」，
+         * 不会出现歧义。
+         */
+        fun submoduleDirFor(patchName: String): File {
+            val stem = patchName.removeSuffix(".patch")
+            val topLevel = stem.substringBefore("--").replace('_', '/')
+            val nested = stem.substringAfter("--", "")
+            return if (nested.isEmpty()) {
+                File(jniDir, topLevel)
+            } else {
+                File(jniDir, "$topLevel/${nested.replace('-', '/')}")
+            }
+        }
 
         patchesDir.listFiles { _, name -> name.endsWith(".patch") }
             ?.sortedBy { it.name }
             ?.forEach { patchFile ->
                 val submoduleName = patchFile.name.removeSuffix(".patch")
-                val submoduleDir = File(jniDir, submoduleName)
+                val submoduleDir = submoduleDirFor(patchFile.name)
 
                 if (!submoduleDir.isDirectory) {
                     throw GradleException("JNI submodule directory not found: ${submoduleDir.absolutePath}")
@@ -80,9 +170,57 @@ val applyJniPatches = tasks.register("applyJniPatches") {
                     return@forEach
                 }
 
+                // Both directions failed. There are two very different causes and the
+                // original message conflated them into one scary "drift" blob:
+                //
+                //  (a) The working tree is a *stale materialisation* of an OLDER patch —
+                //      e.g. patches/*.patch was updated while the submodule still shows the
+                //      previous revision's edits. Fix is purely mechanical (reset the
+                //      submodule, let this task re-materialise from the patch).
+                //  (b) The patch genuinely no longer matches the pinned submodule commit —
+                //      upstream moved and the hunks need regenerating. No build-only fix.
+                //
+                // Distinguish them by asking whether the *tracked* files are clean. If they
+                // are, the submodule is exactly at the pinned commit, so (b) is impossible
+                // and the tree can only be stale materialisation — say so, and give the
+                // exact command instead of leaving the user to guess.
+                val dirty = statusExcludingNestedSubmodules(submoduleDir)
+
+                if (dirty.isEmpty()) {
+                    val sub = displayPath(submoduleDir)
+                    throw GradleException(
+                        buildString {
+                            appendLine(
+                                "JNI patch for $submoduleName does not match the pinned " +
+                                    "submodule commit, and the working tree is clean " +
+                                    "(no stale edits to reset)."
+                            )
+                            appendLine("Submodule commit: ${gitCommit(submoduleDir)}")
+                            appendLine("This is real drift — upstream moved and the hunks need regenerating.")
+                            appendLine("Reset to the pinned commit before re-deriving the patch:")
+                            appendLine("  git -C $sub reset --hard && git -C $sub clean -fd")
+                            appendLine("Forward check:")
+                            appendLine(checkOutput.ifBlank { "(no output)" })
+                            appendLine("Reverse check:")
+                            append(reverseOutput.ifBlank { "(no output)" })
+                        }
+                    )
+                }
+
+                val sub = displayPath(submoduleDir)
                 throw GradleException(
                     buildString {
-                        appendLine("JNI patch drift detected for $submoduleName.")
+                        appendLine(
+                            "JNI working tree for $submoduleName is a STALE materialisation " +
+                                "of an older patch (patches/${patchFile.name} has since been updated)."
+                        )
+                        appendLine("Modified/untracked files that no current patch produces:")
+                        dirty.take(12).forEach { appendLine("  $it") }
+                        if (dirty.size > 12) appendLine("  ... and ${dirty.size - 12} more")
+                        appendLine()
+                        appendLine("This is expected after editing a patch by hand. Reset and rebuild:")
+                        appendLine("  git -C $sub reset --hard && git -C $sub clean -fd")
+                        appendLine("The submodule pointer must stay untouched — edits live only in the patch.")
                         appendLine("Forward check:")
                         appendLine(checkOutput.ifBlank { "(no output)" })
                         appendLine("Reverse check:")
