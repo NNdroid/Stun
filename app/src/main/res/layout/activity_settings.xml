@@ -699,6 +699,42 @@
                             android:inputType="text"
                             android:contentDescription="@string/desc_geoip_direct_input" />
                     </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="?attr/textInputOutlinedStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:hint="@string/udp_max_sessions"
+                        app:startIconDrawable="@drawable/ic_port"
+                        app:helperText="@string/udp_max_sessions_helper">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_udp_max_sessions"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
+                            android:inputType="number"
+                            android:contentDescription="@string/desc_udp_max_sessions_input" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="?attr/textInputOutlinedStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:hint="@string/udp_idle_timeout"
+                        app:startIconDrawable="@drawable/ic_schedule"
+                        app:helperText="@string/udp_idle_timeout_helper">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_udp_idle_timeout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:singleLine="true"
+                            android:inputType="number"
+                            android:contentDescription="@string/desc_udp_idle_timeout_input" />
+                    </com.google.android.material.textfield.TextInputLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

@@ -89,6 +89,12 @@ object VpnConfigBuilder {
 
         return JSONObject().apply {
             put("local_addr", "127.0.0.1:$socksPort")
+            // UDP 会话上限与空闲回收：0 = 引擎默认（1024 条 / 60s）。Stun 此前从不
+            // 下发这两个键，一直是静默默认值 —— 而 UDP 会话按「客户端四元组 → 目标」
+            // 建，局域网组播/发现类流量每换一个源端口就是一条新会话，连接数只能靠
+            // 这两个旋钮压。VPN 与 tproxy 两个服务都走这里，改一处两边生效。
+            put("udp_max_sessions", SettingsManager.getUdpMaxSessions(context))
+            put("udp_idle_timeout_sec", SettingsManager.getUdpIdleTimeoutSec(context))
             put("ssh_addr", profile.sshAddr)
             put("user", profile.user)
             put("auth_type", profile.authType)

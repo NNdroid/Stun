@@ -320,6 +320,8 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
             binding.etGeositeUrl.setText(state.geositeUrl)
             binding.etGeoipUrl.setText(state.geoipUrl)
             binding.etUpdateInterval.setText(state.updateInterval.toString())
+            binding.etUdpMaxSessions.setText(state.udpMaxSessions.toString())
+            binding.etUdpIdleTimeout.setText(state.udpIdleTimeoutSec.toString())
             binding.etGeositeDirect.setText(state.geositeDirect)
             binding.etGeoipDirect.setText(state.geoipDirect)
             fillWebDavUi()
@@ -570,7 +572,33 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
             scrollToFocusedView(binding.etDbWebUser)
             return
         }
-        
+
+        // 空值当作 0（= 引擎默认），与 updateInterval 的处理一致；但越界必须在
+        // 保存前拦住：myssh 的 validatePerformanceConfig 会让 proxy.start 直接失败，
+        // 用户看到的是"连不上"而不是"填错了"。
+        val udpMaxSessionsText = binding.etUdpMaxSessions.text.toString().trim()
+        val udpMaxSessions = when {
+            udpMaxSessionsText.isEmpty() -> SettingsManager.UDP_MAX_SESSIONS_MIN
+            else -> udpMaxSessionsText.toIntOrNull()
+        }
+        if (udpMaxSessions == null || udpMaxSessions !in SettingsManager.UDP_MAX_SESSIONS_MIN..SettingsManager.UDP_MAX_SESSIONS_MAX) {
+            findTextInputLayout(binding.etUdpMaxSessions)?.error = getString(CoreR.string.error_invalid_number)
+            binding.etUdpMaxSessions.requestFocus()
+            scrollToFocusedView(binding.etUdpMaxSessions)
+            return
+        }
+        val udpIdleTimeoutText = binding.etUdpIdleTimeout.text.toString().trim()
+        val udpIdleTimeoutSec = when {
+            udpIdleTimeoutText.isEmpty() -> SettingsManager.UDP_IDLE_TIMEOUT_SEC_MIN
+            else -> udpIdleTimeoutText.toIntOrNull()
+        }
+        if (udpIdleTimeoutSec == null || udpIdleTimeoutSec !in SettingsManager.UDP_IDLE_TIMEOUT_SEC_MIN..SettingsManager.UDP_IDLE_TIMEOUT_SEC_MAX) {
+            findTextInputLayout(binding.etUdpIdleTimeout)?.error = getString(CoreR.string.error_invalid_number)
+            binding.etUdpIdleTimeout.requestFocus()
+            scrollToFocusedView(binding.etUdpIdleTimeout)
+            return
+        }
+
         val currentState = SettingsState(
             serviceMode = serviceMode,
             logLevel = binding.spinnerLogLevel.text.toString(),
@@ -581,6 +609,8 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
             geositeUrl = binding.etGeositeUrl.text.toString(),
             geoipUrl = binding.etGeoipUrl.text.toString(),
             updateInterval = binding.etUpdateInterval.text.toString().toLongOrNull() ?: 0L,
+            udpMaxSessions = udpMaxSessions,
+            udpIdleTimeoutSec = udpIdleTimeoutSec,
             geositeDirect = binding.etGeositeDirect.text.toString(),
             geoipDirect = binding.etGeoipDirect.text.toString(),
             filterMode = if (binding.rbFilterAllow.isChecked) 1 else 0,

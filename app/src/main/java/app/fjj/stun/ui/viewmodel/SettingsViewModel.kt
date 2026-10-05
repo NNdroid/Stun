@@ -23,6 +23,8 @@ data class SettingsState(
     val geositeUrl: String = SettingsManager.DEFAULT_GEOSITE_URL,
     val geoipUrl: String = SettingsManager.DEFAULT_GEOIP_URL,
     val updateInterval: Long = SettingsManager.DEFAULT_UPDATE_INTERVAL,
+    val udpMaxSessions: Int = SettingsManager.DEFAULT_UDP_MAX_SESSIONS,
+    val udpIdleTimeoutSec: Int = SettingsManager.DEFAULT_UDP_IDLE_TIMEOUT_SEC,
     val geositeDirect: String = SettingsManager.DEFAULT_GEOSITE_DIRECT_FLAGS,
     val geoipDirect: String = SettingsManager.DEFAULT_GEOIP_DIRECT_FLAGS,
     val lastUpdateTime: Long = 0L,
@@ -65,6 +67,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 geositeUrl = SettingsManager.getGeositeUrl(context),
                 geoipUrl = SettingsManager.getGeoipUrl(context),
                 updateInterval = SettingsManager.getUpdateInterval(context),
+                udpMaxSessions = SettingsManager.getUdpMaxSessions(context),
+                udpIdleTimeoutSec = SettingsManager.getUdpIdleTimeoutSec(context),
                 geositeDirect = SettingsManager.getGeositeDirect(context),
                 geoipDirect = SettingsManager.getGeoipDirect(context),
                 lastUpdateTime = SettingsManager.getLastUpdateTime(context),
@@ -96,6 +100,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     SettingsManager.saveGeositeUrl(context, state.geositeUrl)
                     SettingsManager.saveGeoipUrl(context, state.geoipUrl)
                     SettingsManager.saveUpdateInterval(context, state.updateInterval)
+                    SettingsManager.saveUdpMaxSessions(context, state.udpMaxSessions)
+                    SettingsManager.saveUdpIdleTimeoutSec(context, state.udpIdleTimeoutSec)
                     SettingsManager.saveGeositeDirect(context, state.geositeDirect)
                     SettingsManager.saveGeoipDirect(context, state.geoipDirect)
                     SettingsManager.saveFilterMode(context, state.filterMode)

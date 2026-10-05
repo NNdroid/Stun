@@ -99,6 +99,10 @@
     <string name="direct_routing">Routing Rules</string>
     <string name="geosite_direct">GeoSite Direct (e.g. cn,apple)</string>
     <string name="geoip_direct">GeoIP Direct (e.g. cn,private)</string>
+    <string name="udp_max_sessions">UDP Max Sessions</string>
+    <string name="udp_max_sessions_helper">0 = default 1024</string>
+    <string name="udp_idle_timeout">UDP Idle Timeout (sec)</string>
+    <string name="udp_idle_timeout_helper">0 = default 60s</string>
     <string name="geo_tag_picker_title">Select Geo Tags</string>
     <string name="geo_tag_search_hint">Search tags…</string>
     <string name="geo_tag_selected_count">%1$d selected</string>
@@ -367,6 +371,8 @@
     <string name="desc_udpgw_addr_input">Enter UDP gateway address</string>
     <string name="desc_geosite_direct_input">Enter geosite tags for direct routing</string>
     <string name="desc_geoip_direct_input">Enter geoip tags for direct routing</string>
+    <string name="desc_udp_max_sessions_input">Enter the maximum number of concurrent UDP sessions</string>
+    <string name="desc_udp_idle_timeout_input">Enter the UDP session idle timeout in seconds</string>
     <string name="desc_filter_apps_input">Enter package names to filter</string>
     <string name="desc_alpn_select">Select ALPN protocols</string>
     <string name="desc_dns_override_toggle">Toggle DNS override</string>

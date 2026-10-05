@@ -84,6 +84,10 @@
     <string name="direct_routing">分流规则</string>
     <string name="geosite_direct">GeoSite 直连 (如 cn,apple)</string>
     <string name="geoip_direct">GeoIP 直连 (如 cn,private)</string>
+    <string name="udp_max_sessions">UDP 会话上限</string>
+    <string name="udp_max_sessions_helper">0 = 默认 1024</string>
+    <string name="udp_idle_timeout">UDP 空闲超时 (秒)</string>
+    <string name="udp_idle_timeout_helper">0 = 默认 60 秒</string>
     <string name="geo_tag_picker_title">选择 Geo 标签</string>
     <string name="geo_tag_search_hint">搜索标签…</string>
     <string name="geo_tag_selected_count">已选 %1$d 个</string>
@@ -361,6 +365,8 @@
     <string name="desc_udpgw_addr_input">输入 UDP 网关地址</string>
     <string name="desc_geosite_direct_input">输入直连 GeoSite 标签</string>
     <string name="desc_geoip_direct_input">输入直连 GeoIP 标签</string>
+    <string name="desc_udp_max_sessions_input">输入 UDP 并发会话数上限</string>
+    <string name="desc_udp_idle_timeout_input">输入 UDP 会话空闲超时秒数</string>
     <string name="desc_filter_apps_input">输入要过滤的包名</string>
     <string name="desc_alpn_select">选择 ALPN 协议</string>
     <string name="desc_dns_override_toggle">切换 DNS 覆盖</string>

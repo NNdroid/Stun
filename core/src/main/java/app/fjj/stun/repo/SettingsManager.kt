@@ -39,6 +39,11 @@ object SettingsManager {
     private const val KEY_UPDATE_INTERVAL = "update_interval"
     private const val KEY_GEOSITE_DIRECT = "geosite_direct"
     private const val KEY_GEOIP_DIRECT = "geoip_direct"
+    // UDP 会话上限与空闲回收。SOCKS5 的直连/UDPGW 会话按「客户端四元组 → 目标」
+    // 建，局域网组播发现、mDNS、NAT 打洞每换一个源端口就是一条新会话；上限与
+    // 空闲窗口是压住连接数的唯一旋钮（引擎默认 1024 条 / 60s）。
+    private const val KEY_UDP_MAX_SESSIONS = "udp_max_sessions"
+    private const val KEY_UDP_IDLE_TIMEOUT_SEC = "udp_idle_timeout_sec"
     private const val KEY_LAST_UPDATE_TIME = "last_update_time"
     private const val KEY_FILTER_APPS = "filter_apps"
     private const val KEY_FILTER_MODE = "filter_mode"
@@ -111,6 +116,18 @@ object SettingsManager {
     const val DEFAULT_UPDATE_INTERVAL = 86400L // 24 hours
     const val DEFAULT_GEOSITE_DIRECT_FLAGS = "cn,apple"
     const val DEFAULT_GEOIP_DIRECT_FLAGS = "cn,private"
+
+    // 0 = 交给 myssh 引擎内置默认（1024 条并发会话 / 60s 空闲）。留 0 而不是写死
+    // 1024/60，是为了引擎改默认值时不用跟着改 App。
+    const val DEFAULT_UDP_MAX_SESSIONS = 0
+    const val DEFAULT_UDP_IDLE_TIMEOUT_SEC = 0
+
+    // 与 myssh 的 validatePerformanceConfig 对齐：越界会让 proxy.start 直接失败，
+    // 所以保存前先在 UI 层拦住，而不是等连接建立时报错。
+    const val UDP_MAX_SESSIONS_MIN = 0
+    const val UDP_MAX_SESSIONS_MAX = 65536
+    const val UDP_IDLE_TIMEOUT_SEC_MIN = 0
+    const val UDP_IDLE_TIMEOUT_SEC_MAX = 86400
 
     const val DEFAULT_SPEED_TEST_DOWN_URL = "https://speed.cloudflare.com/__down?bytes=10485760"
     const val DEFAULT_SPEED_TEST_UP_URL = "https://speed.cloudflare.com/__up"
@@ -332,6 +349,22 @@ object SettingsManager {
 
     fun getGeoipDirect(context: Context): String = getPrefs(context).getString(KEY_GEOIP_DIRECT, DEFAULT_GEOIP_DIRECT_FLAGS) ?: DEFAULT_GEOIP_DIRECT_FLAGS
     fun saveGeoipDirect(context: Context, flags: String) = getPrefs(context).edit { putString(KEY_GEOIP_DIRECT, flags) }
+
+    /** UDP 并发会话上限；0 = 引擎默认 1024。读时兜底钳位，防历史脏值。 */
+    fun getUdpMaxSessions(context: Context): Int =
+        getPrefs(context).getInt(KEY_UDP_MAX_SESSIONS, DEFAULT_UDP_MAX_SESSIONS)
+            .coerceIn(UDP_MAX_SESSIONS_MIN, UDP_MAX_SESSIONS_MAX)
+
+    /** UDP 会话空闲回收（秒）；0 = 引擎默认 60s。读时兜底钳位，防历史脏值。 */
+    fun getUdpIdleTimeoutSec(context: Context): Int =
+        getPrefs(context).getInt(KEY_UDP_IDLE_TIMEOUT_SEC, DEFAULT_UDP_IDLE_TIMEOUT_SEC)
+            .coerceIn(UDP_IDLE_TIMEOUT_SEC_MIN, UDP_IDLE_TIMEOUT_SEC_MAX)
+
+    fun saveUdpMaxSessions(context: Context, maxSessions: Int) =
+        getPrefs(context).edit { putInt(KEY_UDP_MAX_SESSIONS, maxSessions.coerceIn(UDP_MAX_SESSIONS_MIN, UDP_MAX_SESSIONS_MAX)) }
+
+    fun saveUdpIdleTimeoutSec(context: Context, timeoutSec: Int) =
+        getPrefs(context).edit { putInt(KEY_UDP_IDLE_TIMEOUT_SEC, timeoutSec.coerceIn(UDP_IDLE_TIMEOUT_SEC_MIN, UDP_IDLE_TIMEOUT_SEC_MAX)) }
 
     // 设备态：本机上次 GeoData 更新时间，不参与云备份
     fun getLastUpdateTime(context: Context): Long = devicePrefs(context).getLong(KEY_LAST_UPDATE_TIME, 0L)
