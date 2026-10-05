@@ -103,6 +103,15 @@ class HomeFragment : Fragment() {
     private var latestExitLocationLabel: String? = null
 
     /**
+     * 详情面板专用的双行出口文案（v4 与 v6 各一行）。
+     *
+     * 与 [latestExitLocationLabel] 分开存而不是存一个对象：底栏与桌面小组件是单行版面，
+     * 直接复用双行文本会在那里折行。面板那一行值列才吃得下两行（见
+     * `bottom_sheet_connection_details.xml` 的 `tv_detail_exit`）。
+     */
+    private var latestExitDisplayDual: String? = null
+
+    /**
      * 本次会话的出口探测是否已有结论（查到、或查完没拿到，都算有结论）。
      *
      * 底栏的出口行是**预留**的：可见性只跟随连接状态，所以在探测出结果之前要有东西顶上，
@@ -549,7 +558,10 @@ class HomeFragment : Fragment() {
         val reconnecting = StunRepository.vpnState.value == VpnState.RECONNECTING
         // 进程重启后内存字段已丢，但设备态里还留着上次探测结果——处于连接态时回填一次
         if (latestExitLocationLabel == null && connected) {
-            ExitInfoStore.label(requireContext())?.let { latestExitLocationLabel = it }
+            ExitInfoStore.read(requireContext())?.let {
+                latestExitLocationLabel = it.displayText
+                latestExitDisplayDual = it.displayTextDual
+            }
         }
         renderBottomExit(connected || reconnecting)
         if (connected || reconnecting) {
@@ -585,7 +597,7 @@ class HomeFragment : Fragment() {
             details.tvDetailAvatarLetter.text = initial
             details.tvDetailName.text = name
             details.tvDetailLatency.text = latency
-            details.tvDetailExit.text = latestExitLocationLabel ?: EMPTY_VALUE
+            details.tvDetailExit.text = latestExitDisplayDual ?: EMPTY_VALUE
             details.tvGlobeAvatarLetter.text = initial
             details.tvGlobeName.text = name
             details.tvGlobeLatency.text = latency
@@ -655,11 +667,12 @@ class HomeFragment : Fragment() {
      */
     private fun setExitLocation(result: ExitIpProbe.Result?) {
         latestExitLocationLabel = result?.displayText
+        latestExitDisplayDual = result?.displayTextDual
         val ctx = context ?: return
         val changed = if (result == null) {
             ExitInfoStore.clear(ctx)
         } else {
-            val c = ExitInfoStore.save(ctx, result.ip, result.location)
+            val c = ExitInfoStore.save(ctx, result.ip, result.location, result.ipv6.orEmpty())
             // 出口 IP 真的换了（连接中 egress pop 切换/重连到不同出口）→ 计入出口稳定性，
             // 供连接质量综合评分的“出口稳定性”维度扣分。断开置空不计入。
             if (c) StunRepository.noteExitChanged()

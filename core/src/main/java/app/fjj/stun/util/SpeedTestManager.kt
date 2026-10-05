@@ -5,6 +5,7 @@ import androidx.lifecycle.MutableLiveData
 import app.fjj.stun.repo.Profile
 import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.StunRepository
+import app.fjj.stun.service.TProxyPorts
 import app.fjj.stun.service.VpnConfigBuilder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,8 +27,6 @@ import java.util.ArrayDeque
  */
 object SpeedTestManager {
 
-    private const val SOCKS_PORT = 1080
-    private const val DNS_PORT = 53
     private const val MAX_SAMPLES = 240 // ~2 分钟窗口
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -71,7 +70,12 @@ object SpeedTestManager {
         running.postValue(true)
         job = scope.launch {
             try {
-                val configJson = VpnConfigBuilder.buildMySshConfig(context, profile, SOCKS_PORT, DNS_PORT)
+                val configJson = VpnConfigBuilder.buildMySshConfig(
+                    context,
+                    profile,
+                    TProxyPorts.SOCKS,
+                    TProxyPorts.DNS,
+                )
                 val configuredDownUrl = SettingsManager.getSpeedTestDownUrl(context)
                 val downBytes = SettingsManager.getSpeedTestDownBytes(context).coerceAtLeast(1L)
                 val downUrl = if (configuredDownUrl.startsWith("https://speed.cloudflare.com/__down?")) {

@@ -455,7 +455,9 @@ object WebServer {
                                         val errType = obj.optString("errorType", "other")
                                         val errMsg = obj.optString("error", "")
 
-                                        val display = if (ok) {
+                                        // ok 但没给出正延迟时不能显示 "0 ms" ——
+                                        // 那读起来像"节点极快"。当作未测得处理。
+                                        val display = if (ok && latencyMs > 0) {
                                             "$latencyMs ms"
                                         } else {
                                             when (errType) {

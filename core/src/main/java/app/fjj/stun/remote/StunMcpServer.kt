@@ -1389,7 +1389,14 @@ url = "$scheme://$targetHost/mcp"$headersBlock
                         addProperty("server", if (p.proxyAddr.isNotBlank()) p.proxyAddr else p.sshAddr)
                         addProperty("latencyMs", r.latencyMs)
                         addProperty("ok", r.ok)
-                        addProperty("status", if (r.ok && r.latencyMs >= 0) "OK" else "TIMEOUT/ERROR")
+                        // 分段耗时（Go 侧 v? 起提供）：握手含 TCP+KEX+认证，
+                        // 与隧道内 HTTP RTT 分开，便于判断"慢在握手还是慢在链路"。
+                        // 老版本 Go 侧返回 -1，用 hasBreakdown 语义标注有效性。
+                        addProperty("handshakeMs", r.handshakeMs)
+                        addProperty("httpMs", r.httpMs)
+                        // 必须是 > 0：ok 但延迟为 0/缺省时标 OK 会误导调用方以为
+                        // 节点可达且极快，实际是"没测到"。
+                        addProperty("status", if (r.ok && r.latencyMs > 0) "OK" else "TIMEOUT/ERROR")
                         if (!r.ok) addProperty("errorType", r.errorType)
                         if (r.error.isNotBlank()) addProperty("error", r.error)
                     })
@@ -2036,7 +2043,11 @@ url = "$scheme://$targetHost/mcp"$headersBlock
         val latencyMs: Long,
         val ok: Boolean,
         val errorType: String,
-        val error: String
+        val error: String,
+        /** 握手耗时（TCP+KEX+认证）；-1 表示 Go 侧未提供分段数据。 */
+        val handshakeMs: Long = -1L,
+        /** 隧道内 HTTP 往返；-1 表示 Go 侧未提供分段数据。 */
+        val httpMs: Long = -1L,
     )
 
     private fun testNodePingLatency(profile: Profile, context: Context): NodeLatency {
@@ -2065,7 +2076,9 @@ url = "$scheme://$targetHost/mcp"$headersBlock
                     latencyMs = latency,
                     ok = ok,
                     errorType = obj.optString("errorType", "other"),
-                    error = obj.optString("error", "")
+                    error = obj.optString("error", ""),
+                    handshakeMs = obj.optLong("handshakeMs", -1L),
+                    httpMs = obj.optLong("httpMs", -1L),
                 )
             } else {
                 NodeLatency(-1, false, "empty", "no ping result returned")

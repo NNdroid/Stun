@@ -559,7 +559,9 @@
                 <LinearLayout style="@style/StunConnectionDetailRow">
                     <ImageView style="@style/StunConnectionDetailRowIcon" android:src="@drawable/ic_detail_pin" app:tint="?attr/colorOnSecondaryContainer" />
                     <TextView style="@style/StunConnectionDetailLabel" android:text="@string/connection_exit" />
-                    <TextView android:id="@+id/tv_detail_exit" style="@style/StunConnectionDetailValue" tools:text="203.0.113.8 · 🇸🇬 Singapore" />
+                    <!-- 出口值可能是两行（IPv4 + IPv6 各一行）。行本身 minHeight 46dp、gravity
+                         center_vertical，值列换成 wrap_content 后两行仍居中对齐，不会顶高这一行。 -->
+                    <TextView android:id="@+id/tv_detail_exit" style="@style/StunConnectionDetailValue" android:lineSpacingExtra="2dp" tools:text="203.0.113.8 · 🇸🇬 Singapore\n2001:db8::8" />
                 </LinearLayout>
                 <View style="@style/StunConnectionDetailDividerIcon" />
                 <LinearLayout style="@style/StunConnectionDetailRow">

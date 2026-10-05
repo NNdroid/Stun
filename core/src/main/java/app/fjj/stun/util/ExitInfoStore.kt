@@ -20,31 +20,52 @@ import app.fjj.stun.repo.SettingsManager
 object ExitInfoStore {
 
     private const val KEY_IP = "exit_info_ip"
+    private const val KEY_IPV6 = "exit_info_ipv6"
     private const val KEY_LOCATION = "exit_info_location"
     private const val KEY_UPDATED_AT = "exit_info_updated_at"
 
-    /** 出口信息。[displayText] 与旧版内存字段 `"$ip · $location"` 保持同一形态。 */
-    data class Info(val ip: String, val location: String, val updatedAt: Long) {
+    /**
+     * 出口信息。[displayText] 与旧版内存字段 `"$ip · $location"` 保持同一形态。
+     *
+     * @property ipv6 第二个地址族的地址；单栈网络下为空串（不是 null —— 落盘与读回都用空串表示"没有"，
+     *   省掉一层可空判断；[ipv6OrNull] 给需要区分"没这个族"与"没探测过"的调用方）。
+     */
+    data class Info(
+        val ip: String,
+        val location: String,
+        val updatedAt: Long,
+        val ipv6: String = ""
+    ) {
 
         /** 一行展示：`203.0.113.8 · 🇸🇬 Singapore`；无位置时退化为纯 IP。 */
         val displayText: String get() = if (location.isBlank()) ip else "$ip · $location"
 
-        val isBlank: Boolean get() = ip.isBlank() && location.isBlank()
+        /** 双栈两行：v4 与 v6 各一行，位置只出现一次；单栈时与 [displayText] 完全一致。 */
+        val displayTextDual: String
+            get() = ipv6.takeIf { it.isNotBlank() }?.let { "$displayText\n$it" } ?: displayText
+
+        val ipv6OrNull: String? get() = ipv6.takeIf { it.isNotBlank() }
+
+        val isBlank: Boolean get() = ip.isBlank() && location.isBlank() && ipv6.isBlank()
     }
 
     /**
      * 写入出口信息。返回 true 表示内容确实变了——调用方据此决定要不要刷新小组件，
      * 避免每次状态机抖动都广播一轮 APPWIDGET_UPDATE。
      */
-    fun save(context: Context, ip: String, location: String): Boolean {
+    fun save(context: Context, ip: String, location: String, ipv6: String = ""): Boolean {
         val trimmedIp = ip.trim()
         val trimmedLocation = location.trim()
-        if (trimmedIp.isEmpty() && trimmedLocation.isEmpty()) return clear(context)
+        val trimmedIpv6 = ipv6.trim()
+        if (trimmedIp.isEmpty() && trimmedLocation.isEmpty() && trimmedIpv6.isEmpty()) return clear(context)
         val current = read(context)
-        if (current != null && current.ip == trimmedIp && current.location == trimmedLocation) return false
+        if (current != null && current.ip == trimmedIp && current.location == trimmedLocation &&
+            current.ipv6 == trimmedIpv6
+        ) return false
         SettingsManager.deviceState(context).edit {
             putString(KEY_IP, trimmedIp)
             putString(KEY_LOCATION, trimmedLocation)
+            putString(KEY_IPV6, trimmedIpv6)
             putLong(KEY_UPDATED_AT, System.currentTimeMillis())
         }
         return true
@@ -57,6 +78,8 @@ object ExitInfoStore {
             ip = prefs.getString(KEY_IP, null).orEmpty(),
             location = prefs.getString(KEY_LOCATION, null).orEmpty(),
             updatedAt = prefs.getLong(KEY_UPDATED_AT, 0L),
+            // 老版本只写三个 key，没有 v6。getString 的 null 默认值就是"没有第二族"，不是读失败。
+            ipv6 = prefs.getString(KEY_IPV6, null).orEmpty(),
         )
         return info.takeUnless { it.isBlank }
     }
@@ -67,10 +90,11 @@ object ExitInfoStore {
      */
     fun clear(context: Context): Boolean {
         val prefs = SettingsManager.deviceState(context)
-        if (!prefs.contains(KEY_IP) && !prefs.contains(KEY_LOCATION)) return false
+        if (!prefs.contains(KEY_IP) && !prefs.contains(KEY_LOCATION) && !prefs.contains(KEY_IPV6)) return false
         prefs.edit {
             remove(KEY_IP)
             remove(KEY_LOCATION)
+            remove(KEY_IPV6)
             remove(KEY_UPDATED_AT)
         }
         return true

@@ -77,8 +77,15 @@ class MyVpnService : VpnService() {
         const val TAG = "StunVpnService"
         const val ACTION_START = "app.fjj.stun.START"
         const val ACTION_STOP = "app.fjj.stun.STOP"
-        const val SOCKS_PORT = 10808
-        const val DNS_PORT = 10553
+
+        /**
+         * 端口取自 [TProxyPorts]（单一事实来源），这里保留别名只为内部可读性。
+         *
+         * 此前 `LatencyProber` / `SpeedTestManager` 各自私藏了一份 `1080` / `53`
+         * 的副本，与这里的真值长期不一致 —— 详见 [TProxyPorts] 的 KDoc。
+         */
+        const val SOCKS_PORT = TProxyPorts.VPN.SOCKS
+        const val DNS_PORT = TProxyPorts.VPN.DNS
         const val INITIAL_RECONNECT_DELAY = 2000L
         const val MAX_RECONNECT_DELAY = 30000L
         const val CHANNEL_ID = "StunVpnChannel"
