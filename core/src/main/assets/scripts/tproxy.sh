@@ -2,7 +2,7 @@
 
 readonly SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
 # Version (use YY.MM.DD format)
-readonly SCRIPT_VERSION="v26.04.16"
+readonly SCRIPT_VERSION="v26.09.23"
 
 export TZ=Asia/Shanghai
 
@@ -68,6 +68,15 @@ readonly DEFAULT_BYPASS_IPv4_LIST="0.0.0.0/8 100.0.0.0/8 127.0.0.0/8 169.254.0.0
 readonly DEFAULT_BYPASS_IPv6_LIST="::/128 ::1/128 ::ffff:0:0/96 100::/64 64:ff9b::/96 2001::/32 2001:10::/28 2001:20::/28 2001:db8::/32 2002::/16 fe80::/10 ff00::/8"
 readonly DEFAULT_PROXY_IPv4_LIST=""
 readonly DEFAULT_PROXY_IPv6_LIST=""
+
+# Destination-based bypass (tri-tuple: ip / ip:port / ip:lo-hi).
+# The SSH tunnel server is auto-injected by the App (SSH_SERVER_ENTRY) as the
+# loop-avoidance PRIMARY path, so the tunnel socket escapes TPROXY/REDIRECT
+# without needing SO_MARK / pidfd_getfd (Linux 5.6+). uid bypass (-m owner) stays
+# as the fallback. A bare IP (no port) means ICMP; ip:port is TCP+UDP; ip:lo-hi
+# is a TCP+UDP port range.
+readonly DEFAULT_BYPASS_DST_LIST=""
+readonly DEFAULT_SSH_SERVER_ENTRY=""
 
 # Hotspot subnet when WiFi and hotspot share the same interface (common on older devices)
 # Only used when HOTSPOT_INTERFACE == WIFI_INTERFACE
@@ -224,6 +233,8 @@ load_config() {
     PROXY_IPv6_LIST="${PROXY_IPv6_LIST:-$DEFAULT_PROXY_IPv6_LIST}"
     BYPASS_IPv4_LIST="${BYPASS_IPv4_LIST:-$DEFAULT_BYPASS_IPv4_LIST}"
     BYPASS_IPv6_LIST="${BYPASS_IPv6_LIST:-$DEFAULT_BYPASS_IPv6_LIST}"
+    BYPASS_DST_LIST="${BYPASS_DST_LIST:-$DEFAULT_BYPASS_DST_LIST}"
+    SSH_SERVER_ENTRY="${SSH_SERVER_ENTRY:-$DEFAULT_SSH_SERVER_ENTRY}"
     HOTSPOT_SUBNET_IPV4="${HOTSPOT_SUBNET_IPV4:-$DEFAULT_HOTSPOT_SUBNET_IPV4}"
     HOTSPOT_SUBNET_IPV6="${HOTSPOT_SUBNET_IPV6:-$DEFAULT_HOTSPOT_SUBNET_IPV6}"
     APP_PROXY_ENABLE="${APP_PROXY_ENABLE:-$DEFAULT_APP_PROXY_ENABLE}"
@@ -381,6 +392,18 @@ validate_config() {
     if ! is_positive_integer "$DNS_PORT" || [ "$DNS_PORT" -lt 1 ] || [ "$DNS_PORT" -gt 65535 ]; then
         log Error "Invalid DNS_PORT: $DNS_PORT"
         return 1
+    fi
+
+    if [ -n "$SSH_SERVER_ENTRY" ]; then
+        case "$SSH_SERVER_ENTRY" in
+            *:*)
+                local _ssh_port="${SSH_SERVER_ENTRY##*:}"
+                if ! is_positive_integer "$_ssh_port" || [ "$_ssh_port" -lt 1 ] || [ "$_ssh_port" -gt 65535 ]; then
+                    log Error "Invalid SSH_SERVER_ENTRY port: $SSH_SERVER_ENTRY"
+                    return 1
+                fi
+                ;;
+        esac
     fi
 
     if ! is_positive_integer "$MARK_VALUE" || [ "$MARK_VALUE" -lt 1 ] || [ "$MARK_VALUE" -gt 2147483647 ]; then
@@ -910,7 +933,7 @@ setup_proxy_chain() {
 
     # Define chains based on family
     local chains=""
-    chains="PROXY_PREROUTING$suffix PROXY_OUTPUT$suffix DIVERT$suffix PROXY_IP$suffix BYPASS_IP$suffix BYPASS_INTERFACE$suffix PROXY_INTERFACE$suffix DNS_HIJACK_PRE$suffix DNS_HIJACK_OUT$suffix APP_CHAIN$suffix MAC_CHAIN$suffix"
+    chains="PROXY_PREROUTING$suffix PROXY_OUTPUT$suffix DIVERT$suffix PROXY_IP$suffix BYPASS_IP$suffix BYPASS_DST$suffix BYPASS_INTERFACE$suffix PROXY_INTERFACE$suffix DNS_HIJACK_PRE$suffix DNS_HIJACK_OUT$suffix APP_CHAIN$suffix MAC_CHAIN$suffix"
 
     local table="mangle"
     if [ "$mode" = "redirect" ]; then
@@ -966,6 +989,30 @@ setup_proxy_chain() {
     if [ "$PERFORMANCE_MODE" -eq 1 ] && [ "$HAS_CONNTRACK" -eq 1 ]; then
         _perf_ct=1
     fi
+
+    # --- Destination-based bypass (tri-tuple) ---------------------------------
+    # Matched destinations ACCEPT and escape TPROXY/REDIRECT *before* the proxy
+    # final-state rules. This is the loop-avoidance PRIMARY path: the App injects the
+    # SSH tunnel server (ip:port) here, so the tunnel socket does NOT need SO_MARK /
+    # pidfd_getfd (Linux 5.6+), which is unavailable on many kernels. uid bypass
+    # (-m owner --uid-owner CORE_USER) stays as the fallback.
+    # ICMP (bare-IP entries) is added explicitly because _add_chain_jumps' perf
+    # wrapping only covers TCP/UDP.
+    local _icmp_proto="icmp"
+    [ "$family" = "6" ] && _icmp_proto="ipv6-icmp"
+    if [ "$_perf_ct" -eq 1 ]; then
+        $cmd -t "$table" -A "PROXY_PREROUTING$suffix" -p tcp --syn -j "BYPASS_DST$suffix"
+        $cmd -t "$table" -A "PROXY_PREROUTING$suffix" -p udp -m conntrack --ctstate NEW,RELATED -j "BYPASS_DST$suffix"
+        $cmd -t "$table" -A "PROXY_PREROUTING$suffix" -p "$_icmp_proto" -j "BYPASS_DST$suffix"
+        $cmd -t "$table" -A "PROXY_OUTPUT$suffix" -p tcp --syn -j "BYPASS_DST$suffix"
+        $cmd -t "$table" -A "PROXY_OUTPUT$suffix" -p udp -m conntrack --ctstate NEW,RELATED -j "BYPASS_DST$suffix"
+        $cmd -t "$table" -A "PROXY_OUTPUT$suffix" -p "$_icmp_proto" -j "BYPASS_DST$suffix"
+    else
+        $cmd -t "$table" -A "PROXY_PREROUTING$suffix" -j "BYPASS_DST$suffix"
+        $cmd -t "$table" -A "PROXY_OUTPUT$suffix" -j "BYPASS_DST$suffix"
+    fi
+    setup_dst_bypass "$family" "$mode"
+    # -------------------------------------------------------------------------
 
     _add_chain_jumps "PROXY_PREROUTING$suffix" "$_perf_ct" \
         "PROXY_IP$suffix" "BYPASS_IP$suffix" "PROXY_INTERFACE$suffix" "MAC_CHAIN$suffix" "DNS_HIJACK_PRE$suffix"
@@ -1265,6 +1312,101 @@ setup_proxy_chain() {
     log Info "$mode_name chains for IPv${family} setup completed"
 }
 
+# Parse BYPASS_DST_LIST (space-separated tri-tuple entries) plus the auto-injected
+# SSH tunnel server into the BYPASS_DST chain.
+#
+# Entry formats (IPv4 examples; IPv6 uses [v6]:port or bare [v6]):
+#   ip            -> entire destination IP, ICMP only (bare IP = ICMP, per App spec)
+#   ip:port       -> destination IP + TCP port, and IP + UDP port
+#   ip:lo-hi      -> destination IP + TCP port range lo:hi, and UDP range
+# The SSH server (SSH_SERVER_ENTRY, e.g. "203.0.113.5:22" or "203.0.113.5" for ICMP)
+# is auto-injected FIRST so the tunnel socket escapes TPROXY without SO_MARK /
+# pidfd_getfd. uid bypass (-m owner) remains the fallback if SO_MARK is unavailable.
+setup_dst_bypass() {
+    local family="$1"
+    local mode="$2"
+    local suffix=""
+    local cmd="iptables"
+    local proto_icmp="icmp"
+    if [ "$family" = "6" ]; then
+        suffix="6"
+        cmd="ip6tables"
+        proto_icmp="ipv6-icmp"
+    fi
+    local table="mangle"
+    [ "$mode" = "redirect" ] && table="nat"
+
+    # Build the effective entry list: SSH server first (loop avoidance primary),
+    # then user-provided entries.
+    local entries=""
+    if [ -n "$SSH_SERVER_ENTRY" ]; then
+        entries="$SSH_SERVER_ENTRY"
+    fi
+    if [ -n "$BYPASS_DST_LIST" ]; then
+        entries="$entries $BYPASS_DST_LIST"
+    fi
+    entries="$(echo "$entries" | tr -s ' ' | sed 's/^ //;s/ $//')"
+    [ -z "$entries" ] && { log Info "No destination bypass entries (family $family)"; return 0; }
+
+    local entry ip port_spec lo hi is_v6
+    for entry in $entries; do
+        is_v6=0
+        case "$entry" in
+            \[*\]:*)
+                # [v6]:port
+                ip="${entry#\[}"; ip="${ip%%\]*}"
+                port_spec="${entry##*\]:}"
+                is_v6=1
+                ;;
+            \[*\])
+                # bare IPv6 (ICMP) — unsupported as ICMP here, skip
+                log Warn "Bare IPv6 destination bypass (ICMP) not supported yet: $entry"
+                continue
+                ;;
+            *:*)
+                # ipv4:port OR ipv4:lo-hi (range). Distinguish by a '-' in the port part.
+                ip="${entry%:*}"
+                port_spec="${entry##*:}"
+                is_v6=0
+                ;;
+            *)
+                # bare IP -> ICMP
+                ip="$entry"
+                port_spec=""
+                case "$ip" in *:*) is_v6=1;; *) is_v6=0;; esac
+                ;;
+        esac
+
+        # Skip entries that don't belong to this family (an IPv4 address injected
+        # into ip6tables would be rejected, and vice versa).
+        if [ "$family" = "6" ] && [ "$is_v6" -ne 1 ]; then
+            continue
+        fi
+        if [ "$family" != "6" ] && [ "$is_v6" -eq 1 ]; then
+            continue
+        fi
+
+        if [ -z "$port_spec" ]; then
+            # ICMP bypass for this destination
+            $cmd -t "$table" -A "BYPASS_DST$suffix" -d "$ip" -p "$proto_icmp" -j ACCEPT
+            log Info "Added ICMP destination bypass for $ip"
+        elif echo "$port_spec" | grep -q -- '-'; then
+            # range lo-hi
+            lo="${port_spec%-*}"
+            hi="${port_spec#*-}"
+            $cmd -t "$table" -A "BYPASS_DST$suffix" -d "$ip" -p tcp --dport "$lo:$hi" -j ACCEPT
+            $cmd -t "$table" -A "BYPASS_DST$suffix" -d "$ip" -p udp --dport "$lo:$hi" -j ACCEPT
+            log Info "Added TCP+UDP destination bypass range $ip:$lo-$hi"
+        else
+            # single port
+            $cmd -t "$table" -A "BYPASS_DST$suffix" -d "$ip" -p tcp --dport "$port_spec" -j ACCEPT
+            $cmd -t "$table" -A "BYPASS_DST$suffix" -d "$ip" -p udp --dport "$port_spec" -j ACCEPT
+            log Info "Added TCP+UDP destination bypass $ip:$port_spec"
+        fi
+    done
+    log Info "Destination bypass chain configured (family $family)"
+}
+
 setup_dns_hijack() {
     local family="$1"
     local mode="$2"
@@ -1420,7 +1562,7 @@ cleanup_chain() {
     fi
 
     # Define chains based on family
-    local chains="PROXY_PREROUTING$suffix PROXY_OUTPUT$suffix DIVERT$suffix PROXY_IP$suffix BYPASS_IP$suffix BYPASS_INTERFACE$suffix PROXY_INTERFACE$suffix DNS_HIJACK_PRE$suffix DNS_HIJACK_OUT$suffix APP_CHAIN$suffix MAC_CHAIN$suffix"
+    local chains="PROXY_PREROUTING$suffix PROXY_OUTPUT$suffix DIVERT$suffix PROXY_IP$suffix BYPASS_IP$suffix BYPASS_DST$suffix BYPASS_INTERFACE$suffix PROXY_INTERFACE$suffix DNS_HIJACK_PRE$suffix DNS_HIJACK_OUT$suffix APP_CHAIN$suffix MAC_CHAIN$suffix"
 
     # Clean up chains
     for c in $chains; do

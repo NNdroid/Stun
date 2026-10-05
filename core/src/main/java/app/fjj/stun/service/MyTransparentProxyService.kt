@@ -319,6 +319,11 @@ class MyTransparentProxyService : Service() {
             // 只解析一次：降级判断要与生成规则用的是同一份快照，否则配置在两次调用之间
             // 变动时会把「没降级」误报成降级（或反之）。
             val appFilter = resolveAppFilter()
+            // 隧道服务端点注入 BYPASS_DST：mark 死亡时仍能按目的地址放行，避免回环。
+            // 与 mark 探测结果无关 —— 总是注入，作为 PRIMARY 路径；uid / mark 只是兜底。
+            val sshServerEntry = if (enabled) {
+                computeSshServerEntry(ProfileManager.getSelectedProfile(this))
+            } else ""
             val shellConfig = TransparentProxyConfigBuilder.buildShellRules(
                 selfPackage = packageName,
                 tproxyPort = TPROXY_PORT,
@@ -328,6 +333,7 @@ class MyTransparentProxyService : Service() {
                 // 否则隧道 socket 既没 mark 又不在旁路列表，会被 TPROXY 抓回本地 socks5
                 // —— 死循环，SSH 完全连不上。
                 socketMark = markInUse,
+                sshServerEntry = sshServerEntry,
             )
             File(cacheDir, FILE_TPROXY_RULES).writeText(shellConfig)
             // 把**规则层的实际取值**打出来。排查"整个 App 都在绕过"时这是决定性证据：
@@ -360,6 +366,8 @@ class MyTransparentProxyService : Service() {
                 ?.trim() ?: "(缺失)"
             // bypassLine 已在上面两条 mark 状态日志里打过，这里不重复。
             StunLogger.i(TAG, "Rules: app filter $modeLine | $proxyLine")
+            StunLogger.i(TAG, "Rules: destination bypass SSH server = '$sshServerEntry' " +
+                "(BYPASS_DST PRIMARY loop-avoidance; uid/mark are fallback)")
         } else {
             StunLogger.i(TAG, "Disabling TProxy firewall rules...")
         }
@@ -383,6 +391,30 @@ class MyTransparentProxyService : Service() {
             globalFilterApps = SettingsManager.getFilterApps(this),
             globalFilterMode = SettingsManager.getFilterMode(this),
         )
+    }
+
+    /**
+     * 把选中 profile 的隧道服务端点解析成 BYPASS_DST 注入串（交给 `tproxy.sh` 的
+     * [app.fjj.stun.service.TransparentProxyConfigBuilder.buildShellRules] 消费）：
+     *  - `host:port` → TCP+UDP 放行（绝大多数隧道类型拨的是 [Profile.sshAddr]）；
+     *  - 裸 `host`   → ICMP 放行（[Profile.TUNNEL_TYPE_ICMP_CUSTOM] 的 proxyAddr 是裸 peer host）。
+     * udp_custom 优先用 proxyAddr（host:port），否则回退 sshAddr。
+     *
+     * 这是「mark 死亡时运行时回落避免回环」的 PRIMARY 路径：隧道 socket 命中目的地址
+     * 直接放行，不依赖 SO_MARK / pidfd_getfd（Linux 5.6+）；uid / mark 只是兜底。
+     */
+    private fun computeSshServerEntry(profile: Profile): String {
+        val icmp = profile.tunnelType == Profile.TUNNEL_TYPE_ICMP_CUSTOM
+        return if (icmp) {
+            profile.proxyAddr.trim().takeIf { it.isNotBlank() } ?: ""
+        } else {
+            val ssh = profile.sshAddr.trim()
+            if (ssh.contains(':')) {
+                ssh
+            } else {
+                profile.proxyAddr.trim().takeIf { it.contains(':') } ?: ssh
+            }
+        }
     }
 
     private fun stopTProxy() {

@@ -35,6 +35,12 @@ internal object TransparentProxyConfigBuilder {
      * @param socketMark 隧道 socket 的 SO_MARK 值（`TProxyPorts.SocketMark.MARK`）。
      *   非 0 时启用 mark 放行 —— 只让 myssh 的 SSH/隧道 socket 直连，App 内**其它**流量
      *   （WebUI / MCP / 出口 IP 探测）照常走隧道。
+     * @param sshServerEntry 隧道服务端地址，格式 `host:port`（TCP+UDP）或裸 `host`（ICMP）。
+     *   由调用方从选中 profile 解析。**自动注入 BYPASS_DST 链首位** —— 这是「mark 死亡时
+     *   运行时回落避免回环」的 PRIMARY 路径：隧道 socket 命中目的地址直接放行，不再依赖
+     *   SO_MARK / pidfd_getfd（Linux 5.6+）。空串 = 不注入（mark / uid 兜底）。
+     * @param bypassDstList 用户自定义的目的地址绕过三元组（空格分隔），可选。三种格式：
+     *   `ip`（ICMP）/ `ip:port`（TCP+UDP）/ `ip:lo-hi`（TCP+UDP 端口区间）。
      */
     fun buildShellRules(
         selfPackage: String,
@@ -42,6 +48,8 @@ internal object TransparentProxyConfigBuilder {
         dnsPort: Int,
         appFilter: AppFilter,
         socketMark: Int = TProxyPorts.SOCKET_MARK,
+        sshServerEntry: String = "",
+        bypassDstList: String = "",
     ): String {
         // 与 `tproxy.sh` 的 `setup_app_chain` 两条分支对齐（照行为，不照字面）：
         //  - bypass 名单里的 uid → `-j ACCEPT`（终止遍历 = 直连），排在 proxy 名单**之前**；
@@ -123,6 +131,8 @@ internal object TransparentProxyConfigBuilder {
             APP_PROXY_MODE=${if (isAllowList) "whitelist" else "blacklist"}
             BYPASS_APPS_LIST="$bypassApps"
             PROXY_APPS_LIST="$proxyApps"
+            BYPASS_DST_LIST="$bypassDstList"
+            SSH_SERVER_ENTRY="$sshServerEntry"
             FORCE_MARK_BYPASS=$forceMarkBypass
             ROUTING_MARK=$routingMark
             DRY_RUN=0

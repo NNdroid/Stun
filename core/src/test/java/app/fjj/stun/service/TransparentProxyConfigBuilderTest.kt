@@ -24,7 +24,11 @@ class TransparentProxyConfigBuilderTest {
         dnsPort: Int = 10553,
         filter: AppFilter = AppFilter.EMPTY,
         socketMark: Int = TProxyPorts.SOCKET_MARK,
-    ) = TransparentProxyConfigBuilder.buildShellRules(self, tproxyPort, dnsPort, filter, socketMark)
+        sshServerEntry: String = "",
+        bypassDstList: String = "",
+    ) = TransparentProxyConfigBuilder.buildShellRules(
+        self, tproxyPort, dnsPort, filter, socketMark, sshServerEntry, bypassDstList,
+    )
 
     private fun varOf(conf: String, name: String): String? =
         conf.lineSequence()
@@ -244,6 +248,29 @@ class TransparentProxyConfigBuilderTest {
         assertEquals("0:app.fjj.stun 0:com.a", varOf(conf, "PROXY_APPS_LIST"))
         // bypass 列表只在 mark 不可用时才写自己（那时整个 App 必须直连）。
         assertEquals("", varOf(conf, "BYPASS_APPS_LIST"))
+    }
+
+    // ── 目的地址绕过（BYPASS_DST）：mark 死亡时回落避免回环的 PRIMARY 路径 ──
+
+    @Test
+    fun sshServerEntryAndDstBypassDefaultToEmpty() {
+        // 不传时不得写入任何目的地址绕过，否则会把脚本默认值挤掉。
+        val conf = rules()
+        assertEquals("", varOf(conf, "SSH_SERVER_ENTRY"))
+        assertEquals("", varOf(conf, "BYPASS_DST_LIST"))
+    }
+
+    @Test
+    fun sshServerEntryAndDstBypassAreEmittedVerbatim() {
+        // 调用方（MyTransparentProxyService.computeSshServerEntry）把隧道端点解析成
+        // `host:port`（TCP+UDP）或裸 `host`（ICMP），原样交给 tproxy.sh。三态格式都透传：
+        //   `ip`（ICMP）/ `ip:port`（TCP+UDP）/ `ip:lo-hi`（TCP+UDP 区间）。
+        val conf = rules(
+            sshServerEntry = "203.0.113.5:22",
+            bypassDstList = "1.1.1.1:80 1.1.1.1 1.1.1.1:3000-5400",
+        )
+        assertEquals("203.0.113.5:22", varOf(conf, "SSH_SERVER_ENTRY"))
+        assertEquals("1.1.1.1:80 1.1.1.1 1.1.1.1:3000-5400", varOf(conf, "BYPASS_DST_LIST"))
     }
 
     @Test

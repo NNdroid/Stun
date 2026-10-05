@@ -355,6 +355,7 @@ class TProxySourceParityTest {
         for (key in listOf(
             "PROXY_TCP_PORT", "PROXY_UDP_PORT", "PROXY_MODE", "DNS_HIJACK_ENABLE", "DNS_PORT",
             "APP_PROXY_ENABLE", "APP_PROXY_MODE", "BYPASS_APPS_LIST", "PROXY_APPS_LIST", "DRY_RUN",
+            "BYPASS_DST_LIST", "SSH_SERVER_ENTRY",
         )) {
             // 脚本里的形态是 `KEY="${KEY:-$DEFAULT_...}"`，探针只取到 `:-` 为止。
             val probe = "$key=\"\${$key:-"
