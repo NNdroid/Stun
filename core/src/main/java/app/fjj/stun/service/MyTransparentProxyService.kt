@@ -316,14 +316,17 @@ class MyTransparentProxyService : Service() {
             StunLogger.i(TAG, "Enabling TProxy firewall rules...")
             // 规则文件每次重连都重写：分应用代理是运行期可改的，缓存里的旧文件不能当权威。
             val markInUse = if (socketMarkAvailable) TProxyPorts.SOCKET_MARK else 0
+            // 只解析一次：降级判断要与生成规则用的是同一份快照，否则配置在两次调用之间
+            // 变动时会把「没降级」误报成降级（或反之）。
+            val appFilter = resolveAppFilter()
             val shellConfig = TransparentProxyConfigBuilder.buildShellRules(
                 selfPackage = packageName,
                 tproxyPort = TPROXY_PORT,
                 dnsPort = DNS_HIJACK_PORT,
-                appFilter = resolveAppFilter(),
-                // ⚠️ 探测失败必须传 0：让 Builder 把 App 放回 BYPASS_APPS_LIST。
-                // 若此处仍传 SOCKET_MARK，隧道 socket 既没 mark 又不在旁路列表，
-                // 会被 TPROXY 抓回本地 socks5 —— 死循环，SSH 完全连不上。
+                appFilter = appFilter,
+                // ⚠️ 探测失败必须传 0：此时 uid 放行的粒度只能连带整个 App，但**必须**放行，
+                // 否则隧道 socket 既没 mark 又不在旁路列表，会被 TPROXY 抓回本地 socks5
+                // —— 死循环，SSH 完全连不上。
                 socketMark = markInUse,
             )
             File(cacheDir, FILE_TPROXY_RULES).writeText(shellConfig)
@@ -337,10 +340,14 @@ class MyTransparentProxyService : Service() {
                 .firstOrNull { it.trimStart().startsWith("FORCE_MARK_BYPASS=") }
                 ?.trim() ?: "(缺失)"
             if (markInUse != 0) {
-                StunLogger.i(TAG, "Rules: mark bypass ACTIVE  $forceLine | $bypassLine")
+                StunLogger.i(TAG, "Rules: mark bypass ACTIVE (tunnel socket released by mark, " +
+                    "App's own traffic is proxied)  $forceLine | $bypassLine")
             } else {
-                StunLogger.w(TAG, "Rules: mark bypass INACTIVE, App is force-proxied via uid " +
-                    "⇒ tunnel still works, WebUI/MCP/exit-IP go through proxy. $forceLine | $bypassLine")
+                // uid 放行的粒度必然连带整个 App（App 内所有 socket 同属一个 uid），
+                // 这不是「把 App 强制代理」，恰恰相反 —— 如实描述，否则日志会误导排查。
+                StunLogger.w(TAG, "Rules: mark bypass INACTIVE ⇒ falling back to uid bypass; " +
+                    "the WHOLE App is direct-connected (tunnel works, but WebUI/MCP/exit-IP " +
+                    "show your real IP). Cause: SO_MARK probe failed. $forceLine | $bypassLine")
             }
             // appFilter 的实际取值也打出来：whitelist 模式下链尾 `-j ACCEPT` 会让「不在
             // PROXY_APPS_LIST 里的所有应用」直连，若用户误把 Stun 自己排除在外，整个 App
@@ -352,6 +359,17 @@ class MyTransparentProxyService : Service() {
                 .firstOrNull { it.trimStart().startsWith("APP_PROXY_MODE=") }
                 ?.trim() ?: "(缺失)"
             StunLogger.i(TAG, "Rules: app filter $modeLine | $proxyLine")
+            // 白名单被降级时必须响亮告警：用户配的「只有名单内应用走代理」已不再成立
+            // （降级成 blacklist = 名单内的应用反而被放行）。这是配置语义的变化，
+            // 不告知会让人以为规则没生效。
+            val requestedAllowList = appFilter.isAllowList
+            val effectiveAllowList = modeLine.substringAfter('=').trim() == "whitelist"
+            if (requestedAllowList && !effectiveAllowList) {
+                StunLogger.w(TAG, "App filter downgraded: allow-list → block-list because " +
+                    "SO_MARK is unavailable; the shell's allow-list branch never reads " +
+                    "BYPASS_APPS_LIST, so uid bypass had no carrier. Listed apps are now " +
+                    "bypassed instead of proxied until SO_MARK works again.")
+            }
         } else {
             StunLogger.i(TAG, "Disabling TProxy firewall rules...")
         }
