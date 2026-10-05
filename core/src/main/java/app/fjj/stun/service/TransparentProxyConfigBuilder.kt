@@ -73,10 +73,17 @@ internal object TransparentProxyConfigBuilder {
         // ⚠️ mark 不可用时绝不能只把自己写进 `PROXY_APPS_LIST`：whitelist 分支对它加的是
         // `-j RETURN`（继续往下走），最终落到 PROXY_OUTPUT 链尾的 REDIRECT
         // ⇒ 隧道 socket 被抓回本地 socks5 ⇒ **死循环**。比显示真实 IP 严重得多。
+        //
+        // ⚠️ whitelist 模式下 bypass 列表**只能装自己**：bypass 的 ACCEPT 终止遍历 = 直连，
+        // 把用户白名单里的应用也写进去，等于把它们静默改成直连 —— 这正是「误伤用户白名单」，
+        // 与降级成 blacklist 是同一种事故。用户的名单只留在 PROXY_APPS_LIST 里。
         val withSelfInList: List<String> =
             if (isAllowList || !markAvailable) listOf(selfPackage) + selected else selected
+        val bypassApps = when {
+            isAllowList -> if (markAvailable) emptyList() else listOf(selfPackage)
+            else -> withSelfInList
+        }.joinToString(" ") { "0:$it" }
         val proxyApps = if (isAllowList) withSelfInList.joinToString(" ") { "0:$it" } else ""
-        val bypassApps = if (isAllowList && markAvailable) "" else withSelfInList.joinToString(" ") { "0:$it" }
         val forceMarkBypass = if (socketMark != 0) 1 else 0
         val routingMark = if (socketMark != 0) "0x%x".format(socketMark) else ""
 

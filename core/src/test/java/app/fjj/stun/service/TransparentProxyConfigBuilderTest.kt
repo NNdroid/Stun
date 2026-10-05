@@ -141,32 +141,36 @@ class TransparentProxyConfigBuilderTest {
         // mark 不可用 + whitelist：隧道 socket 只能按 uid 放行，而同一 uid 下无法区分
         // App 的其他 socket ⇒ **整个 App 必须直连**。
         //
-        // 这里曾经有两个错法：
+        // 这里曾经有三个错法：
         //  1. 把 selfPackage 塞进 PROXY_APPS_LIST 想「让 App 进代理」—— 但 whitelist
         //     分支对它加的是 `-j RETURN`（继续往下走），最终落到 PROXY_OUTPUT 链尾的
         //     REDIRECT ⇒ 隧道 socket 抓回本地 socks5 ⇒ **死循环**，比直连严重得多。
         //  2. 把模式降级成 blacklist 来让 BYPASS_APPS_LIST 被读到 —— 但这会连带把用户
         //     白名单里的应用也变成直连，属于误伤用户的配置。
+        //  3. 把用户白名单里的应用跟自己一起写进 BYPASS_APPS_LIST —— whitelist 分支对
+        //     bypass 加的是 `-j ACCEPT`（终止遍历 = 直连）且排在 proxy 之前，名单内应用
+        //     会先命中 ACCEPT 而直连。这与错法 2 是同一种事故（静默改掉用户的白名单），
+        //     只是载体从模式换成了列表。
         //
-        // 正确做法：whitelist 分支已改为**先读 bypass 再读 proxy**（bypass 的 ACCEPT
-        // 排在 proxy 的 RETURN 之前），所以模式保持 whitelist、自己进 bypass 即可。
+        // 正确做法：whitelist 分支已改为**先读 bypass 再读 proxy**，模式保持 whitelist、
+        // bypass 只装自己、用户的名单只留在 PROXY_APPS_LIST 里。
         val conf = rules(
             filter = AppFilter(AppFilterResolver.MODE_ALLOW, listOf("com.foo")),
             socketMark = 0,
         )
         assertEquals("模式不得降级：降级会误伤用户的白名单", "whitelist", varOf(conf, "APP_PROXY_MODE"))
         assertEquals(
-            "自己必须在 bypass 列表：整个 App 直连",
-            "0:$self 0:com.foo", varOf(conf, "BYPASS_APPS_LIST"),
+            "bypass 列表只装自己：整个 App 直连由它承载，用户白名单里的应用绝不能跟着进来",
+            "0:$self", varOf(conf, "BYPASS_APPS_LIST"),
         )
         assertEquals(
-            "proxy 列表保留用户配置（bypass 优先命中，名单内应用仍走代理）",
+            "proxy 列表保留用户配置：bypass 只覆盖自己，名单内应用仍走代理",
             "0:$self 0:com.foo", varOf(conf, "PROXY_APPS_LIST"),
         )
-        // 自己同时出现在两个列表里是**有意的**：shell 的 whitelist 分支先按 bypass 加
-        // ACCEPT（终止遍历 = 直连），所以自己永远命中前一条；proxy 列表里的自己是
-        // 冗余但无害的保险 —— 万一 bypass 段因缺 NETFILTER_XT_MATCH_OWNER 被跳过，
-        // 至少不会因为"不在名单"而让链尾 ACCEPT 生效。
+        // 自己同时出现在两个列表里是**有意的**：whitelist 链尾 `-j ACCEPT` 要求自己必须在
+        // PROXY_APPS_LIST 里（否则整个 App 直连），而 mark 不可用又要求自己进 BYPASS。
+        // shell 的 whitelist 分支先按 bypass 加 ACCEPT（终止遍历 = 直连），所以自己永远命中
+        // 前一条；proxy 列表里的自己是冗余但无害的保险。
         assertEquals("0", varOf(conf, "FORCE_MARK_BYPASS"))
     }
 
