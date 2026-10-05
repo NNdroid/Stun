@@ -358,7 +358,8 @@ class MyTransparentProxyService : Service() {
             val modeLine = shellConfig.lineSequence()
                 .firstOrNull { it.trimStart().startsWith("APP_PROXY_MODE=") }
                 ?.trim() ?: "(缺失)"
-            StunLogger.i(TAG, "Rules: app filter $modeLine | $proxyLine | $bypassLine")
+            // bypassLine 已在上面两条 mark 状态日志里打过，这里不重复。
+            StunLogger.i(TAG, "Rules: app filter $modeLine | $proxyLine")
         } else {
             StunLogger.i(TAG, "Disabling TProxy firewall rules...")
         }
