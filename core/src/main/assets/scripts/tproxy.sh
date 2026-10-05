@@ -154,10 +154,18 @@ log() {
         timestamp="$(date +"%Y-%m-%d %H:%M:%S") "
     fi
 
-    if [ -t 2 ]; then
-        printf "%b\n" "${color_code}${timestamp}[${level}]: ${message}\033[0m" >&2
+    # 按级别分流：只有 Warn/Error 属于「出事了」，走 stderr；Debug/Info 是正常
+    # 流程，走 stdout。两个流都必须这样才说得通 —— App 侧（RootShell）按 fd 定级，
+    # 全都写 stderr 会把每条 [Info] 都打成 ERROR，真报错反而被淹没。
+    local out_fd=2
+    if [ "$level" = "Debug" ] || [ "$level" = "Info" ]; then
+        out_fd=1
+    fi
+
+    if [ -t "$out_fd" ]; then
+        printf "%b\n" "${color_code}${timestamp}[${level}]: ${message}\033[0m" >&"$out_fd"
     else
-        printf "%s\n" "${timestamp}[${level}]: ${message}" >&2
+        printf "%s\n" "${timestamp}[${level}]: ${message}" >&"$out_fd"
     fi
 }
 

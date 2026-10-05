@@ -41,6 +41,18 @@ class TProxySourceParityTest {
     private val tproxyService get() = source("src/main/java/app/fjj/stun/service/MyTransparentProxyService.kt")
     private val vpnService get() = source("src/main/java/app/fjj/stun/service/MyVpnService.kt")
     private val builder get() = source("src/main/java/app/fjj/stun/service/TransparentProxyConfigBuilder.kt")
+    private val rootShell get() = source("src/main/java/app/fjj/stun/util/RootShell.kt")
+
+    /** 取 `name() {` 到**行首独占的** `}` 之间的 shell 函数体。 */
+    private fun shellFunctionBody(script: String, name: String): String {
+        val signature = "$name() {"
+        val start = script.indexOf(signature)
+        assertTrue("找不到 shell 函数 $name", start >= 0)
+        val body = script.substring(start)
+        val end = body.indexOf("\n}")
+        assertTrue("找不到 $name 的闭合 }", end >= 0)
+        return body.substring(0, end)
+    }
 
     /** 取 `private fun name(...)` 到下一个同缩进 `private fun` 之间的函数体。 */
     private fun functionBody(source: String, signature: String): String {
@@ -200,6 +212,52 @@ class TProxySourceParityTest {
             "tproxy.sh 无法通过 bash -n 解析 —— 真机上脚本一启动就会失败：\n$output",
             0, process.waitFor(),
         )
+    }
+
+    /**
+     * `log()` 的 fd 分流和 RootShell 的兜底定级是**同一份约定的两端**，改一头必须改另一头。
+     *
+     * 历史上 `log()` 把**每个**级别都写到 stderr，App 侧看不到级别，只能按 fd 定级 ——
+     * 于是每一条 `[Info]` 都被记成 ERROR：真机日志里 iptables 的正常输出全是红字，
+     * 真正的失败反而被淹掉。现在脚本按级别分流，App 侧改按行首 `[Level]` 定级，
+     * fd 只给无前缀的行兜底。任一端悄悄退化时，另一端会给出完全错误的日志级别，
+     * 而编译、单测、exit code 全部正常 —— 所以这一对必须钉住。
+     *
+     * 反事实：把 `out_fd=1` 改回 2（回到"全部写 stderr"），或把 RootShell 的比较退回
+     * 裸字面量 `"ERR"`（与回调传的 `"EXEC-ERR"` 对不上），本测试立刻失败。
+     */
+    @Test
+    fun logRoutesFdsByLevelAndRootShellTrustsThem() {
+        val body = shellFunctionBody(tproxySh, "log")
+
+        // 默认走 stderr，只有"没出事"的两个级别才切到 stdout。
+        assertTrue("log() 必须默认写 stderr", body.contains("local out_fd=2"))
+        assertTrue(
+            "Debug/Info 必须走 stdout：全写 stderr 会让 App 侧把每行 [Info] 记成 ERROR",
+            Regex("""if \[ "\${'$'}level" = "Debug" \] \|\| \[ "\${'$'}level" = "Info" \]; then""")
+                .containsMatchIn(body),
+        )
+        assertTrue("Debug/Info 分支必须把 fd 切到 1", body.contains("out_fd=1"))
+
+        // 两条 printf 都写到选定的 fd —— 写死一条会让分流只生效一半。
+        assertEquals(
+            "两条 printf 必须都写到 \$out_fd",
+            2, body.lines().count { it.contains(">&\"${'$'}out_fd\"") },
+        )
+
+        // 行首 `[Level]:` 前缀是 App 侧正则的锚点，改格式等于静默降级成"按 fd 定级"。
+        assertTrue("log() 必须继续输出 [Level]: 前缀", body.contains("[${'$'}{level}]:"))
+
+        // RootShell 那边：兜底比较要认回调真的传进去的标签。
+        assertTrue("stderr 标签必须是常量，别在两处各写一份字面量",
+            rootShell.contains("STREAM_EXEC_ERR = \"EXEC-ERR\""))
+        assertTrue("两个回调必须共用同一个流标签常量",
+            rootShell.contains("logShellLine(STREAM_EXEC_OUT") && rootShell.contains("logShellLine(STREAM_EXEC_ERR"))
+        assertTrue("无前缀行的兜底必须按 ERR 标签判 error 级",
+            Regex("""null -> if \(stream == STREAM_EXEC_ERR\) StunLogger\.e""").containsMatchIn(rootShell))
+        // 前缀优先于 fd：四个级别仍被 App 侧识别。
+        assertTrue("RootShell 必须认脚本声明的四个级别",
+            rootShell.contains("""\[(Debug|Info|Warn|Error)\]:\s*"""))
     }
 
     // ── 2. tproxy.conf 这个名字彻底退役 ─────────────────────────────
