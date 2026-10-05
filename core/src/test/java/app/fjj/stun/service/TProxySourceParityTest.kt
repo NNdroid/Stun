@@ -65,6 +65,65 @@ class TProxySourceParityTest {
         )
     }
 
+    // ── 6. 应用过滤链里 bypass 必须排在 proxy 之前 ──────────────────
+
+    /**
+     * `setup_app_chain` 的 **whitelist** 分支必须先按 `BYPASS_APPS_LIST` 加 `-j ACCEPT`，
+     * 再按 `PROXY_APPS_LIST` 加 `-j RETURN`，最后才是链尾。
+     *
+     * 顺序是行为本身，不是风格问题：
+     *  - bypass 在前 ⇒ 命中即终止遍历 = 直连；
+     *  - bypass 在后 ⇒ 先命中 proxy 的 `-j RETURN`（**继续往下走**），最终落到
+     *    `PROXY_OUTPUT` 链尾的 REDIRECT ⇒ **隧道 socket 被抓回本地 socks5，死循环**。
+     *
+     * 为什么 whitelist 需要读 bypass：SO_MARK 不可用时隧道 socket 只能按 uid 放行，
+     * 而同一 uid 下无法区分 App 的其他 socket ⇒ 整个 App 必须直连。没有这条 bypass
+     * 承载者，App 侧就只能把模式降级成 blacklist ��— 代价是误伤用户的白名单。
+     *
+     * 反事实：把下面两个 `indexOf` 的顺序对调（或删掉 bypass 段），本测试立刻失败。
+     */
+    @Test
+    fun allowListBranchAppliesBypassBeforeProxy() {
+        // ⚠️ 必须锚到**最后一处** `case "$APP_PROXY_MODE" in`：脚本里出现两次
+        // （前一处只是取值合法性校验，无分支体；后一处才是真正的应用过滤链）。
+        // 同理 `whitelist)` 在 MAC 过滤链里也有一份，不锚定就会切错分支而假绿/假红。
+        val anchor = "case \"\$APP_PROXY_MODE\" in"
+        val script = tproxySh
+        val caseAt = script.lastIndexOf(anchor)
+        assertTrue(
+            "tproxy.sh 里找不到应用过滤的 case 语句（锚点出现 ${script.count { it == 'c' }} 个 'c'）",
+            caseAt >= 0,
+        )
+        val branchLines = script.substring(caseAt).lineSequence().toList()
+        val startIdx = branchLines.indexOfFirst { it.trim() == "whitelist)" }
+        assertTrue("应用过滤链里找不到 whitelist 分支", startIdx >= 0)
+        val endIdx = (startIdx + 1 until branchLines.size).firstOrNull { branchLines[it].trim() == ";;" }
+        assertTrue("whitelist 分支没有闭合的 ;;", endIdx != null)
+        // 只看可执行代码行：注释里也提到这两个变量名，会把位置判断带偏。
+        val code = branchLines.subList(startIdx + 1, endIdx!!)
+            .filterNot { it.trimStart().startsWith("#") }
+            .joinToString("\n")
+
+        val bypassAt = code.indexOf("BYPASS_APPS_LIST")
+        val proxyAt = code.indexOf("PROXY_APPS_LIST")
+        assertTrue("whitelist 分支没有读 BYPASS_APPS_LIST —— uid 放行将无处生效", bypassAt >= 0)
+        assertTrue("whitelist 分支没有读 PROXY_APPS_LIST", proxyAt >= 0)
+        assertTrue(
+            "whitelist 分支里 BYPASS_APPS_LIST 必须排在 PROXY_APPS_LIST 之前：" +
+                "放后面会先命中 proxy 的 -j RETURN（继续往下走），" +
+                "隧道 socket 最终被 REDIRECT 回本地 socks5 ⇒ 死循环",
+            bypassAt < proxyAt,
+        )
+        // bypass 命中必须是 ACCEPT（终止遍历 = 直连），不能是 RETURN。
+        val bypassRule = code.substring(bypassAt, proxyAt)
+        assertTrue(
+            "bypass 规则必须用 -j ACCEPT（终止遍历）",
+            Regex("""--uid-owner\s+"\${'$'}uid"\s+-j\s+ACCEPT""").containsMatchIn(bypassRule),
+        )
+        // 反事实：bypass 之后仍需保留链尾 ACCEPT，否则不在任何名单里的应用会掉出链尾。
+        assertTrue("whitelist 分支缺链尾 -j ACCEPT", code.trimEnd().endsWith("-j ACCEPT"))
+    }
+
     // ── 2. tproxy.conf 这个名字彻底退役 ─────────────────────────────
 
     @Test

@@ -43,79 +43,46 @@ internal object TransparentProxyConfigBuilder {
         appFilter: AppFilter,
         socketMark: Int = TProxyPorts.SOCKET_MARK,
     ): String {
-        // 与 tproxy.sh `setup_proxy_chain` 的两条链语义对齐（不是照字面翻译，是照行为）：
-        //  - blacklist：列进 BYPASS_APPS_LIST 的 uid → `-j ACCEPT`（终止遍历 = 直连）；
-        //    链尾 `-j RETURN`，其余包继续往下走 → 被 TPROXY 代理。
-        //  - whitelist：列进 PROXY_APPS_LIST 的 uid → `-j RETURN`（继续遍历 → 被代理）；
-        //    链尾 `-j ACCEPT`，**其余全部直连**。所以 whitelist 的 PROXY_APPS_LIST == Stun 的
-        //    「只有这些应用走代理」。注意这条分支**完全不读** BYPASS_APPS_LIST。
+        // 与 `tproxy.sh` 的 `setup_app_chain` 两条分支对齐（照行为，不照字面）：
+        //  - bypass 名单里的 uid → `-j ACCEPT`（终止遍历 = 直连），排在 proxy 名单**之前**；
+        //  - proxy 名单里的 uid → `-j RETURN`（继续遍历 → 被代理）；
+        //  - 链尾 `-j RETURN`（blacklist）或 `-j ACCEPT`（whitelist）。
+        // 两种模式现在都读 BYPASS_APPS_LIST，且 bypass 优先 —— 所以本 App 无论在哪种
+        // 模式下走 uid 放行都能生效，不必把 whitelist 降级成 blacklist。
         //
-        // ⚠️ **自己不再进 bypass 列表**（旧版是 `listOf(selfPackage) + selected`）。
-        // 旧做法按 uid 放行整个 App —— 代价是 App 内所有流量都直连，出口 IP 永远显示本机地址，
-        // WebUI 之类的请求也出不去。现在改由 [socketMark] 精确放行隧道 socket：
-        //  - socketMark != 0：myssh 的隧道 socket 由 `sockmark`(root) 打上 mark，tproxy 按 mark 放行；
-        //    App 自身 uid 不在 bypass 里，其流量走隧道。
-        //  - socketMark == 0：mark 通路不可用，回落到旧的 uid 放行 —— **死循环比显示本地 IP 严重**，
-        //    所以这个降级必须存在，且必须明显大于「出口地址不准」的代价。
-        //
-        // ⚠️ whitelist 分支**不读** BYPASS_APPS_LIST（见 `tproxy.sh` 的 `setup_app_chain`：
-        // 只有 blacklist 分支去读它加 `-j ACCEPT`，whitelist 分支只看 PROXY_APPS_LIST 加
-        // `-j RETURN`，其余走链尾 `-j ACCEPT`）。所以降级不能靠 bypass 兜底。
-        //   - socketMark != 0：mark 通路可用，自己不在任何列表 ⇒ 其流量走隧道。
-        //   - socketMark == 0：mark 不可用，**必须把自己塞进 PROXY_APPS_LIST**，否则自己
-        //     既不在 proxy 列表也无 bypass 兜底 ⇒ 链尾 `-j ACCEPT` ⇒ 整个 App 全直连
-        //     （出口 IP 显示本机、WebUI/MCP 出不去），且没有任何告警。
-        //     这一步让 whitelist 的降级语义与 blacklist 一致：自己被代理，其余按配置放行。
-        // ── 自己（App 自身）在四种组合下该放进哪个列表 ─────────────────────────
-        //
-        // 设计原则（用户明确要求）：**只有底层连接能被精确 bypass 时，App 自身才进代理；
-        // 否则整个 App bypass。** 隧道 socket 的放行粒度决定了 App 自身的命运：
-        //  - mark 可用：tproxy 在 `PROXY_OUTPUT` 链**进入 APP_CHAIN 之前**就按 mark ACCEPT
-        //    （tproxy.sh `setup_proxy_chain` 里 mark 规则加在 `_add_chain_jumps` 之前），
-        //    所以隧道 socket 根本不参与 uid 匹配 ⇒ 放行是精确的 ⇒ App 自身可以走隧道。
-        //  - mark 不可用：唯一可用的放行手段是 uid，而 App 内所有 socket 同属一个 uid
-        //    ⇒ 放行必然连带整个 App ⇒ App 自身只能整个 bypass。
-        //
-        // whitelist 分支的坑：`-j RETURN` 语义是「继续往下走」，最终落到 PROXY_OUTPUT 链尾
-        // 的 REDIRECT ⇒ **隧道 socket 会被抓回本地 socks5，死循环**。所以 mark 不可用时
-        // 绝不能把 selfPackage 塞进 PROXY_APPS_LIST（那正是本文件上一版的错误改法）。
-        //
-        // ⚠️ whitelist 还有一个更难缠的点：`setup_app_chain` 的 whitelist 分支
-        // **完全不读** BYPASS_APPS_LIST，所以「mark 不可用 + whitelist」这一格里，
-        // shell 侧没有任何列表能承载 uid 放行。此时降级为 blacklist 模式
-        // （BYPASS_APPS_LIST 才会被读），自己被放进 BYPASS 列表整体直连，代价是用户配的
-        // 白名单语义暂时失效。但那属于配置偏好；App 自身直连属于功能性损坏，
-        // 二者不可同日而语。
-        //
-        // 另注：mark **可用**时的 whitelist 不需要降级 —— 隧道 socket 在进 APP_CHAIN 前
-        // 就被 mark ACCEPT 放行，自己留在 PROXY_APPS_LIST 里被正常代理，不会死循环。
+        // 绝不能把 selfPackage 写进 PROXY_APPS_LIST 作为「让 App 进代理」的手段：
+        // whitelist 分支对它加的是 `-j RETURN`（继续往下走），最终落到 `PROXY_OUTPUT`
+        // 链尾的 REDIRECT ⇒ 隧道 socket 被抓回本地 socks5 ⇒ **死循环**。
         val selected = appFilter.packages.filterNot { it == selfPackage || it == "0:$selfPackage" }
-        val requestedAllowList = appFilter.isAllowList
+        val isAllowList = appFilter.isAllowList
         val markAvailable = socketMark != 0
 
-        // mark 不可用 + whitelist ⇒ 强制转 blacklist，让 BYPASS_APPS_LIST 真正生效。
-        val effectiveAllowList = requestedAllowList && markAvailable
-
-        // 自己该不该进列表，与「进哪个列表」是两个独立决策，别绑在一起：
-        //  - whitelist：自己**必须**在 PROXY_APPS_LIST（链尾 `-j ACCEPT` 会让它直连），
-        //    无论 mark 是否可用 —— mark 只决定隧道 socket 怎么被放行，不决定自己是否被代理。
-        //  - blacklist：mark 可用时自己**不在** BYPASS（走隧道）；mark 不可用时**必须**在
-        //    BYPASS（uid 放行粒度所限，只能连带整个 App）。
-        val withSelfInList: List<String> = if (requestedAllowList || !markAvailable) {
-            listOf(selfPackage) + selected
-        } else {
-            selected
-        }
-        val proxyApps = if (effectiveAllowList) withSelfInList.joinToString(" ") { "0:$it" } else ""
-        val bypassApps = if (effectiveAllowList) "" else withSelfInList.joinToString(" ") { "0:$it" }
-        // 供调用方判断「whitelist 被降级成 blacklist」并打日志。
-        val allowListDowngraded = requestedAllowList && !effectiveAllowList
+        // 自己该放进哪个列表：
+        //  - **whitelist**：自己**必须**在 `PROXY_APPS_LIST`。链尾 `-j ACCEPT` 作用于 mangle
+        //    表 = 终止整条 OUTPUT 链 ⇒ 不在 proxy 名单里就等于直连。与 mark 无关：mark 放行
+        //    规则加在 APP_CHAIN 之前（929 行早于 961 行的 `_add_chain_jumps`），
+        //    隧道 socket 走不到 APP_CHAIN，因此把自己放进 proxy 名单不会造成回灌。
+        //  - **blacklist**：链尾 `-j RETURN`（继续往下走 → 被 REDIRECT 代理），所以
+        //    mark 可用时自己**不在任何列表**，其流量照常走隧道。
+        //  - 两种模式在 **mark 不可用** 时都把自己放进 `BYPASS_APPS_LIST`：此时只剩 uid
+        //    放行，同一 uid 下无法区分 App 的其他 socket ⇒ 整个 App 必须直连。
+        //    bypass 是两种模式**唯一**的载体 —— `setup_app_chain` 的 whitelist 分支已改为
+        //    先读 bypass 再读 proxy（bypass 的 ACCEPT 排在 proxy 的 RETURN 之前），
+        //    所以不必把 whitelist 降级成 blacklist（那会误伤用户白名单里的应用）。
+        //
+        // ⚠️ mark 不可用时绝不能只把自己写进 `PROXY_APPS_LIST`：whitelist 分支对它加的是
+        // `-j RETURN`（继续往下走），最终落到 PROXY_OUTPUT 链尾的 REDIRECT
+        // ⇒ 隧道 socket 被抓回本地 socks5 ⇒ **死循环**。比显示真实 IP 严重得多。
+        val withSelfInList: List<String> =
+            if (isAllowList || !markAvailable) listOf(selfPackage) + selected else selected
+        val proxyApps = if (isAllowList) withSelfInList.joinToString(" ") { "0:$it" } else ""
+        val bypassApps = if (isAllowList && markAvailable) "" else withSelfInList.joinToString(" ") { "0:$it" }
         val forceMarkBypass = if (socketMark != 0) 1 else 0
         val routingMark = if (socketMark != 0) "0x%x".format(socketMark) else ""
 
         return """
             # Auto-generated by TransparentProxyConfigBuilder — 请勿手改，重新连接时会覆盖
-            # ${if (allowListDowngraded) "注意：SO_MARK 不可用，whitelist 已降级为 blacklist（否则 uid 放行无处生效，隧道会死循环）" else "App 自身流量${if (markAvailable) "走隧道" else "整个 App 直连（SO_MARK 不可用，uid 放行粒度所限）"}"}
+            # App 自身流量${if (markAvailable) "走隧道（隧道 socket 由 SO_MARK 精确放行）" else "整体直连（SO_MARK 不可用，只能按 uid 放行，粒度连带整个 App）"}
             PROXY_TCP_PORT=$tproxyPort
             PROXY_UDP_PORT=$tproxyPort
             PROXY_MODE=1
@@ -129,7 +96,7 @@ internal object TransparentProxyConfigBuilder {
             BYPASS_IPv6_LIST="::1/128"
             PROXY_IPV6=1
             APP_PROXY_ENABLE=1
-            APP_PROXY_MODE=${if (effectiveAllowList) "whitelist" else "blacklist"}
+            APP_PROXY_MODE=${if (isAllowList) "whitelist" else "blacklist"}
             BYPASS_APPS_LIST="$bypassApps"
             PROXY_APPS_LIST="$proxyApps"
             FORCE_MARK_BYPASS=$forceMarkBypass

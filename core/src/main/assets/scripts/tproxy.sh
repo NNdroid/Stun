@@ -1139,15 +1139,7 @@ setup_proxy_chain() {
             log Info "Setting up application filter rules in $APP_PROXY_MODE mode"
             case "$APP_PROXY_MODE" in
                 blacklist)
-                    if [ -n "$BYPASS_APPS_LIST" ]; then
-                        uids=$(find_packages_uid $BYPASS_APPS_LIST)
-                        if [ $? -eq 0 ] && [ -n "$uids" ]; then
-                            for uid in $uids; do
-                                if [ -n "$uid" ]; then
-                                    $cmd -t "$table" -A "APP_CHAIN$suffix" -m owner --uid-owner "$uid" -j ACCEPT
-                                    log Info "Added bypass for UID $uid"
-                                fi
-                            done
+                                                done
                         fi
                     else
                         log Warn "App blacklist mode enabled but no bypass apps configured"
@@ -1155,6 +1147,26 @@ setup_proxy_chain() {
                     $cmd -t "$table" -A "APP_CHAIN$suffix" -j RETURN
                     ;;
                 whitelist)
+                    # ⚠️ bypass 优先于 proxy 名单。App 侧在 SO_MARK 不可用时会把
+                    # **自己**写进 BYPASS_APPS_LIST：此时隧道 socket 只能按 uid 放行，
+                    # 而同一 uid 下无法区分 App 的其他 socket，所以整个 App 必须直连。
+                    # 这条必须排在 PROXY_APPS_LIST 的 `-j RETURN` **之前**：
+                    #  - 放前面 ⇒ 自己命中 ACCEPT（终止遍历=直连），名单内应用照旧 RETURN；
+                    #  - 放后面 ⇒ 自己先命中 RETURN，继续往下走，最终被 PROXY_OUTPUT 链尾
+                    #    的 REDIRECT 抓回本地 socks5 ⇒ **隧道死循环**。
+                    # 加之前本分支完全不读 BYPASS_APPS_LIST，导致 whitelist 模式下
+                    # uid 放行无任何承载者。
+                    if [ -n "$BYPASS_APPS_LIST" ]; then
+                        uids=$(find_packages_uid $BYPASS_APPS_LIST)
+                        if [ $? -eq 0 ] && [ -n "$uids" ]; then
+                            for uid in $uids; do
+                                if [ -n "$uid" ]; then
+                                    $cmd -t "$table" -A "APP_CHAIN$suffix" -m owner --uid-owner "$uid" -j ACCEPT
+                                    log Info "Added bypass for UID $uid (takes precedence in whitelist mode)"
+                                fi
+                            done
+                        fi
+                    fi
                     if [ -n "$PROXY_APPS_LIST" ]; then
                         uids=$(find_packages_uid $PROXY_APPS_LIST)
                         if [ $? -eq 0 ] && [ -n "$uids" ]; then
@@ -1168,7 +1180,15 @@ setup_proxy_chain() {
                     else
                         log Warn "App whitelist mode enabled but no proxy apps configured"
                     fi
-                    $cmd -t "$table" -A "APP_CHAIN$suffix" -j ACCEPT
+                    if [ -n "$BYPASS_APPS_LIST" ]; then
+                        uids=$(find_packages_uid $BYPASS_APPS_LIST)
+                        if [ $? -eq 0 ] && [ -n "$uids" ]; then
+                            for uid in $uids; do
+                                if [ -n "$uid" ]; then
+                                    $cmd -t "$table" -A "APP_CHAIN$suffix" -m owner --uid-owner "$uid" -j ACCEPT
+                                    log Info "Added bypass for UID $uid"
+                                fi
+$cmd -t "$table" -A "APP_CHAIN$suffix" -j ACCEPT
                     ;;
             esac
         else

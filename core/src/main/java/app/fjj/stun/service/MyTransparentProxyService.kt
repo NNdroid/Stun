@@ -358,18 +358,7 @@ class MyTransparentProxyService : Service() {
             val modeLine = shellConfig.lineSequence()
                 .firstOrNull { it.trimStart().startsWith("APP_PROXY_MODE=") }
                 ?.trim() ?: "(缺失)"
-            StunLogger.i(TAG, "Rules: app filter $modeLine | $proxyLine")
-            // 白名单被降级时必须响亮告警：用户配的「只有名单内应用走代理」已不再成立
-            // （降级成 blacklist = 名单内的应用反而被放行）。这是配置语义的变化，
-            // 不告知会让人以为规则没生效。
-            val requestedAllowList = appFilter.isAllowList
-            val effectiveAllowList = modeLine.substringAfter('=').trim() == "whitelist"
-            if (requestedAllowList && !effectiveAllowList) {
-                StunLogger.w(TAG, "App filter downgraded: allow-list → block-list because " +
-                    "SO_MARK is unavailable; the shell's allow-list branch never reads " +
-                    "BYPASS_APPS_LIST, so uid bypass had no carrier. Listed apps are now " +
-                    "bypassed instead of proxied until SO_MARK works again.")
-            }
+            StunLogger.i(TAG, "Rules: app filter $modeLine | $proxyLine | $bypassLine")
         } else {
             StunLogger.i(TAG, "Disabling TProxy firewall rules...")
         }

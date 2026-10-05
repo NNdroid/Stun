@@ -100,60 +100,73 @@ class TransparentProxyConfigBuilderTest {
 
     @Test
     fun selfIsProxiedOnlyWhenTunnelSocketCanBeBypassedPrecisely() {
-        // 设计原则：**只有底层连接能被精确 bypass 时，App 自身才进代理；否则整个 App bypass。**
+        // 设计原则（用户明确要求）：**只有底层连接能被精确 bypass 时，App 自身才进代理；
+        // 否则整个 App bypass。** 隧道 socket 的放行粒度决定 App 自身的命运：
+        //  - mark 可用：`setup_proxy_chain` 把 mark ACCEPT 加在 `_add_chain_jumps` 之前
+        //    （929 行 vs 961 行），隧道 socket 在进 APP_CHAIN 前就直连，**不参与 uid 匹配**
+        //    ⇒ 放行精确 ⇒ 自己可以既不在 bypass 也不在 proxy，其流量照常走隧道。
+        //  - mark 不可用：只剩 uid 放行，同一 uid 下无法区分 App 的其他 socket
+        //    ⇒ 放行连带整个 App ⇒ 自己必须被整体 bypass。
         //
-        // 隧道 socket 的放行粒度决定 App 自身的命运，而 tproxy 的两条放行路径差别很大：
-        //  - mark 可用：`setup_proxy_chain` 把 mark ACCEPT 加在 `_add_chain_jumps` **之前**，
-        //    隧道 socket 在进 APP_CHAIN 之前就被直连 ⇒ 放行精确，不牵连 App 的其他流量。
-        //  - mark 不可用：只剩 uid 放行，而 App 内所有 socket 同属一个 uid ⇒ 必然连带整个 App。
+        // 两种模式下自己都**不进 PROXY_APPS_LIST**：whitelist 对它加的是 `-j RETURN`
+        // （继续往下走），最终落到 PROXY_OUTPUT 链尾的 REDIRECT ⇒ 隧道死循环。
         val allowFilter = AppFilter(AppFilterResolver.MODE_ALLOW, listOf(self, "0:$self", "com.foo"))
 
-        // mark 可用 + whitelist：自己必须进 PROXY_APPS_LIST。链尾是 `-j ACCEPT`（直连），
-        // 自己不在名单里就等于让整个 App 直连。
+        // mark 可用 + whitelist：自己**必须**在 proxy 列表。链尾 `-j ACCEPT` 作用于 mangle
+        // 表 = 终止整条 OUTPUT 链，不在名单里就等于直连；这与 mark 无关（mark 放行规则
+        // 加在 APP_CHAIN 之前，隧道 socket 走不到这里）。bypass 列表保持空。
         val allowWithMark = rules(filter = allowFilter, socketMark = TProxyPorts.SOCKET_MARK)
         assertEquals("whitelist", varOf(allowWithMark, "APP_PROXY_MODE"))
         assertEquals(
-            "mark 可用：自己必须进 proxy 列表，否则链尾 ACCEPT 让整个 App 直连",
+            "mark 可用：自己仍须在 proxy 列表，否则链尾 ACCEPT 让整个 App 直连",
             "0:$self 0:com.foo", varOf(allowWithMark, "PROXY_APPS_LIST"),
         )
-        assertEquals("whitelist 下 bypass 列表恒空（shell 不读它）", "", varOf(allowWithMark, "BYPASS_APPS_LIST"))
+        assertEquals(
+            "mark 可用：自己不得进 bypass（放行是精确的，不需要连带整个 App）",
+            "", varOf(allowWithMark, "BYPASS_APPS_LIST"),
+        )
 
-        // mark 可用 + blacklist：自己不在任何列表 —— 其流量走隧道，隧道 socket 由 mark 放行。
+        // mark 可用 + blacklist：同理，自己不在 bypass 里。
         val blockWithMark = rules(
             filter = AppFilter(AppFilterResolver.MODE_BLOCK, listOf("com.foo")),
             socketMark = TProxyPorts.SOCKET_MARK,
         )
         assertEquals("blacklist", varOf(blockWithMark, "APP_PROXY_MODE"))
         assertEquals("0:com.foo", varOf(blockWithMark, "BYPASS_APPS_LIST"))
-        assertFalse(
-            "mark 可用时自己不得被 uid 放行，否则整个 App 直连",
-            varOf(blockWithMark, "BYPASS_APPS_LIST").orEmpty().contains(self),
-        )
+        assertEquals("", varOf(blockWithMark, "PROXY_APPS_LIST"))
     }
 
     @Test
-    fun downgradesAllowListToBlockListWhenMarkIsUnavailable() {
-        // mark 不可用时唯一可用的放行是 uid，而 uid 粒度必然连带整个 App。
-        // 此时 whitelist 语义（「只有名单内的应用走代理」）无法成立：shell 的 whitelist
-        // 分支只读 PROXY_APPS_LIST 加 `-j RETURN`，而 RETURN 是**继续往下走** ——
-        // 隧道 socket 最终被 PROXY_OUTPUT 链尾的 REDIRECT 抓回本地 socks5，**死循环**。
-        // 绝不能为了"让 App 进代理"而把自己塞进 PROXY_APPS_LIST。
+    fun allowListWithUnavailableMarkBypassesSelfWithoutDowngradingMode() {
+        // mark 不可用 + whitelist：隧道 socket 只能按 uid 放行，而同一 uid 下无法区分
+        // App 的其他 socket ⇒ **整个 App 必须直连**。
         //
-        // 正确降级：转成 blacklist，让 BYPASS_APPS_LIST 真正被 shell 读取，自己 uid 直连。
-        // 代价是用户配的白名单暂时失效（属配置偏好），好过隧道死循环（属功能性损坏）。
+        // 这里曾经有两个错法：
+        //  1. 把 selfPackage 塞进 PROXY_APPS_LIST 想「让 App 进代理」—— 但 whitelist
+        //     分支对它加的是 `-j RETURN`（继续往下走），最终落到 PROXY_OUTPUT 链尾的
+        //     REDIRECT ⇒ 隧道 socket 抓回本地 socks5 ⇒ **死循环**，比直连严重得多。
+        //  2. 把模式降级成 blacklist 来让 BYPASS_APPS_LIST 被读到 —— 但这会连带把用户
+        //     白名单里的应用也变成直连，属于误伤用户的配置。
+        //
+        // 正确做法：whitelist 分支已改为**先读 bypass 再读 proxy**（bypass 的 ACCEPT
+        // 排在 proxy 的 RETURN 之前），所以模式保持 whitelist、自己进 bypass 即可。
         val conf = rules(
             filter = AppFilter(AppFilterResolver.MODE_ALLOW, listOf("com.foo")),
             socketMark = 0,
         )
-        assertEquals("blacklist", varOf(conf, "APP_PROXY_MODE"))
-        assertTrue(
-            "mark 不可用：自己必须被 uid 放行，否则隧道 socket 死循环",
-            varOf(conf, "BYPASS_APPS_LIST").orEmpty().contains(self),
+        assertEquals("模式不得降级：降级会误伤用户的白名单", "whitelist", varOf(conf, "APP_PROXY_MODE"))
+        assertEquals(
+            "自己必须在 bypass 列表：整个 App 直连",
+            "0:$self 0:com.foo", varOf(conf, "BYPASS_APPS_LIST"),
         )
         assertEquals(
-            "自己绝不能出现在 PROXY_APPS_LIST —— whitelist 的 RETURN 会让隧道 socket 被重定向",
-            "", varOf(conf, "PROXY_APPS_LIST"),
+            "proxy 列表保留用户配置（bypass 优先命中，名单内应用仍走代理）",
+            "0:$self 0:com.foo", varOf(conf, "PROXY_APPS_LIST"),
         )
+        // 自己同时出现在两个列表里是**有意的**：shell 的 whitelist 分支先按 bypass 加
+        // ACCEPT（终止遍历 = 直连），所以自己永远命中前一条；proxy 列表里的自己是
+        // 冗余但无害的保险 —— 万一 bypass 段因缺 NETFILTER_XT_MATCH_OWNER 被跳过，
+        // 至少不会因为"不在名单"而让链尾 ACCEPT 生效。
         assertEquals("0", varOf(conf, "FORCE_MARK_BYPASS"))
     }
 
@@ -190,9 +203,11 @@ class TransparentProxyConfigBuilderTest {
     fun allowModeWritesProxyListAndEmptiesBypassList() {
         val conf = rules(filter = AppFilter(AppFilterResolver.MODE_ALLOW, listOf("com.a")))
         assertEquals("whitelist", varOf(conf, "APP_PROXY_MODE"))
-        // 自己也在 proxy 列表里：whitelist 链尾是 `-j ACCEPT`，自己不在名单就等于整个 App 直连。
-        // 隧道 socket 不受影响 —— mark 放行规则加在 APP_CHAIN 之前，它压根走不到这里。
+        // 自己也在 proxy 列表里：whitelist 链尾 `-j ACCEPT` 作用于 mangle 表 = 终止整条
+        // OUTPUT 链，自己不在名单就等于整个 App 直连。
+        // mark 可用时隧道 socket 由 mark 在进 APP_CHAIN 之前放行，把自己列入 proxy 是安全的。
         assertEquals("0:app.fjj.stun 0:com.a", varOf(conf, "PROXY_APPS_LIST"))
+        // bypass 列表只在 mark 不可用时才写自己（那时整个 App 必须直连）。
         assertEquals("", varOf(conf, "BYPASS_APPS_LIST"))
     }
 
