@@ -99,18 +99,37 @@ class TransparentProxyConfigBuilderTest {
     }
 
     @Test
-    fun neverListsSelfInTheProxyList() {
-        // whitelist 模式下 shell 完全不读 BYPASS_APPS_LIST，自己只能靠"不在 proxy 列表里 +
-        // 链尾 -j ACCEPT"兜底；用户手填 `0:app.fjj.stun` 也不能把自己送进去。
-        // 注意这条在两种 mark 配置下都必须成立。
-        listOf(TProxyPorts.SOCKET_MARK, 0).forEach { mark ->
-            val conf = rules(
-                filter = AppFilter(AppFilterResolver.MODE_ALLOW, listOf(self, "0:$self", "com.foo")),
-                socketMark = mark,
-            )
-            assertEquals("mark=$mark: 自己不得出现在 proxy 列表", "0:com.foo", varOf(conf, "PROXY_APPS_LIST"))
-            assertEquals("mark=$mark: whitelist 下 bypass 列表恒空", "", varOf(conf, "BYPASS_APPS_LIST"))
-        }
+    fun listsSelfInProxyListInAllowModeOnlyWhenMarkIsUnavailable() {
+        // whitelist 模式下 shell **不读** BYPASS_APPS_LIST（`tproxy.sh` 的
+        // `setup_app_chain` 里只有 blacklist 分支去读它加 `-j ACCEPT`；whitelist 分支只看
+        // PROXY_APPS_LIST 加 `-j RETURN`，其余走链尾 `-j ACCEPT`）。
+        //
+        // 所以"把自己从 proxy 列表剔掉、指望链尾 ACCEPT 兜住"是反的：链尾 ACCEPT 意味着
+        // **直连**，于是 mark 探测失败时整个 App 会静默全直连（出口 IP 显示本机、
+        // WebUI/MCP 出不去），且没有任何告警。
+        //
+        // 正确降级：mark 不可用时把自己塞进 PROXY_APPS_LIST —— 该模式下唯一生效的列表，
+        // 于是自己被代理、其余按用户配置放行，与 blacklist 模式的语义对齐。
+        val filter = AppFilter(AppFilterResolver.MODE_ALLOW, listOf(self, "0:$self", "com.foo"))
+
+        val withMark = rules(filter = filter, socketMark = TProxyPorts.SOCKET_MARK)
+        assertEquals(
+            "mark 可用：自己不在 proxy 列表，其流量靠 mark 放行隧道 socket 后走隧道",
+            "0:com.foo", varOf(withMark, "PROXY_APPS_LIST"),
+        )
+
+        val withoutMark = rules(filter = filter, socketMark = 0)
+        assertEquals(
+            "mark 不可用：自己必须在 proxy 列表（whitelist 下唯一生效的列表），否则全直连",
+            "0:$self 0:com.foo", varOf(withoutMark, "PROXY_APPS_LIST"),
+        )
+        // 用户手填的 `0:包名` 形式不能把自己重复塞进列表。
+        assertEquals(
+            "自己只应出现一次（用户可能同时填了裸包名与 0: 形式）",
+            1, varOf(withoutMark, "PROXY_APPS_LIST").orEmpty().split(" ").count { it == "0:$self" },
+        )
+        // 反事实：whitelist 下 bypass 列表恒为空（shell 不读它，写进去只会误导排查）。
+        assertEquals("", varOf(withoutMark, "BYPASS_APPS_LIST"))
     }
 
     @Test

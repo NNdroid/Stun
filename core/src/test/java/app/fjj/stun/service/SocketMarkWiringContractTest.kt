@@ -1,6 +1,7 @@
 package app.fjj.stun.service
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -33,6 +34,36 @@ class SocketMarkWiringContractTest {
     }
 
     /**
+     * 解析「`socketMark` 实参在探测成功时取什么、失败时取什么」。
+     *
+     * 两种等价写法都要认：
+     *  1. 内联三元：`socketMark = if (socketMarkAvailable) TProxyPorts.SOCKET_MARK else 0`
+     *  2. 先赋值再传参：`val markInUse = if (socketMarkAvailable) … else 0` + `socketMark = markInUse`
+     *     —— 加日志时为了让规则层的实际取值也能打出来，会改成这种写法。**行为完全等价**，
+     *     契约关心的是"探测结果参与了决策"，不是某一行字面量的形状。
+     *
+     * @return Pair(成功时的取值, 失败时的取值)；解析不出时返回 null。
+     */
+    private fun resolveSocketMarkArg(text: String): Pair<String, String>? {
+        Regex(
+            "if\\s*\\(\\s*socketMarkAvailable\\s*\\)\\s*([A-Za-z0-9_.]+)\\s*else\\s*([0-9]+)",
+        ).find(text)?.let { m ->
+            return m.destructured.component1() to m.destructured.component2()
+        }
+        // 写法 2：局部变量承载三元结果，再作为实参传入。
+        Regex("val\\s+(\\w+)\\s*=\\s*if\\s*\\(\\s*socketMarkAvailable\\s*\\)\\s*([A-Za-z0-9_.]+)\\s*else\\s*([0-9]+)")
+            .find(text)
+            ?.let { m ->
+                val (varName, whenTrue, whenFalse) = m.destructured
+                // 该变量必须真的被当作 socketMark 实参传下去，否则只是个无关局部变量。
+                if (Regex("socketMark\\s*=\\s*$varName\\b").containsMatchIn(text)) {
+                    return whenTrue to whenFalse
+                }
+            }
+        return null
+    }
+
+    /**
      * `applyRules` 必须按探测结果决定传什么，**不能**无条件用默认值。
      *
      * 断言的是「存在按 `socketMarkAvailable` 分支的传参」这件事本身，
@@ -40,11 +71,10 @@ class SocketMarkWiringContractTest {
      */
     @Test
     fun applyRulesBranchesOnProbeResult() {
-        val text = source()
-        assertTrue(
+        assertNotNull(
             "applyRules 调用 buildShellRules 时没有按 socketMarkAvailable 分支 —— " +
                 "探测失败也会生成 mark 模式，隧道 socket 落进 TPROXY 死循环",
-            Regex("socketMark\\s*=\\s*if\\s*\\(\\s*socketMarkAvailable\\s*\\)").containsMatchIn(text),
+            resolveSocketMarkArg(source()),
         )
     }
 
@@ -76,12 +106,9 @@ class SocketMarkWiringContractTest {
      */
     @Test
     fun probeFailureYieldsUidBypassNotMark() {
-        val text = source()
-        val m = Regex(
-            "socketMark\\s*=\\s*if\\s*\\(\\s*socketMarkAvailable\\s*\\)\\s*([A-Za-z0-9_.]+)\\s*else\\s*([0-9]+)",
-        ).find(text)
-        assertTrue("未能解析 applyRules 里的 socketMark 三元表达式", m != null)
-        val (whenTrue, whenFalse) = m!!.destructured
+        val pair = resolveSocketMarkArg(source())
+        assertNotNull("未能解析 applyRules 里由 socketMarkAvailable 决定的 socketMark 取值", pair)
+        val (whenTrue, whenFalse) = pair!!
         assertEquals(
             "探测成功时才用 SOCKET_MARK",
             "TProxyPorts.SOCKET_MARK",

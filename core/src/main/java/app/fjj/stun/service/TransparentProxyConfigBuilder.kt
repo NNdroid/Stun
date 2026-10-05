@@ -58,17 +58,21 @@ internal object TransparentProxyConfigBuilder {
         //  - socketMark == 0：mark 通路不可用，回落到旧的 uid 放行 —— **死循环比显示本地 IP 严重**，
         //    所以这个降级必须存在，且必须明显大于「出口地址不准」的代价。
         //
-        // whitelist 模式下另一件事不变：把自己从 proxy 列表剔掉，靠链尾 `-j ACCEPT` 兜住
-        // （把 `user:` 前缀形式也认出来，否则用户手填 `0:app.fjj.stun` 就会把自己送进死循环）。
+        // ⚠️ whitelist 分支**不读** BYPASS_APPS_LIST（见 `tproxy.sh` 的 `setup_app_chain`：
+        // 只有 blacklist 分支去读它加 `-j ACCEPT`，whitelist 分支只看 PROXY_APPS_LIST 加
+        // `-j RETURN`，其余走链尾 `-j ACCEPT`）。所以降级不能靠 bypass 兜底。
+        //   - socketMark != 0：mark 通路可用，自己不在任何列表 ⇒ 其流量走隧道。
+        //   - socketMark == 0：mark 不可用，**必须把自己塞进 PROXY_APPS_LIST**，否则自己
+        //     既不在 proxy 列表也无 bypass 兜底 ⇒ 链尾 `-j ACCEPT` ⇒ 整个 App 全直连
+        //     （出口 IP 显示本机、WebUI/MCP 出不去），且没有任何告警。
+        //     这一步让 whitelist 的降级语义与 blacklist 一致：自己被代理，其余按配置放行。
         val selected = appFilter.packages.filterNot { it == selfPackage || it == "0:$selfPackage" }
         val isAllowList = appFilter.isAllowList
-        val proxyApps = if (isAllowList) selected.joinToString(" ") { "0:$it" } else ""
-        val selfBypass = if (socketMark != 0) emptyList() else listOf(selfPackage)
-        val bypassApps = if (isAllowList) {
-            ""
-        } else {
-            (selfBypass + selected).joinToString(" ") { "0:$it" }
-        }
+        val selfBypassed = socketMark == 0
+        // 白名单模式下 selfBypassed 走 PROXY 列表（唯一生效的那个），黑名单走 BYPASS 列表。
+        val withSelf: List<String> = if (selfBypassed) listOf(selfPackage) + selected else selected
+        val proxyApps = if (isAllowList) withSelf.joinToString(" ") { "0:$it" } else ""
+        val bypassApps = if (isAllowList) "" else withSelf.joinToString(" ") { "0:$it" }
         val forceMarkBypass = if (socketMark != 0) 1 else 0
         val routingMark = if (socketMark != 0) "0x%x".format(socketMark) else ""
 

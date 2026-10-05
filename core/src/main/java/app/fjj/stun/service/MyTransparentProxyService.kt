@@ -339,9 +339,19 @@ class MyTransparentProxyService : Service() {
             if (markInUse != 0) {
                 StunLogger.i(TAG, "Rules: mark bypass ACTIVE  $forceLine | $bypassLine")
             } else {
-                StunLogger.w(TAG, "Rules: mark bypass INACTIVE, whole App is bypassed by uid " +
-                    "⇒ WebUI/MCP/exit-IP will show your real IP. $forceLine | $bypassLine")
+                StunLogger.w(TAG, "Rules: mark bypass INACTIVE, App is force-proxied via uid " +
+                    "⇒ tunnel still works, WebUI/MCP/exit-IP go through proxy. $forceLine | $bypassLine")
             }
+            // appFilter 的实际取值也打出来：whitelist 模式下链尾 `-j ACCEPT` 会让「不在
+            // PROXY_APPS_LIST 里的所有应用」直连，若用户误把 Stun 自己排除在外，整个 App
+            // 就会静默全直连 —— 这一点只靠 BYPASS_APPS_LIST 那一行看不出来。
+            val proxyLine = shellConfig.lineSequence()
+                .firstOrNull { it.trimStart().startsWith("PROXY_APPS_LIST=") }
+                ?.trim() ?: "(缺失)"
+            val modeLine = shellConfig.lineSequence()
+                .firstOrNull { it.trimStart().startsWith("APP_PROXY_MODE=") }
+                ?.trim() ?: "(缺失)"
+            StunLogger.i(TAG, "Rules: app filter $modeLine | $proxyLine")
         } else {
             StunLogger.i(TAG, "Disabling TProxy firewall rules...")
         }
