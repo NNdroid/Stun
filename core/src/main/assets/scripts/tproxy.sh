@@ -1139,7 +1139,15 @@ setup_proxy_chain() {
             log Info "Setting up application filter rules in $APP_PROXY_MODE mode"
             case "$APP_PROXY_MODE" in
                 blacklist)
-                                                done
+                    if [ -n "$BYPASS_APPS_LIST" ]; then
+                        uids=$(find_packages_uid $BYPASS_APPS_LIST)
+                        if [ $? -eq 0 ] && [ -n "$uids" ]; then
+                            for uid in $uids; do
+                                if [ -n "$uid" ]; then
+                                    $cmd -t "$table" -A "APP_CHAIN$suffix" -m owner --uid-owner "$uid" -j ACCEPT
+                                    log Info "Added bypass for UID $uid"
+                                fi
+                            done
                         fi
                     else
                         log Warn "App blacklist mode enabled but no bypass apps configured"
@@ -1180,15 +1188,7 @@ setup_proxy_chain() {
                     else
                         log Warn "App whitelist mode enabled but no proxy apps configured"
                     fi
-                    if [ -n "$BYPASS_APPS_LIST" ]; then
-                        uids=$(find_packages_uid $BYPASS_APPS_LIST)
-                        if [ $? -eq 0 ] && [ -n "$uids" ]; then
-                            for uid in $uids; do
-                                if [ -n "$uid" ]; then
-                                    $cmd -t "$table" -A "APP_CHAIN$suffix" -m owner --uid-owner "$uid" -j ACCEPT
-                                    log Info "Added bypass for UID $uid"
-                                fi
-$cmd -t "$table" -A "APP_CHAIN$suffix" -j ACCEPT
+                    $cmd -t "$table" -A "APP_CHAIN$suffix" -j ACCEPT
                     ;;
             esac
         else
