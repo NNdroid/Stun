@@ -8,7 +8,10 @@
 # 而症状都表现为"SSH 连不上"，很难定位。
 #
 # 用法（需要 root shell 或 adb shell su）：
-#     sh sockmark_probe.sh <app_pid> [mark]
+#     sh sockmark_probe.sh [app_pid|包名] [mark]
+#
+# app_pid 可省略：省略时自动用包名反查（默认 app.fjj.stun）。真机验证时通常
+# 就是忘了 pid —— 让脚本自己去 /proc 扫，比手动 `adb shell pidof` 顺手。
 #
 # 它做四件事，每件都独立报告：
 #   1. 内核是否支持 pidfd（pidfd_open / pidfd_getfd，Linux 5.6+）
@@ -16,13 +19,13 @@
 #   3. sockmark 二进制能否启动、协议是否正常（PING / MARK / 未知命令）
 #   4. 对着一个**真实的 socket fd** 设 mark，并用 SO_MARK 回读验证真的写进去了
 #
-# 预期：全部 PASS。任一 FAIL 就不要接 B 方案，退回按目标地址 bypass 的做法。
+# 预期：全部 PASS。任一 FAIL 就不要接 B 方案，退回按 uid 放行的做法。
 #
 # ⚠️ 本脚本只做验证，不修改任何系统状态（不改 iptables、不建隧道）。
 # ============================================================================
 
-APP_PID=$1
 MARK=${2:-0x5354}
+PKG=app.fjj.stun
 PROBE_DIR=/data/local/tmp
 SOCKMARK_BIN=$PROBE_DIR/sockmark
 
@@ -33,13 +36,36 @@ ok()   { echo "  [PASS] $1"; PASS=$((PASS+1)); }
 bad()  { echo "  [FAIL] $1"; FAIL=$((FAIL+1)); }
 info() { echo "  [INFO] $1"; }
 
+# ── pid 解析：数字直接用；否则当包名反查 ──────────────────────────────────────
+# 找不到时在 /proc 下逐个读 cmdline 兜底（pidof 在部分 ROM 上不可用）。
+resolve_pid() {
+    case "$1" in
+        ''|*[!0-9]*) ;;
+        *) echo "$1"; return 0 ;;
+    esac
+    local pid
+    pid=$(pidof "$1" 2>/dev/null | awk '{print $1}')
+    [ -n "$pid" ] && { echo "$pid"; return 0; }
+    for d in /proc/[0-9]*; do
+        if [ "$(cat "$d/cmdline" 2>/dev/null | tr '\0' ' ')" = "$1 " ] ||
+           grep -qs "$1" "$d/cmdline" 2>/dev/null; then
+            echo "${d#/proc/}"; return 0
+        fi
+    done
+    return 1
+}
+
+APP_PID=$(resolve_pid "${1:-$PKG}")
+
 echo "=============================================="
 echo " sockmark probe  app_pid=$APP_PID mark=$MARK"
 echo "=============================================="
 
 # ---------------------------------------------------------------- 前置检查
 if [ -z "$APP_PID" ]; then
-    echo "用法: sh sockmark_probe.sh <app_pid> [mark]"
+    echo "  [FAIL] 找不到 Stun 进程。请先启动 App，或显式传 pid："
+    echo "        adb shell pidof $PKG"
+    echo "用法: sh sockmark_probe.sh [app_pid|包名] [mark]"
     exit 2
 fi
 if [ ! -d "/proc/$APP_PID" ]; then
@@ -84,10 +110,24 @@ fi
 echo ""
 echo "[3/4] sockmark 二进制与协议"
 if [ ! -x "$SOCKMARK_BIN" ]; then
+    # 先自己找：App 部署 sockmark 的目标是 cacheDir（AppBootstrap 那条链），
+    # 所以直接从 /proc/<pid>/fd 之外按已知路径捞。手写 cacheDir 路径那一步
+    # 是整个验证流程里最容易出错、也最没必要手写的一步。
+    for cand in \
+        "/data/data/$PKG/cache/sockmark" \
+        "/data/user/0/$PKG/cache/sockmark"
+    do
+        if [ -f "$cand" ]; then
+            cp -f "$cand" "$SOCKMARK_BIN" 2>/dev/null && chmod +x "$SOCKMARK_BIN" 2>/dev/null
+            [ -x "$SOCKMARK_BIN" ] && { info "已从 $cand 自动取到二进制"; break; }
+        fi
+    done
+fi
+if [ ! -x "$SOCKMARK_BIN" ]; then
     bad "找不到可执行的 $SOCKMARK_BIN"
-    echo "        从 app 的 cacheDir 拷一份过来："
-    echo "        adb shell \"su -c 'cp <cacheDir>/sockmark $SOCKMARK_BIN'\""
-    echo "        然后 chmod +x $SOCKMARK_BIN"
+    echo "        App 会把它部署到 cacheDir。若上面没捞到（多用户/工作资料场景路径不同），"
+    echo "        手动执行："
+    echo "        adb shell \"su -c 'cp <cacheDir>/sockmark $SOCKMARK_BIN && chmod +x $SOCKMARK_BIN'\""
     exit 1
 fi
 

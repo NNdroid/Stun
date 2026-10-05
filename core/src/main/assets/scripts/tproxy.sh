@@ -154,10 +154,18 @@ log() {
         timestamp="$(date +"%Y-%m-%d %H:%M:%S") "
     fi
 
-    if [ -t 2 ]; then
-        printf "%b\n" "${color_code}${timestamp}[${level}]: ${message}\033[0m" >&2
+    # 按级别分流：只有 Warn/Error 属于「出事了」，走 stderr；Debug/Info 是正常
+    # 流程，走 stdout。两个流都必须这样才说得通 —— App 侧（RootShell）按 fd 定级，
+    # 全都写 stderr 会把每条 [Info] 都打成 ERROR，真报错反而被淹没。
+    local out_fd=2
+    if [ "$level" = "Debug" ] || [ "$level" = "Info" ]; then
+        out_fd=1
+    fi
+
+    if [ -t "$out_fd" ]; then
+        printf "%b\n" "${color_code}${timestamp}[${level}]: ${message}\033[0m" >&"$out_fd"
     else
-        printf "%s\n" "${timestamp}[${level}]: ${message}" >&2
+        printf "%s\n" "${timestamp}[${level}]: ${message}" >&"$out_fd"
     fi
 }
 
@@ -1155,6 +1163,26 @@ setup_proxy_chain() {
                     $cmd -t "$table" -A "APP_CHAIN$suffix" -j RETURN
                     ;;
                 whitelist)
+                    # ⚠️ bypass 优先于 proxy 名单。App 侧在 SO_MARK 不可用时会把
+                    # **自己**写进 BYPASS_APPS_LIST：此时隧道 socket 只能按 uid 放行，
+                    # 而同一 uid 下无法区分 App 的其他 socket，所以整个 App 必须直连。
+                    # 这条必须排在 PROXY_APPS_LIST 的 `-j RETURN` **之前**：
+                    #  - 放前面 ⇒ 自己命中 ACCEPT（终止遍历=直连），名单内应用照旧 RETURN；
+                    #  - 放后面 ⇒ 自己先命中 RETURN，继续往下走，最终被 PROXY_OUTPUT 链尾
+                    #    的 REDIRECT 抓回本地 socks5 ⇒ **隧道死循环**。
+                    # 加之前本分支完全不读 BYPASS_APPS_LIST，导致 whitelist 模式下
+                    # uid 放行无任何承载者。
+                    if [ -n "$BYPASS_APPS_LIST" ]; then
+                        uids=$(find_packages_uid $BYPASS_APPS_LIST)
+                        if [ $? -eq 0 ] && [ -n "$uids" ]; then
+                            for uid in $uids; do
+                                if [ -n "$uid" ]; then
+                                    $cmd -t "$table" -A "APP_CHAIN$suffix" -m owner --uid-owner "$uid" -j ACCEPT
+                                    log Info "Added bypass for UID $uid (takes precedence in whitelist mode)"
+                                fi
+                            done
+                        fi
+                    fi
                     if [ -n "$PROXY_APPS_LIST" ]; then
                         uids=$(find_packages_uid $PROXY_APPS_LIST)
                         if [ $? -eq 0 ] && [ -n "$uids" ]; then
