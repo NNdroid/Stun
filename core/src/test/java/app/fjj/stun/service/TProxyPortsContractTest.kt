@@ -5,6 +5,7 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
+import java.nio.file.Files
 
 /**
  * 端口契约。
@@ -113,35 +114,74 @@ class TProxyPortsContractTest {
 
     @Test
     fun noSourceFileHardcodesTheStalePorts() {
-        // 兜底扫描：曾经错误的 1080 / 53 不该再以字面量形式出现在 util 包里。
-        // 用文件级扫描而不是编译期检查，是因为这些常量是 `private const`，
-        // 类型系统看不见它们的值 —— 只有文本扫描能抓住"复制一份新副本"这个动作。
+        // 兜底扫描：曾经错误的 1080 / 53 不该再以字面量形式出现在**任何模块**的生产代码里。
+        //
+        // 扫两种形态：
+        //  - `SOCKS_PORT = 1080` / `DNS_PORT = 53`：私藏一份常量的老写法（util 包里的初犯）。
+        //  - `..., 1080, 53`：把错值当**位置参数**传给 buildMySshConfig。这种写法在 app / tv /
+        //    car / xr 四个 UI 模块各复制了一份 —— 参数类型是 Int，1080 与 10808 编译起来毫无
+        //    区别，只有文本扫描能抓住。
+        //
+        // 按模块目录递归扫而不是列文件白名单：白名单会让"新加一个模块、顺手复制一份老代码"
+        // 悄悄绕过检查。因此这里枚举仓库根下所有带 src/main 的模块。
+        //
+        // 只扫 src/main：`app/src/androidTest` 的 VpnConfigBuilderTest 是**故意**传 1080/53 并
+        // 断言 `"127.0.0.1:1080"`，它在验证端口参数被正确透传，属于参数化测试而非遗留副本。
         //
         // 断言必须真的执行：早先用 classLoader 读源码，读不到时 `return@forEach`
-        // 静默跳过，测试照样 pass —— 那等于什么都没检查。找不到文件要 error。
-        val utilDir = locateSourceDir("core/src/main/java/app/fjj/stun/util")
-            ?: error("util source dir not found walking up from ${File("").absolutePath}")
+        // 静默跳过，测试照样 pass —— 那等于什么都没检查。找不到仓库根要 error。
+        val repoRoot = locateRepoRoot()
+            ?: error("repo root not found walking up from ${File("").absolutePath}")
+        val modules = repoRoot.listFiles()
+            ?.filter { it.isDirectory && File(it, "src/main").isDirectory }
+            .orEmpty()
+        val required = listOf("app", "core", "tv", "car", "xr")
+        assertTrue(
+            "expected production modules not found under $repoRoot: " +
+                required.filterNot { modules.any { m -> m.name == it } },
+            required.all { name -> modules.any { it.name == name } },
+        )
+
+        val staleAssignment = Regex("""(SOCKS|DNS)_PORT\s*=\s*(1080|53)\b""")
+        val stalePositional = Regex("""\b1080\s*,\s*53\b|\b53\s*,\s*1080\b""")
         val offenders = mutableListOf<String>()
         var scanned = 0
-        listOf("LatencyProber.kt", "SpeedTestManager.kt").forEach { name ->
-            val file = File(utilDir, name)
-            assertTrue("expected $name to exist at $file", file.isFile)
-            scanned++
-            file.readLines().forEachIndexed { i, line ->
-                // 排除注释行：KDoc 里会说明"原值 1080/53 是错的"，那正是要保留的说明。
-                val code = line.trimStart().removePrefix("//").trimStart()
-                if (code.startsWith("*") || code.startsWith("/*") || code.startsWith("#")) {
-                    return@forEachIndexed
+        for (module in modules) {
+            Files.walk(File(module, "src/main").toPath()).use { walk ->
+                for (entry in walk.iterator().asSequence()
+                    .filter { it.toFile().isFile && it.fileName.toString().endsWith(".kt") }) {
+                    scanned++
+                    val rel = repoRoot.toPath().relativize(entry).toString().replace('\\', '/')
+                    entry.toFile().readLines().forEachIndexed { i, line ->
+                        // 排除注释行：KDoc 里会说明"原值 1080/53 是错的"，那正是要保留的说明。
+                        val code = line.trimStart().removePrefix("//").trimStart()
+                        if (code.startsWith("*") || code.startsWith("/*") || code.startsWith("#")) {
+                            return@forEachIndexed
+                        }
+                        if (staleAssignment.containsMatchIn(code) || stalePositional.containsMatchIn(code)) {
+                            offenders += "$rel:${i + 1}  $code"
+                        }
+                    }
                 }
-                val bad = Regex("""(SOCKS|DNS)_PORT\s*=\s*(1080|53)\b""").containsMatchIn(code)
-                if (bad) offenders += "$name:${i + 1}  $code"
             }
         }
-        assertEquals("expected to scan both probe files", 2, scanned)
+        assertTrue("expected to scan production kt files under every module", scanned > 100)
         assertTrue(
             "stale hardcoded ports reintroduced:\n" + offenders.joinToString("\n"),
             offenders.isEmpty(),
         )
+    }
+
+    /** 从当前工作目录逐级上溯，找到仓库根（第一个含 settings.gradle[.kts] 的目录）。 */
+    private fun locateRepoRoot(): File? {
+        var dir: File? = File("").absoluteFile
+        while (dir != null) {
+            if (File(dir, "settings.gradle.kts").isFile || File(dir, "settings.gradle").isFile) {
+                return dir
+            }
+            dir = dir.parentFile
+        }
+        return null
     }
 
     /** 从当前工作目录逐级上溯，找到第一个存在的相对路径。 */

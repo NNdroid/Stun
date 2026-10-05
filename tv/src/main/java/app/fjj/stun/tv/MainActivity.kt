@@ -494,7 +494,7 @@ class MainActivity : FragmentActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val reqArray = JSONArray()
-                val configJson = VpnConfigBuilder.buildMySshConfig(this@MainActivity, profile, 1080, 53)
+                val configJson = VpnConfigBuilder.buildMySshConfig(this@MainActivity, profile)
                 reqArray.put(JSONObject().put("id", profile.id).put("config", JSONObject(configJson)))
                 val jsonResStr = StunRepository.proxy.pingNodes(
                     reqArray.toString(),
@@ -821,7 +821,7 @@ class MainActivity : FragmentActivity() {
             try {
                 val reqArray = JSONArray()
                 profiles.forEach { p ->
-                    val configJson = VpnConfigBuilder.buildMySshConfig(this@MainActivity, p, 1080, 53)
+                    val configJson = VpnConfigBuilder.buildMySshConfig(this@MainActivity, p)
                     reqArray.put(JSONObject().put("id", p.id).put("config", JSONObject(configJson)))
                 }
                 // 与手机端“选定/全部节点测速”方法论完全一致：同一目标、同一超时

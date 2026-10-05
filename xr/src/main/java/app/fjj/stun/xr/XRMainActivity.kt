@@ -236,7 +236,7 @@ class XRMainActivity : AppCompatActivity() {
             try {
                 val reqArray = JSONArray()
                 profiles.forEach { p ->
-                    val configJson = VpnConfigBuilder.buildMySshConfig(this@XRMainActivity, p, 1080, 53)
+                    val configJson = VpnConfigBuilder.buildMySshConfig(this@XRMainActivity, p)
                     reqArray.put(JSONObject().put("id", p.id).put("config", JSONObject(configJson)))
                 }
                 val jsonResStr = StunRepository.proxy.pingNodes(reqArray.toString(), "http://cp.cloudflare.com/generate_204", 8000L)
