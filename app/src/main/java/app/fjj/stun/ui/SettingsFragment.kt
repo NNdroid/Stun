@@ -715,13 +715,19 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
         binding.etWebdavPass.setText(SettingsManager.getWebDavPass(ctx))
         binding.etWebdavPin.setText(SettingsManager.getWebDavPin(ctx))
         binding.etWebdavInterval.setText(SettingsManager.getWebDavBackupIntervalHours(ctx).toString())
-        binding.switchWebdavAuto.isChecked = SettingsManager.isWebDavAutoBackupEnabled(ctx)
         binding.etWebdavPrefix.setText(SettingsManager.getWebDavPrefix(ctx))
 
-        // 回填期间屏蔽监听：否则程序化 setChecked 会触发一次多余的落盘
-        val sections = SettingsManager.getWebDavSyncSections(ctx)
+        // 回填期间屏蔽监听 —— 覆盖**整个**卡片，不只是分区复选框：
+        // 曾经只挡住分区复选框，而上面那行自动备份开关的赋值依然触发
+        // setOnCheckedChangeListener → saveWebDavConfigIfComplete() →
+        // captureWebDavSyncSections() 读到的还是**尚未回填**的三个复选框（XML 默认全未勾选）
+        // ⇒ 每次打开设置页都把空选集落盘，用户上次保存的勾选当场被清 ——
+        // 症状正是「同步内容勾选无法保存、重开回显默认」。回填绝不允许落盘。
         isLoadingWebDavSections = true
         try {
+            binding.switchWebdavAuto.isChecked = SettingsManager.isWebDavAutoBackupEnabled(ctx)
+
+            val sections = SettingsManager.getWebDavSyncSections(ctx)
             binding.cbWebdavSectionSettings.isChecked = SettingsBackupSection.id in sections
             binding.cbWebdavSectionSubscription.isChecked = SubscriptionBackupSection.id in sections
             binding.cbWebdavSectionSubscriptionUsage.isChecked = SubscriptionUsageBackupSection.id in sections
@@ -1047,10 +1053,18 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
 
     private var webDavJob: kotlinx.coroutines.Job? = null
 
-    /** fillWebDavUi 回填期间置位：程序化 setChecked 也会触发监听，那时不该回头落盘一次。 */
+    /**
+     * fillWebDavUi 回填期间置位：程序化 setChecked 也会触发监听，那时不该回头落盘一次。
+     * 必须覆盖**整个 WebDAV 卡片**的回填 —— 自动备份开关的监听链
+     * （setWebDavAutoBackup → saveWebDavConfigIfComplete → captureWebDavSyncSections）
+     * 会读三个分区复选框的即时状态并落盘，回填中途被它读到就是「打开设置页即清空勾选」。
+     */
     private var isLoadingWebDavSections = false
 
     private fun setWebDavAutoBackup(enabled: Boolean) {
+        // fillWebDavUi 回填 switchWebdavAuto 时的程序化触发：只是把持久值画回界面，
+        // 不是用户操作 —— 此时落盘会把「尚未回填的分区复选框」当成用户的最新选择存进去。
+        if (isLoadingWebDavSections) return
         saveWebDavConfigIfComplete()
         SettingsManager.setWebDavAutoBackup(requireContext().applicationContext, enabled)
         app.fjj.stun.worker.WebDavBackupWorker.schedule(requireContext().applicationContext)
@@ -1094,9 +1108,20 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
 
     private fun captureFormState(): String {
         val values = mutableListOf<String>()
+        // 「同步内容」四个复选框与自动备份开关是**勾选即落盘**的即时持久化控件：
+        // 不参与未保存判定 —— 否则用户勾完按返回就会被「有未保存的更改」误导
+        // （勾选本身已经存进设备态库，退出并不丢弃任何东西）。
+        val autoSavedIds = setOf(
+            R.id.cb_webdav_section_profiles,
+            R.id.cb_webdav_section_settings,
+            R.id.cb_webdav_section_subscription,
+            R.id.cb_webdav_section_subscription_usage,
+            R.id.switch_webdav_auto,
+        )
         fun collect(view: View) {
             when (view) {
-                is android.widget.CompoundButton -> values += "${view.id}:checked=${view.isChecked}"
+                is android.widget.CompoundButton ->
+                    if (view.id !in autoSavedIds) values += "${view.id}:checked=${view.isChecked}"
                 is android.widget.EditText -> values += "${view.id}:text=${view.text}"
             }
             if (view is android.view.ViewGroup) {
