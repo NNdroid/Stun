@@ -320,8 +320,8 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
         binding.switchDnsOverride.setOnCheckedChangeListener { _, isChecked -> binding.layoutDnsOverride.isVisible = isChecked }
         binding.switchAuthRequired.setOnCheckedChangeListener { _, _ -> updateProxyAuthVisibility(); if (!bindingInProgress) applyLiveErrors(null) }
         binding.switchAppFilterOverride.setOnCheckedChangeListener { _, isChecked -> binding.layoutAppFilterOverride.isVisible = isChecked }
-        binding.switchVerifySshFingerprint.setOnCheckedChangeListener { _, isChecked -> binding.layoutSshFingerprint.isVisible = isChecked; if (!bindingInProgress) applyLiveErrors(setOf(FieldKey.SSH_FINGERPRINT)) }
-        binding.switchVerifyCertFingerprint.setOnCheckedChangeListener { _, isChecked -> binding.layoutCertFingerprint.isVisible = isChecked; if (!bindingInProgress) applyLiveErrors(setOf(FieldKey.CERT_FINGERPRINT)) }
+        binding.switchVerifySshFingerprint.setOnCheckedChangeListener { _, isChecked -> binding.layoutSshFingerprint.isVisible = isChecked; binding.layoutSshFpActions.isVisible = isChecked; if (!bindingInProgress) applyLiveErrors(setOf(FieldKey.SSH_FINGERPRINT)) }
+        binding.switchVerifyCertFingerprint.setOnCheckedChangeListener { _, isChecked -> binding.layoutCertFingerprint.isVisible = isChecked; binding.layoutCertFpActions.isVisible = isChecked; if (!bindingInProgress) applyLiveErrors(setOf(FieldKey.CERT_FINGERPRINT)) }
         binding.spinnerDnsRecordType.setOnItemClickListener { _, _, _, _ -> if (!bindingInProgress) applyLiveErrors(setOf(FieldKey.DNS_RECORD_TYPE)) }
         binding.switchEnableCustomPath.setOnCheckedChangeListener { _, _ -> updateUIBasedOnSettings() }
 
@@ -580,10 +580,12 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
 
             switchVerifySshFingerprint.isChecked = profile.verifyFingerprint
             layoutSshFingerprint.isVisible = profile.verifyFingerprint
+            layoutSshFpActions.isVisible = profile.verifyFingerprint
             etSshFingerprint.setText(profile.serverFingerprint)
 
             switchVerifyCertFingerprint.isChecked = profile.verifyCertFingerprint
             layoutCertFingerprint.isVisible = profile.verifyCertFingerprint
+            layoutCertFpActions.isVisible = profile.verifyCertFingerprint
             etCertFingerprint.setText(profile.serverCertFingerprint)
 
             binding.switchTunnelTls.isChecked = profile.tunnelTlsEnabled
@@ -768,6 +770,8 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
 
             layoutRowVerifyCertFingerprint.isVisible = tlsActive
             layoutCertFingerprint.isVisible = tlsActive && switchVerifyCertFingerprint.isChecked
+            // 详情/获取按钮行与指纹输入框同一开关、同一 TLS 门控，显隐保持一致
+            layoutCertFpActions.isVisible = tlsActive && switchVerifyCertFingerprint.isChecked
         }
         if (!bindingInProgress) applyLiveErrors(null)
     }

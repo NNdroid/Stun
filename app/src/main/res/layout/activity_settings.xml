@@ -193,7 +193,7 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Section: UDP Gateway —— 区块头 + 实现双选卡 + 地址子卡 + 小提示子卡（参照效果图）。
+            <!-- Section: UDP Gateway —— 区块头 + 实现/地址/会话限制三块平铺内容（无子卡嵌套）。
                  card_udpgw_section 是预览测试的锚点（外层卡自身，别挂在子卡内的视图上）。 -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_udpgw_section"
@@ -250,66 +250,33 @@
                         </LinearLayout>
                     </LinearLayout>
 
-                    <!-- 子卡：UDP 网关实现（双选卡，交互与「应用分流」过滤模式一致） -->
-                    <com.google.android.material.card.MaterialCardView
-                        style="?attr/materialCardViewFilledStyle"
-                        android:layout_width="match_parent"
+                    <!-- 2026-10 版式：按用户反馈压平 —— 小节卡里不再套子卡（两层 card 堆叠），
+                         实现 / 地址 / 会话限制三块内容直接铺在小节卡里，子卡头部的徽标图标一并去掉。
+                         唯一保留的嵌套卡是下面两张可点选的 radio 选择卡
+                         （card_udpgw_tun2proxy / card_udpgw_badvpn，交互与「应用分流」过滤模式一致）。 -->
+
+                    <!-- UDP 网关实现：标签 + 描述 + 双选卡 -->
+                    <TextView
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="@dimen/space_4"
-                        app:cardBackgroundColor="?attr/colorSurfaceContainer"
-                        app:cardCornerRadius="@dimen/corner_md"
-                        app:strokeWidth="0dp">
+                        android:text="@string/udpgw_impl_title"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:textStyle="bold" />
 
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:padding="@dimen/space_3">
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_1"
+                        android:text="@string/udpgw_impl_desc"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
 
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:gravity="center_vertical"
-                                android:orientation="horizontal">
-
-                                <ImageView
-                                    android:layout_width="@dimen/badge_size"
-                                    android:layout_height="@dimen/badge_size"
-                                    android:background="@drawable/bg_icon_badge"
-                                    android:contentDescription="@null"
-                                    android:padding="@dimen/space_2"
-                                    android:src="@drawable/ic_server"
-                                    app:tint="?attr/colorOnSecondaryContainer" />
-
-                                <LinearLayout
-                                    android:layout_width="0dp"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginStart="@dimen/space_3"
-                                    android:layout_weight="1"
-                                    android:orientation="vertical">
-
-                                    <TextView
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:text="@string/udpgw_impl_title"
-                                        android:textAppearance="?attr/textAppearanceBodyLarge"
-                                        android:textStyle="bold" />
-
-                                    <TextView
-                                        android:layout_width="match_parent"
-                                        android:layout_height="wrap_content"
-                                        android:layout_marginTop="@dimen/space_1"
-                                        android:text="@string/udpgw_impl_desc"
-                                        android:textAppearance="?attr/textAppearanceBodySmall"
-                                        android:textColor="?attr/colorOnSurfaceVariant" />
-                                </LinearLayout>
-                            </LinearLayout>
-
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="@dimen/space_3"
-                                android:orientation="horizontal">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_2"
+                        android:orientation="horizontal">
 
                                 <com.google.android.material.card.MaterialCardView
                                     android:id="@+id/card_udpgw_tun2proxy"
@@ -395,70 +362,30 @@
                                     </LinearLayout>
                                 </com.google.android.material.card.MaterialCardView>
                             </LinearLayout>
-                        </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
 
-                    <!-- 子卡：UDP 网关地址 -->
-                    <com.google.android.material.card.MaterialCardView
-                        style="?attr/materialCardViewFilledStyle"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/space_3"
-                        app:cardBackgroundColor="?attr/colorSurfaceContainer"
-                        app:cardCornerRadius="@dimen/corner_md"
-                        app:strokeWidth="0dp">
+                            <!-- UDP 网关地址：标签 + 描述 + 输入 + 小提示 -->
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/space_4"
+                                android:labelFor="@+id/et_udpgw_addr"
+                                android:text="@string/udpgw_addr"
+                                android:textAppearance="?attr/textAppearanceBodyLarge"
+                                android:textStyle="bold" />
 
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:padding="@dimen/space_3">
-
-                            <LinearLayout
+                            <TextView
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:gravity="center_vertical"
-                                android:orientation="horizontal">
-
-                                <ImageView
-                                    android:layout_width="@dimen/badge_size"
-                                    android:layout_height="@dimen/badge_size"
-                                    android:background="@drawable/bg_icon_badge"
-                                    android:contentDescription="@null"
-                                    android:padding="@dimen/space_2"
-                                    android:src="@drawable/ic_server"
-                                    app:tint="?attr/colorOnSecondaryContainer" />
-
-                                <LinearLayout
-                                    android:layout_width="0dp"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginStart="@dimen/space_3"
-                                    android:layout_weight="1"
-                                    android:orientation="vertical">
-
-                                    <TextView
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:labelFor="@+id/et_udpgw_addr"
-                                        android:text="@string/udpgw_addr"
-                                        android:textAppearance="?attr/textAppearanceBodyLarge"
-                                        android:textStyle="bold" />
-
-                                    <TextView
-                                        android:layout_width="match_parent"
-                                        android:layout_height="wrap_content"
-                                        android:layout_marginTop="@dimen/space_1"
-                                        android:text="@string/udpgw_addr_desc"
-                                        android:textAppearance="?attr/textAppearanceBodySmall"
-                                        android:textColor="?attr/colorOnSurfaceVariant" />
-                                </LinearLayout>
-                            </LinearLayout>
+                                android:layout_marginTop="@dimen/space_1"
+                                android:text="@string/udpgw_addr_desc"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
 
                             <com.google.android.material.textfield.TextInputLayout
                                 style="?attr/textInputOutlinedStyle"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="@dimen/space_3"
+                                android:layout_marginTop="@dimen/space_2"
                                 app:endIconMode="clear_text">
                                 <com.google.android.material.textfield.TextInputEditText
                                     android:id="@+id/et_udpgw_addr"
@@ -493,69 +420,29 @@
                                     android:textAppearance="?attr/textAppearanceBodySmall"
                                     android:textColor="?attr/colorOnSurfaceVariant" />
                             </LinearLayout>
-                        </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
 
-                    <!-- 子卡：UDP 会话限制 -->
-                    <com.google.android.material.card.MaterialCardView
-                        style="?attr/materialCardViewFilledStyle"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/space_3"
-                        app:cardBackgroundColor="?attr/colorSurfaceContainer"
-                        app:cardCornerRadius="@dimen/corner_md"
-                        app:strokeWidth="0dp">
+                            <!-- UDP 会话限制：标签 + 描述 + 两个输入 -->
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/space_4"
+                                android:text="@string/udpgw_session_title"
+                                android:textAppearance="?attr/textAppearanceBodyLarge"
+                                android:textStyle="bold" />
 
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:padding="@dimen/space_3">
-
-                            <LinearLayout
+                            <TextView
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:gravity="center_vertical"
-                                android:orientation="horizontal">
-
-                                <ImageView
-                                    android:layout_width="@dimen/badge_size"
-                                    android:layout_height="@dimen/badge_size"
-                                    android:background="@drawable/bg_icon_badge"
-                                    android:contentDescription="@null"
-                                    android:padding="@dimen/space_2"
-                                    android:src="@drawable/ic_schedule"
-                                    app:tint="?attr/colorOnSecondaryContainer" />
-
-                                <LinearLayout
-                                    android:layout_width="0dp"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginStart="@dimen/space_3"
-                                    android:layout_weight="1"
-                                    android:orientation="vertical">
-
-                                    <TextView
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:text="@string/udpgw_session_title"
-                                        android:textAppearance="?attr/textAppearanceBodyLarge"
-                                        android:textStyle="bold" />
-
-                                    <TextView
-                                        android:layout_width="match_parent"
-                                        android:layout_height="wrap_content"
-                                        android:layout_marginTop="@dimen/space_1"
-                                        android:text="@string/udpgw_session_desc"
-                                        android:textAppearance="?attr/textAppearanceBodySmall"
-                                        android:textColor="?attr/colorOnSurfaceVariant" />
-                                </LinearLayout>
-                            </LinearLayout>
+                                android:layout_marginTop="@dimen/space_1"
+                                android:text="@string/udpgw_session_desc"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
 
                             <com.google.android.material.textfield.TextInputLayout
                                 style="?attr/textInputOutlinedStyle"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="@dimen/space_3"
+                                android:layout_marginTop="@dimen/space_2"
                                 android:hint="@string/udp_max_sessions"
                                 app:startIconDrawable="@drawable/ic_port"
                                 app:helperText="@string/udp_max_sessions_helper">
@@ -586,8 +473,6 @@
                                     android:inputType="number"
                                     android:contentDescription="@string/desc_udp_idle_timeout_input" />
                             </com.google.android.material.textfield.TextInputLayout>
-                        </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -963,6 +848,98 @@
                             android:layout_height="wrap_content"
                             android:inputType="none" />
                     </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- 备份前缀：非空时云端目录名变成 <前缀>_<时间戳>；已有备份保持原样 -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="?attr/textInputOutlinedStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:hint="@string/webdav_prefix_label"
+                        app:helperText="@string/webdav_prefix_helper"
+                        app:endIconMode="clear_text"
+                        app:startIconDrawable="@drawable/ic_label">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_webdav_prefix"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:imeOptions="actionNext"
+                            android:inputType="text"
+                            android:maxLength="24"
+                            android:singleLine="true" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- 同步内容：节点恒定参与（勾选且禁用，不可取消），其余三类自由勾选。
+                         不套独立卡片 —— 它们和上面的字段同属一份 WebDAV 配置，
+                         拆开反而会让人以为"同步内容"是另一套独立的设置。 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/webdav_sections_title"
+                            android:textAppearance="?attr/textAppearanceTitleSmall"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_1"
+                            android:alpha="0.7"
+                            android:text="@string/webdav_sections_helper"
+                            android:textAppearance="?attr/textAppearanceBodySmall" />
+
+                        <!-- 一行两个：四个选项都不长，竖排四行把 WebDAV 卡片撑得很难看。
+                             列数写死 2 而不是自己数标签长度：字号放大时 GridLayout 自动折成
+                             两列，横向也溢不出去。列宽用 wrap_content + columnWeight 平摊，
+                             保证 checkbox + 文案永不被截断 -->
+                        <android.widget.GridLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_2"
+                            android:columnCount="2"
+                            android:orientation="horizontal"
+                            android:useDefaultMargins="false">
+
+                            <com.google.android.material.checkbox.MaterialCheckBox
+                                android:id="@+id/cb_webdav_section_profiles"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_columnWeight="1"
+                                android:layout_gravity="start"
+                                android:checked="true"
+                                android:enabled="false"
+                                android:text="@string/webdav_section_profiles" />
+
+                            <com.google.android.material.checkbox.MaterialCheckBox
+                                android:id="@+id/cb_webdav_section_settings"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_columnWeight="1"
+                                android:layout_gravity="start"
+                                android:text="@string/webdav_section_settings" />
+
+                            <com.google.android.material.checkbox.MaterialCheckBox
+                                android:id="@+id/cb_webdav_section_subscription"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_columnWeight="1"
+                                android:layout_gravity="start"
+                                android:text="@string/webdav_section_subscription" />
+
+                            <com.google.android.material.checkbox.MaterialCheckBox
+                                android:id="@+id/cb_webdav_section_subscription_usage"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_columnWeight="1"
+                                android:layout_gravity="start"
+                                android:text="@string/webdav_section_subscription_usage" />
+                        </android.widget.GridLayout>
+                    </LinearLayout>
 
                     <!-- Footer：上次备份 + 操作按钮，包一层内嵌子卡片做出「页脚」层次 -->
                     <com.google.android.material.card.MaterialCardView
@@ -1439,8 +1416,10 @@
             </com.google.android.material.card.MaterialCardView>
 
             <!-- Section: Database WebUI (:dbwebui module)
-                 同上：与卡片标题重复的小节标签已删除，小节间距移到卡片自身。 -->
+                 同上：与卡片标题重复的小节标签已删除，小节间距移到卡片自身。
+                 仅 debug 构建展示（SettingsFragment 按 BuildConfig.DEBUG 控制可见性）。 -->
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_db_web_section"
                 style="?attr/materialCardViewFilledStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

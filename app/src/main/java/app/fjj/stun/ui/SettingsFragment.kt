@@ -27,6 +27,10 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import androidx.fragment.app.viewModels
+import app.fjj.stun.BuildConfig
+import app.fjj.stun.backup.SettingsBackupSection
+import app.fjj.stun.backup.SubscriptionBackupSection
+import app.fjj.stun.backup.SubscriptionUsageBackupSection
 import app.fjj.stun.R
 import app.fjj.stun.core.R as CoreR
 import app.fjj.stun.databinding.ActivitySettingsBinding
@@ -75,6 +79,10 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // :dbwebui 仅 debug 构建启用 —— release 整块隐藏（开关/端口/凭据都不暴露给正式包用户）；
+        // 服务端 StunApp 与 DbWebServer 自身也按 BuildConfig.DEBUG 门控。
+        binding.cardDbWebSection.isVisible = BuildConfig.DEBUG
+
         // Initialize resource-dependent arrays
         serviceModes = arrayOf(
             getString(CoreR.string.service_mode_vpn),
@@ -112,6 +120,11 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
         // 模式选完**立刻生效**：它决定定时任务的方向，也是主按钮的语义，
         // 不该等到点底栏"保存"才起作用（改完就走会让人以为没生效）。
         binding.spinnerWebdavSyncMode.setOnItemClickListener { _, _, position, _ -> onWebDavSyncModePicked(position) }
+        // 同步范围同理：它是"备份内容包含什么"的语义，改完就该立刻落盘。
+        // 节点行是禁用的（不可取消），永远不会触发监听。
+        binding.cbWebdavSectionSettings.setOnCheckedChangeListener { _, _ -> saveWebDavSectionSelection() }
+        binding.cbWebdavSectionSubscription.setOnCheckedChangeListener { _, _ -> saveWebDavSectionSelection() }
+        binding.cbWebdavSectionSubscriptionUsage.setOnCheckedChangeListener { _, _ -> saveWebDavSectionSelection() }
 
         binding.toolbar.setNavigationIcon(R.drawable.ic_back)
         binding.toolbar.setNavigationOnClickListener {
@@ -703,6 +716,21 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
         binding.etWebdavPin.setText(SettingsManager.getWebDavPin(ctx))
         binding.etWebdavInterval.setText(SettingsManager.getWebDavBackupIntervalHours(ctx).toString())
         binding.switchWebdavAuto.isChecked = SettingsManager.isWebDavAutoBackupEnabled(ctx)
+        binding.etWebdavPrefix.setText(SettingsManager.getWebDavPrefix(ctx))
+
+        // 回填期间屏蔽监听：否则程序化 setChecked 会触发一次多余的落盘
+        val sections = SettingsManager.getWebDavSyncSections(ctx)
+        isLoadingWebDavSections = true
+        try {
+            binding.cbWebdavSectionSettings.isChecked = SettingsBackupSection.id in sections
+            binding.cbWebdavSectionSubscription.isChecked = SubscriptionBackupSection.id in sections
+            binding.cbWebdavSectionSubscriptionUsage.isChecked = SubscriptionUsageBackupSection.id in sections
+            // 节点行恒定勾选（不可取消）：它的状态是布局里写死的，这里显式补一遍，
+            // 免得"从云端恢复了设置"之后被某个未设值的路径留成未勾选
+            binding.cbWebdavSectionProfiles.isChecked = true
+        } finally {
+            isLoadingWebDavSections = false
+        }
 
         val modes = webDavSyncModeValues()
         binding.spinnerWebdavSyncMode.setAdapter(
@@ -750,8 +778,25 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
             url = binding.etWebdavUrl.text.toString().trim(),
             user = binding.etWebdavUser.text.toString().trim(),
             pass = binding.etWebdavPass.text.toString(),
-            pin = binding.etWebdavPin.text.toString().trim()
+            pin = binding.etWebdavPin.text.toString().trim(),
+            prefix = binding.etWebdavPrefix.text.toString().trim(),
+            sections = captureWebDavSyncSections()
         )
+    }
+
+    /** 读当前三类分区的勾选状态；节点不参与（它恒定同步，不在可选项中）。 */
+    private fun captureWebDavSyncSections(): Set<String> {
+        val selected = mutableSetOf<String>()
+        if (binding.cbWebdavSectionSettings.isChecked) selected += SettingsBackupSection.id
+        if (binding.cbWebdavSectionSubscription.isChecked) selected += SubscriptionBackupSection.id
+        if (binding.cbWebdavSectionSubscriptionUsage.isChecked) selected += SubscriptionUsageBackupSection.id
+        return selected
+    }
+
+    /** 单个分区勾选变化后整体落盘（Set 不能增删单条，只能整组写）。 */
+    private fun saveWebDavSectionSelection() {
+        if (isLoadingWebDavSections) return
+        SettingsManager.saveWebDavSyncSections(requireContext().applicationContext, captureWebDavSyncSections())
     }
 
     /** 备份 PIN 最短长度：低于它的 PIN 在 PBKDF2 面前约等于没设，直接在字段上拦掉。 */
@@ -800,6 +845,9 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
         binding.etWebdavInterval.text.toString().toLongOrNull()?.let {
             SettingsManager.saveWebDavBackupIntervalHours(appCtx, it)
         }
+        // 前缀与同步范围同样不依赖配置是否齐全：它们描述的是"云端那份东西落哪、含什么"
+        SettingsManager.saveWebDavPrefix(appCtx, config.prefix)
+        SettingsManager.saveWebDavSyncSections(appCtx, config.sections ?: emptySet())
         app.fjj.stun.worker.WebDavBackupWorker.schedule(appCtx)
     }
 
@@ -998,6 +1046,9 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
     }
 
     private var webDavJob: kotlinx.coroutines.Job? = null
+
+    /** fillWebDavUi 回填期间置位：程序化 setChecked 也会触发监听，那时不该回头落盘一次。 */
+    private var isLoadingWebDavSections = false
 
     private fun setWebDavAutoBackup(enabled: Boolean) {
         saveWebDavConfigIfComplete()

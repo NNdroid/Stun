@@ -94,7 +94,11 @@ kotlin {
 
 dependencies {
     implementation(project(":core"))
-    
+
+    // 清单里声明的 rikka.shizuku.ShizukuProvider 类来自这个包。core 以 implementation
+    // 引入不对外可见 → tv 必须自己依赖（同 app），否则 lint MissingClass。
+    implementation(libs.rikka.shizuku.provider)
+
     // myssh: extracted classes.jar for compilation; slim AAR (native .so only)
     // for runtime. Avoids AGP duplicate-class and local-AAR-in-library errors.
     implementation(files("../core/libs/myssh-classes.jar"))

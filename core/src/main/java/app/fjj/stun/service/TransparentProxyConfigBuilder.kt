@@ -124,8 +124,13 @@ internal object TransparentProxyConfigBuilder {
             # 全部挤掉：多播地址落入 TPROXY 之后由 socks5 去直连，而 UDP 多播地址不能
             # connect()，于是每几秒刷一条 `[ROUTER-Direct] ❌ Failed to establish direct UDP:
             # dial udp [ff02::fb]:5353: connect: invalid argument`。
-            # 注意 tproxy.sh 对每个键都用 VAR:-DEFAULT 回退（缺键才取默认值）：
-            # 写成空串 `BYPASS_IPv4_LIST=""` 会真的空掉旁路表 —— 千万别用这种方式"留空"。
+            # 注意 tproxy.sh 对每个键都用 bash 的 VAR:-DEFAULT 回退 —— **空串也会取默认值**：
+            # 写成空串 BYPASS_IPv4_LIST="" 取到的是默认全表而不是空表，本生成器对 IP 旁路表
+            # 的"留空"方式是**整键不写**。APPS_LIST 的空串同样会落回默认（DEFAULT_BYPASS 里
+            # 是 App 自己 = uid 粒度防回环的最后防线）—— 这是**刻意**的：SO_MARK 会死、
+            # BYPASS_DST 可能对域名型服务端失配，只有 uid 旁路从不失效。2026-10 曾试图让
+            # 空串保持为空（App 自身流量进隧道），在 mark 已死的设备上直接回环、服务端连不上，
+            # 已回滚。App 自身流量的代理通道是显式走本地 SOCKS5（ExitIpProbe.contextAwareFetch）。
             PROXY_IPV6=1
             APP_PROXY_ENABLE=1
             APP_PROXY_MODE=${if (isAllowList) "whitelist" else "blacklist"}

@@ -6,10 +6,12 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
+import android.net.IpPrefix
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.VpnService
 import android.net.wifi.WifiManager
+import java.net.InetAddress
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.os.PowerManager
@@ -322,10 +324,37 @@ class MyVpnService : VpnService() {
             .setSession("StunSshTunnel")
             .setMtu(VPN_MTU)
             .addAddress("10.0.0.2", 24)
-            .addRoute("0.0.0.0", 0)
             .addAddress("fd00:1::2", 64)
-            .addRoute("::", 0)
             .addDnsServer("8.8.8.8")
+
+        // 组播/多播与保留段不进隧道（与 tproxy.sh 的 DEFAULT_BYPASS_* 对齐 —— 那边默认就
+        // bypass 224/4 + 240/4 + 255.255.255.255 与 ff00::/8）：UDP 组播不能被 socks5 转发
+        // （connect() 直接 invalid argument），吸进隧道只会让 mDNS / SSDP / DLNA / Chromecast
+        // 这类本地发现全部失效并刷连接报错。LAN 私网段刻意**不**排除 —— 与 tproxy 模式同一
+        // 取舍：应用需要能代理到局域网。
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // API 33+ 有 excludeRoute，精确排除
+            builder.addRoute("0.0.0.0", 0)
+            builder.excludeRoute(IpPrefix(InetAddress.getByName("224.0.0.0"), 4))
+            builder.excludeRoute(IpPrefix(InetAddress.getByName("240.0.0.0"), 4))
+            builder.addRoute("::", 0)
+            builder.excludeRoute(IpPrefix(InetAddress.getByName("ff00::"), 8))
+        } else {
+            // API < 33 没有 excludeRoute：用对齐的拆分路由覆盖「全量减去 224/4+240/4」。
+            // v4：0-127 / 128-191 / 192-223（224-255 = 多播+保留，整体不进隧道）
+            builder.addRoute("0.0.0.0", 1)
+            builder.addRoute("128.0.0.0", 2)
+            builder.addRoute("192.0.0.0", 3)
+            // v6：0000:: – fdff::（ff00::/8 = 组播，不进隧道）
+            builder.addRoute("::", 1)
+            builder.addRoute("8000::", 3)
+            builder.addRoute("a000::", 3)
+            builder.addRoute("c000::", 3)
+            builder.addRoute("e000::", 4)
+            builder.addRoute("f000::", 5)
+            builder.addRoute("f800::", 6)
+            builder.addRoute("fc00::", 7)
+        }
 
         applyAppFiltering(builder, profile)
         return builder.establish()

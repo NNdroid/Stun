@@ -46,7 +46,9 @@ class WebDavBackupWorker(appContext: Context, workerParams: WorkerParameters) :
             url = SettingsManager.getWebDavUrl(applicationContext),
             user = SettingsManager.getWebDavUser(applicationContext),
             pass = SettingsManager.getWebDavPass(applicationContext),
-            pin = SettingsManager.getWebDavPin(applicationContext)
+            pin = SettingsManager.getWebDavPin(applicationContext),
+            prefix = SettingsManager.getWebDavPrefix(applicationContext),
+            sections = SettingsManager.getWebDavSyncSections(applicationContext)
         )
         if (!SettingsManager.isWebDavAutoBackupEnabled(applicationContext) || !config.isConfigured) {
             return Result.success()

@@ -264,13 +264,25 @@ internal object McpTools {
         addTool("get_settings", "Get all global application settings (DNS, UDPGW, Routing rules, Service Mode).", JsonObject())
 
         // 16. set_settings
-        addTool("set_settings", "Update global application settings.", JsonObject().apply {
+        // 字段面与 WebUI 设置页的全局隧道设置一致；认证/控制台字段（web authMode/customToken、
+        // mcp auth）刻意不开放 —— 那是访问控制，智能体改 mcpAuthSecret 会把自己锁在会话外。
+        // ⚠️ 这里声明的每个属性，StunMcpServer 的 "set_settings" 分支都必须真的受理（args.has），
+        // schema 与实现不一致时客户端会传一个被静默忽略的参数。
+        addTool("set_settings", "Update global application settings (DNS, UDPGW incl. session limits, GeoData URLs, routing rules, log level, notification speed).", JsonObject().apply {
             add("remoteDns", JsonObject().apply { addProperty("type", "string"); addProperty("description", "Remote DNS DoH URL (e.g. doh://8.8.8.8/dns-query)") })
-            add("localDns", JsonObject().apply { addProperty("type", "string"); addProperty("description", "Local DNS DoH URL (e.g. doh://223.5.5.5/dns-query)") })
+            add("localDns", JsonObject().apply { addProperty("type", "string"); addProperty("description", "Local DNS DoH URL (e.g. doh://8.8.8.8/dns-query)") })
             add("serviceMode", JsonObject().apply { addProperty("type", "integer"); addProperty("description", "0 = VPN mode, 1 = Root TProxy mode") })
             add("logLevel", JsonObject().apply { addProperty("type", "string"); addProperty("description", "DEBUG, INFO, WARN, ERROR") })
+            add("udpgwVersion", JsonObject().apply { addProperty("type", "string"); addProperty("description", "UDP gateway engine: tun2proxy (default) or badvpn (legacy)") })
+            add("udpgwAddr", JsonObject().apply { addProperty("type", "string"); addProperty("description", "UDP gateway address, e.g. 127.0.0.1:7300") })
+            add("udpMaxSessions", JsonObject().apply { addProperty("type", "integer"); addProperty("minimum", 0); addProperty("maximum", 65536); addProperty("description", "Max concurrent UDP sessions; 0 = engine default 1024") })
+            add("udpIdleTimeoutSec", JsonObject().apply { addProperty("type", "integer"); addProperty("minimum", 0); addProperty("maximum", 86400); addProperty("description", "UDP idle session timeout in seconds; 0 = engine default 60") })
+            add("geositeUrl", JsonObject().apply { addProperty("type", "string"); addProperty("description", "Custom geosite.dat download URL; empty = built-in default") })
+            add("geoipUrl", JsonObject().apply { addProperty("type", "string"); addProperty("description", "Custom geoip.dat download URL; empty = built-in default") })
             add("geositeDirect", JsonObject().apply { addProperty("type", "string"); addProperty("description", "Geosite direct routing tags (e.g. cn,apple)") })
             add("geoipDirect", JsonObject().apply { addProperty("type", "string"); addProperty("description", "GeoIP direct routing tags (e.g. cn,private)") })
+            add("updateInterval", JsonObject().apply { addProperty("type", "integer"); addProperty("description", "GeoData auto-update interval in seconds (default 86400 = 24h)") })
+            add("showNotificationSpeed", JsonObject().apply { addProperty("type", "boolean"); addProperty("description", "Show live upload/download speed on the persistent notification") })
             add("mcpServerPort", JsonObject().apply { addProperty("type", "integer"); addProperty("description", "MCP Server listening port (e.g. 37180)") })
         })
 
@@ -292,10 +304,10 @@ internal object McpTools {
         // ── 2026-09-12: WebDAV / 订阅 / 导入导出 ──
 
         // 19. get_webdav_config
-        addTool("get_webdav_config", "Get WebDAV cloud backup configuration (URL, account, auto-backup switch, interval, last backup time). Never echoes pass/pin.", JsonObject())
+        addTool("get_webdav_config", "Get WebDAV cloud backup configuration (URL, account, auto-backup switch, interval, last backup time, backup dir prefix, and which sections are synced). Never echoes pass/pin.", JsonObject())
 
         // 20. set_webdav_config
-        addTool("set_webdav_config", "Update WebDAV cloud backup configuration. Blank pass/pin means keep existing values.", JsonObject().apply {
+        addTool("set_webdav_config", "Update WebDAV cloud backup configuration. Blank pass/pin means keep existing values; an empty prefix string clears the prefix.", JsonObject().apply {
             add("url", JsonObject().apply { addProperty("type", "string"); addProperty("description", "WebDAV server URL (e.g. https://dav.jianguoyun.com/dav/)") })
             add("user", JsonObject().apply { addProperty("type", "string"); addProperty("description", "WebDAV account username") })
             add("pass", JsonObject().apply { addProperty("type", "string"); addProperty("description", "WebDAV password / app password") })
@@ -307,10 +319,20 @@ internal object McpTools {
                 add("enum", com.google.gson.JsonArray().apply { add("upload"); add("download"); add("both") })
                 addProperty("description", "Sync direction: upload (push only, default), download (pull only), both (pull newer side, then push)")
             })
+            add("prefix", JsonObject().apply { addProperty("type", "string"); addProperty("maxLength", 24); addProperty("description", "Backup directory prefix (e.g. ht2 → ht2_20261006-173300). Only [a-zA-Z0-9._-]; empty string clears it. Existing backups are left untouched.") })
+            // profiles 不在枚举里：节点数据始终参与同步，不可关闭。
+            add("sections", JsonObject().apply {
+                addProperty("type", "array")
+                add("items", JsonObject().apply {
+                    addProperty("type", "string")
+                    add("enum", com.google.gson.JsonArray().apply { add("settings"); add("subscription"); add("subscription_usage") })
+                })
+                addProperty("description", "Which backup partitions to sync; profiles are always synced and cannot be disabled. Omit to keep current selection; an empty array means profiles only.")
+            })
         })
 
         // 21. list_backups
-        addTool("list_backups", "List available WebDAV backup directories on the server, newest first (Stun/<timestamp>/ format).", JsonObject())
+        addTool("list_backups", "List available WebDAV backup directories on the server, newest first (Stun/<timestamp>/, or Stun/<prefix>_<timestamp>/ when a prefix is configured).", JsonObject())
 
         // 22. backup_now
         addTool("backup_now", "Trigger an immediate WebDAV backup (nodes + settings). Requires a fully configured WebDAV.", JsonObject())
@@ -326,7 +348,7 @@ internal object McpTools {
 
         // 23. restore_backup
         addTool("restore_backup", "Restore from a specific WebDAV backup directory. Nodes are merged by ID; global settings are overwritten (except the backup PIN). Requires the dir name from list_backups.", JsonObject().apply {
-            add("dir", JsonObject().apply { addProperty("type", "string"); addProperty("description", "Backup directory name (e.g. 20260912-063005)") })
+            add("dir", JsonObject().apply { addProperty("type", "string"); addProperty("description", "Backup directory name (e.g. 20260912-063005, or ht2_20260912-063005 when a prefix is configured)") })
         }, listOf("dir"))
 
         // 24. list_subscriptions

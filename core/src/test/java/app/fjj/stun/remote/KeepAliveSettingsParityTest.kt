@@ -6,10 +6,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 「保活与后台」两个开关的机械护栏。
+ * 「保活与后台」三个开关的机械护栏。
  *
- * 这块功能横跨 5 个文件（`index.html` / `app.js` ×2 处逻辑 / `KeepAliveManager.kt` /
- * `stun-keepalive.sh`），而**全部漏改都不会编译报错**，只会安静地变成"开关点了没反应"。
+ * 这块功能横跨 6 个文件（`index.html` / `app.js` ×2 处逻辑 / `WebServer.kt` /
+ * `KeepAliveManager.kt` / `RemoteControlHost.kt` / `stun-keepalive.sh`），
+ * 而**全部漏改都不会编译报错**，只会安静地变成"开关点了没反应"。
  * 这里把最容易漏的几条钉死：
  *
  * 1. **i18n 覆盖 6 语言** —— WebUI 的 `t()` 对缺失键**返回键名本身**，漏一个语言的表现是
@@ -40,11 +41,13 @@ class KeepAliveSettingsParityTest {
     /** 必须 6 语言齐全的新增键。与 `applyI18n` / `renderKeepAliveStatus` 里的用法一一对应。 */
     private val keepAliveKeys = listOf(
         "settings_keepalive_title",
+        "label_ka_foreground", "desc_ka_foreground",
         "label_ka_magisk", "desc_ka_magisk",
         "label_ka_shizuku", "desc_ka_shizuku",
         "ka_enabled", "ka_disabled",
         "ka_fail_generic", "ka_fail_no_root", "ka_fail_script_write_failed",
         "ka_fail_shizuku_not_running", "ka_fail_shizuku_no_permission",
+        "ka_foreground_active", "ka_foreground_off",
         "ka_magisk_active", "ka_magisk_off", "ka_magisk_script_lost", "ka_no_root",
         "ka_shizuku_active", "ka_shizuku_ready", "ka_shizuku_no_perm", "ka_shizuku_stopped",
     )
@@ -112,7 +115,7 @@ class KeepAliveSettingsParityTest {
         val htmlKaIds = Regex("""id="(t-[a-z0-9-]*ka-[a-z0-9-]+)"""")
             .findAll(indexHtml).map { it.groupValues[1] }.toSet()
         assertTrue("index.html 里没找到保活卡片的节点", htmlKaIds.isNotEmpty())
-        val stateIds = setOf("t-state-ka-magisk", "t-state-ka-shizuku")
+        val stateIds = setOf("t-state-ka-foreground", "t-state-ka-magisk", "t-state-ka-shizuku")
         val unbound = htmlKaIds - bound - stateIds
         assertTrue(
             "这些保活节点既没被 applyI18n 绑定、也不是 renderKeepAliveStatus 接管的状态行: $unbound",
@@ -122,7 +125,7 @@ class KeepAliveSettingsParityTest {
 
     @Test
     fun `两个开关的 checkbox 存在且各自绑定 onchange`() {
-        for (id in listOf("switch-ka-magisk", "switch-ka-shizuku")) {
+        for (id in listOf("switch-ka-foreground", "switch-ka-magisk", "switch-ka-shizuku")) {
             assertTrue("index.html 缺少开关 $id", indexHtml.contains("id=\"$id\""))
             val line = indexHtml.lineSequence().firstOrNull { it.contains("id=\"$id\"") } ?: ""
             assertTrue(
@@ -169,7 +172,7 @@ class KeepAliveSettingsParityTest {
         // `const el = getElementById(id); if (el) el.textContent = t(…)` 这种
         // 拆成两行的写法绕过（反事实实测：拆行写法曾让本护栏漏判）。
         // 两条状态行的文案只允许由 renderKeepAliveStatus 写（它要同时表达意图与现实）。
-        for (id in listOf("t-state-ka-magisk", "t-state-ka-shizuku")) {
+        for (id in listOf("t-state-ka-foreground", "t-state-ka-magisk", "t-state-ka-shizuku")) {
             assertTrue(
                 "applyI18n 里出现了 getElementById('$id') —— 状态行要同时表达「开关意图」和" +
                     "「设备现实」（例如脚本已被刷机冲掉），只能由 renderKeepAliveStatus 重绘",

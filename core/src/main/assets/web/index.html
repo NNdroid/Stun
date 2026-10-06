@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title id="t-page-title">🦊 Stun · Web 控制台</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -247,6 +248,14 @@
           <label id="t-label-udpgw-addr" class="form-label">UDP 网关地址：</label>
           <input id="input-udpgw-addr" class="text-input" type="text" placeholder="127.0.0.1:7300">
         </div>
+        <div class="form-group">
+          <label id="t-label-udpgw-max-sessions" class="form-label">UDP 会话上限：</label>
+          <input id="input-udpgw-max-sessions" class="text-input" type="number" min="0" max="65536" placeholder="0 = 默认 1024">
+        </div>
+        <div class="form-group">
+          <label id="t-label-udpgw-idle-timeout" class="form-label">UDP 空闲超时（秒）：</label>
+          <input id="input-udpgw-idle-timeout" class="text-input" type="number" min="0" max="86400" placeholder="0 = 默认 60 秒">
+        </div>
       </div>
     </div>
 
@@ -318,6 +327,34 @@
             <option value="download" id="opt-webdav-sync-download">仅下载</option>
             <option value="both" id="opt-webdav-sync-both">双向</option>
           </select>
+        </div>
+        <div class="form-group">
+          <label id="t-label-webdav-prefix" class="form-label">备份前缀（可选）：</label>
+          <input id="input-webdav-prefix" class="text-input" type="text" maxlength="24" placeholder="ht2">
+          <span id="t-helper-webdav-prefix" class="helper-text">填 ht2 → 目录名为 ht2_20261006-173300；旧备份保留，但清除前缀前不再出现在列表中</span>
+        </div>
+        <div class="form-group">
+          <label id="t-label-webdav-sections" class="form-label">同步内容：</label>
+          <!-- 四个选项都不长，横着排一行（窄屏自动折行），别为它们占四行 -->
+          <div class="setting-box setting-box--wrap">
+            <label style="display:flex;align-items:center;gap:8px;cursor:not-allowed;opacity:.65">
+              <input type="checkbox" id="cb-webdav-section-profiles" checked disabled>
+              <span id="t-webdav-section-profiles">节点数据</span>
+              <span id="t-webdav-section-locked" style="color:var(--text-dim);font-size:0.8rem">（强制）</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="cb-webdav-section-settings" checked>
+              <span id="t-webdav-section-settings">全局设置</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="cb-webdav-section-subscription" checked>
+              <span id="t-webdav-section-subscription">订阅列表</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="cb-webdav-section-usage" checked>
+              <span id="t-webdav-section-usage">订阅流量</span>
+            </label>
+          </div>
         </div>
         <div class="form-group">
           <label id="t-label-webdav-auto" class="form-label">每日自动备份：</label>
@@ -465,12 +502,20 @@
         </div>
       </div>
     </div>
-    <!-- 8. 保活与后台（让 Web 控制台在进程被回收后自动回来） -->
+    <!-- 8. 保活与后台（让远程控制面在进程被回收后自动回来） -->
     <div class="card">
       <div class="card-header">
         <span id="t-settings-keepalive-title" class="card-title">🔋 保活与后台</span>
       </div>
       <div class="form-grid">
+        <div class="form-group" style="grid-column: 1 / -1; display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:16px">
+          <div>
+            <div id="t-label-ka-foreground" style="font-size:0.92rem;font-weight:700">远程控制常驻</div>
+            <div id="t-desc-ka-foreground" class="setting-desc">挂前台服务把进程顶在前台优先级：关闭应用界面后，Web 控制台 / 蓝牙 / 局域网远程控制仍然可连（通知常驻）。</div>
+            <div id="t-state-ka-foreground" class="setting-desc" style="margin-top:4px"></div>
+          </div>
+          <input type="checkbox" id="switch-ka-foreground" style="width:20px;height:20px;cursor:pointer" onchange="onKeepAliveToggle('foreground', this)">
+        </div>
         <div class="form-group" style="grid-column: 1 / -1; display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:16px">
           <div>
             <div id="t-label-ka-magisk" style="font-size:0.92rem;font-weight:700">Magisk service.d 开机保活</div>

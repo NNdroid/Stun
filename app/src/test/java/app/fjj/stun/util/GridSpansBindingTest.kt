@@ -46,6 +46,11 @@ class GridSpansBindingTest {
             "bind 之后必须已经装了 LayoutManager —— 否则列表在第一次布局回调之前根本不排版",
             rv.layoutManager is LinearLayoutManager,
         )
+        assertEquals(
+            "宽度未知 ⇒ 单列：单列也统一用 GridLayoutManager(1)，见 GridSpans 的说明",
+            1,
+            (rv.layoutManager as GridLayoutManager).spanCount,
+        )
     }
 
     @Test
@@ -63,12 +68,13 @@ class GridSpansBindingTest {
         val rv = newRecyclerView()
         GridSpans.bind(rv)
         layoutAt(rv, width = 2160)
-        assertTrue(rv.layoutManager is GridLayoutManager)
+        assertEquals(3, (rv.layoutManager as GridLayoutManager).spanCount)
         layoutAt(rv, width = 800) // 400dp < 600dp
-        assertTrue(
-            "缩回 400dp 必须退回单列，实际是 ${rv.layoutManager?.javaClass?.simpleName}",
-            rv.layoutManager is LinearLayoutManager,
-        )
+        // 修复后单列不再换回 LinearLayoutManager 实例（布局中途换实例会打断布局状态机，
+        // 症状是 adapter 有数据、列表永久空白 —— 见 GridSpans 说明），只把 spanCount 收回 1。
+        val lm = rv.layoutManager
+        assertTrue("缩回 400dp 仍是同一个 GridLayoutManager，实际是 ${lm?.javaClass?.simpleName}", lm is GridLayoutManager)
+        assertEquals("缩回 400dp 必须退回单列", 1, (lm as GridLayoutManager).spanCount)
     }
 
     @Test

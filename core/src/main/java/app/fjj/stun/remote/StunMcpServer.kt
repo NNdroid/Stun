@@ -1457,9 +1457,14 @@ url = "$scheme://$targetHost/mcp"$headersBlock
                     addProperty("localDns", SettingsManager.getLocalDnsServer(context))
                     addProperty("udpgwVersion", SettingsManager.getUdpgwVersion(context))
                     addProperty("udpgwAddr", SettingsManager.getUdpgwAddr(context))
+                    addProperty("udpMaxSessions", SettingsManager.getUdpMaxSessions(context))
+                    addProperty("udpIdleTimeoutSec", SettingsManager.getUdpIdleTimeoutSec(context))
+                    addProperty("geositeUrl", SettingsManager.getGeositeUrl(context))
+                    addProperty("geoipUrl", SettingsManager.getGeoipUrl(context))
                     addProperty("geositeDirect", SettingsManager.getGeositeDirect(context))
                     addProperty("geoipDirect", SettingsManager.getGeoipDirect(context))
                     addProperty("updateInterval", SettingsManager.getUpdateInterval(context))
+                    addProperty("showNotificationSpeed", SettingsManager.getShowNotificationSpeed(context))
                     addProperty("filterMode", SettingsManager.getFilterMode(context))
                     addProperty("filterApps", SettingsManager.getFilterApps(context))
                     addProperty("mcpServerPort", SettingsManager.getMcpServerPort(context))
@@ -1468,12 +1473,26 @@ url = "$scheme://$targetHost/mcp"$headersBlock
             }
 
             "set_settings" -> {
+                // 字段面与 WebUI 设置页的全局隧道设置一致（DNS / UDPGW / 会话限制 / Geo /
+                // 日志 / 通知）。**刻意不含**认证与控制台字段（web authMode/customToken、
+                // mcp auth）—— 那是访问控制，交给 WebUI 的 token 轮换流程，不能被智能体改掉
+                // （改 mcpAuthSecret 等于把当前会话自己锁在外面）。过滤分流走专用的
+                // set_app_filter，这里不重复开写入口。
                 if (args.has("remoteDns")) SettingsManager.saveRemoteDnsServer(context, args.get("remoteDns").asString)
                 if (args.has("localDns")) SettingsManager.saveLocalDnsServer(context, args.get("localDns").asString)
                 if (args.has("serviceMode")) SettingsManager.saveServiceMode(context, args.get("serviceMode").asInt)
                 if (args.has("logLevel")) SettingsManager.saveLogLevel(context, args.get("logLevel").asString)
+                if (args.has("udpgwVersion")) SettingsManager.saveUdpgwVersion(context, args.get("udpgwVersion").asString)
+                if (args.has("udpgwAddr")) SettingsManager.saveUdpgwAddr(context, args.get("udpgwAddr").asString)
+                // 0 = 引擎默认（1024 会话 / 60 秒）；saveXxx 内部已按范围钳位
+                if (args.has("udpMaxSessions")) SettingsManager.saveUdpMaxSessions(context, args.get("udpMaxSessions").asInt)
+                if (args.has("udpIdleTimeoutSec")) SettingsManager.saveUdpIdleTimeoutSec(context, args.get("udpIdleTimeoutSec").asInt)
+                if (args.has("geositeUrl")) SettingsManager.saveGeositeUrl(context, args.get("geositeUrl").asString)
+                if (args.has("geoipUrl")) SettingsManager.saveGeoipUrl(context, args.get("geoipUrl").asString)
                 if (args.has("geositeDirect")) SettingsManager.saveGeositeDirect(context, args.get("geositeDirect").asString)
                 if (args.has("geoipDirect")) SettingsManager.saveGeoipDirect(context, args.get("geoipDirect").asString)
+                if (args.has("updateInterval")) SettingsManager.saveUpdateInterval(context, args.get("updateInterval").asLong)
+                if (args.has("showNotificationSpeed")) SettingsManager.saveShowNotificationSpeed(context, args.get("showNotificationSpeed").asBoolean)
                 if (args.has("mcpServerPort")) {
                     val newPort = args.get("mcpServerPort").asInt
                     SettingsManager.setMcpServerPort(context, newPort)
@@ -1551,6 +1570,9 @@ url = "$scheme://$targetHost/mcp"$headersBlock
                     // 同步模式：给机器读的一律用稳定 id（upload/download/both），不做本地化
                     addProperty("syncMode", SettingsManager.getWebDavSyncMode(context).id)
                     addProperty("lastSync", SettingsManager.getWebDavLastSyncTime(context))
+                    // 前缀 / 同步范围：同样给稳定 id，供机器判断"哪些分区在云端"
+                    addProperty("prefix", SettingsManager.getWebDavPrefix(context))
+                    add("sections", gson.toJsonTree(SettingsManager.getWebDavSyncSections(context).toList()))
                 }
                 gson.toJson(cfg)
             }
@@ -1571,6 +1593,13 @@ url = "$scheme://$targetHost/mcp"$headersBlock
                         SettingsManager.setWebDavSyncBootstrapped(context, false)
                     }
                 }
+                // 前缀："" 是有效的"清空"，不能像 pass/pin 那样用 ?: 回落到旧值
+                args.get("prefix")?.asString?.let { SettingsManager.saveWebDavPrefix(context, it) }
+                // 同步范围：缺字段＝保持现状；给了数组（含空数组）＝按勾选落库
+                args.get("sections")?.asJsonArray?.let { arr ->
+                    val ids = buildSet { for (e in arr) (e.asJsonPrimitive?.asString)?.let(::add) }
+                    SettingsManager.saveWebDavSyncSections(context, ids)
+                }
                 WebDavBackupWorker.schedule(context)
                 val cfg = JsonObject().apply {
                     addProperty("url", SettingsManager.getWebDavUrl(context))
@@ -1578,6 +1607,8 @@ url = "$scheme://$targetHost/mcp"$headersBlock
                     addProperty("auto", SettingsManager.isWebDavAutoBackupEnabled(context))
                     addProperty("intervalHours", SettingsManager.getWebDavBackupIntervalHours(context))
                     addProperty("syncMode", SettingsManager.getWebDavSyncMode(context).id)
+                    addProperty("prefix", SettingsManager.getWebDavPrefix(context))
+                    add("sections", gson.toJsonTree(SettingsManager.getWebDavSyncSections(context).toList()))
                 }
                 "WebDAV config saved. " + gson.toJson(cfg)
             }
@@ -1587,7 +1618,9 @@ url = "$scheme://$targetHost/mcp"$headersBlock
                     url = SettingsManager.getWebDavUrl(context),
                     user = SettingsManager.getWebDavUser(context),
                     pass = SettingsManager.getWebDavPass(context),
-                    pin = SettingsManager.getWebDavPin(context)
+                    pin = SettingsManager.getWebDavPin(context),
+                    prefix = SettingsManager.getWebDavPrefix(context),
+                    sections = SettingsManager.getWebDavSyncSections(context)
                 )
                 if (!config.isConfigured) {
                     "Error: WebDAV is not fully configured (url, user, pass, pin are all required)."
@@ -1611,7 +1644,9 @@ url = "$scheme://$targetHost/mcp"$headersBlock
                     url = SettingsManager.getWebDavUrl(context),
                     user = SettingsManager.getWebDavUser(context),
                     pass = SettingsManager.getWebDavPass(context),
-                    pin = SettingsManager.getWebDavPin(context)
+                    pin = SettingsManager.getWebDavPin(context),
+                    prefix = SettingsManager.getWebDavPrefix(context),
+                    sections = SettingsManager.getWebDavSyncSections(context)
                 )
                 if (!config.isConfigured) "Error: WebDAV is not fully configured."
                 else try {
@@ -1629,7 +1664,9 @@ url = "$scheme://$targetHost/mcp"$headersBlock
                     url = SettingsManager.getWebDavUrl(context),
                     user = SettingsManager.getWebDavUser(context),
                     pass = SettingsManager.getWebDavPass(context),
-                    pin = SettingsManager.getWebDavPin(context)
+                    pin = SettingsManager.getWebDavPin(context),
+                    prefix = SettingsManager.getWebDavPrefix(context),
+                    sections = SettingsManager.getWebDavSyncSections(context)
                 )
                 if (!config.isConfigured) "Error: WebDAV is not fully configured."
                 else try {
@@ -1654,7 +1691,9 @@ url = "$scheme://$targetHost/mcp"$headersBlock
                         url = SettingsManager.getWebDavUrl(context),
                         user = SettingsManager.getWebDavUser(context),
                         pass = SettingsManager.getWebDavPass(context),
-                        pin = SettingsManager.getWebDavPin(context)
+                        pin = SettingsManager.getWebDavPin(context),
+                        prefix = SettingsManager.getWebDavPrefix(context),
+                        sections = SettingsManager.getWebDavSyncSections(context)
                     )
                     if (!config.isConfigured) "Error: WebDAV is not fully configured."
                     else try {
@@ -1896,7 +1935,9 @@ url = "$scheme://$targetHost/mcp"$headersBlock
                     url = SettingsManager.getWebDavUrl(context),
                     user = SettingsManager.getWebDavUser(context),
                     pass = SettingsManager.getWebDavPass(context),
-                    pin = SettingsManager.getWebDavPin(context)
+                    pin = SettingsManager.getWebDavPin(context),
+                    prefix = SettingsManager.getWebDavPrefix(context),
+                    sections = SettingsManager.getWebDavSyncSections(context)
                 )
                 val backups = if (webdavConfig.isConfigured) {
                     try { app.fjj.stun.backup.WebDavBackupManager.listBackups(webdavConfig) } catch (_: Exception) { emptyList() }

@@ -1,7 +1,6 @@
 package app.fjj.stun.util
 
 import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
 /**
@@ -58,16 +57,21 @@ object GridSpans {
      * 阈值默认取 core 的 `node_grid_min_width` / `node_grid_min_column`；模块用同名资源覆盖即可
      * （取的是 **RecyclerView 所属 context 的**资源，所以模块的覆盖自动生效，调用方不用传参）。
      *
-     * 单列时用 [LinearLayoutManager]、多列才用 [GridLayoutManager] —— 保持单列路径与改造前
-     * 完全一致（GridLayoutManager(1) 虽然等价，但会多一层 span 计算）。
+     * ⚠️ LayoutManager 统一是 [GridLayoutManager]，列数变化走 [GridLayoutManager.setSpanCount]。
+     * **绝不能**在布局回调里替换 LayoutManager 实例：OnLayoutChangeListener 是在
+     * `View.setFrame` 里（onMeasure 的 auto-measure 已经填完子 View、onLayout 还没跑）触发的，
+     * 这个窗口里 `setLayoutManager` 会把子 View 全部回收，而紧跟着的 `dispatchLayout`
+     * 不再重新填充 —— 症状是 adapter 里明明有数据、计数也更新了，列表却**永久空白**，
+     * 后续遍历也不自愈（TV 端「右上角计数=1 但列表空」就是这么来的）。
+     * `setSpanCount` 只置标记 + requestLayout，本轮保持旧几何、下一遍正常重排，是安全的。
+     * 单列与多列在 GridLayoutManager 下排布结果完全一致（spanSizeLookup 默认全跨）。
      */
     fun bind(recyclerView: RecyclerView, maxColumns: Int = DEFAULT_MAX_COLUMNS) {
         // 先按当前宽度（多半还是 0）装一个，把"一定有 LayoutManager"这个不变量立刻立住 ——
-        // 否则在第一次布局回调之前 RecyclerView 是没有 LayoutManager 的。此刻宽度为 0 ⇒ 单列，
-        // 与改造前"窄屏走 LinearLayoutManager"一致；真正的列数等第一次布局回调补上。
+        // 否则在第一次布局回调之前 RecyclerView 是没有 LayoutManager 的。
         applyColumnCount(recyclerView, maxColumns)
         recyclerView.addOnLayoutChangeListener { _, left, _, right, _, oldLeft, _, oldRight, _ ->
-            // 只在**宽度**变化时重算；高度变化（列表增删、内容变高）不该动 LayoutManager。
+            // 只在**宽度**变化时重算；高度变化（列表增删、内容变高）不该动列数。
             if (right - left == oldRight - oldLeft) return@addOnLayoutChangeListener
             applyColumnCount(recyclerView, maxColumns)
         }
@@ -82,17 +86,15 @@ object GridSpans {
             minGridWidthPx = res.getDimensionPixelSize(app.fjj.stun.core.R.dimen.node_grid_min_width),
             maxColumns = maxColumns,
         )
-        val current = when (val lm = recyclerView.layoutManager) {
-            // null 记 0 而不是 1：第一次进来必须真的装上 LayoutManager（null 时列表根本不排版）。
-            null -> 0
-            is GridLayoutManager -> lm.spanCount
-            else -> 1
+        val lm = recyclerView.layoutManager
+        if (lm is GridLayoutManager) {
+            // 列数没变就别动：setSpanCount 会 requestLayout，每帧都动列表永远停不下来。
+            if (lm.spanCount == columns) return
+            lm.spanCount = columns
+            return
         }
-        if (columns == current) return
-        recyclerView.layoutManager = if (columns <= 1) {
-            LinearLayoutManager(recyclerView.context)
-        } else {
-            GridLayoutManager(recyclerView.context, columns)
-        }
+        // 还没有 LayoutManager（bind 后第一次）才会走到这 —— 换实例只允许发生在布局开始之前
+        // （此刻宽度是 0），宽度变化触发的布局回调里永远只走上面的 setSpanCount 分支。
+        recyclerView.layoutManager = GridLayoutManager(recyclerView.context, columns)
     }
 }

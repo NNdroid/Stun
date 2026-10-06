@@ -264,11 +264,14 @@
                                 android:contentDescription="@string/verify_ssh_fingerprint" />
                         </LinearLayout>
 
+                        <!-- 跟随上方「验证 SSH 指纹」开关显隐：关=隐藏（ProfileEditActivity 监听器驱动） -->
                         <LinearLayout
+                            android:id="@+id/layout_ssh_fp_actions"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="@dimen/space_1"
-                            android:orientation="horizontal">
+                            android:orientation="horizontal"
+                            android:visibility="gone">
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btn_details_ssh"
@@ -905,11 +908,14 @@
                                 android:contentDescription="@string/verify_cert_fingerprint" />
                         </LinearLayout>
 
+                        <!-- 跟随上方「验证证书指纹」开关显隐，且仅在 TLS 生效时出现（见 updateTunnelFields） -->
                         <LinearLayout
+                            android:id="@+id/layout_cert_fp_actions"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="@dimen/space_1"
-                            android:orientation="horizontal">
+                            android:orientation="horizontal"
+                            android:visibility="gone">
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btn_details_cert"

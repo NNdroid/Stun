@@ -81,6 +81,6 @@ print(response.text)
 13. `set_app_filter`: Configure split-tunneling (allow/bypass packages).
 14. `update_geodata`: Trigger atomic update of GeoIP & Geosite databases.
 15. `get_settings`: Retrieve global DNS, UDPGW, and routing settings.
-16. `set_settings`: Update global DNS, routing rules, or log levels.
+16. `set_settings`: Update global DNS, UDPGW (engine/address/session limits/idle timeout), GeoData URLs, routing rules, log level, update interval, or notification speed.
 17. `get_logs`: Query runtime error & info logs with level filter.
 18. `get_device_info`: Hardware model, battery level, Android version, and IP.

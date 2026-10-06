@@ -110,6 +110,7 @@
     <string name="webdav_subtitle">Sauvegardez les nœuds, les règles de routage et d\'autres données importantes sur WebDAV pour éviter toute perte de données.</string>
     <string name="webdav_url_hint">URL WebDAV</string>
     <string name="webdav_desc">Nœuds, réglages globaux, abonnements et leur trafic sont chiffrés avec le code PIN puis rangés dans le dossier « Stun » du serveur ; les 5 sauvegardes les plus récentes sont conservées.</string>
+    <string name="webdav_section_profiles">données des nœuds</string>
     <string name="webdav_section_settings">réglages globaux</string>
     <string name="webdav_section_subscription">abonnements</string>
     <string name="webdav_section_subscription_usage">trafic des abonnements</string>
@@ -128,6 +129,10 @@
     <string name="webdav_sync_upload">Envoi uniquement</string>
     <string name="webdav_sync_download">Réception uniquement</string>
     <string name="webdav_sync_both">Bidirectionnel</string>
+    <string name="webdav_prefix_label">Préfixe de sauvegarde</string>
+    <string name="webdav_prefix_helper">Facultatif. Ex. ht2 → les sauvegardes sont stockées sous ht2_20261006-173300. Les anciennes sauvegardes ne sont ni supprimées ni déplacées, mais restent masquées dans la liste tant que le préfixe est défini.</string>
+    <string name="webdav_sections_title">Contenu synchronisé</string>
+    <string name="webdav_sections_helper">Les données des nœuds sont synchronisées en permanence et ne peuvent pas être désactivées. Les trois autres peuvent être activées ou désactivées librement ; un type désactivé est ignoré dans les deux sens (ni téléversement, ni récupération).</string>
     <string name="webdav_sync_now">Synchroniser maintenant</string>
     <string name="webdav_last_sync">Dernière synchronisation : %1$s</string>
     <string name="webdav_sync_ok">✓ Synchronisation terminée (%1$s)</string>
@@ -315,6 +320,7 @@
     <string name="import_failed">Échec de l\'importation : %1$s</string>
     <string name="notif_title">Stun est en cours</string>
     <string name="notif_text">Le trafic est protégé</string>
+    <string name="notif_console_keepalive">Console Web maintenue active</string>
     <string name="reason_ssh_down">Cœur hors ligne</string>
     <string name="reason_hev_down">Moteur hors ligne</string>
 
@@ -376,7 +382,7 @@
     <string name="dnstt_resolvers_hint">Résolveurs (URLs)</string>
 
     <!-- TV Specific -->
-    <string name="tv_nodes_received">Nœuds reçus</string>
+    <string name="tv_nodes_received">Nœuds</string>
     <string name="tv_profile_options_title">Options du nœud</string>
     <string name="tv_sheet_close_hint">Bouton RETOUR pour fermer</string>
     <string name="tv_node_options_subtitle">Options du nœud pour %1$s</string>

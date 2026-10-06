@@ -22,6 +22,13 @@
          （声明了 leanback 却没有 LEANBACK_LAUNCHER 会报 MissingLeanbackLauncher）。 -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
+    <!-- targetSdk 37 下默认拒绝明文流量（参见 ExitIpProbe.PROVIDERS 注释：http:// 端点永远不会有
+         回应）。这个开关不能省：手机端发现局域网里的电视后，用的就是 RemoteSyncManager.lanBaseUrl()
+         拼出的明文 http://192.168.x.x:端口/api/status 这类地址。不开这条，请求在 TCP 握手前就被
+         平台拦掉，症状和「电视端服务没起」一模一样 —— 设备能被发现（mDNS 不受此约束）、蓝牙也能用
+         （RFCOMM 不是 HTTP）、端口探针用原生 Socket 还显示 OPEN。Android 的网络安全配置按 FQDN
+         收敛，没法只放行局域网段，所以只能用这个全局开关。它只是「允许」明文，不强制明文：
+         其余出站探测仍是 https。 -->
     <application
         android:name=".StunApp"
         android:allowBackup="true"
@@ -31,6 +38,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
         android:theme="@style/Theme.Stun" >
 
         <activity

@@ -5,6 +5,7 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import app.fjj.stun.repo.StunLogger
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import rikka.shizuku.Shizuku
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -41,6 +42,14 @@ object ShizukuUtils {
     const val SHIZUKU_REQUEST_CODE = 1001
 
     /**
+     * 授权弹窗最长等待。弹窗是显示在**设备屏幕**上的，用户可能根本不在跟前
+     *（远程 WebUI），也可能就在屏幕前却忽略了弹窗 —— 无论哪种都不能无限挂着调用方。
+     * 超时收在**这里**而不是各调用点：Shizuku 只有 listener 回调、没有同步查询接口，
+     * 谁调都有挂死的可能，所以由这个唯一封装兜住（见 [requestPermissionAwait]）。
+     */
+    private const val PERMISSION_REQUEST_TIMEOUT_MS = 60_000L
+
+    /**
      * 检查 Shizuku 服务是否在后台真正运行
      */
     fun isAvailable(): Boolean {
@@ -75,11 +84,19 @@ object ShizukuUtils {
 
     /**
      * 使用协程挂起函数隐藏 Listener
-     * 调用此方法会挂起当前协程，直到用户做出授权选择或直接返回结果
+     * 调用此方法会挂起当前协程，直到用户做出授权选择或直接返回结果。
      *
-     * @return true 表示已授权，false 表示拒绝或服务不可用
+     * **保证在 [PERMISSION_REQUEST_TIMEOUT_MS] 内返回**：Shizuku 只有 listener 回调、没有同步
+     * 查询接口，用户不理弹窗（或根本不在设备前）时会一直挂住调用方。所以超时收在这一层统一兜住，
+     * 而不是让每个调用点各自包一遍 `withTimeoutOrNull`。
+     *
+     * @return true 表示已授权，false 表示拒绝、服务不可用或等待超时
      */
-    suspend fun requestPermissionAwait(): Boolean = suspendCancellableCoroutine { continuation ->
+    suspend fun requestPermissionAwait(): Boolean =
+        withTimeoutOrNull(PERMISSION_REQUEST_TIMEOUT_MS) { requestPermissionInternal() } ?: false
+
+    /** [requestPermissionAwait] 的实际实现。不做超时，由外层统一兜。 */
+    private suspend fun requestPermissionInternal(): Boolean = suspendCancellableCoroutine { continuation ->
         StunLogger.i(TAG, "requestPermissionAwait called")
         // 如果 Shizuku 根本没运行，直接回调失败
         if (!isAvailable()) {
@@ -100,9 +117,13 @@ object ShizukuUtils {
             return@suspendCancellableCoroutine
         }
 
-        // 如果用户曾经勾选了"不再询问"并拒绝
-        if (Shizuku.shouldShowRequestPermissionRationale()) {
-            StunLogger.w(TAG, "Shizuku permission denied by user (never ask again).")
+        // 用户勾了「不再询问」并拒绝：此时 Shizuku 不会再投递回调，必须自行早退，
+        // 否则 continuation 永远等不到 resume。
+        // ⚠️ shouldShowRequestPermissionRationale 的语义是「还能再问」（被拒过但未勾不再询问），
+        // 不是「问不了」；原写法把条件写反，导致任何路径都弹不出授权框。
+        // 走到这里 isReady() 已为 false（权限确定未授予），所以 false 只可能是「已永久拒绝」。
+        if (!Shizuku.shouldShowRequestPermissionRationale()) {
+            StunLogger.w(TAG, "Shizuku permission permanently denied (never ask again).")
             continuation.resume(false)
             return@suspendCancellableCoroutine
         }

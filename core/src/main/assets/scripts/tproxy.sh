@@ -238,6 +238,14 @@ load_config() {
     HOTSPOT_SUBNET_IPV4="${HOTSPOT_SUBNET_IPV4:-$DEFAULT_HOTSPOT_SUBNET_IPV4}"
     HOTSPOT_SUBNET_IPV6="${HOTSPOT_SUBNET_IPV6:-$DEFAULT_HOTSPOT_SUBNET_IPV6}"
     APP_PROXY_ENABLE="${APP_PROXY_ENABLE:-$DEFAULT_APP_PROXY_ENABLE}"
+    # ⚠️ APPS_LIST 的空串**故意**落回内置默认（bash 的 `:-` 对空串也回退）：
+    # DEFAULT_BYPASS_APPS_LIST 里是 App 自己 —— 这是 uid 粒度防回环的**最后防线**：
+    # SO_MARK 会随内核/ROM 失效（"mark 死亡"），BYPASS_DST 对域名型服务端也可能失配，
+    # 三道防线里只有 uid 旁路从不失效。2026-10 曾把这里改成「仅未设置才回退」以让
+    # App 自身流量进隧道，结果在 mark 已死、BYPASS_DST 失配的设备上隧道 socket 被
+    # 抓回自身形成回环，服务端完全连不上 —— 已回滚。
+    # 代价是 App 自身流量直连；出口 IP 探测为此**显式走本地 SOCKS5**（见
+    # ExitIpProbe.contextAwareFetch），不依赖本表的旁路状态。
     PROXY_APPS_LIST="${PROXY_APPS_LIST:-$DEFAULT_PROXY_APPS_LIST}"
     BYPASS_APPS_LIST="${BYPASS_APPS_LIST:-$DEFAULT_BYPASS_APPS_LIST}"
     APP_PROXY_MODE="${APP_PROXY_MODE:-$DEFAULT_APP_PROXY_MODE}"

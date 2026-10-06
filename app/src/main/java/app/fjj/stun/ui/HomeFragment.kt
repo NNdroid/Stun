@@ -1620,7 +1620,9 @@ class HomeFragment : Fragment() {
      * 现在与两个 Service、`KeepAliveManager` 共用 [BackgroundExemptions]。
      */
     private suspend fun applyShizukuKeepAlive(): Boolean {
-        if (ShizukuUtils.state() != ShizukuState.READY) return false
+        // 只放过 NOT_RUNNING：写成 `!= READY` 会把 NO_PERMISSION 也拦死，
+        // 导致下面的 requestPermissionAwait() 永远走不到授权分支（授权框一次都弹不出来）。
+        if (ShizukuUtils.state() == ShizukuState.NOT_RUNNING) return false
         val granted = ShizukuUtils.requestPermissionAwait()
         if (granted) {
             BackgroundExemptions.applyViaShizuku(requireContext().packageName)
@@ -2143,7 +2145,9 @@ class HomeFragment : Fragment() {
                     // 真握手测出，底栏 / 详情面板 / 列表行的唯一数据源）互相覆盖：同一个格子随两条
                     // 链路轮流变脸，数值还能差一个数量级 —— 这就是「连接成功后测了两次」。
                     // 这里只取它的出口 IP 与位置，延迟位交给 latencyMs 观察者驱动。
-                    val result = ExitIpProbe().run()
+                    // tproxy 模式下探测显式走本地 SOCKS5 —— App 自身流量被 uid 自旁路放行，
+                    // 直连探测只会拿到本地出口（contextAwareFetch 见 ExitIpProbe）。
+                    val result = ExitIpProbe(fetch = ExitIpProbe.contextAwareFetch(requireContext())).run()
                     if (!isActive) return@launch
                     withContext(Dispatchers.Main) {
                         if (_binding != null && isAdded && activeBottomProfile?.id == profileId &&

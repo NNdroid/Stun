@@ -110,6 +110,7 @@
     <string name="webdav_subtitle">ノードやルーティングルールなどの重要なデータを WebDAV にバックアップし、データ損失を防ぎます。</string>
     <string name="webdav_url_hint">WebDAV URL</string>
     <string name="webdav_desc">ノード、全体設定、購読リストと通信量はバックアップ PIN で暗号化され、サーバー上の Stun フォルダに保存されます。最新 5 世代が自動的に保持されます。</string>
+    <string name="webdav_section_profiles">ノードデータ</string>
     <string name="webdav_section_settings">全体設定</string>
     <string name="webdav_section_subscription">購読リスト</string>
     <string name="webdav_section_subscription_usage">購読の通信量</string>
@@ -127,6 +128,10 @@
     <string name="webdav_sync_upload">アップロードのみ</string>
     <string name="webdav_sync_download">ダウンロードのみ</string>
     <string name="webdav_sync_both">双方向</string>
+    <string name="webdav_prefix_label">バックアップ接頭辞</string>
+    <string name="webdav_prefix_helper">任意。例：ht2 → 保存先が ht2_20261006-173300 になります。既存のバックアップは削除・移動されませんが、接頭辞を戻すまでは一覧に表示されません。</string>
+    <string name="webdav_sections_title">同期対象</string>
+    <string name="webdav_sections_helper">ノードデータは常時同期され、解除できません。他 3 つは自由に着け外しでき、解除した種別はアップロードもプルもされません。</string>
     <string name="webdav_sync_now">今すぐ同期</string>
     <string name="webdav_last_sync">前回の同期：%1$s</string>
     <string name="webdav_sync_ok">✓ 同期が完了しました（%1$s）</string>
@@ -328,6 +333,7 @@
     <string name="import_failed">インポート失敗: %1$s</string>
     <string name="notif_title">Stun 実行中</string>
     <string name="notif_text">通信は保護されています</string>
+    <string name="notif_console_keepalive">Web コンソール維持中</string>
     <string name="reason_ssh_down">コアがオフラインです</string>
     <string name="reason_hev_down">エンジンがオフラインです</string>
 
@@ -389,7 +395,7 @@
     <string name="dnstt_resolvers_hint">リゾルバ (URL)</string>
 
     <!-- TV Specific -->
-    <string name="tv_nodes_received">受信済みノード</string>
+    <string name="tv_nodes_received">ノード</string>
     <string name="tv_profile_options_title">ノードオプション</string>
     <string name="tv_sheet_close_hint">戻るボタンで閉じる</string>
     <string name="tv_node_options_subtitle">%1$s のノードオプション</string>

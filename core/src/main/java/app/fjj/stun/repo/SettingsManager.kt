@@ -21,6 +21,9 @@ object SettingsManager {
     private const val DEVICE_PREF_NAME = "stun_device_state"
     private const val KEY_DEVICE_STATE_MIGRATED = "device_state_migrated_v1"
 
+    /** [ensureWebDavScopeKeyMigrated] 的一次性标志位。 */
+    private const val KEY_WEBDAV_SCOPE_KEY_MIGRATED = "webdav_scope_key_migrated_v1"
+
     private const val KEY_LOG_LEVEL = "log_level"
     private const val KEY_REMOTE_DNS_SERVER = "remote_dns_server"
     private const val KEY_LOCAL_DNS_SERVER = "local_dns_server"
@@ -60,9 +63,20 @@ object SettingsManager {
     // 保活 worker 靠它决定要不要把 WebServer 拉起来：电视端 MainActivity 每次都启 WebServer
     // ⇒ 标记为 true；而手机端从来不起 WebServer ⇒ 标记恒 false ⇒ 保活不会在手机上
     // 凭空开一个 5858 监听端口（那等于无端多暴露一个攻击面）。
-    // 刻意不做成「当前是否在运行」：TV 的 onDestroy 会 WebServer.stop()，若跟着清标记，
-    // 用户一退出应用保活就失效了 —— 而保活要的恰恰是把它再拉回来。
+    // 刻意不做成「当前是否在运行」：2026-10 起 TV/车机的 onDestroy **不再** stop WebServer
+    //（界面关了，WebUI 与手机远控在进程存活期间仍要可访问），运行态会出现「刚启动还没
+    // bind 完成」的空窗；若标记跟着运行态走，空窗里的一次误读就会让保活放弃把服务拉回来。
+    // 粘滞标记表达的是这台设备的运维意图，而保活要的恰恰就是它。
     private const val KEY_WEB_CONSOLE_EVER_STARTED = "web_console_ever_started"
+
+    // ── 远程控制监听面（本机角色，两个都是设备态）──
+    // 刻意放进 [DEVICE_PREF_NAME] 而不是 `stun_settings`：后者全量参与 WebDAV 云备份
+    // （见 [webDavSettingsSnapshot]），而"这台设备要不要挂前台服务常驻""这台设备要不要
+    // 对外开同步服务"都是设备本地的运维意图 —— 同步到另一台机器毫无意义，更糟的是
+    // 可能在那边凭空多开监听端口。写进设备态库后由备份链路从结构上排除，不需要维护排除清单。
+    // 默认都是 true：TV/Car 这类被控端的唯一价值就是常驻可连，关掉要用户显式表态。
+    private const val KEY_REMOTE_CONTROL_KEEPALIVE = "remote_control_keepalive"
+    private const val KEY_REMOTE_SYNC_ENABLED = "remote_sync_enabled"
 
     // 带宽测速（下行/上行）配置项：默认走 Cloudflare speed 端点，可在设置中覆盖
     private const val KEY_SPEED_TEST_DOWN_URL = "speed_test_down_url"
@@ -203,6 +217,33 @@ object SettingsManager {
             legacy.edit { LEGACY_DEVICE_LOCAL_KEYS.forEach { remove(it) } }
             StunLogger.i(TAG, "Device-scoped settings migrated to $DEVICE_PREF_NAME (removed from backup snapshot)")
         }
+    }
+
+    /**
+     * 一次性迁移：同步范围键从可迁移库（`stun_settings`）搬进设备态库。
+     *
+     * 不并入 [ensureDeviceStateMigrated]：那个的标志位在存量机器上已置位、永远不会再跑，
+     * 且 [LEGACY_DEVICE_LOCAL_KEYS] 是冻结的迁移常量。这个键是「设备态新增于迁移之后」的
+     * 特例 —— 它随未提交的新功能上线，存量安装的旧值还在可迁移库里，会被自己的快照同步
+     * 覆盖（见 [KEY_WEBDAV_SYNC_SECTIONS] 的自指论证），必须搬走并从导出里摘除。
+     *
+     * 幂等：标志位置位后只是一次内存读。旧库有值而新库已有值时，跳过不覆盖、只删旧值。
+     */
+    private fun ensureWebDavScopeKeyMigrated(context: Context) {
+        val device = getDevicePrefs(context)
+        if (device.getBoolean(KEY_WEBDAV_SCOPE_KEY_MIGRATED, false)) return
+
+        val legacy = getPrefs(context)
+        if (legacy.contains(KEY_WEBDAV_SYNC_SECTIONS)) {
+            if (!device.contains(KEY_WEBDAV_SYNC_SECTIONS)) {
+                device.edit {
+                    putString(KEY_WEBDAV_SYNC_SECTIONS, legacy.getString(KEY_WEBDAV_SYNC_SECTIONS, "") ?: "")
+                }
+            }
+            legacy.edit { remove(KEY_WEBDAV_SYNC_SECTIONS) }
+            StunLogger.i(TAG, "WebDAV sync sections migrated to $DEVICE_PREF_NAME (excluded from snapshot)")
+        }
+        device.edit { putBoolean(KEY_WEBDAV_SCOPE_KEY_MIGRATED, true) }
     }
 
     fun getLogLevel(context: Context): String = getPrefs(context).getString(KEY_LOG_LEVEL, DEFAULT_LOG_LEVEL) ?: DEFAULT_LOG_LEVEL
@@ -397,6 +438,21 @@ object SettingsManager {
 
     fun isWebConsoleEverStarted(context: Context): Boolean = getPrefs(context).getBoolean(KEY_WEB_CONSOLE_EVER_STARTED, false)
     fun markWebConsoleEverStarted(context: Context) = getPrefs(context).edit { putBoolean(KEY_WEB_CONSOLE_EVER_STARTED, true) }
+
+    // 远程控制保活：要不要挂前台保活服务把进程顶在 foreground 优先级，
+    // 让 WebUI / 蓝牙 / 局域网远控在界面关闭、进程被回收后仍然可连。
+    // 这是「保活的意图」；真实生效还要看 KeepAliveManager 两条路径的现实状态。
+    fun isRemoteControlKeepAlive(context: Context): Boolean =
+        devicePrefs(context).getBoolean(KEY_REMOTE_CONTROL_KEEPALIVE, true)
+    fun saveRemoteControlKeepAlive(context: Context, enabled: Boolean) =
+        devicePrefs(context).edit { putBoolean(KEY_REMOTE_CONTROL_KEEPALIVE, enabled) }
+
+    // 被控端同步服务（局域网 HTTP + 蓝牙 RFCOMM）总开关：TV 界面上的"同步服务"按钮落在这里。
+    // 冷启动（Application）与保活唤回都读它，所以用户关掉后重启不会再被自动拉起。
+    fun isRemoteSyncEnabled(context: Context): Boolean =
+        devicePrefs(context).getBoolean(KEY_REMOTE_SYNC_ENABLED, true)
+    fun saveRemoteSyncEnabled(context: Context, enabled: Boolean) =
+        devicePrefs(context).edit { putBoolean(KEY_REMOTE_SYNC_ENABLED, enabled) }
 
     // ── 带宽测速（下行/上行，经节点隧道真实吞吐）配置 ──
     fun getSpeedTestDownUrl(context: Context): String =
@@ -661,6 +717,31 @@ object SettingsManager {
     private const val KEY_WEBDAV_LAST_SYNC = "webdav_last_sync"
 
     /**
+     * 备份前缀 —— 进**可迁移库**，和地址/账号/间隔同属"这条 WebDAV 链路怎么配"。
+     *
+     * 刻意不跟 [KEY_WEBDAV_SYNC_MODE] 放设备态：前缀描述的是"云端那份东西落哪"，
+     * 换台机器装上，落的位置跟原来一致，跟着设置快照一起迁移才符合直觉。
+     * 它与快照也有轻度自指（恢复会改写"下次同步看哪个目录"），但收敛方向与
+     * 换机迁移的意图一致，可以留；同步范围则不行，见 [KEY_WEBDAV_SYNC_SECTIONS]。
+     */
+    private const val KEY_WEBDAV_PREFIX = "webdav_prefix"
+
+    /**
+     * 同步范围 —— 存**设备态**库，刻意不进云备份。
+     *
+     * 它决定"设置快照该包含什么"，而设置快照又是它要控制的内容 —— **自指**：
+     * 放在可迁移库时，用户改完勾选，下一次带拉取的同步（手动或 worker）只要云端
+     * 被判"更新"，整个设置分区连同这个键一起被云端旧值盖回，本机的勾选**永远无法
+     * 在拉取中幸存**，表现成"勾选后无法保存，重开又是默认"。升级后首次同步时
+     * 内容指纹空白（neverObserved，见 [app.fjj.stun.backup.WebDavBackupManager.exportParts]）
+     * 云端无条件赢，症状必然复现。
+     *
+     * 与 [KEY_WEBDAV_SYNC_MODE] 同款论证："参与哪些分区"是本机对这条链路的运维意图，
+     * 跨设备迁移毫无意义 —— 真要换机，重新勾一次是几秒钟的事，被云端悄悄改写才是事故。
+     */
+    private const val KEY_WEBDAV_SYNC_SECTIONS = "webdav_sync_sections"
+
+    /**
      * 同步模式 —— 存**设备态**库，刻意不进云备份。
      *
      * 它决定「本机是否参与同步」，是本机策略：若能被云端恢复覆盖，就会出现自指
@@ -737,6 +818,55 @@ object SettingsManager {
     fun saveWebDavBackupIntervalHours(context: Context, hours: Long) {
         if (hours in 1..720) getPrefs(context).edit { putLong(KEY_WEBDAV_INTERVAL_H, hours) }
     }
+
+    /**
+     * 备份前缀（已归一化）；空串＝不启用，沿用历史路径。
+     *
+     * 写和读**都**过一遍归一化：它会原样拼进 WebDAV 路径段，而这个值会从 WebUI / MCP
+     * 这些不受信任的入口进来 —— 只洗一次等于把另外几个入口留成裸的。
+     */
+    fun getWebDavPrefix(context: Context): String =
+        app.fjj.stun.backup.WebDavBackupManager.sanitizePrefix(
+            getPrefs(context).getString(KEY_WEBDAV_PREFIX, "") ?: ""
+        )
+
+    fun saveWebDavPrefix(context: Context, prefix: String) {
+        getPrefs(context).edit {
+            putString(KEY_WEBDAV_PREFIX, app.fjj.stun.backup.WebDavBackupManager.sanitizePrefix(prefix))
+        }
+    }
+
+    /**
+     * 参与这条 WebDAV 链路的分区 id。
+     *
+     * 必须区分「键不存在」与「显式空集」：
+     * - 键不存在（旧版本 / 首次配置）→ 回落全量分区，老用户升级后分区不会静默地不备份；
+     * - 显式空集 → 用户把三类分区全取消了，只想同步节点，不能回弹成全量。
+     *
+     * 所以这里**不用** [SharedPreferences.getStringSet]：AOSP 里 `putStringSet(key, emptySet())`
+     * 会直接 `remove(key)`（Javadoc 明写 "If the set is empty the value is removed"），
+     * 空集根本存不进去 —— 那种实现下"只备份节点"这个选择是不可达的。
+     * 换成逗号串后，空串是合法值且能被持久化；判据用 [SharedPreferences.contains]，
+     * 而不是默认值（`getString` 的默认值在"键不存在"和"值为空串"上分不出来）。
+     * 节点（profiles）不是分区、恒定参与，不在这个集合里。
+     */
+    fun getWebDavSyncSections(context: Context): Set<String> {
+        ensureWebDavScopeKeyMigrated(context)
+        val prefs = getDevicePrefs(context)
+        if (!prefs.contains(KEY_WEBDAV_SYNC_SECTIONS)) return allWebDavSectionIds().toSet()
+        val raw = prefs.getString(KEY_WEBDAV_SYNC_SECTIONS, "") ?: ""
+        return raw.split(',').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+    }
+
+    /** 只保留已登记过的分区 id，过滤掉外部输入（WebUI / MCP）里可能塞进来的未知串。 */
+    fun saveWebDavSyncSections(context: Context, sections: Set<String>) {
+        val known = allWebDavSectionIds().toSet()
+        val kept = sections.filter { it in known }.toSet()
+        getDevicePrefs(context).edit { putString(KEY_WEBDAV_SYNC_SECTIONS, kept.joinToString(",")) }
+    }
+
+    /** 所有已登记分区的 id —— UI 渲染复选框用它，新增分区自动出现，不必改调用方。 */
+    fun allWebDavSectionIds(): List<String> = app.fjj.stun.backup.BackupSections.all.map { it.id }
 
     // 设备态：上次备份时间，写路径同样落设备态库
     fun saveWebDavLastBackupTime(context: Context, time: Long) {
@@ -816,6 +946,7 @@ object SettingsManager {
     fun webDavSettingsSnapshot(context: Context): Map<String, Map<String, Any?>> {
         // 迁移未跑完前，设备态键还留在本库，必须先搬走再导出
         ensureDeviceStateMigrated(context)
+        ensureWebDavScopeKeyMigrated(context)
         val out = LinkedHashMap<String, Map<String, Any?>>()
         getPrefs(context).all.forEach { (key, value) ->
             val entry = SettingsBackupCodec.encode(value) { KeystoreUtils.decrypt(it) }
@@ -845,9 +976,10 @@ object SettingsManager {
         val existing = prefs.all
         prefs.edit {
             snapshot.forEach { (key, entry) ->
-                // 历史备份可能残留设备态键（旧版未排除 last_update_time 等），
-                // 一律不回流到可迁移库；新增设备态字段本就不会出现在快照里，无需扩表。
-                if (key in LEGACY_DEVICE_LOCAL_KEYS) return@forEach
+                // 历史备份可能残留设备态键（旧版未排除 last_update_time 等；以及旧版曾把
+                // 同步范围放本库 —— 云端快照里还会漂一段时间），一律不回流到可迁移库；
+                // 新增设备态字段本就不会出现在新快照里。
+                if (key in LEGACY_DEVICE_LOCAL_KEYS || key == KEY_WEBDAV_SYNC_SECTIONS) return@forEach
                 val decoded = SettingsBackupCodec.decode(
                     entry = entry,
                     encryptSecret = { KeystoreUtils.encrypt(it) },

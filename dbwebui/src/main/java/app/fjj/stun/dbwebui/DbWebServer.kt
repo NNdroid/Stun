@@ -69,6 +69,12 @@ object DbWebServer {
 
     // ── lifecycle ──────────────────────────────────────────────
     fun start(context: Context, port: Int = SettingsManager.getDbWebPort(context)): Int {
+        // 仅 debug 构建可用：明文 HTTP 暴露整库（含删表/执行 SQL），release 包绝不启动。
+        // 这是模块自身的保底防线；调用侧（StunApp / 设置页）也已按 BuildConfig.DEBUG 门控。
+        if (!BuildConfig.DEBUG) {
+            StunLogger.w(TAG, "DbWebServer is debug-only; refusing to start in release build")
+            return -1
+        }
         if (isRunning) return actualPort
         appCtx = context.applicationContext
         actualPort = try {

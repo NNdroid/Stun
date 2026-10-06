@@ -39,8 +39,9 @@ import java.util.Locale
  *
  * 1. **取消拥挤**：UDP 网关实现的 tun2proxy/badvpn 两张卡、应用分流的「排除/仅指定」两张卡，
  *    都只留「radio + 名称」——Recommended 徽标与 4 条说明文案（含整个 Tips 子卡）已删除。
- *    判据：每张选择卡里只应有 **1 个** TextView；UDP 网关小节内应只剩 3 块（头部行 /
- *    实现子卡 / 地址子卡）。
+ *    判据：每张选择卡里只应有 **1 个** TextView。
+ *    2026-10 追加：UDP 网关小节按用户反馈**压平**——实现/地址/会话限制三张子卡拆除
+ *    （连同子卡头部的徽标图标），内容直接铺在小节卡里；判据见第 2 条测试。
  * 2. **WebDAV 页脚分行**：原来「上次备份」和两个按钮挤在一行，窄屏上 label 被压成
  *    「Last b / ackup:」两条竖排窄字。现在页脚内层是纵向容器、恰好两行。
  *    判据：按钮行的 `top` 必须 ≥「上次备份」的 `bottom`。
@@ -100,12 +101,17 @@ class SettingsCompactLayoutTest {
         val container = card!!.getChildAt(0) as ViewGroup
         val shapes = (0 until container.childCount)
             .map { "child#$it=${container.getChildAt(it).javaClass.simpleName}" }
+        // 2026-10 版式：按用户反馈压平 —— 小节卡里不再套子卡（两层 card 堆叠），
+        // 实现 / 地址 / 会话限制三块直接平铺在小节卡里。直接子视图里不允许再出现任何
+        // MaterialCardView；唯一保留的嵌套卡是 radio 行里那两张可选中的选择卡
+        //（card_udpgw_tun2proxy / card_udpgw_badvpn，挂在更深的层级上，不受此约束）。
+        val nestedCards = (0 until container.childCount)
+            .map { container.getChildAt(it) }
+            .filterIsInstance<MaterialCardView>()
         assertTrue(
-            "UDP 网关小节内应为 4 块（头部行 + 实现子卡 + 地址子卡 + 会话限制子卡），" +
-                "实际 ${container.childCount} 块：$shapes\n" +
-                "块数变多通常意味着又塞回了「小提示」子卡（Tips 标题 + 两条 • 说明）—— 那块必须整块删掉。\n" +
-                "注：会话限制子卡（UDP 会话上限 / 空闲超时）原先放在「自定义直连路由」小节，语义错位，已挪进来。",
-            container.childCount == 4,
+            "UDP 网关小节的直接子视图里不应再有子卡（两层 card 堆叠已拆除），" +
+                "实际 ${container.childCount} 块：$shapes",
+            nestedCards.isEmpty(),
         )
 
         val bullets = textViewsIn(card).map { it.text.toString() }.filter { it.trimStart().startsWith("•") }

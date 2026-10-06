@@ -1,13 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  覆盖 core 的默认列宽（core/src/main/res/values/dimens.xml 里是 360dp）。
+  覆盖 core 的默认列宽（core/src/main/res/values/dimens.xml 里是 360dp）与多列门槛。
 
-  TV 是 10 尺 UI：常见电视横屏约 960dp，每列 480dp 正好两列、每张卡片接近手机屏宽，
-  名字/地址/延迟那一排在 10 尺距离上才看得清；沿用 360dp 会切出 3 列（每列 320dp），
-  卡片上的文字会挤。4K 电视（约 1920dp）下按 480dp 得 4 列。
+  TV 是 10 尺 UI：每列 480dp 每张卡片才接近手机屏宽，名字/地址/延迟那一排在 10 尺距离上
+  才看得清；沿用 360dp 会切出 3 列（每列 320dp），卡片上的文字会挤。
 
-  只覆盖这一个键，node_grid_min_width（多列门槛 600dp）继续用 core 的默认 —— 电视本来就远超它。
+  门槛 node_grid_min_width 必须跟着列宽一起抬到 2 × 480 = 960dp：GridSpans 是按
+  RecyclerView **自己的**宽度算的（不是屏幕宽），而右侧列表只有约六成屏宽。门槛停在 core 的
+  600dp 时，600~960dp 的列表会被 coerceIn(2, 6) 强行切成 2 列、每列只剩 ~350dp —— 比上面定的
+  480dp 底线还窄，那个 480dp 覆盖等于白写。抬到 960dp 后语义自洽：列表装不下两个完整列就保持
+  单列，够宽才开多列，且每列都实实在在 ≥ 480dp。
 -->
 <resources>
     <dimen name="node_grid_min_column">480dp</dimen>
+    <dimen name="node_grid_min_width">960dp</dimen>
 </resources>

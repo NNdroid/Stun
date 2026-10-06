@@ -24,6 +24,15 @@ import java.security.MessageDigest
  * 其中 settings 分区沿用历史文件名 `settings.json.enc`（双向兼容），
  * 其余分区用 `section_<id>.json.enc`。滚动保留最近 [MAX_BACKUPS] 份（上传成功后清理更旧的）。
  *
+ * **备份前缀**：配置了前缀（如 `ht2`）时目录名变为 `<前缀>_<yyyyMMdd-HHmmss>`，
+ * 且本类**只认这个前缀** —— 列举、裁剪、恢复全走同一套目录名校验，因此两套前缀
+ * （以及无前缀的历史备份）可以在同一个 WebDAV 账号下并存、互不裁剪。
+ * 代价是**旧备份随之从列表里消失**（文件既不被删也不被迁移，清空前缀即可重新看见并恢复）；
+ * `webdav_prefix_helper` 文案如实说明了这一点，改这里时别把那句话改没了。
+ *
+ * **同步范围**：节点恒定参与（[PROFILES_SYNC_ID]）；分区是否参与由 [Config.activeSections] 决定，
+ * 未勾选的分区既不上传也不拉取，但**不会**因此删掉云端已有文件。
+ *
  * **可插拔**：本类不再认识任何具体设置项，只遍历 [BackupSections.all]。
  * 新增一类需要云备份的设置 = 新增一个 [BackupSection] 实现并登记，**本文件不用改**。
  *
@@ -61,8 +70,50 @@ object WebDavBackupManager {
 
     const val MAX_BACKUPS = 5
 
-    /** 备份目录名：UTC 时间戳，字典序即时间序。 */
+    /** 备份目录名里的 UTC 时间戳段：字典序即时间序。 */
     private val DIR_NAME_REGEX = Regex("\\d{8}-\\d{6}")
+
+    /** 前缀长度上限：目录名总长要留得出时间戳段，太长只会让 WebDAV 客户端列表难看。 */
+    private const val PREFIX_MAX_LENGTH = 24
+
+    /**
+     * 前缀允许的字符。刻意只留字母数字与 `-` `.` `_`：前缀会原样拼进 WebDAV 路径段，
+     * `/` `\` `..` 或控制字符都能把路径顶出备份根目录。
+     */
+    private const val PREFIX_ALLOWED = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
+
+    /**
+     * 备份前缀归一化。
+     *
+     * 必须在**进入路径之前**自己洗一遍，不能指望输入框或调用方：这个值会从
+     * WebUI / MCP 这些不受信任的入口进来。除了丢字符，还去掉尾部的 `_` `.` `-`
+     * （否则目录名会变成 `ht2__20261006`，用户会以为前缀没生效）和前导 `.`
+     * （前导点会让备份目录在 Unix 网盘上变成隐藏目录，看起来像"备份消失了"）。
+     */
+    fun sanitizePrefix(raw: String?): String {
+        val kept = buildString {
+            for (ch in raw.orEmpty()) {
+                if (length >= PREFIX_MAX_LENGTH) break
+                if (ch in PREFIX_ALLOWED) append(ch)
+            }
+        }
+        val trimmed = kept.trimEnd('_', '.', '-')
+        return if (trimmed.startsWith('.')) trimmed.trimStart('.') else trimmed
+    }
+
+    /** 目录名匹配器：无前缀时就是纯时间戳；有前缀时是 `<前缀>_<时间戳>`。 */
+    private fun backupDirRegex(prefix: String): Regex =
+        if (prefix.isEmpty()) DIR_NAME_REGEX
+        else Regex(Regex.escape(prefix) + "_\\d{8}-\\d{6}")
+
+    /**
+     * 这个目录名是不是**当前这套前缀**下的备份目录。
+     *
+     * 列举/裁剪/恢复都必须过这一关：既挡路径穿越（WebUI 的 `dir` 参数是外部输入），
+     * 也保证前缀 `ht2` 的实例不会去裁剪无前缀的历史备份。
+     */
+    internal fun isBackupDirName(name: String, prefix: String): Boolean =
+        backupDirRegex(prefix).matches(name)
 
     /**
      * 备份/恢复失败原因码。UI 按码取本地化文案 —— 直接上屏 `e.message` 会把
@@ -85,8 +136,32 @@ object WebDavBackupManager {
 
     class BackupException(message: String, val code: Int = -1) : Exception(message)
 
-    data class Config(val url: String, val user: String, val pass: String, val pin: String) {
+    data class Config(
+        val url: String,
+        val user: String,
+        val pass: String,
+        val pin: String,
+        /** 备份前缀（未清洗的原值）；空串＝不启用，沿用历史路径 `Stun/<时间戳>/`。 */
+        val prefix: String = "",
+        /**
+         * 调用方显式给出的分区 id。**null ＝ 没给**（回落全量，见 [activeSections]）；
+         * 空集是有意义的 —— 它表示"用户把三类分区全取消了，只同步节点"。
+         */
+        val sections: Set<String>? = null,
+    ) {
         val isConfigured: Boolean get() = url.isNotBlank() && user.isNotBlank() && pass.isNotBlank() && pin.isNotBlank()
+
+        /** 归一化后的前缀：防御纵深，即使调用方塞了没洗过的值也不会污染路径。 */
+        val cleanPrefix: String get() = sanitizePrefix(prefix)
+
+        /**
+         * 实际生效的同步分区范围。
+         *
+         * 未指定（null）回落全量：这个键在旧版本里根本不存在，升级后第一次读到的是"没有"，
+         * 不能当成"全关" —— 否则老用户的分区会静默地不再备份。空集则照实生效（只同步节点），
+         * 那是一次明确的、有意的选择。
+         */
+        val activeSections: Set<String> get() = sections ?: BackupSections.all.map { it.id }.toSet()
     }
 
     /** [backup] 的结果：节点数 + 本次**真的上传了**的分区 id（订阅为空时不含该分区）。 */
@@ -108,16 +183,20 @@ object WebDavBackupManager {
      */
     fun sectionSummary(context: Context, ids: List<String>): String {
         val joiner = context.getString(app.fjj.stun.core.R.string.webdav_section_joiner)
-        return ids.mapNotNull { id ->
-            BackupSections.byId(id)?.labelRes?.takeIf { it != 0 }?.let { context.getString(it) }
-        }.joinToString(joiner)
+        return ids.mapNotNull { id -> labelOf(context, id) }.joinToString(joiner)
+    }
+
+    /** 一个同步对象的本地化名称；节点不是 [BackupSection]，需要单独映射（同步回执里会出现它）。 */
+    private fun labelOf(context: Context, id: String): String? = when (id) {
+        PROFILES_SYNC_ID -> context.getString(app.fjj.stun.core.R.string.webdav_section_profiles)
+        else -> BackupSections.byId(id)?.labelRes?.takeIf { it != 0 }?.let { context.getString(it) }
     }
 
     /** 备份：写入新的时间戳目录（节点 + 各注册分区 + 同步元数据），成功后裁剪到最近 [MAX_BACKUPS] 份。 */
     suspend fun backup(context: Context, config: Config): BackupResult = withContext(Dispatchers.IO) {
         if (!config.isConfigured) throw BackupException("config incomplete", ErrorCode.CONFIG_INCOMPLETE)
         val base = WebDavClient.normalizeBaseUrl(config.url)
-        val parts = exportParts(context, emptyMap())
+        val parts = exportParts(context, emptyMap(), config.activeSections)
         val mtimes = anchorMtimes(parts)
         val result = pushSnapshot(base, config, parts, mtimes)
         persistStamps(context, parts, mtimes)
@@ -142,6 +221,9 @@ object WebDavBackupManager {
      * - **仅下载**：只把云端较新的分区拉回本机；
      * - **双向**：先拉后推，把合并结果写成一份新快照。
      *
+     * 未勾选的分区（不在 [Config.activeSections] 里）根本不进入 [exportParts]，
+     * 因此既不会被上传、也不会被云端那份覆盖 —— 「取消同步」是真的取消，不是只藏文件。
+     *
      * ## 「按内容时间戳决胜负」是怎么判的
      * 每个分区在设备态库里有 `(mtime, hash)` 指纹（见 [SettingsManager.SyncStamp]）：
      * - `hash` 是**本机这份内容**的指纹，与上次记录比对来**推断**"本机被改过" ——
@@ -162,7 +244,7 @@ object WebDavBackupManager {
         val base = WebDavClient.normalizeBaseUrl(config.url)
         val dirs = listBackups(config)
         val remote = collectRemoteStamps(base, dirs, config)
-        val parts = exportParts(context, remote)
+        val parts = exportParts(context, remote, config.activeSections)
 
         // 兜底推送。⚠️ 这一步**不写本机指纹**，meta 用的是本机当前的（多半还是 0 的）时间戳：
         // 若在这里把 mtime 锚到 now，下面判"谁更新"时云端会因为"比本机的 now 旧"而**永远拉不下来**。
@@ -256,9 +338,10 @@ object WebDavBackupManager {
      * "本机是否被改过"只能在同步时判定（不在 80+ 个设置写入点埋钩子 —— 漏一个就是静默不同步），
      * 观测一次就该落一次盘，否则下次又变回"从未观测"。
      */
-    private fun exportParts(context: Context, remote: Map<String, RemoteRef>): List<SyncPart> {
+    private fun exportParts(context: Context, remote: Map<String, RemoteRef>, sections: Set<String>): List<SyncPart> {
         val now = System.currentTimeMillis()
-        val parts = ArrayList<SyncPart>(BackupSections.all.size + 1)
+        val selected = BackupSections.all.filter { it.id in sections }
+        val parts = ArrayList<SyncPart>(selected.size + 1)
 
         fun define(id: String, fileName: String, json: String?, section: BackupSection?, itemCount: Int) {
             val stored = SettingsManager.getWebDavSyncStamp(context, id)
@@ -276,9 +359,10 @@ object WebDavBackupManager {
             if (hash != null) SettingsManager.saveWebDavSyncStamp(context, id, mtime, hash)
         }
 
+        // 节点恒定参与，不受勾选影响（它是必需载荷，见 pushSnapshot / restore）
         val profiles = ProfileManager.getProfiles(context)
         define(PROFILES_SYNC_ID, PROFILES_FILE_NAME, Gson().toJson(profiles), null, profiles.size)
-        BackupSections.all.forEach { section ->
+        selected.forEach { section ->
             val json = try {
                 section.export(context)
             } catch (e: Exception) {
@@ -346,7 +430,7 @@ object WebDavBackupManager {
      * [backup] 只是"算指纹 → 调它 → 落指纹"的一层壳；[sync] 的兜底推送直接调它、不落指纹。
      */
     private fun pushSnapshot(base: String, config: Config, parts: List<SyncPart>, mtimes: Map<String, Long>): BackupResult {
-        val dir = newBackupDirName()
+        val dir = newBackupDirName(config.cleanPrefix)
         StunLogger.i("WebDAV", "Backup start → $base/$BACKUP_DIR/$dir")
 
         val profilesPart = parts.first { it.id == PROFILES_SYNC_ID }
@@ -481,7 +565,7 @@ object WebDavBackupManager {
         else -> element
     }
 
-    /** 列出服务器上的备份目录名（由新到旧）。 */
+    /** 列出服务器上**当前这套前缀下**的备份目录名（由新到旧）。 */
     suspend fun listBackups(config: Config): List<String> = withContext(Dispatchers.IO) {
         if (!config.isConfigured) return@withContext emptyList()
         val result = runCatching {
@@ -491,7 +575,7 @@ object WebDavBackupManager {
         }.getOrDefault(emptyList())
             .filter { it.endsWith("/") }
             .map { it.trim('/') }
-            .filter { DIR_NAME_REGEX.matches(it) }
+            .filter { isBackupDirName(it, config.cleanPrefix) }
             .sortedDescending()
         StunLogger.d("WebDAV", "listBackups -> ${result.size} backup(s): ${result.joinToString(", ")}")
         result
@@ -500,7 +584,9 @@ object WebDavBackupManager {
     /** 从指定备份目录恢复：PIN 解密 → 节点按 id 合并，设置写回。 */
     suspend fun restore(context: Context, config: Config, dir: String): RestoreResult = withContext(Dispatchers.IO) {
         if (!config.isConfigured) throw BackupException("config incomplete", ErrorCode.CONFIG_INCOMPLETE)
-        if (!DIR_NAME_REGEX.matches(dir)) throw BackupException("invalid backup id", ErrorCode.INVALID_DIR)
+        if (!isBackupDirName(dir, config.cleanPrefix)) {
+            throw BackupException("invalid backup id", ErrorCode.INVALID_DIR)
+        }
         val base = WebDavClient.normalizeBaseUrl(config.url)
         StunLogger.i("WebDAV", "Restore start ← $base/$BACKUP_DIR/$dir")
 
@@ -522,10 +608,11 @@ object WebDavBackupManager {
         // 节点合并走与同步链路**同一份**实现（见 applyProfilesJson）：两处各写一遍迟早漂移
         val merged = applyProfilesJson(context, Gson().toJson(profiles))
 
-        // 各分区可选：单个分区损坏/缺失只跳过它，不影响已完成的节点合并
+        // 各分区可选：单个分区损坏/缺失只跳过它，不影响已完成的节点合并。
+        // 同样只恢复**勾选中**的分区 —— 取消同步的东西不该在一次恢复里偷偷写回来。
         val restoredIds = mutableListOf<String>()
         var settingsRestored = false
-        BackupSections.all.forEach { section ->
+        BackupSections.all.filter { it.id in config.activeSections }.forEach { section ->
             try {
                 val json = (fetchDecrypted(base, dirPath(dir, section.fileName), config) as? Fetched.Ok)?.json
                 if (json == null) {
@@ -556,30 +643,43 @@ object WebDavBackupManager {
     /** 远端是否已有备份。 */
     suspend fun exists(config: Config): Boolean = listBackups(config).isNotEmpty()
 
-    /** 供 UI 展示：把 UTC 目录名格式化成本机时区的可读时间。 */
+    /** 目录名尾部的 UTC 时间戳段；有无前缀都按这个取，不依赖前缀长什么样。 */
+    private val DISPLAY_STAMP_REGEX = Regex("\\d{8}-\\d{6}$")
+
+    /** 供 UI 展示：把备份目录名（可能带前缀）格式化成**本机时区**的可读时间。 */
     fun formatDirForDisplay(name: String): String = try {
+        val stamp = DISPLAY_STAMP_REGEX.find(name)?.value ?: return name
         val utc = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).apply {
             timeZone = java.util.TimeZone.getTimeZone("UTC")
-        }.parse(name) ?: return name
+        }.parse(stamp) ?: return name
         java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(utc)
     } catch (_: Exception) {
         name
     }
 
-    private fun newBackupDirName(): String =
-        java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US)
+    /** 新的备份目录名：配置了前缀时形如 `<前缀>_<时间戳>`，否则沿用历史形态。 */
+    private fun newBackupDirName(prefix: String): String {
+        val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US)
             .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
             .format(java.util.Date())
+        // 下标必须写成 `${prefix}_`：`$prefix_` 会被解析成叫 `prefix_` 的标识符
+        return if (prefix.isEmpty()) stamp else "${prefix}_$stamp"
+    }
 
     private fun dirPath(dir: String, file: String): String = "$BACKUP_DIR/$dir/$file"
 
-    /** 超出保留份数时删除最旧的目录；尽力而为，失败忽略（下次备份再清）。返回删除数量。 */
+    /**
+     * 超出保留份数时删除最旧的目录；尽力而为，失败忽略（下次备份再清）。返回删除数量。
+     *
+     * 只裁**当前前缀下**的目录：换了前缀就换了一套逻辑备份集，
+     * 不能顺手把无前缀的历史备份或另一套前缀的备份删掉。
+     */
     private fun pruneOldBackups(base: String, config: Config): Int {
         return try {
             val dirs = WebDavClient.listChildren(base, BACKUP_DIR, config.user, config.pass)
                 .filter { it.endsWith("/") }
                 .map { it.trim('/') }
-                .filter { DIR_NAME_REGEX.matches(it) }
+                .filter { isBackupDirName(it, config.cleanPrefix) }
                 .sortedDescending()
             val doomed = dirs.drop(MAX_BACKUPS)
             doomed.forEach { old ->

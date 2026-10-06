@@ -352,6 +352,10 @@ class TProxySourceParityTest {
     @Test
     fun scriptActuallyHonoursTheKeysWeEmit() {
         // 我们写进配置的每个键都必须在脚本里有对应的默认值兜底行，否则它就是一句空话。
+        // ⚠️ APPS_LIST 两个键**必须保持** `${KEY:-…}`（空串也回退默认）：DEFAULT_BYPASS_APPS_LIST
+        // 里的 App 自旁路是 uid 粒度防回环的最后防线 —— 2026-10 曾改成「仅未设置才回退」让
+        // App 流量进隧道，结果在 mark 已死、BYPASS_DST 失配的设备上直接回环，服务端连不上。
+        // App 自身流量的正确代理方式是显式走本地 SOCKS5（见 ExitIpProbe.contextAwareFetch）。
         for (key in listOf(
             "PROXY_TCP_PORT", "PROXY_UDP_PORT", "PROXY_MODE", "DNS_HIJACK_ENABLE", "DNS_PORT",
             "APP_PROXY_ENABLE", "APP_PROXY_MODE", "BYPASS_APPS_LIST", "PROXY_APPS_LIST", "DRY_RUN",

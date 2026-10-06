@@ -78,6 +78,18 @@
                 android:value="TProxy on Car." />
         </service>
 
+        <!-- 远程控制前台保活：手机远控（蓝牙 / 局域网同步）跑在 App 进程里，进程被回收即一起消失。
+             前台服务把进程顶在 foreground 优先级，RemoteControlHost 在进程重建时把监听面补回来。
+             之前 Car 只声明了 VPN / TProxy 两个前台服务，没有这个，车机远控随进程一起没了。 -->
+        <service
+            android:name="app.fjj.stun.service.WebConsoleKeepAliveService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Keep remote control reachable on Car." />
+        </service>
+
     </application>
 
 </manifest>

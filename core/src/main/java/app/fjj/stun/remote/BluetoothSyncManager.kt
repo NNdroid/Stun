@@ -24,6 +24,7 @@ import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -31,18 +32,39 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 object BluetoothSyncManager {
     private const val TAG = "BluetoothSyncManager"
     val STUN_BT_UUID: UUID = UUID.fromString("8ce25a20-4e56-11ee-be56-0242ac120002")
+
+    /** 服务端 RFCOMM 服务名，与手机端 `createRfcommSocketToServiceRecord` 无关（按 UUID 连接），仅出现在扫描列表里。 */
+    private const val RFCOMM_SERVICE_NAME = "StunCarService"
+
+    /** 客户端单次会话（connect + 发一行 + 收一行）的硬超时。 */
+    private const val BT_SESSION_TIMEOUT_MS = 7000L
+
+    /** 可达性探测的硬超时，沿用原先的 4 秒。 */
+    private const val DEVICE_REACHABLE_TIMEOUT_MS = 4000L
+
+    /** accept 连败多少轮后丢弃当前 server socket、重新 listenUsingRfcommWithServiceRecord。 */
+    private const val ACCEPT_REBIND_AFTER_FAILURES = 3
+
+    /** accept 失败退避的基础步长（按失败轮数线性递增）。 */
+    private const val ACCEPT_BACKOFF_STEP_MS = 1000L
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     @Volatile
     private var serverSocket: BluetoothServerSocket? = null
 
-    @Volatile
-    private var isServerRunning = false
+    /**
+     * CAS 而不是 read-then-set：`TVApp.onCreate` 与 `MainActivity.onCreate` 会竞争同一个入口，
+     * 无锁时两边都能通过检查，把两个 RFCOMM server socket 叠在一起（其中一个接到的客户端会丢），
+     * 而 [stopServer] 只关掉最后一个。
+     */
+    private val isServerRunning = AtomicBoolean(false)
 
     /**
      * 宿主（TV/Car 的 Activity）注册的状态来源，与 [RemoteSyncManager.tvStatusProvider] 同语义。
@@ -116,65 +138,125 @@ object BluetoothSyncManager {
      */
     @SuppressLint("MissingPermission")
     fun startServer(context: Context): Boolean {
-        if (isServerRunning) return true
+        if (!isServerRunning.compareAndSet(false, true)) return true
+        // 只捕获 applicationContext：`context` 可能是 Activity，钉在常驻 object 的闭包里会泄漏。
+        val app = context.applicationContext
 
         // Check the runtime grant *before* touching the adapter. On API 31+ the framework's own
         // getAddress() call inside listenUsingRfcommWithServiceRecord() throws without it, which
         // used to surface as an unexplained "Bluetooth Sync Server failed" error with a stack trace.
-        if (!hasBluetoothConnectPermission(context)) {
+        if (!hasBluetoothConnectPermission(app)) {
             StunLogger.w(
                 TAG,
                 "BLUETOOTH_CONNECT not granted; Bluetooth sync server not started. " +
                     "Request it from an Activity, then call startServer() again."
             )
-            return false
+            return abortStart("no BLUETOOTH_CONNECT")
         }
 
-        val adapter = getBluetoothAdapter(context) ?: run {
+        val adapter = getBluetoothAdapter(app) ?: run {
             StunLogger.w(TAG, "Bluetooth not supported on this device.")
-            return false
+            return abortStart("no adapter")
         }
 
         try {
             if (!adapter.isEnabled) {
                 StunLogger.w(TAG, "Bluetooth is disabled.")
-                return false
+                return abortStart("bluetooth disabled")
             }
         } catch (e: SecurityException) {
             StunLogger.w(TAG, "SecurityException checking adapter.isEnabled: ${e.message}")
-            return false
+            return abortStart("SecurityException: ${e.message}")
         }
 
-        isServerRunning = true
-        scope.launch {
-            try {
-                serverSocket = adapter.listenUsingRfcommWithServiceRecord("StunCarService", STUN_BT_UUID)
-                StunLogger.i(TAG, "Bluetooth Sync Server listening on UUID: $STUN_BT_UUID")
-
-                while (isServerRunning) {
-                    val socket = try {
-                        serverSocket?.accept()
-                    } catch (e: Exception) {
-                        if (!isServerRunning) break
-                        StunLogger.w(TAG, "Bluetooth accept error: ${e.message}")
-                        null
-                    }
-
-                    socket?.let { clientSocket ->
-                        handleClientConnection(context.applicationContext, clientSocket)
-                    }
-                }
-            } catch (e: Exception) {
-                StunLogger.e(TAG, "Bluetooth Sync Server failed", e)
-            } finally {
-                stopServer()
-            }
+        // 在**调用线程**上绑定，而不是丢进协程里：
+        //  ① 失败时抛出的 SecurityException / IllegalStateException 能直接记成一条清晰的日志，
+        //     而不是变成异步的 "Bluetooth Sync Server failed"；
+        //  ② 失败一定走 [abortStart] 回滚标志位 —— 否则标志永久卡在 true，之后每次
+        //     RemoteControlHost.startBluetooth 都在 isRunning() 短路、报 bt-alive，实际什么都没在听。
+        try {
+            serverSocket = adapter.listenUsingRfcommWithServiceRecord(RFCOMM_SERVICE_NAME, STUN_BT_UUID)
+        } catch (e: Exception) {
+            return abortStart(e.message ?: "listenUsingRfcommWithServiceRecord threw")
         }
+        StunLogger.i(TAG, "Bluetooth Sync Server listening on UUID: $STUN_BT_UUID")
+
+        scope.launch { acceptLoop(app) }
         return true
     }
 
+    /** 启动失败时统一回滚，避免 isRunning() 卡死在 true（见 [startServer]）。 */
+    private fun abortStart(reason: String): Boolean {
+        isServerRunning.set(false)
+        try { serverSocket?.close() } catch (_: Exception) {}
+        serverSocket = null
+        StunLogger.e(TAG, "Bluetooth Sync Server start aborted: $reason")
+        return false
+    }
+
+    /**
+     * accept 循环。原先异常分支里把 socket 置 null 后直接进下一轮 `accept()` —— 持续报错时就是
+     * 紧密自旋打日志，而且永远卡在同一个（可能已经坏了的）server socket 上，永不重建。
+     * 这里改为有界退避，连败到阈值就重新 listenUsingRfcommWithServiceRecord 换一个 socket。
+     */
+    @SuppressLint("MissingPermission")
+    private suspend fun acceptLoop(context: Context) {
+        try {
+            var failures = 0
+            while (isServerRunning.get()) {
+                val clientSocket = try {
+                    serverSocket?.accept()
+                } catch (e: Exception) {
+                    if (!isServerRunning.get()) break
+                    failures++
+                    StunLogger.w(TAG, "Bluetooth accept error ($failures): ${e.message}")
+                    if (failures >= ACCEPT_REBIND_AFTER_FAILURES) {
+                        if (!rebindServerSocket(context)) {
+                            StunLogger.e(TAG, "Bluetooth accept loop ended: could not rebind")
+                            break
+                        }
+                        failures = 0
+                        continue
+                    }
+                    delay(ACCEPT_BACKOFF_STEP_MS * failures)
+                    continue
+                }
+
+                failures = 0
+                clientSocket?.let { handleClientConnection(context, it) }
+            }
+        } catch (e: Exception) {
+            StunLogger.e(TAG, "Bluetooth Sync Server failed", e)
+        } finally {
+            stopServer()
+        }
+    }
+
+    /** 反复 accept 失败后重建 server socket；权限被撤销或蓝牙被关时返回 false。 */
+    @SuppressLint("MissingPermission")
+    private fun rebindServerSocket(context: Context): Boolean {
+        val old = serverSocket
+        try { old?.close() } catch (_: Exception) {}
+        serverSocket = null
+        val adapter = getBluetoothAdapter(context) ?: return false
+        try {
+            if (!adapter.isEnabled) return false
+        } catch (_: SecurityException) {
+            return false
+        }
+        return try {
+            serverSocket = adapter.listenUsingRfcommWithServiceRecord(RFCOMM_SERVICE_NAME, STUN_BT_UUID)
+            StunLogger.i(TAG, "Bluetooth Sync Server rebound on UUID: $STUN_BT_UUID")
+            true
+        } catch (e: Exception) {
+            StunLogger.e(TAG, "Bluetooth Sync Server rebind failed", e)
+            false
+        }
+    }
+
     fun stopServer() {
-        isServerRunning = false
+        // CAS：接受循环的 finally 与宿主显式调用会撞上，只让第一个真正关 socket 并打日志。
+        if (!isServerRunning.compareAndSet(true, false)) return
         try {
             serverSocket?.close()
         } catch (_: Exception) {}
@@ -183,7 +265,7 @@ object BluetoothSyncManager {
     }
 
     /** 服务器是否在跑（Car 端状态徽标用）。 */
-    fun isRunning(): Boolean = isServerRunning
+    fun isRunning(): Boolean = isServerRunning.get()
 
     private fun handleClientConnection(context: Context, socket: BluetoothSocket) {
         scope.launch {
@@ -191,14 +273,28 @@ object BluetoothSyncManager {
                 val reader = BufferedReader(InputStreamReader(socket.inputStream, Charsets.UTF_8))
                 val writer = PrintWriter(socket.outputStream, true)
 
-                val line = reader.readLine() ?: return@launch
-                val responseJson = processRequest(context, line)
-                writer.println(responseJson)
-            } catch (e: Exception) {
-                StunLogger.e(TAG, "Error handling BT client connection", e)
-            } finally {
-                try { socket.close() } catch (_: Exception) {}
+            // readLine 有两种「对端走了」：干净的 EOF 返回 null，被中途关断则抛
+            // IOException("bt socket closed, read return: -1")。两者语义相同，都按断开处理。
+            val line = reader.readLine() ?: run {
+                StunLogger.d(TAG, "BT client closed without a request (reachability probe)")
+                return@launch
             }
+            val responseJson = processRequest(context, line)
+            writer.println(responseJson)
+        } catch (e: Exception) {
+            // 这条通道的协议是「一连接 = 一个请求 = 服务端回一句就挂」，
+            // 所以「对端关掉连接」是**正常收尾**而不是错误：可达性探测
+            // （见 [isDeviceReachable]）就是连上立刻挂断，每次探测都会走到这里。
+            // 过去一律 `StunLogger.e` + 完整堆栈，一次扫描 N 台设备就是 N 条 ERROR，
+            // 真故障反而被淹没。按 socket 是否还连着判定：连断了就没东西可处理，降级为 debug。
+            if (!socket.isConnected) {
+                StunLogger.d(TAG, "BT client disconnected before a request: ${e.message}")
+            } else {
+                StunLogger.e(TAG, "Error handling BT client connection", e)
+            }
+        } finally {
+            try { socket.close() } catch (_: Exception) {}
+        }
         }
     }
 
@@ -230,23 +326,27 @@ object BluetoothSyncManager {
                 "start_vpn", "stop_vpn", "restart_vpn", "select_profile" -> {
                     val handler = onRemoteControlRequested
                     val profileId = req.optString("profileId", "").ifBlank { null }
-                    val ok = if (handler != null) {
-                        handler(action, profileId)
-                    } else when (action) {
-                        // 没有宿主回调（例如宿主没进过 UI）时，只保留启停这条最小回落。
-                        "start_vpn" -> {
-                            startOrStopService(context, "start", profileId ?: "")
-                            true
+                    var ok = true
+                    var message: String? = null
+
+                    when {
+                        handler != null -> ok = handler(action, profileId)
+                        // 宿主回调只在宿主界面活着时注册。没它时只保留启停这条最小回落 ——
+                        // 真正起停服务不需要界面，但 restart_vpn / select_profile 依赖宿主的
+                        // 过渡态防抖和 UI 刷新，不能假装成功。回一个独立 message，让日志（以及
+                        // 将来的界面）能区分「动作被拒」与「宿主界面没开」，后者过去会笼统报
+                        // "Action not supported by this device"，被误读成设备不支持该动作。
+                        action == "start_vpn" -> startOrStopService(context, "start", profileId ?: "")
+                        action == "stop_vpn" -> startOrStopService(context, "stop", "")
+                        else -> {
+                            ok = false
+                            message = "Open the app to accept remote control"
                         }
-                        "stop_vpn" -> {
-                            startOrStopService(context, "stop", "")
-                            true
-                        }
-                        else -> false
                     }
+
                     JSONObject().apply {
                         put("status", if (ok) "success" else "error")
-                        if (!ok) put("message", "Action not supported by this device")
+                        if (message != null) put("message", message)
                         put("vpnState", currentVpnStateName())
                     }.toString()
                 }
@@ -385,20 +485,20 @@ object BluetoothSyncManager {
         var socket: BluetoothSocket? = null
         try {
             socket = device.createRfcommSocketToServiceRecord(STUN_BT_UUID)
-            socket.connect()
+            val response = runBtSession(socket, BT_SESSION_TIMEOUT_MS) {
+                socket.connect()
+                val writer = PrintWriter(socket.outputStream, true)
+                val reader = BufferedReader(InputStreamReader(socket.inputStream, Charsets.UTF_8))
+                writer.println(requestJson)
+                reader.readLine()
+            }
 
-            val writer = PrintWriter(socket.outputStream, true)
-            val reader = BufferedReader(InputStreamReader(socket.inputStream, Charsets.UTF_8))
-
-            writer.println(requestJson)
-            val response = reader.readLine() ?: JSONObject().apply {
+            response ?: JSONObject().apply {
                 put("status", "error")
-                put("message", "Empty response from Car Bluetooth")
+                put("message", "Bluetooth timeout or empty response")
             }.toString()
-
-            response
         } catch (e: Exception) {
-            StunLogger.e(TAG, "BT Send Command Error to ${device.name}", e)
+            StunLogger.e(TAG, "BT Send Command Error", e)
             JSONObject().apply {
                 put("status", "error")
                 put("message", "Bluetooth error: ${e.message}")
@@ -409,32 +509,54 @@ object BluetoothSyncManager {
     }
 
     /**
-     * Quickly checks if a paired Bluetooth device is reachable by attempting
-     * an RFCOMM connection with a 4-second timeout ping.
-     * Returns true only if the device accepts the connection (Stun BT server is running).
+     * 可达性探测：设备必须**接受** RFCOMM 连接才算在线（即对端的 Stun 蓝牙服务在跑）。
+     * 沿用原先的 4 秒上限。
      */
     @SuppressLint("MissingPermission")
     suspend fun isDeviceReachable(device: BluetoothDevice): Boolean = withContext(Dispatchers.IO) {
         var socket: BluetoothSocket? = null
-        return@withContext try {
+        try {
             socket = device.createRfcommSocketToServiceRecord(STUN_BT_UUID)
-            // Set a short socket-level timeout via a thread interrupt trick —
-            // BluetoothSocket.connect() blocks, so we wrap with withTimeoutOrNull via a thread
-            var connected = false
-            val connectThread = Thread {
-                try {
-                    socket.connect()
-                    connected = true
-                } catch (_: Exception) {}
-            }
-            connectThread.start()
-            connectThread.join(4000L) // wait max 4 seconds
-            connectThread.interrupt()
-            connected
+            runBtSession(socket, DEVICE_REACHABLE_TIMEOUT_MS) { socket.connect() } != null
         } catch (_: Exception) {
             false
         } finally {
             try { socket?.close() } catch (_: Exception) {}
         }
+    }
+
+    /**
+     * 在 [deadlineMs] 内等 [block] 返回，超时就关掉 socket 强制解除阻塞。
+     *
+     * RFCOMM 的 [BluetoothSocket.connect] 和 `inputStream.readLine()` 都**无限期阻塞**，而且
+     * 都不响应协程取消 —— 调用方 `withTimeoutOrNull(8_000L)` 取消的是外层协程，底下的 IO 线程
+     * 照样卡在系统调用里，设备不在旁边时每次尝试都泄漏一个线程（累积起来会拖垮整个应用）。
+     * 从另一个线程 `socket.close()` 是打断它们的唯一可靠手段：框架会让阻塞的 connect / read 抛
+     * IOException 返回。
+     *
+     * @return [block] 的返回值；超时或中途抛异常时返回 null（异常已记日志，不吞掉细节）。
+     */
+    private fun <T> runBtSession(socket: BluetoothSocket, deadlineMs: Long, block: () -> T): T? {
+        val result = AtomicReference<T?>(null)
+        val finished = AtomicBoolean(false)
+        val worker = Thread({
+            try {
+                result.set(block())
+            } catch (t: Exception) {
+                StunLogger.w(TAG, "Bluetooth session failed: ${t.message}")
+            } finally {
+                finished.set(true)
+            }
+        }, "bt-session-${System.identityHashCode(socket)}")
+        worker.isDaemon = true
+        worker.start()
+        worker.join(deadlineMs)
+        if (finished.get()) return result.get()
+        // 到点了但底层还没返回：关掉 socket 打断它，再给一小段收尾时间。
+        try { socket.close() } catch (_: Exception) {}
+        worker.join(1500L)
+        if (!finished.get()) worker.interrupt()
+        StunLogger.w(TAG, "Bluetooth session timed out after ${deadlineMs}ms")
+        return null
     }
 }

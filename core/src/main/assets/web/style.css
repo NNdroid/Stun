@@ -288,6 +288,8 @@ table.conns-table tr:hover td{background:var(--bg-card-hover)}
   display:flex;flex-direction:column;gap:10px;padding:14px 16px;
   background:var(--bg-input);border-radius:var(--radius-md);border:1px solid var(--border);
 }
+/* 选项都不长时横着排、放不下再折行（WebDAV「同步内容」用） */
+.setting-box--wrap{flex-direction:row;flex-wrap:wrap;gap:8px 18px;align-items:center}
 .setting-option{
   display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:6px 0;
 }

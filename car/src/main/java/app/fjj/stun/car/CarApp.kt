@@ -1,7 +1,6 @@
 package app.fjj.stun.car
 
 import android.app.Application
-import app.fjj.stun.remote.BluetoothSyncManager
 import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.StunLogger
 import app.fjj.stun.repo.StunRepository
@@ -35,8 +34,21 @@ class CarApp : Application() {
         // 规则库更新检查也由它在部署完成后做 —— 部署还在跑时去问「文件在不在」只会白排下载。
         AppBootstrap.start(this)
 
-        // Start Bluetooth Sync Server for phone-to-car remote control
-        runCatching { BluetoothSyncManager.startServer(this) }
+        // 远程控制监听面（蓝牙 / 局域网同步）统一入口：进程被回收后随 Application 重建回来。
+        // 之前蓝牙只在这一行起，进程被系统回收后没有前台保活服务把进程顶在 foreground 优先级，
+        // 通道随进程一起消失，WorkManager / Service 唤活又不会重建 Activity ⇒ 车机远控彻底没了。
+        runCatching {
+            app.fjj.stun.remote.RemoteControlHost.enableLanSync()
+            // 状态源必须进程级注册：原先挂在 CarMainActivity 上，界面一销毁就被置 null，
+            // 手机只看到一份 profileCount=0 的空状态（重新打开界面又恢复，看着像「必须开着
+            // App 才有数据」）。BT 是车机主用的通道，但 LAN 也一并注册 —— enableLanSync 就在
+            // 上面，两个通道共享同一个数据源，不会出现一条有数据、另一条没有。
+            val tvStatusProvider: () -> app.fjj.stun.remote.TvStatusResponse =
+                { app.fjj.stun.remote.TvStatusSource.build(this) }
+            app.fjj.stun.remote.BluetoothSyncManager.tvStatusProvider = tvStatusProvider
+            app.fjj.stun.remote.RemoteSyncManager.tvStatusProvider = tvStatusProvider
+            app.fjj.stun.remote.RemoteControlHost.startAll(this)
+        }
     }
 
     private fun initLogger() {

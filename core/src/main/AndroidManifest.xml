@@ -3,6 +3,11 @@
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- NSD（NsdManager.registerService / discoverServices）两端都硬性需要这条。缺了它平台会**静默返回**：
+         不抛异常、不回调 onStartDiscoveryFailed / onRegistrationFailed，App 侧看不到任何日志。
+         表现就是「TV 从不广播、手机浏览永远为空」—— 局域网同步怎么都搜不到设备。
+         ACCESS_NETWORK_STATE 只是「读」网络状态，不授予这条注册与发现都不生效。 -->
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />

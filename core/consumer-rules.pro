@@ -5,13 +5,19 @@
 -dontwarn org.slf4j.**
 -dontwarn sun.misc.**
 
--keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod,SourceFile,LineNumberTable
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod,SourceFile,LineNumberTable,kotlin.Metadata
 
 -keep class io.ktor.** { *; }
 -keep interface io.ktor.** { *; }
 -keep class * implements io.ktor.server.engine.ApplicationEngineFactory { *; }
 -keep class * implements io.ktor.server.application.Plugin { *; }
 -keep class io.ktor.server.cio.** { *; }
+
+# Ktor 的 module 载体类。Ktor 对 Function1 形态的 module 走 clazz.declaredConstructors.single()
+# 反射实例化；-allowaccessmodification 会让 R8 把编译器生成的 lambda 壳子合并进一个带多个构造器的
+# 共享 hub 类（release 直接崩，见 WebServer.WebConsoleModule 的注释）。具名 class 类身份确定，
+# 单独锁定，不依赖 -keep class app.fjj.stun.remote.** 这条通配符规则。
+-keep class app.fjj.stun.remote.WebServer$WebConsoleModule { *; }
 
 # ─── 2. JNI & Native Library Bindings ───
 -keepclasseswithmembernames class * {

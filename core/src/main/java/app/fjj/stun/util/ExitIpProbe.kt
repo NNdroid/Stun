@@ -1,11 +1,16 @@
 package app.fjj.stun.util
 
+import android.content.Context
 import android.os.SystemClock
+import app.fjj.stun.repo.SettingsManager
+import app.fjj.stun.service.TProxyPorts
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import org.json.JSONObject
 import java.net.HttpURLConnection
+import java.net.InetSocketAddress
+import java.net.Proxy
 import java.net.URL
 import java.util.Locale
 
@@ -134,8 +139,10 @@ class ExitIpProbe(
             }
         }
 
-        private fun readResponse(url: String): String? {
-            val connection = URL(url).openConnection() as HttpURLConnection
+        private fun readResponse(url: String, proxy: Proxy? = null): String? {
+            val connection = (
+                if (proxy != null) URL(url).openConnection(proxy) else URL(url).openConnection()
+                ) as HttpURLConnection
             return try {
                 connection.connectTimeout = 4000
                 connection.readTimeout = 4000
@@ -146,6 +153,25 @@ class ExitIpProbe(
             } finally {
                 connection.disconnect()
             }
+        }
+
+        /**
+         * 按当前运行模式选择探测通道。**tproxy 模式必须显式走本地 SOCKS5**：
+         *
+         * App 自身流量被 uid 自旁路放行（`DEFAULT_BYPASS_APPS_LIST` 里的 App 自己 —— 防回环的
+         * 最后防线，见 tproxy.sh 内注释），直连出去的探测只会拿到**本地**出口地址。
+         * 要查询隧道远端出口，必须显式连本地 SOCKS5（myssh 引擎入口；127.0.0.1 回环流量
+         * 不会被 TPROXY 抓走），由隧道把请求送达远端再回来 —— 拿到的才是真实出口。
+         *
+         * SOCKS 探测失败（隧道没起/引擎刚停）时逐次退回直连 —— 隧道不在时「本地出口」
+         * 本来就是事实。非 tproxy 模式（VPN）：探测流量天然经 VPN 出隧道，保持直连。
+         */
+        fun contextAwareFetch(context: Context): (String) -> String? {
+            if (SettingsManager.getServiceMode(context) != SettingsManager.SERVICE_MODE_TPROXY) {
+                return ::readResponse
+            }
+            val socks = Proxy(Proxy.Type.SOCKS, InetSocketAddress("127.0.0.1", TProxyPorts.SOCKS))
+            return { url -> readResponse(url, socks) ?: readResponse(url) }
         }
 
         /** `ip` / `country_code` / `city` JSON, as served by ipwho.is and api.ip.sb. */

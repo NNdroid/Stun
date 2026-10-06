@@ -12,7 +12,6 @@ import app.fjj.stun.util.ShizukuState
 import app.fjj.stun.util.ShizukuUtils
 import app.fjj.stun.worker.KeepAliveWorker
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 
 /**
@@ -20,18 +19,22 @@ import java.io.File
  *
  * ## 两条路径，各自解决什么
  *
- * Web 控制台（[WebServer]）是**跑在 app 进程里的一个 object**，不是 Service：进程被系统回收
- * ⇒ Ktor engine 一起消失 ⇒ 端口不再监听，而且**没有任何组件会重建它**（本仓没有
- * `BOOT_COMPLETED` receiver）。所以要让「随时能开控制台开隧道」，得有人把进程拉回来。
+ * 远程控制面（Web 控制台 [WebServer]、蓝牙 [BluetoothSyncManager]、局域网 [RemoteSyncManager]、
+ * MCP [StunMcpServer]）都是**跑在 app 进程里的 object**，不是 Service：进程被系统回收 ⇒
+ * 监听面一起消失，而且**没有任何组件会重建它们**（本仓没有 `BOOT_COMPLETED` receiver）。
+ * 所以要让「随时能开控制台开隧道 / 用手机远控」，得有人把进程拉回来。
  *
  * 1. **Magisk `service.d`**（需 root，重启后仍在）
  *    写一个脚本进 `/data/adb/service.d/`，开机由 Magisk / KernelSU / APatch 执行：拉起 App
- *    ⇒ `MainActivity.onCreate` ⇒ `WebServer.start()` 恢复监听；脚本随后 fork 出的看门狗
- *    在进程被杀之后反复拉起。**唯一能扛住设备重启**的方案。
+ *    ⇒ 监听面随宿主重建；脚本随后 fork 出的看门狗在进程被杀之后反复拉起。
+ *    **唯一能扛住设备重启**的方案。
  * 2. **Shizuku**（免 root，但依赖 Shizuku 自己在跑）
- *    周期任务（[KeepAliveWorker]）在进程被杀后由 WorkManager 唤活进程并确保 `WebServer` 在跑；
- *    同时借 Shizuku 反复断言电池白名单 / 待机桶 —— **Doze 才是控制台掉线的主因**，
- *    白名单被摘掉的话光有周期任务也不顶用。
+ *    周期任务（[KeepAliveWorker]）在进程被杀后由 WorkManager 唤活进程，并经
+ *    [RemoteControlHost.restoreAll] 把掉了的监听面补回来；同时借 Shizuku 反复断言电池白名单
+ *    / 待机桶 —— **Doze 才是掉线的主因**，白名单被摘掉的话光有周期任务也不顶用。
+ *
+ * 具体"该补回哪些监听面"不在本类判定：交 [RemoteControlHost]，前台保活服务与 Shizuku
+ * 周期任务共用同一份逻辑。
  *
  * ## 开关语义（重要）
  * 设置里的 flag 只是**用户意图**，不等于"保活正在生效"：service.d 脚本可能因刷机还原 `/data/adb`
@@ -52,9 +55,6 @@ object KeepAliveManager {
     private const val WATCHDOG_INTERVAL_SEC = 30
     /** 开机首次拉起前的等待，等 User 0 / 包管理就绪，否则 `am start` 会被挡掉。 */
     private const val BOOT_DELAY_SEC = 25
-
-    /** 授权弹窗最长等待：远端 WebUI 场景下用户可能根本不在设备前，不能无限挂着 HTTP 请求。 */
-    private const val PERMISSION_REQUEST_TIMEOUT_MS = 60_000L
 
     /** 失败码。前端据此本地化，服务端不拼文案（也别在这里返回给人看的句子）。 */
     object Code {
@@ -194,11 +194,8 @@ object KeepAliveManager {
             ShizukuState.NOT_RUNNING -> return Outcome.Failed(Code.SHIZUKU_NOT_RUNNING)
             ShizukuState.NO_PERMISSION -> {
                 if (!requestPermission) return Outcome.Failed(Code.SHIZUKU_NO_PERMISSION)
-                val granted = runBlocking {
-                    withTimeoutOrNull(PERMISSION_REQUEST_TIMEOUT_MS) {
-                        ShizukuUtils.requestPermissionAwait()
-                    }
-                } ?: false
+                // requestPermissionAwait 内部已内置超时（见 ShizukuUtils），不会无限挂着 HTTP 请求
+                val granted = runBlocking { ShizukuUtils.requestPermissionAwait() }
                 if (!granted) return Outcome.Failed(Code.SHIZUKU_NO_PERMISSION)
             }
             ShizukuState.READY -> Unit
@@ -214,6 +211,10 @@ object KeepAliveManager {
 
     fun disableShizukuKeepAlive(context: Context): Outcome {
         KeepAliveWorker.cancel(context)
+        // 撤掉省电豁免：deviceidle 白名单是**跨重启留存**的，只停 worker 会让「已关闭」的开关
+        // 继续把本 App 留在系统后台白名单里（卸载都不一定清得掉）。撤销是尽力而为 ——
+        // Shizuku 不在跑时静默跳过（此时确实没法撤），不影响开关本身的落库。
+        BackgroundExemptions.revertViaShizuku(context.packageName)
         SettingsManager.saveShizukuKeepAliveEnabled(context, false)
         StunLogger.i(TAG, "Shizuku keep-alive disabled")
         return Outcome.Ok
@@ -222,8 +223,8 @@ object KeepAliveManager {
     /**
      * 周期任务里跑的那一次；返回一行便于看日志的描述。
      *
-     * 刻意**不去 `am start` 拉界面**：WebServer 只要一个 `Context` 就能起，而 worker 运行时
-     * 通常一个 Activity 都没有（进程刚被 WorkManager 唤活）。不拉界面就不会在电视上反复弹窗。
+     * 刻意**不去 `am start` 拉界面**：所有远程控制面只要一个 `Context` 就能起，而 worker
+     * 运行时通常一个 Activity 都没有（进程刚被 WorkManager 唤活）。不拉界面就不会在电视上反复弹窗。
      */
     fun runShizukuKeepAliveOnce(context: Context): String {
         val app = context.applicationContext
@@ -237,15 +238,16 @@ object KeepAliveManager {
             notes += "shizuku-unavailable"
         }
 
-        // 2) 控制台掉了就拉起来。粘滞标记保证只在这台设备**本来就**跑过控制台时才动手
-        //    （电视端起过 ⇒ 拉；手机端从没有过 ⇒ 不凭空开一个 5858 监听端口）。
-        if (WebServer.isRunning()) {
-            notes += "webui-alive"
-        } else if (SettingsManager.isWebConsoleEverStarted(app)) {
-            val port = WebServer.start(app)
-            notes += if (port > 0) "webui-restarted:$port" else "webui-start-failed"
-        } else {
-            notes += "webui-never-started"
+        // 2) 监听面恢复统一交给 RemoteControlHost：它知道本机有哪些远程控制面、哪些该开着，
+        //    Shizuku 周期任务与前台保活服务共用同一份判定，不再各自手抄一份 WebServer 检查。
+        notes += RemoteControlHost.restoreAll(app)
+
+        // 3) 前台保活服务不会跟着 WorkManager 的唤活自己回来，补挂一次（幂等）：
+        //    挂上后进程回到前台优先级，才不会在下一个 15min 周期到来前又被裁掉。
+        //    Android 12+ 的后台启动限制可能拒绝 —— start() 内部已降级为仅日志。
+        if (RemoteControlHost.needsProcessKeepAlive(app)) {
+            RemoteControlHost.attachProcessKeepAlive(app)
+            notes += "keepalive-fgs-attach"
         }
         return notes.joinToString(",")
     }
@@ -256,12 +258,17 @@ object KeepAliveManager {
         val app = context.applicationContext
         val magiskOn = SettingsManager.isMagiskServiceDEnabled(app)
         return mapOf(
+            // 远程控制常驻（前台保活服务）的开关意图。
+            "foregroundEnabled" to SettingsManager.isRemoteControlKeepAlive(app),
             "magiskEnabled" to magiskOn,
             // 只在开关已开时才起 root shell 核实脚本是否还在；没开过就别去打扰用户设备。
             "magiskInstalled" to if (magiskOn) isServiceDInstalled() else false,
             "shizukuEnabled" to SettingsManager.isShizukuKeepAliveEnabled(app),
             "shizukuState" to ShizukuUtils.state().name,
-            "hasRoot" to hasRoot()
+            "hasRoot" to hasRoot(),
+            // 各监听面的「意图 / 现状」：开关开了但通道没起来（蓝牙权限被拒等）也能被看见。
+            "listeners" to RemoteControlHost.listenerStatus(app),
+            "processKeepAliveNeeded" to RemoteControlHost.needsProcessKeepAlive(app),
         )
     }
 }

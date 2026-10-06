@@ -110,6 +110,7 @@
     <string name="webdav_subtitle">Sichere Knoten, Routing-Regeln und andere wichtige Daten auf WebDAV, um Datenverlust zu vermeiden.</string>
     <string name="webdav_url_hint">WebDAV-URL</string>
     <string name="webdav_desc">Knoten, globale Einstellungen, Abos und deren Verkehrsdaten werden per Backup-PIN verschlüsselt im Ordner Stun abgelegt; die letzten 5 Sicherungen bleiben erhalten.</string>
+    <string name="webdav_section_profiles">Knotendaten</string>
     <string name="webdav_section_settings">globale Einstellungen</string>
     <string name="webdav_section_subscription">Abos</string>
     <string name="webdav_section_subscription_usage">Abo-Verkehrsdaten</string>
@@ -128,6 +129,10 @@
     <string name="webdav_sync_upload">Nur hochladen</string>
     <string name="webdav_sync_download">Nur herunterladen</string>
     <string name="webdav_sync_both">Beidseitig</string>
+    <string name="webdav_prefix_label">Backup-Präfix</string>
+    <string name="webdav_prefix_helper">Optional. Beispiel: ht2 → Backups werden als ht2_20261006-173300 abgelegt. Ältere Backups werden weder gelöscht noch verschoben, erscheinen aber erst wieder in der Liste, wenn das Präfix entfernt wird.</string>
+    <string name="webdav_sections_title">Was gesichert wird</string>
+    <string name="webdav_sections_helper">Knotendaten werden immer gesichert und können nicht deaktiviert werden. Die anderen drei lassen sich frei an-/abwählen; abgewählte Arten werden weder hochgeladen noch abgerufen.</string>
     <string name="webdav_sync_now">Jetzt synchronisieren</string>
     <string name="webdav_last_sync">Letzte Synchronisation: %1$s</string>
     <string name="webdav_sync_ok">✓ Synchronisation abgeschlossen (%1$s)</string>
@@ -329,6 +334,7 @@
     <string name="import_failed">Import fehlgeschlagen: %1$s</string>
     <string name="notif_title">Stun läuft</string>
     <string name="notif_text">Datenverkehr wird geschützt</string>
+    <string name="notif_console_keepalive">Web-Konsole dauerhaft aktiv</string>
     <string name="reason_ssh_down">Kern offline</string>
     <string name="reason_hev_down">Engine offline</string>
 
@@ -390,7 +396,7 @@
     <string name="dnstt_resolvers_hint">Resolver (kommagetrennte URLs)</string>
 
     <!-- TV Specific -->
-    <string name="tv_nodes_received">Knoten empfangen</string>
+    <string name="tv_nodes_received">Knoten</string>
     <string name="tv_profile_options_title">Knoten-Optionen</string>
     <string name="tv_sheet_close_hint">ZURÜCK-Taste zum Schließen</string>
     <string name="tv_node_options_subtitle">Knoten-Optionen für %1$s</string>

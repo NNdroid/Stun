@@ -81,6 +81,10 @@ class TvDevicePickerBottomSheet : BottomSheetDialogFragment() {
 
     companion object {
         private const val ARG_PROFILE = "arg_profile"
+
+        /** 扫描开始后多久把仍在 TESTING 的设备判成 UNREACHABLE（见 startScan）。 */
+        private const val WIFI_PROBE_REACH_AFTER_MS = 7500L
+
         @Volatile private var cachedWifiDevices: List<RemoteDeviceInfo> = emptyList()
 
         fun newInstance(profile: Profile? = null): TvDevicePickerBottomSheet {
@@ -165,7 +169,7 @@ class TvDevicePickerBottomSheet : BottomSheetDialogFragment() {
         rvDevices?.adapter = adapter
         if (wifiDevicesList.isEmpty() && cachedWifiDevices.isNotEmpty()) {
             wifiDevicesList.addAll(cachedWifiDevices)
-            wifiDevicesList.forEach { wifiReachabilityMap[it.host] = DeviceReachability.TESTING }
+            wifiDevicesList.forEach { wifiReachabilityMap[wifiKey(it)] = DeviceReachability.TESTING }
             submitCurrentDevices()
             updateEmptyState()
         }
@@ -242,12 +246,19 @@ class TvDevicePickerBottomSheet : BottomSheetDialogFragment() {
 
     private fun sortAndSubmitWifiDevices() {
         wifiDevicesList.sortWith(Comparator { d1, d2 ->
-            val r1 = wifiReachabilityMap[d1.host] ?: DeviceReachability.REACHABLE
-            val r2 = wifiReachabilityMap[d2.host] ?: DeviceReachability.REACHABLE
+            val r1 = wifiReachabilityMap[wifiKey(d1)] ?: DeviceReachability.REACHABLE
+            val r2 = wifiReachabilityMap[wifiKey(d2)] ?: DeviceReachability.REACHABLE
             r1.priority.compareTo(r2.priority)
         })
         submitCurrentDevices()
     }
+
+    /**
+     * 局域网设备的可达性以 `host:port` 为键。只按 host 键控时，TV 换一个端口（每次启动
+     * `findFreePort()` 随机取、从不持久化）后旧记录就永远盖住新端口，同一台机器会被永久判成
+     * UNREACHABLE，怎么刷新都点不进去。
+     */
+    private fun wifiKey(device: RemoteDeviceInfo): String = "${device.host}:${device.port}"
 
     /**
      * 按当前 tab 把"设备列表 + 可达性 map"折叠成行模型后交给 ListAdapter。
@@ -256,7 +267,7 @@ class TvDevicePickerBottomSheet : BottomSheetDialogFragment() {
     private fun submitCurrentDevices() {
         val rows: List<DeviceRow> = if (currentTab == 0) {
             wifiDevicesList
-                .map { DeviceRow.Wifi(it, wifiReachabilityMap[it.host] ?: DeviceReachability.REACHABLE) }
+                .map { DeviceRow.Wifi(it, wifiReachabilityMap[wifiKey(it)] ?: DeviceReachability.REACHABLE) }
                 .sortedBy { it.reachability.priority }
         } else {
             btDevicesList
@@ -281,7 +292,7 @@ class TvDevicePickerBottomSheet : BottomSheetDialogFragment() {
         discoverySession?.stop()
         btDevicesList.clear()
         btReachabilityMap.clear()
-        wifiDevicesList.forEach { wifiReachabilityMap[it.host] = DeviceReachability.TESTING }
+        wifiDevicesList.forEach { wifiReachabilityMap[wifiKey(it)] = DeviceReachability.TESTING }
         scheduleWifiListUpdate()
 
         btnRefresh?.animate()?.rotationBy(360f)?.setDuration(600L)?.start()
@@ -302,13 +313,14 @@ class TvDevicePickerBottomSheet : BottomSheetDialogFragment() {
 
             // Probe Wi-Fi devices asynchronously
             updatedList.forEach { device ->
-                if (!wifiReachabilityMap.containsKey(device.host)) {
-                    wifiReachabilityMap[device.host] = DeviceReachability.TESTING
+                val key = wifiKey(device)
+                if (!wifiReachabilityMap.containsKey(key)) {
+                    wifiReachabilityMap[key] = DeviceReachability.TESTING
                     viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                         val status = RemoteSyncManager.getTvStatus(device.host, device.port)
                         withContext(Dispatchers.Main) {
                             if (!isAdded) return@withContext
-                            wifiReachabilityMap[device.host] = if (status != null) DeviceReachability.REACHABLE else DeviceReachability.UNREACHABLE
+                            wifiReachabilityMap[key] = if (status != null) DeviceReachability.REACHABLE else DeviceReachability.UNREACHABLE
                             scheduleWifiListUpdate()
                         }
                     }
@@ -319,11 +331,14 @@ class TvDevicePickerBottomSheet : BottomSheetDialogFragment() {
 
         scanStatusJob?.cancel()
         scanStatusJob = viewLifecycleOwner.lifecycleScope.launch {
-            delay(3000L)
+            // 给探测留够时间：client 自己的 connectTimeoutMillis 是 6s，3s 就判离线会把它抢先标成
+            // UNREACHABLE —— 慢一点的局域网握手看起来就像设备不在线。
+            delay(WIFI_PROBE_REACH_AFTER_MS)
             if (isAdded) {
                 wifiDevicesList.forEach { device ->
-                    if (wifiReachabilityMap[device.host] == DeviceReachability.TESTING) {
-                        wifiReachabilityMap[device.host] = DeviceReachability.UNREACHABLE
+                    val key = wifiKey(device)
+                    if (wifiReachabilityMap[key] == DeviceReachability.TESTING) {
+                        wifiReachabilityMap[key] = DeviceReachability.UNREACHABLE
                     }
                 }
                 scheduleWifiListUpdate()

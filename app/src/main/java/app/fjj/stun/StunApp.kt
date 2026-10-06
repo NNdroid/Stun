@@ -94,8 +94,9 @@ class StunApp : Application() {
         }
 
         startupStep("数据库 WebUI 服务") {
-            // Start the Database WebUI service (:dbwebui) if enabled in settings
-            if (SettingsManager.isDbWebEnabled(this@StunApp)) {
+            // :dbwebui 是开发调试用的数据库浏览器（明文 HTTP 访问 Room），只在 debug 构建启用：
+            // release 不启动、设置页也整块隐藏（见 SettingsFragment）。
+            if (BuildConfig.DEBUG && SettingsManager.isDbWebEnabled(this@StunApp)) {
                 app.fjj.stun.dbwebui.DbWebServer.start(this@StunApp)
             }
         }

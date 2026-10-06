@@ -8,6 +8,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Shizuku 保活（WebUI「保活与后台」）。没有这条权限，Shizuku 13+ 的 API_V23 绑定会被拒。 -->
+    <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
+
     <!-- Bluetooth Permissions for Remote Sync & Control -->
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
@@ -58,6 +61,30 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="TProxy on TV." />
         </service>
+
+        <!-- Web 控制台前台保活：App 退后台后把进程顶在前台优先级，
+             避免 cached 进程被 ROM 裁掉导致 WebUI 打不开（见服务类说明）。 -->
+        <service
+            android:name="app.fjj.stun.service.WebConsoleKeepAliveService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Keep web console reachable on TV." />
+        </service>
+
+        <!-- Shizuku 桥：进程启动时由系统拉起这个 provider 才能拿到 Shizuku binder。
+             之前只有手机端声明了它 —— TV 上 ShizukuUtils.state() 永远返回 NOT_RUNNING，
+             WebUI 的「Shizuku 保活」开关联动误报「Shizuku 未在运行」（哪怕 Shizuku 在跑、
+             权限也授过了）。provider 的类来自 libs.rikka.shizuku.provider（tv 的 build.gradle
+             已显式引入，理由同 app）。 -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:multiprocess="false"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
 
     </application>
 

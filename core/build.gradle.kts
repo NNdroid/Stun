@@ -414,7 +414,9 @@ dependencies {
     implementation(libs.ktor.server.content.negotiation)
     implementation(libs.ktor.serialization.gson)
     implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.cio)
+    // 局域网同步客户端用 OkHttp 引擎：只有它能注入 socketFactory（见 RemoteSyncManager
+    // 的 Wi-Fi 网络绑定），CIO 引擎不支持按网络建连。
+    implementation(libs.ktor.client.okhttp)
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.network.tls.certificates)
 

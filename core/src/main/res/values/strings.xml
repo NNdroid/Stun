@@ -127,6 +127,7 @@
     <string name="webdav_subtitle">Back up nodes, routing rules and other important data to WebDAV to prevent data loss.</string>
     <string name="webdav_url_hint">WebDAV URL</string>
     <string name="webdav_desc">Nodes, global settings, subscriptions and their traffic records are encrypted with your backup PIN and stored in a Stun folder on the server; the 5 most recent backups are kept.</string>
+    <string name="webdav_section_profiles">node data</string>
     <string name="webdav_section_settings">global settings</string>
     <string name="webdav_section_subscription">subscriptions</string>
     <string name="webdav_section_subscription_usage">subscription traffic</string>
@@ -145,6 +146,10 @@
     <string name="webdav_sync_upload">Upload only</string>
     <string name="webdav_sync_download">Download only</string>
     <string name="webdav_sync_both">Two-way</string>
+    <string name="webdav_prefix_label">Backup prefix</string>
+    <string name="webdav_prefix_helper">Optional. Example: ht2 → backups are stored as ht2_20261006-173300. Older backups are kept in place but stay out of the list until the prefix is cleared.</string>
+    <string name="webdav_sections_title">What to back up</string>
+    <string name="webdav_sections_helper">Node data is always included and cannot be unchecked. The other three can be toggled freely; a disabled type is neither uploaded nor pulled.</string>
     <string name="webdav_sync_now">Sync now</string>
     <string name="webdav_last_sync">Last sync: %1$s</string>
     <string name="webdav_sync_ok">✓ Sync complete (%1$s)</string>
@@ -336,6 +341,7 @@
     <string name="import_failed">Import failed: %1$s</string>
     <string name="notif_title">Stun is running</string>
     <string name="notif_text">Traffic is being protected</string>
+    <string name="notif_console_keepalive">Web console keep-alive</string>
     <string name="reason_ssh_down">Core offline</string>
     <string name="reason_hev_down">Engine offline</string>
 
@@ -397,7 +403,7 @@
     <string name="dnstt_resolvers_hint">Resolvers (Comma separated URLs)</string>
 
     <!-- TV Specific -->
-    <string name="tv_nodes_received">Nodes Received</string>
+    <string name="tv_nodes_received">Nodes</string>
     <string name="tv_profile_options_title">Node Options</string>
     <string name="tv_sheet_close_hint">Press BACK to close</string>
     <string name="tv_node_options_subtitle">Node Options for %1$s</string>

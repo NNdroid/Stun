@@ -112,6 +112,7 @@
     <string name="webdav_subtitle">将节点、分流规则等重要数据备份到 WebDAV，防止数据丢失。</string>
     <string name="webdav_url_hint">WebDAV 地址</string>
     <string name="webdav_desc">节点、全局设置、订阅列表与订阅流量经备份 PIN 加密后存入服务器上的 Stun 文件夹，自动保留最近 5 份备份。</string>
+    <string name="webdav_section_profiles">节点数据</string>
     <string name="webdav_section_settings">全局设置</string>
     <string name="webdav_section_subscription">订阅列表</string>
     <string name="webdav_section_subscription_usage">订阅流量</string>
@@ -129,6 +130,10 @@
     <string name="webdav_sync_upload">仅上传</string>
     <string name="webdav_sync_download">仅下载</string>
     <string name="webdav_sync_both">双向</string>
+    <string name="webdav_prefix_label">备份前缀</string>
+    <string name="webdav_prefix_helper">可选。如填 ht2，备份目录将命名为 ht2_20261006-173300；旧备份不会删除或迁移，但清除前缀之前不再出现在列表里。</string>
+    <string name="webdav_sections_title">同步内容</string>
+    <string name="webdav_sections_helper">节点数据始终参与同步，不可取消；其余三类可自由勾选，取消的类型既不上传也不拉取。</string>
     <string name="webdav_sync_now">立即同步</string>
     <string name="webdav_last_sync">上次同步：%1$s</string>
     <string name="webdav_sync_ok">✓ 同步完成（%1$s）</string>
@@ -330,6 +335,7 @@
     <string name="import_failed">导入失败: %1$s</string>
     <string name="notif_title">Stun 正在运行</string>
     <string name="notif_text">网络流量正受到保护</string>
+    <string name="notif_console_keepalive">Web 控制台保活中</string>
     <string name="reason_ssh_down">内核异常离线</string>
     <string name="reason_hev_down">引擎异常离线</string>
 
@@ -391,7 +397,7 @@
     <string name="dnstt_resolvers_hint">解析服务器 (逗号分隔 URL)</string>
 
     <!-- TV Specific -->
-    <string name="tv_nodes_received">已接收节点</string>
+    <string name="tv_nodes_received">节点</string>
     <string name="tv_profile_options_title">节点操作</string>
     <string name="tv_sheet_close_hint">按 [返回键] 关闭</string>
     <string name="tv_node_options_subtitle">节点操作： %1$s</string>

@@ -292,6 +292,7 @@ const I18N = {
     label_edit_kcp_parity_shards: 'Parity Shards (校验分片)：',
     label_edit_kcp_nodelay: '启用 KCP NoDelay 极速低延迟模式',
     label_kcp_mode: 'KCP 模式 (fast = 默认)：',
+    label_edit_kcp_mode: 'KCP 模式 (fast = 默认)：',
     label_kcp_sndwnd: '发送窗口 (0 = 默认 128)：',
     label_kcp_rcvwnd: '接收窗口 (0 = 默认 512)：',
     label_kcp_mtu: 'MTU (0 = 默认 1350)：',
@@ -327,6 +328,14 @@ label_tunnel_tls: '🔒 TLS 加密',
     label_webdav_last_sync: '上次同步：',
     label_webdav_interval: '自动备份间隔 (小时)：',
     label_webdav_sync_mode: '同步模式：',
+    label_webdav_prefix: '备份前缀（可选）：',
+    helper_webdav_prefix: '填 ht2 → 目录名为 ht2_20261006-173300；旧备份保留，但清除前缀前不再出现在列表中',
+    label_webdav_sections: '同步内容：',
+    webdav_section_profiles: '节点数据',
+    webdav_section_settings: '全局设置',
+    webdav_section_subscription: '订阅列表',
+    webdav_section_subscription_usage: '订阅流量',
+    webdav_section_locked: '（强制）',
     opt_webdav_auto_off: '关闭',
     opt_webdav_auto_on: '开启',
     opt_webdav_sync_upload: '仅上传',
@@ -409,6 +418,10 @@ label_tunnel_tls: '🔒 TLS 加密',
     opt_udpgw_tun2proxy: 'tun2proxy (高性能 Rust 模块 - 默认)',
     opt_udpgw_badvpn: 'badvpn (传统兼容模式)',
     label_udpgw_addr: 'UDP 网关地址：',
+    label_udpgw_max_sessions: 'UDP 会话上限：',
+    helper_udpgw_max_sessions: '0 = 默认 1024',
+    label_udpgw_idle_timeout: 'UDP 空闲超时（秒）：',
+    helper_udpgw_idle_timeout: '0 = 默认 60 秒',
     settings_geodata_title: '🌐 地理数据与直连分流 (GeoData & Direct Routing)',
     btn_update_geodata: '🔄 立即更新 Geo 规则库',
     label_geosite_direct: 'GeoSite 直连域名标签：',
@@ -472,6 +485,8 @@ label_tunnel_tls: '🔒 TLS 加密',
     // 保活与后台（Keep-alive & background）
     // Web 控制台是跑在 app 进程里的 object，进程被回收就没了；这两个开关就是把它拉回来的手段。
     settings_keepalive_title: '🔋 保活与后台',
+    label_ka_foreground: '远程控制常驻',
+    desc_ka_foreground: '挂前台服务把进程顶在前台优先级：关闭应用界面后，Web 控制台 / 蓝牙 / 局域网远程控制仍然可连（通知常驻）。',
     label_ka_magisk: 'Magisk service.d 开机保活',
     desc_ka_magisk: '向 /data/adb/service.d 写入保活脚本：开机自动拉起 Stun，进程被杀后自动重启，控制台随时可访问。需要 root。',
     label_ka_shizuku: 'Shizuku 保活（免 root）',
@@ -483,6 +498,8 @@ label_tunnel_tls: '🔒 TLS 加密',
     ka_fail_script_write_failed: '保活脚本写入失败（可能被 SELinux 或 Root 策略拦截）',
     ka_fail_shizuku_not_running: 'Shizuku 未在运行，请先启动 Shizuku',
     ka_fail_shizuku_no_permission: '未获得 Shizuku 授权，请在设备上打开 Stun 授予权限',
+    ka_foreground_active: '● 前台保活中，远程控制保持可连',
+    ka_foreground_off: '○ 未开启（应用关闭后远程控制会随进程消失）',
     ka_magisk_active: '● 保活脚本已安装，开机自动拉起',
     ka_magisk_off: '○ 未开启',
     ka_magisk_script_lost: '⚠ 开关是开的，但脚本已不存在（刷机或还原 /data/adb 会清掉它），请关掉再打开以重装',
@@ -770,6 +787,7 @@ label_tunnel_tls: '🔒 TLS 加密',
     label_edit_kcp_parity_shards: 'Parity Shards (校驗分片)：',
     label_edit_kcp_nodelay: '啟用 KCP NoDelay 極速低延遲模式',
     label_kcp_mode: 'KCP 模式 (fast = 預設)：',
+    label_edit_kcp_mode: 'KCP 模式 (fast = 預設)：',
     label_kcp_sndwnd: '傳送視窗 (0 = 預設 128)：',
     label_kcp_rcvwnd: '接收視窗 (0 = 預設 512)：',
     label_kcp_mtu: 'MTU (0 = 預設 1350)：',
@@ -805,6 +823,14 @@ label_tunnel_tls: '🔒 TLS 加密',
     label_webdav_last_sync: '上次同步：',
     label_webdav_interval: '自動備份間隔 (小時)：',
     label_webdav_sync_mode: '同步模式：',
+    label_webdav_prefix: '備份前綴（可選）：',
+    helper_webdav_prefix: '填 ht2 → 目錄名為 ht2_20261006-173300；舊備份保留，但在清除前綴前不再出現在列表中',
+    label_webdav_sections: '同步內容：',
+    webdav_section_profiles: '節點資料',
+    webdav_section_settings: '全域設定',
+    webdav_section_subscription: '訂閱清單',
+    webdav_section_subscription_usage: '訂閱流量',
+    webdav_section_locked: '（強制）',
     opt_webdav_auto_off: '關閉',
     opt_webdav_auto_on: '開啟',
     opt_webdav_sync_upload: '僅上傳',
@@ -887,6 +913,10 @@ label_tunnel_tls: '🔒 TLS 加密',
     opt_udpgw_tun2proxy: 'tun2proxy (高性能 Rust 引擎 - 預設)',
     opt_udpgw_badvpn: 'badvpn (傳統相容模式)',
     label_udpgw_addr: 'UDP 閘道位址：',
+    label_udpgw_max_sessions: 'UDP 會話上限：',
+    helper_udpgw_max_sessions: '0 = 預設 1024',
+    label_udpgw_idle_timeout: 'UDP 閒置逾時（秒）：',
+    helper_udpgw_idle_timeout: '0 = 預設 60 秒',
     settings_geodata_title: '🌐 地理資料與直連分流 (GeoData & Direct Routing)',
     btn_update_geodata: '🔄 立即更新 Geo 規則庫',
     label_geosite_direct: 'GeoSite 直連網域名稱標籤：',
@@ -949,6 +979,8 @@ label_tunnel_tls: '🔒 TLS 加密',
 
     // 保活與背景（Keep-alive & background）
     settings_keepalive_title: '🔋 保活與背景',
+    label_ka_foreground: '遠端控制常駐',
+    desc_ka_foreground: '掛前台服務把進程頂在前台優先級：關閉應用介面後，Web 主控台 / 藍牙 / 區域網路遠端控制仍可連線（通知常駐）。',
     label_ka_magisk: 'Magisk service.d 開機保活',
     desc_ka_magisk: '向 /data/adb/service.d 寫入保活腳本：開機自動拉起 Stun，進程被殺後自動重啟，主控台隨時可存取。需要 root。',
     label_ka_shizuku: 'Shizuku 保活（免 root）',
@@ -960,6 +992,8 @@ label_tunnel_tls: '🔒 TLS 加密',
     ka_fail_script_write_failed: '保活腳本寫入失敗（可能被 SELinux 或 Root 策略攔截）',
     ka_fail_shizuku_not_running: 'Shizuku 未在執行，請先啟動 Shizuku',
     ka_fail_shizuku_no_permission: '未取得 Shizuku 授權，請在裝置上開啟 Stun 授予權限',
+    ka_foreground_active: '● 前台保活中，遠端控制保持可連線',
+    ka_foreground_off: '○ 未開啟（應用關閉後遠端控制會隨進程消失）',
     ka_magisk_active: '● 保活腳本已安裝，開機自動拉起',
     ka_magisk_off: '○ 未開啟',
     ka_magisk_script_lost: '⚠ 開關是開的，但腳本已不存在（刷機或還原 /data/adb 會清掉它），請關掉再打開以重裝',
@@ -1247,6 +1281,7 @@ label_tunnel_tls: '🔒 TLS 加密',
     label_edit_kcp_parity_shards: 'Parity Shards:',
     label_edit_kcp_nodelay: 'Enable KCP NoDelay Fast Low-latency Mode',
     label_kcp_mode: 'KCP mode (fast = default):',
+    label_edit_kcp_mode: 'KCP mode (fast = default):',
     label_kcp_sndwnd: 'Send window (0 = default 128):',
     label_kcp_rcvwnd: 'Receive window (0 = default 512):',
     label_kcp_mtu: 'MTU (0 = default 1350):',
@@ -1282,6 +1317,14 @@ label_tunnel_tls: '🔒 TLS encryption',
     label_webdav_last_sync: 'Last sync:',
     label_webdav_interval: 'Auto backup interval (hours):',
     label_webdav_sync_mode: 'Sync mode:',
+    label_webdav_prefix: 'Backup prefix (optional):',
+    helper_webdav_prefix: 'With ht2 → folders are named ht2_20261006-173300; older backups are kept but stay out of the list until the prefix is cleared',
+    label_webdav_sections: 'What to back up:',
+    webdav_section_profiles: 'Node data',
+    webdav_section_settings: 'Global settings',
+    webdav_section_subscription: 'Subscriptions',
+    webdav_section_subscription_usage: 'Subscription traffic',
+    webdav_section_locked: '(always)',
     opt_webdav_auto_off: 'Off',
     opt_webdav_auto_on: 'On',
     opt_webdav_sync_upload: 'Upload only',
@@ -1364,6 +1407,10 @@ label_tunnel_tls: '🔒 TLS encryption',
     opt_udpgw_tun2proxy: 'tun2proxy (High Performance Rust - Default)',
     opt_udpgw_badvpn: 'badvpn (Legacy Compatibility)',
     label_udpgw_addr: 'UDPGW Address:',
+    label_udpgw_max_sessions: 'UDP Max Sessions:',
+    helper_udpgw_max_sessions: '0 = default 1024',
+    label_udpgw_idle_timeout: 'UDP Idle Timeout (sec):',
+    helper_udpgw_idle_timeout: '0 = default 60s',
     settings_geodata_title: '🌐 GeoData & Direct Routing Rules',
     btn_update_geodata: '🔄 Update GeoData Now',
     label_geosite_direct: 'GeoSite Direct Domain Tags:',
@@ -1428,6 +1475,8 @@ label_tunnel_tls: '🔒 TLS encryption',
     // The web console is a plain object living in the app process: when the process is
     // reclaimed it is simply gone. These two switches are the ways to bring it back.
     settings_keepalive_title: '🔋 Keep-alive & background',
+    label_ka_foreground: 'Keep remote control alive',
+    desc_ka_foreground: 'Runs a foreground service to pin the process at foreground priority: after closing the app UI, the web console, Bluetooth and LAN remote control stay reachable (persistent notification).',
     label_ka_magisk: 'Magisk service.d keep-alive on boot',
     desc_ka_magisk: 'Writes a keep-alive script into /data/adb/service.d: launches Stun at boot and restarts it if the process is killed, so the console stays reachable. Requires root.',
     label_ka_shizuku: 'Shizuku keep-alive (no root)',
@@ -1439,6 +1488,8 @@ label_tunnel_tls: '🔒 TLS encryption',
     ka_fail_script_write_failed: 'Failed to write the keep-alive script (SELinux or a root policy may have blocked it)',
     ka_fail_shizuku_not_running: 'Shizuku is not running — start it first',
     ka_fail_shizuku_no_permission: 'Shizuku permission not granted — open Stun on the device to grant it',
+    ka_foreground_active: '● Keep-alive running, remote control stays reachable',
+    ka_foreground_off: '○ Off (remote control disappears with the process when the app closes)',
     ka_magisk_active: '● Script installed, launches automatically at boot',
     ka_magisk_off: '○ Off',
     ka_magisk_script_lost: '⚠ Switch is on but the script is gone (a flash or restore wipes /data/adb) — turn it off then on to reinstall',
@@ -1726,6 +1777,7 @@ label_tunnel_tls: '🔒 TLS encryption',
     label_edit_kcp_parity_shards: 'Parity Shards (パリティ分割)：',
     label_edit_kcp_nodelay: 'KCP NoDelay 低遅延モードを有効化',
     label_kcp_mode: 'KCP モード (fast = デフォルト)：',
+    label_edit_kcp_mode: 'KCP モード (fast = デフォルト)：',
     label_kcp_sndwnd: '送信ウィンドウ (0 = デフォルト 128)：',
     label_kcp_rcvwnd: '受信ウィンドウ (0 = デフォルト 512)：',
     label_kcp_mtu: 'MTU (0 = デフォルト 1350)：',
@@ -1761,6 +1813,14 @@ label_tunnel_tls: '🔒 TLS 暗号化',
     label_webdav_last_sync: '前回の同期：',
     label_webdav_interval: '自動バックアップ間隔 (時間)：',
     label_webdav_sync_mode: '同期モード：',
+    label_webdav_prefix: 'バックアップ接頭辞（任意）：',
+    helper_webdav_prefix: 'ht2 → 保存先が ht2_20261006-173300；既存のバックアップは残りますが、接頭辞を戻すまで一覧に表示されません',
+    label_webdav_sections: '同期対象：',
+    webdav_section_profiles: 'ノードデータ',
+    webdav_section_settings: '全体設定',
+    webdav_section_subscription: '購読リスト',
+    webdav_section_subscription_usage: '購読の通信量',
+    webdav_section_locked: '（常時）',
     opt_webdav_auto_off: 'オフ',
     opt_webdav_auto_on: 'オン',
     opt_webdav_sync_upload: 'アップロードのみ',
@@ -1843,6 +1903,10 @@ label_tunnel_tls: '🔒 TLS 暗号化',
     opt_udpgw_tun2proxy: 'tun2proxy (高性能 Rust エンジン - デフォルト)',
     opt_udpgw_badvpn: 'badvpn (従来互換モード)',
     label_udpgw_addr: 'UDPGW アドレス：',
+    label_udpgw_max_sessions: 'UDP セッション上限：',
+    helper_udpgw_max_sessions: '0 = 既定値 1024',
+    label_udpgw_idle_timeout: 'UDP アイドルタイムアウト（秒）：',
+    helper_udpgw_idle_timeout: '0 = 既定値 60 秒',
     settings_geodata_title: '🌐 地理データと直接ルーティング',
     btn_update_geodata: '🔄 Geoルールを今すぐ更新',
     label_geosite_direct: 'GeoSite 直接ドメインタグ：',
@@ -1905,6 +1969,8 @@ label_tunnel_tls: '🔒 TLS 暗号化',
 
     // 自動復旧とバックグラウンド（Keep-alive & background）
     settings_keepalive_title: '🔋 自動復旧とバックグラウンド',
+    label_ka_foreground: 'リモートコントロール常駐',
+    desc_ka_foreground: 'フォアグラウンドサービスでプロセスをフォアグラウンド優先度に固定します。アプリ画面を閉じても Web コンソール・Bluetooth・LAN のリモートコントロールに接続できます（通知は常駐します）。',
     label_ka_magisk: 'Magisk service.d による自動復旧',
     desc_ka_magisk: '/data/adb/service.d に自動復旧スクリプトを書き込み、起動時に Stun を自動で立ち上げます。プロセスが終了しても再起動するため、コンソールにいつでもアクセスできます。root 権限が必要です。',
     label_ka_shizuku: 'Shizuku による自動復旧（root 不要）',
@@ -1916,6 +1982,8 @@ label_tunnel_tls: '🔒 TLS 暗号化',
     ka_fail_script_write_failed: 'スクリプトの書き込みに失敗しました（SELinux または root ポリシーにブロックされた可能性があります）',
     ka_fail_shizuku_not_running: 'Shizuku が起動していません。先に Shizuku を起動してください',
     ka_fail_shizuku_no_permission: 'Shizuku の権限が許可されていません。デバイスで Stun を開いて権限を許可してください',
+    ka_foreground_active: '● 保活実行中、リモートコントロールは接続可能です',
+    ka_foreground_off: '○ 無効（アプリ終了でリモートコントロールはプロセスとともに失われます）',
     ka_magisk_active: '● スクリプトは導入済み。起動時に自動で立ち上がります',
     ka_magisk_off: '○ 無効',
     ka_magisk_script_lost: '⚠ スイッチはオンですがスクリプトが存在しません（ファクトリーリセットや /data/adb の復元で消えます）。オフにしてからオンにして再インストールしてください',
@@ -2203,6 +2271,7 @@ label_tunnel_tls: '🔒 TLS 暗号化',
     label_edit_kcp_parity_shards: 'Parity Shards (Paritäts-Shards):',
     label_edit_kcp_nodelay: 'KCP NoDelay Schnellmodus aktivieren',
     label_kcp_mode: 'KCP-Modus (fast = Standard):',
+    label_edit_kcp_mode: 'KCP-Modus (fast = Standard):',
     label_kcp_sndwnd: 'Sendefenster (0 = Standard 128):',
     label_kcp_rcvwnd: 'Empfangsfenster (0 = Standard 512):',
     label_kcp_mtu: 'MTU (0 = Standard 1350):',
@@ -2238,6 +2307,14 @@ label_tunnel_tls: '🔒 TLS-Verschlüsselung',
     label_webdav_last_sync: 'Letzte Synchronisierung:',
     label_webdav_interval: 'Auto-Backup-Intervall (Stunden):',
     label_webdav_sync_mode: 'Synchronisierungsmodus:',
+    label_webdav_prefix: 'Backup-Präfix (optional):',
+    helper_webdav_prefix: 'Mit ht2 → Ordner heißen ht2_20261006-173300; ältere Backups bleiben erhalten, erscheinen aber erst wieder in der Liste nach Entfernung des Präfixes',
+    label_webdav_sections: 'Was gesichert wird:',
+    webdav_section_profiles: 'Knotendaten',
+    webdav_section_settings: 'Globale Einstellungen',
+    webdav_section_subscription: 'Abos',
+    webdav_section_subscription_usage: 'Abo-Verkehrsdaten',
+    webdav_section_locked: '(immer)',
     opt_webdav_auto_off: 'Aus',
     opt_webdav_auto_on: 'Ein',
     opt_webdav_sync_upload: 'Nur hochladen',
@@ -2320,6 +2397,10 @@ label_tunnel_tls: '🔒 TLS-Verschlüsselung',
     opt_udpgw_tun2proxy: 'tun2proxy (Hochleistungs-Rust - Standard)',
     opt_udpgw_badvpn: 'badvpn (Legacy-Kompatibilität)',
     label_udpgw_addr: 'UDPGW-Adresse:',
+    label_udpgw_max_sessions: 'Max. UDP-Sitzungen:',
+    helper_udpgw_max_sessions: '0 = Standard 1024',
+    label_udpgw_idle_timeout: 'UDP-Leerlaufzeit (Sek.):',
+    helper_udpgw_idle_timeout: '0 = Standard 60 s',
     settings_geodata_title: '🌐 GeoData & Direktes Routing',
     btn_update_geodata: '🔄 GeoData jetzt aktualisieren',
     label_geosite_direct: 'GeoSite Direkt-Tags:',
@@ -2384,6 +2465,8 @@ label_tunnel_tls: '🔒 TLS-Verschlüsselung',
     // Die Web-Konsole ist ein einfaches Objekt im App-Prozess: Wird der Prozess beendet,
     // ist sie einfach weg. Diese beiden Schalter holen sie zurück.
     settings_keepalive_title: '🔋 Keep-alive & Hintergrund',
+    label_ka_foreground: 'Fernbedienung aktiv halten',
+    desc_ka_foreground: 'Führt einen Vordergrund-Dienst aus, um den Prozess auf Vordergrund-Priorität zu halten: Nach dem Schließen der App-Oberfläche bleiben Web-Konsole, Bluetooth und LAN-Fernbedienung erreichbar (dauerhafte Benachrichtigung).',
     label_ka_magisk: 'Magisk service.d Keep-alive beim Booten',
     desc_ka_magisk: 'Schreibt ein Keep-alive-Skript nach /data/adb/service.d: Startet Stun beim Booten und startet es neu, wenn der Prozess beendet wird – die Konsole bleibt so erreichbar. Erfordert root.',
     label_ka_shizuku: 'Shizuku Keep-alive (ohne root)',
@@ -2395,6 +2478,8 @@ label_tunnel_tls: '🔒 TLS-Verschlüsselung',
     ka_fail_script_write_failed: 'Keep-alive-Skript konnte nicht geschrieben werden (möglicherweise durch SELinux oder eine root-Richtlinie blockiert)',
     ka_fail_shizuku_not_running: 'Shizuku läuft nicht – bitte zuerst Shizuku starten',
     ka_fail_shizuku_no_permission: 'Keine Shizuku-Berechtigung – bitte Stun auf dem Gerät öffnen und die Berechtigung erteilen',
+    ka_foreground_active: '● Keep-alive läuft, Fernbedienung bleibt erreichbar',
+    ka_foreground_off: '○ Aus (Fernbedienung verschwindet mit dem Prozess, wenn die App geschlossen wird)',
     ka_magisk_active: '● Skript installiert, startet beim Booten automatisch',
     ka_magisk_off: '○ Aus',
     ka_magisk_script_lost: '⚠ Schalter ist an, aber das Skript fehlt (Flash oder Wiederherstellung löscht /data/adb) – zum Neuinstallieren aus- und wieder einschalten',
@@ -2682,6 +2767,7 @@ label_tunnel_tls: '🔒 TLS-Verschlüsselung',
     label_edit_kcp_parity_shards: 'Parity Shards (Fragments de parité) :',
     label_edit_kcp_nodelay: 'Activer le mode KCP NoDelay à faible latence',
     label_kcp_mode: 'Mode KCP (fast = défaut) :',
+    label_edit_kcp_mode: 'Mode KCP (fast = défaut) :',
     label_kcp_sndwnd: "Fenêtre d'émission (0 = 128 défaut) :",
     label_kcp_rcvwnd: 'Fenêtre de réception (0 = 512 défaut) :',
     label_kcp_mtu: 'MTU (0 = 1350 défaut) :',
@@ -2717,6 +2803,14 @@ label_tunnel_tls: '🔒 Chiffrement TLS',
     label_webdav_last_sync: 'Dernière synchronisation :',
     label_webdav_interval: 'Intervalle de sauvegarde auto (heures) :',
     label_webdav_sync_mode: 'Mode de synchronisation :',
+    label_webdav_prefix: 'Préfixe de sauvegarde (facultatif) :',
+    helper_webdav_prefix: 'Avec ht2 → dossiers nommés ht2_20261006-173300 ; les anciennes sauvegardes restent en place mais sont masquées tant que le préfixe est défini',
+    label_webdav_sections: 'Contenu synchronisé :',
+    webdav_section_profiles: 'Données des nœuds',
+    webdav_section_settings: 'Réglages globaux',
+    webdav_section_subscription: 'Abonnements',
+    webdav_section_subscription_usage: 'Trafic des abonnements',
+    webdav_section_locked: '(toujours)',
     opt_webdav_auto_off: 'Désactivé',
     opt_webdav_auto_on: 'Activé',
     opt_webdav_sync_upload: 'Envoi uniquement',
@@ -2799,6 +2893,10 @@ label_tunnel_tls: '🔒 Chiffrement TLS',
     opt_udpgw_tun2proxy: 'tun2proxy (Rust haute performance - Par défaut)',
     opt_udpgw_badvpn: 'badvpn (Compatibilité héritée)',
     label_udpgw_addr: 'Adresse UDPGW :',
+    label_udpgw_max_sessions: 'Sessions UDP max. :',
+    helper_udpgw_max_sessions: '0 = 1024 par défaut',
+    label_udpgw_idle_timeout: 'Inactivité UDP (s) :',
+    helper_udpgw_idle_timeout: '0 = 60 s par défaut',
     settings_geodata_title: '🌐 Données géographiques et routage direct',
     btn_update_geodata: '🔄 Mettre à jour GeoData',
     label_geosite_direct: 'Balises directes GeoSite :',
@@ -2863,6 +2961,8 @@ label_tunnel_tls: '🔒 Chiffrement TLS',
     // La console web est un simple objet dans le processus applicatif : si le processus est
     // tué, elle disparaît. Ces deux interrupteurs sont les moyens de la ramener.
     settings_keepalive_title: '🔋 Maintien actif & arrière-plan',
+    label_ka_foreground: 'Télécommande en permanence',
+    desc_ka_foreground: "Démarre un service en premier plan pour maintenir le processus en priorité avant-plan : après la fermeture de l'interface, la console web ainsi que la télécommande Bluetooth et LAN restent accessibles (notification permanente).",
     label_ka_magisk: 'Maintien au démarrage Magisk service.d',
     desc_ka_magisk: "Écrit un script de maintien dans /data/adb/service.d : lance Stun au démarrage et le relance si le processus est tué, afin que la console reste toujours accessible. Nécessite root.",
     label_ka_shizuku: 'Maintien via Shizuku (sans root)',
@@ -2874,6 +2974,8 @@ label_tunnel_tls: '🔒 Chiffrement TLS',
     ka_fail_script_write_failed: "Échec de l'écriture du script de maintien (SELinux ou une politique root l'a peut-être bloqué)",
     ka_fail_shizuku_not_running: "Shizuku n'est pas démarré — lancez d'abord Shizuku",
     ka_fail_shizuku_no_permission: "Permission Shizuku non accordée — ouvrez Stun sur l'appareil pour l'accorder",
+    ka_foreground_active: '● Maintien en cours, la télécommande reste accessible',
+    ka_foreground_off: "○ Désactivé (la télécommande disparaît avec le processus quand l'interface est fermée)",
     ka_magisk_active: '● Script installé, lancement automatique au démarrage',
     ka_magisk_off: '○ Désactivé',
     ka_magisk_script_lost: "⚠ L'interrupteur est activé mais le script a disparu (un flash ou une restauration efface /data/adb) — désactivez puis réactivez pour réinstaller",
@@ -3030,6 +3132,14 @@ function applyI18n() {
    ['t-label-webdav-auto','label_webdav_auto'],
    ['t-label-webdav-interval','label_webdav_interval'],
    ['t-label-webdav-sync-mode','label_webdav_sync_mode'],
+   ['t-label-webdav-prefix','label_webdav_prefix'],
+   ['t-helper-webdav-prefix','helper_webdav_prefix'],
+   ['t-label-webdav-sections','label_webdav_sections'],
+   ['t-webdav-section-profiles','webdav_section_profiles'],
+   ['t-webdav-section-settings','webdav_section_settings'],
+   ['t-webdav-section-subscription','webdav_section_subscription'],
+   ['t-webdav-section-usage','webdav_section_subscription_usage'],
+   ['t-webdav-section-locked','webdav_section_locked'],
    ['t-btn-webdav-save','btn_webdav_save'],
    ['t-btn-webdav-restore','btn_webdav_restore']].forEach(([id, key]) => {
     const el = document.getElementById(id);
@@ -3063,6 +3173,11 @@ function applyI18n() {
   document.getElementById('opt-udpgw-tun2proxy').textContent = t('opt_udpgw_tun2proxy');
   document.getElementById('opt-udpgw-badvpn').textContent = t('opt_udpgw_badvpn');
   document.getElementById('t-label-udpgw-addr').textContent = t('label_udpgw_addr');
+  document.getElementById('t-label-udpgw-max-sessions').textContent = t('label_udpgw_max_sessions');
+  document.getElementById('t-label-udpgw-idle-timeout').textContent = t('label_udpgw_idle_timeout');
+  // 「0 = 引擎默认」的口径随语言变化，占位符也要走 i18n
+  document.getElementById('input-udpgw-max-sessions').placeholder = t('helper_udpgw_max_sessions');
+  document.getElementById('input-udpgw-idle-timeout').placeholder = t('helper_udpgw_idle_timeout');
 
   document.getElementById('t-settings-geodata-title').textContent = t('settings_geodata_title');
   document.getElementById('t-btn-update-geodata').textContent = t('btn_update_geodata');
@@ -3349,7 +3464,10 @@ function applyI18n() {
 
   // Keep-alive Card (Magisk service.d / Shizuku)
   // 全用带守卫的写法：本卡是后加的，别让缺节点把整个 applyI18n 带崩。
+  // 这行注释是 KeepAliveSettingsParityTest 的切分锚点，改文字前先看测试。
   ['t-settings-keepalive-title|settings_keepalive_title',
+   't-label-ka-foreground|label_ka_foreground',
+   't-desc-ka-foreground|desc_ka_foreground',
    't-label-ka-magisk|label_ka_magisk',
    't-desc-ka-magisk|desc_ka_magisk',
    't-label-ka-shizuku|label_ka_shizuku',
@@ -3441,6 +3559,11 @@ function switchTab(tabId) {
   if (tabId === 'settings') {
     loadSettings();
     loadApps();
+    // WebDAV 表单必须用已保存的配置回填（pass/pin 恒显示空框+掩码占位符，
+    // url/user 也要回填真实值）——不加载的话表单停在空默认值：
+    // ① 用户看到的永远是"没保存"的样子；② 后续 立即备份/同步/恢复 都会先把
+    // 表单当前值 POST 回 /api/webdav/config，等于拿空配置覆盖已保存的配置。
+    loadWebDav();
   }
 }
 
@@ -5504,6 +5627,35 @@ async function saveAppFilter() {
 
 // ── 全局综合设置 (Settings) 逻辑 ──
 // ── WebDAV 云备份 (WebDAV Cloud Backup) ──
+// 表单是否已被服务端数据回填过。pass/pin 恒为空框（掩码占位符），url/user 靠回填
+// 才有真实值 —— 没回填就提交 = 把空配置覆盖到已保存的配置上，所以保存前先确保加载。
+let webdavConfigLoaded = false;
+
+// 三个「可选」分区：[分区 id, 复选框 id]。节点（profiles）恒定勾选、不可取消，
+// 不参与读写 —— 它是必需载荷，取消会导致恢复侧直接报"备份里没有必需载荷"。
+const WEBDAV_OPTIONAL_SECTIONS = [
+  ['settings', 'cb-webdav-section-settings'],
+  ['subscription', 'cb-webdav-section-subscription'],
+  ['subscription_usage', 'cb-webdav-section-usage']
+];
+
+// 按后端回传的分区 id 数组刷新复选框。后端不回这个字段（旧版本服务端）时传入空数组，
+// 全勾的 HTML 默认值就会保留 —— 等价于"全量同步"，与后端 activeSections 的回落一致。
+function renderWebDavSections(sections) {
+  WEBDAV_OPTIONAL_SECTIONS.forEach(([id, elId]) => {
+    const cb = document.getElementById(elId);
+    if (cb) cb.checked = sections.indexOf(id) >= 0;
+  });
+}
+
+// 读当前勾选状态，返回要同步的分区 id 数组；空数组是有效的"只同步节点"。
+function webdavSectionSelection() {
+  return WEBDAV_OPTIONAL_SECTIONS
+    .map(([id, elId]) => [id, document.getElementById(elId)])
+    .filter(([, cb]) => cb && cb.checked)
+    .map(([id]) => id);
+}
+
 async function loadWebDav() {
   try {
     const res = await fetch('/api/webdav?token=' + token);
@@ -5517,6 +5669,10 @@ async function loadWebDav() {
     document.getElementById('input-webdav-pin').placeholder = d.hasPin ? '••••••' : '';
     document.getElementById('input-webdav-auto').value = d.auto ? '1' : '0';
     document.getElementById('input-webdav-interval').value = d.intervalHours || 24;
+    // 备份前缀：空串＝未启用，沿用历史目录名
+    document.getElementById('input-webdav-prefix').value = d.prefix || '';
+    // 同步内容：后端回分区 id 数组（旧版本不回该字段 → 全勾默认值）
+    if (Array.isArray(d.sections)) renderWebDavSections(d.sections);
     // 同步模式：后端只回 id（upload/download/both），文案由前端自己映射，不去比本地化标签串
     webdavSyncMode = (d.syncMode === 'download' || d.syncMode === 'both') ? d.syncMode : 'upload';
     const modeSel = document.getElementById('input-webdav-sync-mode');
@@ -5526,10 +5682,14 @@ async function loadWebDav() {
     const stamp = webdavSyncMode === 'upload' ? (d.lastBackup || 0) : (d.lastSync || 0);
     const last = document.getElementById('display-webdav-last');
     if (last) last.textContent = stamp > 0 ? new Date(stamp).toLocaleString() : t('never_updated');
+    webdavConfigLoaded = true;
   } catch (_) {}
 }
 
 async function webdavSaveConfig() {
+  // 表单还没被服务端数据回填过（进页签后的首次加载失败/未跑完）就先拉一次，
+  // 避免"立即备份/从云恢复"前置保存时把空表单当成用户输入落库。
+  if (!webdavConfigLoaded) await loadWebDav();
   const pin = document.getElementById('input-webdav-pin').value.trim();
   // 与 Android 侧对齐：PIN 太短就拦住。输入框标签早就写着"至少 4 位"，这里把它落实
   // （空 PIN 不在此列 —— 那是"配置没填完"，由备份/恢复动作各自的配置校验去报）
@@ -5548,22 +5708,35 @@ async function webdavSaveConfig() {
         pin: pin,
         auto: document.getElementById('input-webdav-auto').value === '1',
         intervalHours: parseInt(document.getElementById('input-webdav-interval').value) || 24,
+        prefix: document.getElementById('input-webdav-prefix').value.trim(),
+        sections: webdavSectionSelection(),
         syncMode: webdavSyncMode
       })
     });
+    // 响应体提到分支外：成功分支回填数据，失败分支还要用它取 400 带回的原因
+    const d = await res.json().catch(() => ({}));
     if (res.ok) {
       // 后端会回一份"落库后的模式"：若它被规范化（比如非法值落回 upload），前端跟着回填
-      const d = await res.json().catch(() => ({}));
       if (d.syncMode === 'upload' || d.syncMode === 'download' || d.syncMode === 'both') {
         webdavSyncMode = d.syncMode;
         const modeSel = document.getElementById('input-webdav-sync-mode');
         if (modeSel) modeSel.value = webdavSyncMode;
         renderWebDavModeTexts();
       }
+      // 前缀会被后端归一化（丢非法字符、截断长度），拿落库后的值回填显示
+      if (typeof d.prefix === 'string') {
+        document.getElementById('input-webdav-prefix').value = d.prefix;
+      }
+      if (Array.isArray(d.sections)) renderWebDavSections(d.sections);
       showToast(t('webdav_saved'));
-    } else showToast(t('webdav_failed_generic'));
-  } catch (_) {
-    showToast(t('webdav_failed_generic'));
+    } else {
+      // 失败要把后端带回的原因带上：只弹"操作失败"用户无从判断，也没法报出
+      // 可复现的信息 —— 下面的同步/恢复按钮本来就是这么做的，这里补齐
+      showToast(t('webdav_failed_generic') + (d.error ? (': ' + d.error) : ''));
+    }
+  } catch (e) {
+    // 走到这通常是网络层问题（断连、超时），带上原始消息才有排查价值
+    showToast(t('webdav_failed_generic') + (e && e.message ? (': ' + e.message) : ''));
   }
   // 保存请求本身失败不拦住后续动作（旧行为就是继续跑），只有 PIN 不合规才 return false
   return true;
@@ -5740,6 +5913,9 @@ function applySettingsFields(data) {
     // 2. UDPGW
     document.getElementById('select-udpgw-version').value = data.udpgwVersion || 'tun2proxy';
     document.getElementById('input-udpgw-addr').value = data.udpgwAddr || '127.0.0.1:7300';
+    // UDP 会话限制：0 = 引擎默认（1024 会话 / 60 秒），与手机端设置页同一口径
+    document.getElementById('input-udpgw-max-sessions').value = data.udpMaxSessions ?? 0;
+    document.getElementById('input-udpgw-idle-timeout').value = data.udpIdleTimeoutSec ?? 0;
 
     // 3. GeoData & Direct Rules
     document.getElementById('input-geosite-direct').value = data.geositeDirect || '';
@@ -5886,6 +6062,8 @@ async function saveAllSettings() {
     localDns: document.getElementById('input-local-dns').value.trim(),
     udpgwVersion: document.getElementById('select-udpgw-version').value,
     udpgwAddr: document.getElementById('input-udpgw-addr').value.trim(),
+    udpMaxSessions: parseInt(document.getElementById('input-udpgw-max-sessions').value) || 0,
+    udpIdleTimeoutSec: parseInt(document.getElementById('input-udpgw-idle-timeout').value) || 0,
     geositeDirect: document.getElementById('input-geosite-direct').value.trim(),
     geoipDirect: document.getElementById('input-geoip-direct').value.trim(),
     geositeUrl: document.getElementById('input-geosite-url').value.trim(),
@@ -5913,6 +6091,11 @@ async function saveAllSettings() {
       settingsTokens.randomToken = data.randomToken || token;
       settingsTokens.permanentToken = data.permanentToken || '';
       settingsTokens.customToken = data.customToken || '';
+
+      // 保存成功就作废设置缓存：TTL 5 分钟内重进设置页会回填**保存前**的旧值，
+      // 用户看起来像"没保存"，照着旧表单再存一次还会把上一次的修改整体回滚。
+      settingsCache.data = null;
+      settingsCache.at = 0;
 
       updateAccessUrlPreview();
       updateMcpTabVisibility(data);
@@ -5950,11 +6133,23 @@ function renderKeepAliveStatus(st) {
   if (!st) return;
   lastKeepAliveStatus = st;
 
+  const fSwitch = document.getElementById('switch-ka-foreground');
   const mSwitch = document.getElementById('switch-ka-magisk');
   const sSwitch = document.getElementById('switch-ka-shizuku');
   // 程序性回填 .checked 不会触发 onchange，所以这里覆盖不会反过来发请求。
+  if (fSwitch) fSwitch.checked = !!st.foregroundEnabled;
   if (mSwitch) mSwitch.checked = !!st.magiskEnabled;
   if (sSwitch) sSwitch.checked = !!st.shizukuEnabled;
+
+  // 远程控制常驻：开关意图 + 当前到底有几个监听面真的在跑。
+  // listeners 由服务端报「意图/现状」，能看出"开了但没起来"（典型：蓝牙权限被拒）。
+  const fState = document.getElementById('t-state-ka-foreground');
+  if (fState) {
+    const live = (st.listeners || []).filter(l => l.running).map(l => l.name).join(' / ');
+    fState.textContent = st.foregroundEnabled
+      ? t('ka_foreground_active') + (live ? ' · ' + live : '')
+      : t('ka_foreground_off');
+  }
 
   const mState = document.getElementById('t-state-ka-magisk');
   if (mState) {

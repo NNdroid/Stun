@@ -98,52 +98,17 @@ class CarMainActivity : AppCompatActivity() {
     }
 
     /**
-     * 手机端「远程控制」蓝牙面板的数据来源与控制入口。
+     * 手机端「远程控制」蓝牙面板的控制入口。
      *
      * 与 TV 的 `RemoteSyncManager` 回调同构：手机端解析的是同一份 [app.fjj.stun.remote.TvStatusResponse]，
      * 控制动作（start/stop/restart/select_profile）走同一套启停语义 —— start 会经由
      * [startSelectedService] 弹 VPN 授权/通知权限，而不是像旧 BT `toggle_vpn` 那样绕过一切直接拉服务。
-     * 车机没有 HTTP/NSD 服务器，蓝牙是它唯一的远程控制通道，所以这两个回调必须在 MainActivity 注册
-     * （只有它持有节点列表与启停入口）。
+     *
+     * 只有控制回调注册在这里：它必须引用 Activity（loadProfiles / launcher）。
+     * 状态源 [app.fjj.stun.remote.TvStatusSource] 是纯数据读取，已在 `CarApp.onCreate` 进程级注册，
+     * 不挂在 Activity 上 —— 原先挂在这里时界面一销毁就被置 null，手机只看到空状态。
      */
     private fun setupBluetoothRemoteCallbacks() {
-        BluetoothSyncManager.tvStatusProvider = {
-            try {
-                val selected = ProfileManager.getSelectedProfile(this)
-                val profiles = try {
-                    ProfileManager.getProfiles(this).map {
-                        app.fjj.stun.remote.TvProfileSummary(it.id, it.name, it.tunnelType)
-                    }
-                } catch (_: Exception) {
-                    emptyList()
-                }
-                app.fjj.stun.remote.TvStatusResponse(
-                    vpnState = (StunRepository.vpnState.value ?: VpnState.DISCONNECTED).name,
-                    currentProfileName = selected.name.ifBlank { null },
-                    currentProfileId = SettingsManager.getSelectedProfileId(this),
-                    currentProfileType = if (selected.name.isNotBlank()) selected.tunnelType.uppercase() else null,
-                    currentProfileServer = if (selected.sshAddr.isNotBlank()) selected.sshAddr else null,
-                    profileCount = profiles.size,
-                    deviceName = android.os.Build.MODEL,
-                    publicIp = null,
-                    txRate = StunRepository.txRate.value ?: 0L,
-                    rxRate = StunRepository.rxRate.value ?: 0L,
-                    txTotal = StunRepository.txTotal.value ?: 0L,
-                    rxTotal = StunRepository.rxTotal.value ?: 0L,
-                    profiles = profiles
-                )
-            } catch (e: Exception) {
-                StunLogger.w("CarMainActivity", "Failed to build BT status: ${e.message}")
-                app.fjj.stun.remote.TvStatusResponse(
-                    vpnState = (StunRepository.vpnState.value ?: VpnState.DISCONNECTED).name,
-                    currentProfileName = null,
-                    currentProfileId = SettingsManager.getSelectedProfileId(this),
-                    profileCount = 0,
-                    deviceName = android.os.Build.MODEL
-                )
-            }
-        }
-
         BluetoothSyncManager.onRemoteControlRequested = { action, profileId ->
             withContext(Dispatchers.Main) {
                 when (action) {
@@ -199,12 +164,12 @@ class CarMainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // 回调引用了 Activity（loadProfiles / launcher），销毁时必须摘除，防泄漏。
+        // 控制回调引用了 Activity（loadProfiles / launcher），销毁时必须摘除，防泄漏。
+        // 状态源（tvStatusProvider）不摘：它已在 CarApp 进程级注册、不持有任何 Activity 引用。
         BluetoothSyncManager.onRemoteControlRequested = null
-        BluetoothSyncManager.tvStatusProvider = null
-        // 回调摘除后，远端 start_vpn 会落到 core 的 startOrStopService 兜底 —— 那条路
-        // 不经过 VpnService.prepare，会让服务空转重连。停掉服务器把这条路彻底关死
-        // （与 TV 同一策略）；用户再打开本页时会重新拉起。
+        // 控制回调摘除后，远端 start_vpn 会落到 core 的 startOrStopService 兜底 —— 那条路
+        // 不经过 VpnService.prepare，会让服务空转重连。停掉服务器把这条路彻底关死；
+        // 用户再打开本页时会重新拉起。
         BluetoothSyncManager.stopServer()
         updateBtBadge()
     }

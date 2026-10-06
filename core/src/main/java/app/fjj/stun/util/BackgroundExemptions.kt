@@ -20,8 +20,8 @@ import app.fjj.stun.repo.StunLogger
  * 改完 root 那份，Shizuku 那三份照旧；又比如 4 份各自包 `if (isReady())`，而底层
  * `addSelfToBatteryWhitelist` 内部还会再判一次 —— 同一次调用判三遍，且没人说得清哪一遍是权威。
  *
- * 现在按**通道**暴露两个入口，命令的构造只有这一份。新增一种豁免 = 在这里加一行，
- * 两条通道同时生效。
+ * 现在按**通道**暴露入口（每条通道各一个「加」、一个「撤」），命令的构造只有这一份。
+ * 新增一种豁免 = 在这里加一行，两条通道同时生效。
  *
  * ## 两条通道的能力差异（刻意保留，不是漏做）
  * - **Shizuku** 只能改"自己 shell 身份"能改的东西：deviceidle 白名单 + 待机桶，**没有 appops**。
@@ -49,6 +49,10 @@ object BackgroundExemptions {
     internal fun standbyBucketActive(packageName: String): Array<String> =
         arrayOf("am", "set-standby-bucket", packageName, "active")
 
+    /** [standbyBucketActive] 的复位形态。`normal` 是用户互动过的 App 的默认桶。 */
+    internal fun standbyBucketNormal(packageName: String): Array<String> =
+        arrayOf("am", "set-standby-bucket", packageName, "normal")
+
     /** appops 模式。`mode` 取 `allow` / `default` / `ignore` —— 复位只能回 `default`。 */
     internal fun appops(packageName: String, op: String, mode: String): Array<String> =
         arrayOf("appops", "set", packageName, op, mode)
@@ -70,6 +74,26 @@ object BackgroundExemptions {
         ShizukuUtils.executeShellCommandAsync(deviceIdleWhitelist(packageName, grant = true))
         if (ShizukuUtils.isAtLeast(Build.VERSION_CODES.P)) {
             ShizukuUtils.executeShellCommandAsync(standbyBucketActive(packageName))
+        }
+    }
+
+    /**
+     * 经 Shizuku 撤销豁免 —— [applyViaShizuku] 的逆操作。
+     *
+     * 与 [revertViaRoot] 对称：**必须成对存在**。deviceidle 白名单是**跨重启留存**的，只加不撤
+     * 等于永久留在系统后台白名单里（卸载都不一定清得掉），既是耗电也是隐私。
+     *
+     * fire-and-forget，与 [applyViaShizuku] 同风格：Shizuku 不在跑时静默跳过（此时也确实没别的
+     * 办法），调用方不因撤销失败而改变开关落库结果。
+     */
+    fun revertViaShizuku(packageName: String) {
+        if (ShizukuUtils.state() != ShizukuState.READY) {
+            StunLogger.d(TAG, "revertViaShizuku skipped: Shizuku not ready")
+            return
+        }
+        ShizukuUtils.executeShellCommandAsync(deviceIdleWhitelist(packageName, grant = false))
+        if (ShizukuUtils.isAtLeast(Build.VERSION_CODES.P)) {
+            ShizukuUtils.executeShellCommandAsync(standbyBucketNormal(packageName))
         }
     }
 
