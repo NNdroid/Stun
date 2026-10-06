@@ -116,7 +116,7 @@ Stun supports a wide range of underlying transport protocols to bypass network r
 | Protocol / Tunnel | Description | Server Implementation |
 | :--- | :--- | :--- |
 | **`UDP_CUSTOM`** | Lightweight, reliable ARQ UDP stream tunnel with sliding-window anti-replay, multi-PSK, and Noise encryption | 🔗 [**NNdroid/udp_custom**](https://github.com/NNdroid/udp_custom) |
-| **`ICMP_CUSTOM`** | SSH-over-ICMP tunnel with PSK / Noise encryption, echo ID pool, IP family selection, MTU probing, and packet pacing | 🔗 [**NNdroid/myssh**](https://github.com/NNdroid/myssh) |
+| **`ICMP_CUSTOM`** | Encrypted tunnel over ICMP Echo Request/Reply — PSK + forward-secret Noise_NK auth, adaptive MTU search, pacing and rate limiting | 🔗 [**NNdroid/icmp_custom**](https://github.com/NNdroid/icmp_custom) |
 | **`H2` / `H3` / `MASQUE` / `WEBTRANSPORT` / `GRPC`** | All-in-one high-performance HTTP/2, HTTP/3 (QUIC), WebTransport, MASQUE (RFC 9298), and gRPC multiplexing tunnel with auto TLS and health probes | 🔗 [**NNdroid/h2tunnel**](https://github.com/NNdroid/h2tunnel) |
 | **`XHTTP`** | Modern Chunked / Split-HTTP streaming tunnel with ring buffer for CDN, WAF, and reverse proxy camouflage | 🔗 [**NNdroid/xhttptunnel**](https://github.com/NNdroid/xhttptunnel) |
 | **`DNS_CUSTOM`** | Tunnel traffic through DNS queries — 8 record types (TXT, NULL, CNAME, A, AAAA, MX, SRV, NS), Noise_NK AEAD encryption, UDP/TCP/DoH/DoT upstream | 🔗 [**NNdroid/dns_custom**](https://github.com/NNdroid/dns_custom) |
