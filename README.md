@@ -6,25 +6,76 @@
 
 Stun is a powerful and lightweight Android proxy client designed for efficiency and ease of use. It leverages TProxy and SSH technologies to provide a secure and flexible networking experience, complete with modern Material 3 design and Android 15 support.
 
+<p align="center">
+  <a href="https://github.com/NNdroid/Stun/releases"><img src="https://img.shields.io/badge/download-Releases-orange?logo=github" alt="Releases"/></a>
+  <img src="https://img.shields.io/badge/platform-Android%209%2B%20(API%2028)-3DDC84?logo=android&logoColor=white" alt="Platform"/>
+  <img src="https://img.shields.io/badge/Kotlin-100%25-7F52FF?logo=kotlin&logoColor=white" alt="Kotlin"/>
+  <img src="https://img.shields.io/badge/UI-Material%203-6750A4?logo=materialdesign&logoColor=white" alt="Material 3"/>
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="License"/>
+</p>
+
 ## 📸 Screenshots
 
-<div style="text-align: center;">
-  <img src="./screenshots/0_app.png" width="200" />
-  <img src="./screenshots/1_main.png" width="200" />
-  <img src="./screenshots/2_main.png" width="200" />
-</div>
-<div style="text-align: center;">
-  <img src="./screenshots/3_add_profile.png" width="200" />
-  <img src="./screenshots/4_add_profile.png" width="200" />
-  <img src="./screenshots/5_settings.png" width="200" />
-</div>
-<div style="text-align: center;">
-  <img src="./screenshots/6_settings.png" width="200" />
-  <img src="./screenshots/7_panel.png" width="200" />
-  <img src="./screenshots/8_about.png" width="200" />
-</div>
+A quick tour — from first launch to fine-tuned routing.
 
-## Installation
+**⚡ Connect**
+
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <img src="./screenshots/0_app.png" width="220" alt="Launcher"/><br/>
+      <sub><b>App icon</b> — Stun on the launcher, ready to go (Android TV shown)</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="./screenshots/2_main.png" width="220" alt="VPN consent"/><br/>
+      <sub><b>First run</b> — one-tap connect; only the standard system VPN consent stands in the way</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="./screenshots/1_main.png" width="220" alt="Connected"/><br/>
+      <sub><b>Connected</b> — live latency, tunnel-type chip and per-node traffic counters</sub>
+    </td>
+  </tr>
+</table>
+
+**🧩 Create a profile**
+
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <img src="./screenshots/3_add_profile.png" width="220" alt="Add Profile"/><br/>
+      <sub><b>Profile essentials</b> — SSH address &amp; credentials, tunnel type, custom Host / SNI</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="./screenshots/4_add_profile.png" width="220" alt="Advanced overrides"/><br/>
+      <sub><b>Per-profile overrides</b> — DoH servers, UDP gateway, Geo routing and app filtering, all overridable per node</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="./screenshots/5_settings.png" width="220" alt="Settings"/><br/>
+      <sub><b>Global settings</b> — service mode (VPN / TProxy), language, DNS and UDP gateway</sub>
+    </td>
+  </tr>
+</table>
+
+**🎛 Fine-tune & explore**
+
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <img src="./screenshots/6_settings.png" width="220" alt="Routing"/><br/>
+      <sub><b>Routing rules</b> — GeoSite / GeoIP direct flags and per-app filtering (allow / deny)</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="./screenshots/7_panel.png" width="220" alt="Drawer"/><br/>
+      <sub><b>Side drawer</b> — Settings, live Logs and About, one tap away</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="./screenshots/8_about.png" width="220" alt="About"/><br/>
+      <sub><b>About</b> — source code, open-source licenses, feedback and privacy policy</sub>
+    </td>
+  </tr>
+</table>
+
+## 📥 Installation
 
 You can download and install **Stun** using either of the following methods:
 
@@ -49,9 +100,13 @@ If you prefer not to use Google Play, you can download the latest compiled APK d
 - **SSH Tunneling:** Integrated SSH support via `myssh` for secure connections.
 - **GeoData Routing:** Advanced routing using Geosite and GeoIP data to distinguish between direct and proxied traffic.
 - **Per-App Proxy:** Fine-grained control over which applications use the proxy.
-- **Modern UI:** Built with Material 3 components, featuring full Edge-to-Edge support for Android 15.
+- **Remote Control & Sync:** Discover Stun instances on the same network (NSD/mDNS), push profiles to them and remote-control VPN start/stop or profile switching over HTTP or Bluetooth RFCOMM — with live status polling.
+- **Web Console:** The controlled device (TV / Car) serves a browser-based management UI — nodes, logs and backup restore from any browser.
+- **MCP Server:** Native Model Context Protocol server so AI assistants can inspect status and drive settings.
+- **Encrypted Cloud Backup:** PIN-encrypted WebDAV backup with three sync modes (upload / download / two-way) — see [☁️ Cloud Backup](#️-cloud-backup-webdav).
+- **Multi-form-factor:** One codebase, five faces — phone, Android TV, car head units, Wear OS (Tiles) and XR.
 - **QR Code Integration:** Easily import or share configurations via QR codes.
-- **Multilingual:** Supports English, Chinese (Simplified/Traditional), French, and Japanese.
+- **Multilingual:** English, Simplified Chinese, Traditional Chinese, German, French, and Japanese — with an in-app language override (follow system by default).
 - **Dark Mode:** Fully compatible with system-wide dark and light themes.
 
 ## 🌐 Supported Protocols & Server Implementations
@@ -61,11 +116,10 @@ Stun supports a wide range of underlying transport protocols to bypass network r
 | Protocol / Tunnel | Description | Server Implementation |
 | :--- | :--- | :--- |
 | **`UDP_CUSTOM`** | Lightweight, reliable ARQ UDP stream tunnel with sliding-window anti-replay, multi-PSK, and Noise encryption | 🔗 [**NNdroid/udp_custom**](https://github.com/NNdroid/udp_custom) |
-| **`ICMP_CUSTOM`** | SSH-over-ICMP tunnel with PSK / Noise encryption, IP family selection, MTU probing, and packet pacing | 🔗 [**NNdroid/myssh**](https://github.com/NNdroid/myssh) |
-| **`ICMP_CUSTOM`** | SSH-over-ICMP tunnel: PSK / Noise, echo ID pool, MTU probing, and packet pacing | 🔗 [**NNdroid/myssh**](https://github.com/NNdroid/myssh) |
+| **`ICMP_CUSTOM`** | SSH-over-ICMP tunnel with PSK / Noise encryption, echo ID pool, IP family selection, MTU probing, and packet pacing | 🔗 [**NNdroid/myssh**](https://github.com/NNdroid/myssh) |
 | **`H2` / `H3` / `MASQUE` / `WEBTRANSPORT` / `GRPC`** | All-in-one high-performance HTTP/2, HTTP/3 (QUIC), WebTransport, MASQUE (RFC 9298), and gRPC multiplexing tunnel with auto TLS and health probes | 🔗 [**NNdroid/h2tunnel**](https://github.com/NNdroid/h2tunnel) |
 | **`XHTTP`** | Modern Chunked / Split-HTTP streaming tunnel with ring buffer for CDN, WAF, and reverse proxy camouflage | 🔗 [**NNdroid/xhttptunnel**](https://github.com/NNdroid/xhttptunnel) |
-| **`DNS` / `DNS_CUSTOM`** | Tunnel traffic through DNS queries with 8 record types, Noise_NK AEAD + optional PSK auth and custom tunnel marker (both ends must match), UDP/DoH/DoT upstream | 🔗 [**NNdroid/dns_custom**](https://github.com/NNdroid/dns_custom) / [**dnstt**](https://www.bamsoftware.com/software/dnstt/) |
+| **`DNS_CUSTOM`** | Tunnel traffic through DNS queries — 8 record types (TXT, NULL, CNAME, A, AAAA, MX, SRV, NS), Noise_NK AEAD encryption, UDP/TCP/DoH/DoT upstream | 🔗 [**NNdroid/dns_custom**](https://github.com/NNdroid/dns_custom) |
 | **`KCP`** | High-performance ARQ reliable UDP with Reed-Solomon FEC forward error correction | 🔗 [**xtaci/kcptun**](https://github.com/xtaci/kcptun) |
 | **`WEBSOCKET`** | WebSocket stream tunnel with CDN & reverse proxy support (Cloudflare, Nginx, Caddy), TLS toggle | 🔗 [**erebe/wstunnel**](https://github.com/erebe/wstunnel) / [**Nginx**](https://nginx.org) |
 | **`RAW` (TLS toggle) / `HTTP`** | Direct TCP SSH connection (optional uTLS SNI spoofing) & standard HTTP CONNECT / TLS SNI proxy | 🔗 [**OpenSSH**](https://www.openssh.com/) / [**Squid**](http://www.squid-cache.org/) / [**HAProxy**](https://www.haproxy.org/) |
@@ -77,24 +131,28 @@ Stun supports a wide range of underlying transport protocols to bypass network r
 - **Database:** Room for profile management
 - **Background Tasks:** WorkManager for GeoData updates
 - **Native:** JNI/NDK for high-performance core logic
+- **Embedded Servers:** Ktor for the Web console, MCP server and LAN sync
+- **Wear OS:** Tiles-based companion experience
 - **UI:** ViewBinding, Material 3, and ConstraintLayout
 
 ## 📦 Building from Source
 
 ### Prerequisites
 - Android Studio Ladybug (or newer)
-- Android SDK 36
+- Android SDK 37
 - Android NDK (defined in your local.properties or project structure)
 - JDK 17
 
 ### Steps
-1. Clone the repository:
+1. Clone the repository **with submodules** (the JNI cores `myssh`, `hev-socks5-tunnel` and `hev-socks5-tproxy` are git submodules; they are patched automatically on first build):
    ```bash
-   git clone https://github.com/NNdroid/Stun.git
+   git clone --recursive https://github.com/NNdroid/Stun.git
+   # already cloned without --recursive? run:
+   git submodule update --init --recursive
    ```
 2. Open the project in Android Studio.
 3. Sync Gradle and build the project.
-4. Run the `app` module on your device or emulator.
+4. Run the `app` module on your device or emulator. Companion builds (`tv`, `car`, `wear`, `xr`) build from the same source tree.
 
 ## ⚙️ Configuration
 
@@ -104,7 +162,7 @@ Stun supports a wide range of underlying transport protocols to bypass network r
 
 ## 📡 Subscription Format
 
-The app supports **multiple subscription URLs**: add as many as you need (side panel → **Subscription**, each with its own optional PIN), and a sync fetches all of them and merges the nodes — duplicates across subscriptions are de-duplicated by node `id` (first subscription wins). Each URL is fetched with a plain `HTTP(S) GET` request (`User-Agent: Stun-Android/<version>`, connect timeout 10s, read timeout 15s), and the UTF-8 response body must match **one of the three formats below** — they are auto-detected in this order:
+The app supports **multiple subscription URLs**: add as many as you need (side panel → **Subscription**, each with its own optional PIN), and a sync fetches all of them and merges the nodes — duplicates across subscriptions are de-duplicated by node `id` (first subscription wins). Each URL is fetched with a plain `HTTP(S) GET` request (`User-Agent: Stun-Android/3.0.0`, connect timeout 10s, read timeout 20s, redirects followed), and the UTF-8 response body must match **one of the three formats below** — they are auto-detected in this order:
 
 ### Format 1: JSON Array (recommended)
 
@@ -178,7 +236,7 @@ Tunnel-specific options (KCP, DNS tunnel, UDP Custom, Noise public key, fingerpr
 
 ## ☁️ Cloud Backup (WebDAV)
 
-Any standard WebDAV server works (坚果云/Jianguoyun, Nextcloud, self-hosted nginx+DAV). The app creates and maintains its own folder tree under the configured base URL — missing collections are auto-created (MKCOL), so pointing at an empty account is fine:
+Any standard WebDAV server works (Jianguoyun, Nextcloud, self-hosted nginx+DAV). The app creates and maintains its own folder tree under the configured base URL — missing collections are auto-created (MKCOL), so pointing at an empty account is fine:
 
 ```text
 <base>/Stun/
@@ -189,10 +247,20 @@ Any standard WebDAV server works (坚果云/Jianguoyun, Nextcloud, self-hosted n
 └── 20260911-214417/...
 ```
 
+An optional **backup prefix** (Settings → WebDAV) isolates devices that share one WebDAV account — folder names then become `<prefix>_<timestamp>` and each device only ever lists/trims its own backup set.
+
+### Sync modes
+
+The WebDAV card supports three modes, all built on the same fingerprinted sync pipeline:
+
+* **Upload only** — classic one-way backup; every run pushes a fresh snapshot.
+* **Download only** — this device follows the cloud; local sections older than the cloud copy are overwritten.
+* **Both (two-way)** — each section carries a sync fingerprint (content mtime + content hash). Only the side whose content genuinely changed since the last sync wins, so edits on two devices merge instead of clobbering each other. Before the first pull the device pushes a **local safety snapshot** (bootstrap), so a wrong cloud copy can never destroy local state without a trace.
+
 - **Privacy**: every file is encrypted with your backup PIN *before* upload (same crypto as the share URIs) — the drive provider and the developer cannot read them.
 - **Pluggable sections**: `WebDavBackupManager` knows nothing about individual settings. It simply iterates a registry of `BackupSection` implementations, each writing one encrypted file. Adding a new class of backed-up settings means adding one `BackupSection` — the backup pipeline itself never changes. `settings.json.enc` keeps its historical name so backups made before/after this change remain mutually restorable.
 - **Zero-maintenance settings snapshot**: the settings section enumerates *all* keys of the portable store, so a newly added setting is backed up automatically. Value types are tagged at runtime (so numbers do not collapse into `Double`), `Set<String>` is supported, and secrets are detected automatically — anything the local Keystore wrapped is stored as `ENC:…`, so the snapshot exports the decrypted value and the receiving device re-wraps it with its own key. No per-field list needs updating, ever.
-- **What is / isn't in the snapshot**: device-local state lives in a *separate* store (`stun_device_state`) and therefore can never leak into a backup — this covers the selected node, last-backup/last-geo-update timestamps, and `webdav_pin` itself (the vault key). The WebDAV account password *is* exported decrypted (re-encrypted with the backup PIN) so a new device only needs to re-enter the PIN once.
+- **What is / isn't in the snapshot**: device-local state lives in a *separate* store (`stun_device_state`) and therefore can never leak into a backup — this covers the selected node, last-backup/last-geo-update timestamps, the sync mode & WebDAV sync scope (which sections this device backs up), and `webdav_pin` itself (the vault key). The WebDAV account password *is* exported decrypted (re-encrypted with the backup PIN) so a new device only needs to re-enter the PIN once.
 - **Restore**: pick a backup from the server-side list in-app (Android) or in the WebUI; nodes are merged **by id**, settings overwritten, and sections merged (subscriptions are unioned by URL so local entries are never clobbered) — all behind an explicit confirmation. A corrupt or missing section is skipped without affecting the rest.
 - No Room/DB migration is involved: backup configuration lives in `stun_settings` (portable) and `stun_device_state` (device-local) SharedPreferences.
 
