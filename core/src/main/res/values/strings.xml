@@ -29,7 +29,7 @@
     <string name="about_feedback">Feedback</string>
     <string name="about_telegram">Telegram Channel</string>
     <string name="about_privacy_policy">Privacy Policy</string>
-    <string name="about_version_format">v%1$s (Core %2$s)</string>
+    <string name="about_version_format">%1$s (Core %2$s)</string>
 
     <string name="status_disconnected">Disconnected</string>
     <string name="status_connected">Connected</string>

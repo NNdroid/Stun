@@ -59,6 +59,10 @@ jobs:
       - name: Checkout Code with Submodules
         uses: actions/checkout@v4
         with:
+          # 必须全量：自动版本号用 `git tag --list 'v*'` 算 versionCode、
+          # `git rev-list --count HEAD` 算 versionName 里的提交数。默认的 fetch-depth: 1
+          # 是浅克隆，tag 拿不到、提交数算成 1，versionCode 会永远卡在 15。
+          fetch-depth: 0
           submodules: recursive
 
       - name: Set up Go
@@ -206,6 +210,9 @@ jobs:
 
       - name: Build and Sign APK & AAB
         env:
+          # 正整数即触发 CI 自动版本：versionCode = 万位段 + 13 + v* 标签数 + 1；
+          # versionName = v1.0.<UTC 日期>.<提交数>-<短哈希>。pr-ci 不设该变量，走手工版本。
+          CI_RUN_NUMBER: ${{ github.run_number }}
           KEYSTORE_FILE: ${{ steps.decode_keystore.outputs.filePath }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}

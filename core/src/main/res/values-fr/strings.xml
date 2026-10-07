@@ -12,7 +12,7 @@
     <string name="about_feedback">Commentaires</string>
     <string name="about_telegram">Canal Telegram</string>
     <string name="about_privacy_policy">Politique de confidentialité</string>
-    <string name="about_version_format">v%1$s (Cœur %2$s)</string>
+    <string name="about_version_format">%1$s (Cœur %2$s)</string>
 
     <string name="status_disconnected">Déconnecté</string>
     <string name="status_connected">Connecté</string>

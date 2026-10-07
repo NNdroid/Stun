@@ -12,7 +12,7 @@
     <string name="about_feedback">フィードバック送信</string>
     <string name="about_telegram">Telegram チャンネル</string>
     <string name="about_privacy_policy">プライバシーポリシー</string>
-    <string name="about_version_format">v%1$s (コア: %2$s)</string>
+    <string name="about_version_format">%1$s (コア: %2$s)</string>
 
     <string name="status_disconnected">未接続</string>
     <string name="status_connected">接続済み</string>

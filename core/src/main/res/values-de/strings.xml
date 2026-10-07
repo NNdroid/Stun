@@ -12,7 +12,7 @@
     <string name="about_feedback">Feedback</string>
     <string name="about_telegram">Telegram-Kanal</string>
     <string name="about_privacy_policy">Datenschutzerklärung</string>
-    <string name="about_version_format">v%1$s (Core %2$s)</string>
+    <string name="about_version_format">%1$s (Core %2$s)</string>
 
     <string name="status_disconnected">Getrennt</string>
     <string name="status_connected">Verbunden</string>

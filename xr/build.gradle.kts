@@ -1,4 +1,7 @@
 import java.net.URI
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 plugins {
     alias(libs.plugins.android.application)
@@ -13,6 +16,44 @@ val gitHash = providers.exec {
 val baseVersionName = "1.12"
 val baseVersionCode = 40013
 
+// 万位段：五个模块共用 applicationId（app.fjj.stun），Play 要求同包内 versionCode 唯一，
+// 所以每个模块独占一个 10000 段。段与基数从上面的 baseVersionCode 拆出 —— 改版本只改那一行。
+val versionSegment = baseVersionCode / 10_000 * 10_000
+val versionCodeBase = baseVersionCode - versionSegment
+
+// CI_RUN_NUMBER 为正整数 = CI 自动版本模式（release.yml 注入 github.run_number）。
+// 本地不设该变量：versionCode / versionName / versionNameSuffix 与手工值逐字节一致，
+// 也不额外调用 git。已删掉 CI_VERSION_NAME —— 新规范完整定义了 versionName，无需外部注入。
+val ciRunNumber = providers.environmentVariable("CI_RUN_NUMBER")
+    .map { it.trim().toIntOrNull() ?: 0 }
+    .getOrElse(0)
+val ciBuild = ciRunNumber > 0
+
+// 只数 v* release 标签：未来若加 CI 标签，不应把 versionCode 顶高。
+// 已知边界：删 tag 会让计数回落、versionCode 变小，Play 会拒收 —— tag 计数方案的固有性质。
+val autoVersionCode = if (ciBuild) {
+    val releaseTagCount = providers.exec {
+        commandLine("git", "tag", "--list", "v*")
+        isIgnoreExitValue = true
+    }.standardOutput.asText.getOrElse("").trim().lineSequence().count { it.isNotEmpty() }
+    versionSegment + versionCodeBase + (releaseTagCount + 1)
+} else baseVersionCode
+
+// v1.0.<UTC 日期>.<提交总数>-<提交短哈希>，与 myssh 库的 v1.0.YYYYMMDD-<hash> 约定对齐；
+// 日期取 UTC，与 release.yml 里 myssh 的 date -u +%Y%m%d 一致。
+val autoVersionName = if (ciBuild) {
+    val commitCount = providers.exec {
+        commandLine("git", "rev-list", "--count", "HEAD")
+        isIgnoreExitValue = true
+    }.standardOutput.asText.getOrElse("0").trim()
+    val buildDate = LocalDate.now(ZoneOffset.UTC).format(DateTimeFormatter.BASIC_ISO_DATE)
+    "v1.0.$buildDate.$commitCount-$gitHash"
+} else baseVersionName
+
+if (ciBuild) {
+    println(":${project.name} versionName=$autoVersionName versionCode=$autoVersionCode (CI run #$ciRunNumber)")
+}
+
 android {
     namespace = "app.fjj.stun.xr"
     compileSdk = 37
@@ -21,8 +62,8 @@ android {
         applicationId = "app.fjj.stun"
         minSdk = 28
         targetSdk = 37
-        versionCode = baseVersionCode
-        versionName = baseVersionName
+        versionCode = autoVersionCode
+        versionName = autoVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -52,7 +93,7 @@ android {
 
     buildTypes {
         release {
-            versionNameSuffix = "-release+$gitHash"
+            versionNameSuffix = if (ciBuild) "" else "-release+$gitHash"
             isMinifyEnabled = true
             isShrinkResources = true
             isDebuggable = false
@@ -63,7 +104,7 @@ android {
             )
         }
         debug {
-            versionNameSuffix = "-debug+$gitHash"
+            versionNameSuffix = if (ciBuild) "" else "-debug+$gitHash"
             packaging {
                 jniLibs {
                     keepDebugSymbols.add("**/*.so")

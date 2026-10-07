@@ -14,7 +14,7 @@
     <string name="about_feedback">意见反馈</string>
     <string name="about_telegram">Telegram 频道</string>
     <string name="about_privacy_policy">隐私政策</string>
-    <string name="about_version_format">v%1$s (内核版本 %2$s)</string>
+    <string name="about_version_format">%1$s (内核版本 %2$s)</string>
 
     <string name="status_disconnected">未连接</string>
     <string name="status_connected">已连接</string>

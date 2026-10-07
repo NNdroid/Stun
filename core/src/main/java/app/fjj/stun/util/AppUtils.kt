@@ -7,9 +7,9 @@ object AppUtils {
     fun getAppVersion(context: Context): String {
         return try {
             val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            pInfo.versionName ?: "1.0.0"
+            pInfo.versionName ?: "v1.0.0"
         } catch (e: Exception) {
-            "1.0.0"
+            "v1.0.0"
         }
     }
 
