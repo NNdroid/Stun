@@ -2,7 +2,7 @@
 
 readonly SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
 # Version (use YY.MM.DD format)
-readonly SCRIPT_VERSION="v26.09.23"
+readonly SCRIPT_VERSION="v26.10.07"
 
 export TZ=Asia/Shanghai
 
@@ -117,6 +117,27 @@ readonly DEFAULT_BYPASS_MACS_LIST=""
 # Example: "FF:EE:DD:CC:BB:AA"
 readonly DEFAULT_MAC_PROXY_MODE="blacklist"
 # "blacklist" or "whitelist"
+
+# Local-address bypass configuration
+#
+# 目的地址是本机自己持有的地址（127.0.0.1、Wi-Fi 局域网 IP、热点 IP、link-local ...）
+# 的流量必须直连，不能进隧道。不做这一步的话，局域网内按设备 IP 拨号的所有 TCP/UDP
+# 连接都会被 TPROXY 推进 SSH 隧道 —— 这就是 WebUI / DB Web 开着时隧道连接数被刷高的来源。
+# 回环接口本身由 `PROXY_INTERFACE -i lo -j RETURN` 兜住了，但走局域网 IP 的流量不是
+# lo 接口流量，所以必须单独判「目的地址属于本机」。
+#
+# 两种载体，按内核能力二选一（见 setup_local_addr_sets）：
+#   HAS_ADDRTYPE=1 -> `-m addrtype --dst-type LOCAL`，内核自己跟踪本机地址表，
+#                     地址怎么变都不用管，本脚本什么都不用做；
+#   HAS_ADDRTYPE=0 -> ipset `localaddr` / `localaddr6`，由后台进程跟着 `ip addr` 增删。
+#                    Android 上的 toybox `ip` 经常不带 netlink monitor（`ip monitor
+#                    address` 直接不可用），所以后台进程轮询而不是监听 —— 结果一样，
+#                    还不用维护一个解析器。
+#
+# 默认开：关掉能省一条规则，代价是上面那类回灌，得不偿失。
+readonly DEFAULT_BYPASS_LOCAL_ADDRS=1
+# 轮询间隔（秒）。只在 ipset 载体下生效。
+readonly DEFAULT_LOCAL_ADDR_POLL_INTERVAL=2
 
 # block quic
 readonly DEFAULT_BLOCK_QUIC=0
@@ -250,6 +271,8 @@ load_config() {
     BYPASS_APPS_LIST="${BYPASS_APPS_LIST:-$DEFAULT_BYPASS_APPS_LIST}"
     APP_PROXY_MODE="${APP_PROXY_MODE:-$DEFAULT_APP_PROXY_MODE}"
     BYPASS_CN_IP="${BYPASS_CN_IP:-$DEFAULT_BYPASS_CN_IP}"
+    BYPASS_LOCAL_ADDRS="${BYPASS_LOCAL_ADDRS:-$DEFAULT_BYPASS_LOCAL_ADDRS}"
+    LOCAL_ADDR_POLL_INTERVAL="${LOCAL_ADDR_POLL_INTERVAL:-$DEFAULT_LOCAL_ADDR_POLL_INTERVAL}"
     CN_IP_FILE="${CN_IP_FILE:-$DEFAULT_CN_IP_FILE}"
     CN_IPV6_FILE="${CN_IPV6_FILE:-$DEFAULT_CN_IPV6_FILE}"
     CN_IP_URL="${CN_IP_URL:-$DEFAULT_CN_IP_URL}"
@@ -274,7 +297,8 @@ load_config() {
                     PROXY_IPv4_LIST PROXY_IPv6_LIST BYPASS_IPv4_LIST BYPASS_IPv6_LIST \
                     HOTSPOT_SUBNET_IPV4 HOTSPOT_SUBNET_IPV6 \
                     APP_PROXY_ENABLE PROXY_APPS_LIST BYPASS_APPS_LIST APP_PROXY_MODE \
-                    BYPASS_CN_IP CN_IP_FILE CN_IPV6_FILE CN_IP_URL CN_IPV6_URL \
+                    BYPASS_CN_IP BYPASS_LOCAL_ADDRS LOCAL_ADDR_POLL_INTERVAL \
+                    CN_IP_FILE CN_IPV6_FILE CN_IP_URL CN_IPV6_URL \
                     MAC_FILTER_ENABLE PROXY_MACS_LIST BYPASS_MACS_LIST MAC_PROXY_MODE \
                     BLOCK_QUIC LOG_TIMESTAMP SKIP_CHECK_FEATURE; do
             eval "log Debug \"$_var: \$$_var\""
@@ -303,6 +327,7 @@ save_runtime_config() {
         echo "PROXY_MODE=$PROXY_MODE"
         echo "OTHER_PROXY_INTERFACES=$OTHER_PROXY_INTERFACES"
         echo "BYPASS_CN_IP=$BYPASS_CN_IP"
+        echo "BYPASS_LOCAL_ADDRS=$BYPASS_LOCAL_ADDRS"
         echo "BLOCK_QUIC=$BLOCK_QUIC"
         echo "DNS_HIJACK_ENABLE=$DNS_HIJACK_ENABLE"
         echo "TABLE_ID=$TABLE_ID"
@@ -1052,6 +1077,22 @@ setup_proxy_chain() {
         log Info "Added local address type bypass"
     fi
 
+    # xt_addrtype 缺失时内核答不了「这个目的地址属不属于本机」，等价物是 ipset
+    # `localaddr`（由 setup_local_addr_sets 建表并交给后台进程增删）。两条匹配与上面的
+    # addrtype 那对完全一致：UDP 放行但排除 DNS 端口（DNS 劫挂靠在这里），其余协议放行。
+    # 集合不存在时直接跳过 —— 规则里引用不存在的 set 会让整条规则加不上。
+    if [ "$BYPASS_LOCAL_ADDRS" -eq 1 ] && [ "$HAS_ADDRTYPE" -ne 1 ] && \
+       [ "$HAS_XT_SET" -eq 1 ]; then
+        local _local_set="localaddr$suffix"
+        if ipset list "$_local_set" > /dev/null 2>&1; then
+            $cmd -t "$table" -A "BYPASS_IP$suffix" -m set --match-set "$_local_set" dst -p udp ! --dport 53 -j ACCEPT
+            $cmd -t "$table" -A "BYPASS_IP$suffix" -m set --match-set "$_local_set" dst ! -p udp -j ACCEPT
+            log Info "Added ipset-based local address bypass ($_local_set)"
+        else
+            log Warn "ipset '$_local_set' not available, local address bypass skipped"
+        fi
+    fi
+
     if [ "$family" = "6" ]; then
         for subnet6 in $BYPASS_IPv6_LIST; do
             $cmd -t "$table" -A "BYPASS_IP$suffix" -d "$subnet6" -p udp ! --dport 53 -j ACCEPT
@@ -1658,6 +1699,198 @@ cleanup_ipset() {
     fi
 }
 
+# --- Local-address bypass -------------------------------------------------
+#
+# 目的地址是本机地址的流量走直连。两条规则挂在 BYPASS_IP（见 setup_proxy_chain），
+# 载体二选一：xt_addrtype 在就不用管（内核自己跟踪地址表），不在就靠下面这套 ipset
+# 加后台进程。
+#
+# 后台进程是**独立进程**而不是子 shell：`tproxy.sh start` 是一次性 CLI，跑完就退出，
+# 进程必须自己活下来（nohup + &）。它以 `--local-addr-watcher` 重新执行本脚本，
+# 因此能重新 load_config 拿到最新的 PROXY_IPV6，也不需要在 sh -c 里塞函数定义。
+
+# 收集本机地址，每行一个。$1 = 1 取 IPv6，否则取 IPv4。
+list_local_addrs() {
+    local want6="${1-0}"
+    ip addr show 2> /dev/null | awk -v want6="$want6" '
+        $1 == "inet" || $1 == "inet6" {
+            is6 = ($1 == "inet6" ? 1 : 0)
+            if (is6 != want6) next
+            split($2, a, "/"); print a[1]
+        }'
+}
+
+# 让 `localaddr[$suffix]` 的成员集合与本机当前地址完全一致：该删的删、该加的加。
+# $1 = 地址族后缀（"" 为 IPv4，"6" 为 IPv6）。集合被销毁时返回 1，调用方据此退出。
+sync_local_ipset() {
+    local suffix="${1-}"
+    local set_name="localaddr$suffix"
+    local want6=0
+    [ "$suffix" = "6" ] && want6=1
+
+    if ! ipset list "$set_name" > /dev/null 2>&1; then
+        log Debug "ipset '$set_name' is gone, local address sync stops"
+        return 1
+    fi
+
+    # 必须折成单行：下面的 `case " $cur " in *" $addr "*` 做成员判定，字符串里只要还
+    # 留着换行，多元素列表就永远匹配不上 —— 每个 tick 都会把全部成员删一遍再加回来。
+    # 本机地址通常不止一个（127.0.0.1 + 局域网 IP），这个坑一定会踩到。
+    local cur prev addr
+    cur="$(list_local_addrs "$want6" | sort -u | tr '\n' ' ')"
+    prev="$(ipset save "$set_name" 2> /dev/null | awk -v s="$set_name" \
+        '$1 == "add" && $2 == s {print $3}' | sort -u | tr '\n' ' ')"
+
+    for addr in $prev; do
+        case " $cur " in
+            *" $addr "*) ;;
+            *)
+                log Debug "[EXEC] ipset del $set_name $addr"
+                [ "$DRY_RUN" -eq 0 ] && ipset del "$set_name" "$addr" 2> /dev/null
+                log Info "Removed local address bypass entry $addr"
+                ;;
+        esac
+    done
+
+    for addr in $cur; do
+        case " $prev " in
+            *" $addr "*) ;;
+            *)
+                log Debug "[EXEC] ipset add $set_name $addr"
+                if [ "$DRY_RUN" -eq 0 ]; then
+                    ipset add "$set_name" "$addr" 2> /dev/null || \
+                        log Warn "Failed to add local address $addr to $set_name"
+                fi
+                log Info "Added local address bypass entry $addr"
+                ;;
+        esac
+    done
+
+    return 0
+}
+
+# 后台进程主循环：轮询本机地址并同步 ipset。集合被销毁（代理已停）就自行退出，
+# 免得有人忘记 stop 时留一个一直刷日志的孤儿。
+local_addr_watch_loop() {
+    local interval="$LOCAL_ADDR_POLL_INTERVAL"
+    is_positive_integer "$interval" || interval="$DEFAULT_LOCAL_ADDR_POLL_INTERVAL"
+
+    local pf
+    pf="$(local_addr_pidfile)"
+    [ "$DRY_RUN" -eq 0 ] && echo $$ > "$pf"
+
+    log Info "Local address watcher running (poll ${interval}s)"
+    while :; do
+        sync_local_ipset "" || exit 0
+        [ "$PROXY_IPV6" -eq 1 ] && { sync_local_ipset 6 || exit 0; }
+        sleep "$interval"
+    done
+}
+
+local_addr_pidfile() {
+    [ -z "$CONFIG_DIR" ] && CONFIG_DIR="/tmp"
+    echo "$CONFIG_DIR/local_addr_watcher.pid"
+}
+
+# 拉起后台进程。start_proxy 在建链之前调用，保证 BYPASS_IP 的规则一加上去集合就在。
+start_local_addr_watcher() {
+    [ "$BYPASS_LOCAL_ADDRS" -eq 1 ] || return 0
+    [ "$HAS_ADDRTYPE" -eq 1 ] && return 0
+    [ "$HAS_IPSET" -eq 1 ] && [ "$HAS_XT_SET" -eq 1 ] || return 0
+
+    local pf old_pid
+    pf="$(local_addr_pidfile)"
+    if [ -f "$pf" ]; then
+        # 上一次运行没清干净的进程会跟这个一起同步（无害但会刷日志），且活得比这次久。
+        old_pid="$(cat "$pf" 2> /dev/null)"
+        is_positive_integer "$old_pid" && [ "$DRY_RUN" -eq 0 ] && kill "$old_pid" 2> /dev/null
+        rm -f "$pf"
+    fi
+
+    if [ "$DRY_RUN" -eq 1 ]; then
+        log Debug "[EXEC] Would launch local address watcher"
+        return 0
+    fi
+    if ! command -v nohup > /dev/null 2>&1; then
+        log Warn "nohup not found, local address watcher will not start"
+        return 1
+    fi
+
+    log Debug "[EXEC] nohup sh $0 --local-addr-watcher -d $CONFIG_DIR"
+    nohup sh "$0" --local-addr-watcher -d "$CONFIG_DIR" > /dev/null 2>&1 &
+    log Info "Local address watcher launched"
+    return 0
+}
+
+# 建表 + 灌首份地址 + 拉后台进程。失败不致命：addrtype 那对规则可能已经够用。
+setup_local_addr_sets() {
+    [ "$BYPASS_LOCAL_ADDRS" -eq 1 ] || return 0
+
+    if [ "$HAS_ADDRTYPE" -eq 1 ]; then
+        log Info "Local address bypass uses addrtype; no ipset needed"
+        return 0
+    fi
+
+    if [ "$HAS_IPSET" -ne 1 ] || [ "$HAS_XT_SET" -ne 1 ]; then
+        log Warn "Local address bypass unavailable: HAS_ADDRTYPE=0 and ipset is missing — local->local traffic will still be proxied"
+        return 1
+    fi
+    if ! command -v ipset > /dev/null 2>&1; then
+        log Warn "ipset command not found, local address bypass unavailable"
+        return 1
+    fi
+
+    log Debug "[EXEC] ipset destroy localaddr"
+    log Debug "[EXEC] ipset destroy localaddr6"
+    log Debug "[EXEC] ipset create localaddr hash:ip family inet hashsize 64 maxelem 128"
+    log Debug "[EXEC] ipset create localaddr6 hash:ip family inet6 hashsize 64 maxelem 128"
+
+    if [ "$DRY_RUN" -eq 0 ]; then
+        ipset destroy localaddr 2> /dev/null || true
+        ipset destroy localaddr6 2> /dev/null || true
+        ipset create localaddr hash:ip family inet hashsize 64 maxelem 128 || {
+            log Error "Failed to create ipset 'localaddr'"
+            return 1
+        }
+        [ "$PROXY_IPV6" -eq 1 ] && \
+            ipset create localaddr6 hash:ip family inet6 hashsize 64 maxelem 128 || true
+    fi
+
+    sync_local_ipset ""
+    [ "$PROXY_IPV6" -eq 1 ] && sync_local_ipset 6
+
+    start_local_addr_watcher
+    log Info "Local address bypass sets ready"
+    return 0
+}
+
+stop_local_addr_watcher() {
+    local pf old_pid
+    pf="$(local_addr_pidfile)"
+    [ -f "$pf" ] || return 0
+    old_pid="$(cat "$pf" 2> /dev/null)"
+    if is_positive_integer "$old_pid"; then
+        log Debug "[EXEC] kill $old_pid"
+        [ "$DRY_RUN" -eq 0 ] && kill "$old_pid" 2> /dev/null
+    fi
+    rm -f "$pf"
+}
+
+cleanup_local_addr() {
+    if [ "$BYPASS_LOCAL_ADDRS" -ne 1 ]; then
+        log Debug "Local address bypass is disabled, cleanup skipped"
+        return 0
+    fi
+    stop_local_addr_watcher
+    log Debug "[EXEC] ipset destroy localaddr"
+    log Debug "[EXEC] ipset destroy localaddr6"
+    if [ "$DRY_RUN" -eq 0 ]; then
+        ipset destroy localaddr 2> /dev/null || true
+        ipset destroy localaddr6 2> /dev/null || true
+    fi
+    log Info "Local address sets destroyed"
+}
+
 detect_proxy_mode() {
     USE_TPROXY=0
     case "$PROXY_MODE" in
@@ -1698,6 +1931,10 @@ start_proxy() {
             fi
         fi
     fi
+
+    # 本机地址旁路必须先于建链：BYPASS_IP 里的 `-m set --match-set localaddr` 规则
+    # 在集合不存在时加不上，而集合在这里才建。失败只告警 —— addrtype 那对规则可能已经够了。
+    setup_local_addr_sets || log Warn "Local address bypass not active (falling back to whatever the kernel offers)"
 
     if [ "$USE_TPROXY" -eq 1 ]; then
         setup_tproxy_chain4
@@ -1744,6 +1981,7 @@ stop_proxy() {
         fi
     fi
     cleanup_ipset
+    cleanup_local_addr
     log Info "Proxy stopped"
     block_loopback_traffic disable
     block_quic disable
@@ -2018,6 +2256,11 @@ parse_args() {
                 echo "$SCRIPT_VERSION"
                 exit 0
                 ;;
+            --local-addr-watcher)
+                # 内部标记，不是用户参数：start_local_addr_watcher 用它重新执行本脚本，
+                # 后台同步本机地址到 localaddr 集合。故意不出现在 help 里。
+                LOCAL_ADDR_WATCHER=1
+                ;;
             -d | --dir)
                 shift
                 if [ $# -eq 0 ] || [ -z "$1" ]; then
@@ -2047,7 +2290,7 @@ parse_args() {
         esac
         shift
     done
-    if [ -z "$MAIN_CMD" ]; then
+    if [ -z "$MAIN_CMD" ] && [ "$LOCAL_ADDR_WATCHER" != "1" ]; then
         log Error "No command specified"
         show_usage
         exit 1
@@ -2060,6 +2303,13 @@ main() {
     log Debug "Starting ${script_name} ${SCRIPT_VERSION}"
 
     load_config
+
+    if [ "$LOCAL_ADDR_WATCHER" = "1" ]; then
+        # 后台同步进程：只需要配置和 ipset/ip，不参与建链，也不走 root / 依赖检查。
+        init_tmpdir
+        local_addr_watch_loop
+        exit 0
+    fi
 
     if [ "$DRY_RUN" -eq 1 ]; then
         if [ "$VERBOSE" -eq 1 ]; then
@@ -2116,6 +2366,8 @@ main() {
 DRY_RUN=0
 VERBOSE=0
 CONFIG_DIR=""
+MAIN_CMD=""
+LOCAL_ADDR_WATCHER=0
 USE_TPROXY=0
 HAS_TPROXY=0
 HAS_CONNTRACK=0

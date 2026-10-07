@@ -359,7 +359,7 @@ class TProxySourceParityTest {
         for (key in listOf(
             "PROXY_TCP_PORT", "PROXY_UDP_PORT", "PROXY_MODE", "DNS_HIJACK_ENABLE", "DNS_PORT",
             "APP_PROXY_ENABLE", "APP_PROXY_MODE", "BYPASS_APPS_LIST", "PROXY_APPS_LIST", "DRY_RUN",
-            "BYPASS_DST_LIST", "SSH_SERVER_ENTRY",
+            "BYPASS_DST_LIST", "BYPASS_LOCAL_ADDRS", "SSH_SERVER_ENTRY",
         )) {
             // 脚本里的形态是 `KEY="${KEY:-$DEFAULT_...}"`，探针只取到 `:-` 为止。
             val probe = "$key=\"\${$key:-"
@@ -368,6 +368,54 @@ class TProxySourceParityTest {
                 tproxySh.contains(probe),
             )
         }
+    }
+
+    /**
+     * 本机地址旁路的两条载体必须**同语义**。
+     *
+     * 局域网里按设备 IP 拨号的连接（不是 127.0.0.1，所以 `PROXY_INTERFACE -i lo` 兜不住）
+     * 如果不旁路，会被整包推进隧道 —— WebUI / DB Web 开着时隧道连接数被刷高就是这条。
+     * 首选载体是 `addrtype --dst-type LOCAL`（内核自己跟着地址表走，DHCP 换 IP 也不用管）；
+     * xt_addrtype 缺失时退到 ipset + 后台轮询。两对规则的匹配形状必须一致，否则退路会漏：
+     * **DNS 端口（udp/53）必须仍然进隧道**，劫挂才成立；其余协议才放行。
+     *
+     * 反事实：把 ipset 那条 `-p udp ! --dport 53` 改成裸 `-j ACCEPT`，DNS 劫挂静默失效；
+     * 把门槛的 `-ne 1` 删掉，addrtype 在的设备上会多两条永远匹配不到的规则。
+     */
+    @Test
+    fun localAddressBypassFallbackKeepsTheDnsHole() {
+        val chain = shellFunctionBody(tproxySh, "setup_proxy_chain")
+
+        assertNotNull(
+            "ipset 载体必须只在 HAS_ADDRTYPE=0 时启用",
+            Regex("if \\[ \"\\\$BYPASS_LOCAL_ADDRS\".*\\[ \"\\\$HAS_ADDRTYPE\" -ne 1 \\]").find(chain),
+        )
+        assertTrue("addrtype 载体缺 DNS 例外", chain.contains("addrtype --dst-type LOCAL -p udp ! --dport 53 -j ACCEPT"))
+        assertTrue("addrtype 载体缺非 UDP 放行", chain.contains("addrtype --dst-type LOCAL ! -p udp -j ACCEPT"))
+        assertTrue("ipset 载体缺 DNS 例外", chain.contains("-m set --match-set \"\$_local_set\" dst -p udp ! --dport 53 -j ACCEPT"))
+        assertTrue("ipset 载体缺非 UDP 放行", chain.contains("-m set --match-set \"\$_local_set\" dst ! -p udp -j ACCEPT"))
+        // 规则里引用不存在的 set 会让整条规则加不上 —— 必须有存在性护栏
+        assertTrue("ipset 载体必须先确认集合存在", chain.contains("ipset list \"\$_local_set\""))
+    }
+
+    /**
+     * 本机地址旁路「有加必有撤」，且**建集合必须早于建链**。
+     *
+     * BYPASS_IP 里的 `-m set --match-set localaddr` 在集合不存在时加不上，所以建表必须
+     * 先于 setup_tproxy_chain4；后台同步进程又必须随 stop 一起收掉，否则 proxy 停了
+     * 它还活着，会对着一个已经被销毁的集合反复刷日志。
+     */
+    @Test
+    fun localAddressBypassIsTornDownOnStop() {
+        val start = shellFunctionBody(tproxySh, "start_proxy")
+        val stop = shellFunctionBody(tproxySh, "stop_proxy")
+
+        val setsAt = start.indexOf("setup_local_addr_sets")
+        val chainAt = start.indexOf("setup_tproxy_chain4")
+        assertTrue("start_proxy 必须建本机地址集合", setsAt >= 0)
+        assertTrue("start_proxy 必须建链", chainAt >= 0)
+        assertTrue("setup_local_addr_sets 必须先于建链，否则 -m set 规则加不上", setsAt in 0 until chainAt)
+        assertTrue("stop_proxy 必须清本机地址集合（含后台进程）", stop.contains("cleanup_local_addr"))
     }
 
     @Test
