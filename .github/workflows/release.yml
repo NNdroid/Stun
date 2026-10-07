@@ -42,12 +42,12 @@ on:
         type: boolean
         default: false
       auto_release:
-        description: '🚀 构建成功后自动创建 release tag 并发布 GitHub Release（版本号留空则按当前最高 tag 自动推导）'
+        description: '🚀 构建成功后自动创建 release tag 并发布 GitHub Release（版本号留空则按约定生成为 v1.0.<UTC日期>.<提交数>-<哈希>）'
         required: true
         type: boolean
         default: false
       version:
-        description: '🔢 版本号，如 1.13（与 v1.13 等价）。留空 + 自动发版 = 按当前最高 tag 推下一个号；留空 + 手动构建 = v1.0.<UTC日期>.<提交数>-<哈希>'
+        description: '🔢 版本号，如 1.13（与 v1.13 等价）。留空则按约定生成为 v1.0.<UTC日期>.<提交数>-<哈希>；自动发版时该值同时作为 tag 名'
         required: false
         type: string
         default: ''
@@ -262,32 +262,16 @@ jobs:
                 echo "::error::版本号非法（应为 1.13 / 1.13.0 / 1.13-beta 这类）：$RAW_VERSION"
                 exit 1
               fi
-            elif [ "$AUTO_RELEASE" == "true" ]; then
-              # 留空 = 从当前最高的 v* tag 推下一个号：最后一段数字 +1，丢弃预发布后缀。
-              # 这样只勾「自动发版」就能发，不必自己想版本号。
-              # versionCode 仍按 tag 计数走，跟这条线互不干扰。
-              LAST_TAG="$(git tag --list 'v*' | sort -V | tail -n 1)"
-              if [ -z "$LAST_TAG" ]; then
-                VERSION="v1.0.1"
-              else
-                NUM="${LAST_TAG#v}"
-                NUM="${NUM%%-*}"
-                head="${NUM%.*}"
-                minor="${NUM##*.}"
-                case "$minor" in
-                  ''|*[!0-9]*)
-                    echo "::error::版本号留空，但现有 tag 里推不出下一个号，请手填。当前最高 tag：$LAST_TAG"
-                    exit 1
-                    ;;
-                esac
-                NEXT=$((10#$minor + 1))
-                if [ "$head" = "$NUM" ]; then
-                  VERSION="v$NEXT"
-                else
-                  VERSION="v${head}.${NEXT}"
-                fi
-              fi
-              echo "::notice::版本号留空，按当前最高 tag 推导为 $VERSION"
+            else
+              # 留空 = 按约定自动生成：v1.0.<UTC 日期>.<提交总数>-<提交短哈希>。
+              # 公式照抄 build.gradle.kts 的 autoVersionName（date -u / rev-list --count /
+              # rev-parse --short=7），这里算好再喂给 gradle —— 两边各算一次，跨过 UTC
+              # 午夜就会差出一个日期。同一个值同时作 tag 名与 versionName。
+              BUILD_DATE="$(date -u +%Y%m%d)"
+              COMMIT_COUNT="$(git rev-list --count HEAD)"
+              COMMIT_HASH="$(git rev-parse --short=7 HEAD)"
+              VERSION="v1.0.${BUILD_DATE}.${COMMIT_COUNT}-${COMMIT_HASH}"
+              echo "::notice::版本号留空，按约定生成为 $VERSION"
             fi
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             # 只有真去发版时才把号交给下游：手动构建填的版本号只进 versionName，
