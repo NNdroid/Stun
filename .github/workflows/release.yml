@@ -41,6 +41,16 @@ on:
         required: true
         type: boolean
         default: false
+      auto_release:
+        description: '🚀 构建成功后自动创建 release tag 并发布 GitHub Release（须填下方版本号）'
+        required: true
+        type: boolean
+        default: false
+      version:
+        description: '🔢 自定义版本号，如 1.13（留空 = 自动 v1.0.<UTC日期>.<提交数>-<哈希>）'
+        required: false
+        type: string
+        default: ''
       custom_tag:
         description: '🏷️ 产物命名称后缀 (可选)'
         required: false
@@ -186,7 +196,35 @@ jobs:
             echo "build_aab=${{ github.event.inputs.build_aab }}" >> $GITHUB_OUTPUT
             echo "sign=${{ github.event.inputs.sign_release }}" >> $GITHUB_OUTPUT
             echo "clean=${{ github.event.inputs.clean_build }}" >> $GITHUB_OUTPUT
-            echo "tag=${{ github.event.inputs.custom_tag }}" >> $GITHUB_OUTPUT
+
+            # 用户输入先净化再落进 $GITHUB_OUTPUT：这些值后面会进 shell 命令，
+            # 若原样拼进去，填个 `1.13; rm -rf /` 就会在 shell 里被当成命令执行。
+            RAW_VERSION="${{ github.event.inputs.version }}"
+            RAW_TAG="${{ github.event.inputs.custom_tag }}"
+            AUTO_RELEASE="${{ github.event.inputs.auto_release }}"
+            AUTO_RELEASE=${AUTO_RELEASE:-false}
+            RAW_VERSION=${RAW_VERSION//[!0-9A-Za-z._+-]/}
+            RAW_TAG=${RAW_TAG//[!0-9A-Za-z._+-]/}
+            echo "auto_release=$AUTO_RELEASE" >> $GITHUB_OUTPUT
+            echo "version=$RAW_VERSION" >> $GITHUB_OUTPUT
+
+            # 自动发版：tag 名由版本号派生（1.13 → v1.13）。必须在**构建之前**校验 ——
+            # 否则跑完十几分钟才在打 tag 那一步失败，白烧一次 runner。
+            if [ "$AUTO_RELEASE" == "true" ]; then
+              if [ -z "$RAW_VERSION" ]; then
+                echo "::error::勾选了自动创建 Release，但没有填版本号"
+                exit 1
+              fi
+              TAG="v${RAW_VERSION#v}"
+              if ! printf '%s' "$TAG" | grep -Eq '^v[0-9]+(\.[0-9]+){0,2}(-[0-9A-Za-z.-]+)?$'; then
+                echo "::error::版本号非法（应为 1.13 / 1.13.0 / 1.13-beta 这类）：${{ github.event.inputs.version }}"
+                exit 1
+              fi
+              echo "release_tag=$TAG" >> $GITHUB_OUTPUT
+            else
+              echo "release_tag=" >> $GITHUB_OUTPUT
+            fi
+            echo "tag=$RAW_TAG" >> $GITHUB_OUTPUT
           else
             # 自动触发时（Release 发布）全量构建所有端；AAB 必须构建 —— 它是本 run 的 artifact
             echo "build_module=all" >> $GITHUB_OUTPUT
@@ -194,6 +232,11 @@ jobs:
             echo "build_aab=true" >> $GITHUB_OUTPUT
             echo "sign=true" >> $GITHUB_OUTPUT
             echo "clean=false" >> $GITHUB_OUTPUT
+            # release 事件本身已经带着 tag 和 GitHub Release，不再重复创建；
+            # versionName 沿用自动值，不做覆盖。
+            echo "auto_release=false" >> $GITHUB_OUTPUT
+            echo "version=" >> $GITHUB_OUTPUT
+            echo "release_tag=" >> $GITHUB_OUTPUT
             echo "tag=" >> $GITHUB_OUTPUT
           fi
 
@@ -213,6 +256,9 @@ jobs:
           # 正整数即触发 CI 自动版本：versionCode = 万位段 + 13 + v* 标签数 + 1；
           # versionName = v1.0.<UTC 日期>.<提交数>-<短哈希>。pr-ci 不设该变量，走手工版本。
           CI_RUN_NUMBER: ${{ github.run_number }}
+          # 「版本号」输入，原样写入 versionName；空串 = 用自动值（见 build.gradle.kts）。
+          # versionCode 不受它影响，仍按 v* tag 数递增。
+          CI_VERSION_NAME: ${{ steps.options.outputs.version }}
           KEYSTORE_FILE: ${{ steps.decode_keystore.outputs.filePath }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -273,6 +319,12 @@ jobs:
           echo "- **Variant:** ${{ steps.options.outputs.build_variant }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Sign:** ${{ steps.options.outputs.sign }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Clean Build:** ${{ steps.options.outputs.clean }}" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ steps.options.outputs.version }}" ]; then
+            echo "- **Version:** \`${{ steps.options.outputs.version }}\`（自定义，原样写入 versionName）" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ steps.options.outputs.auto_release }}" == "true" ]; then
+            echo "- **Auto Release:** \`${{ steps.options.outputs.release_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          fi
           if [ -n "${{ steps.options.outputs.tag }}" ]; then
             echo "- **Custom Tag:** ${{ steps.options.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
           fi
@@ -315,6 +367,55 @@ jobs:
             xr/build/outputs/bundle/**/*.aab
             core/libs/*.aar
           if-no-files-found: warn
+
+      # workflow_dispatch + 自动发版：在 HEAD 上打 tag 并发布 GitHub Release。
+      # tag 故意放在**构建之后**：versionCode 按 `v* tag 数 + 1` 算（见 build.gradle.kts），
+      # 那个 +1 指的就是「本次将要创建的 tag」。若先打 tag 再构建，计数会多 1、versionCode 虚高。
+      - name: Create Release Tag & Publish Release
+        if: github.event_name == 'workflow_dispatch' && steps.options.outputs.auto_release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.options.outputs.release_tag }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::远端已存在 tag $TAG —— 换个版本号重跑，或删除该 tag"
+            exit 1
+          fi
+
+          # 与 tag 触发的 Upload Release Assets 同一套资产口径：APK（有哪个收哪个）+ myssh AAR。
+          # AAB 只挂 run artifact，不上 Release 页。
+          FILES=()
+          for MOD in app tv car wear xr; do
+            for VARIANT in release debug; do
+              for f in "$MOD"/build/outputs/apk/$VARIANT/*.apk; do
+                [ -f "$f" ] && FILES+=("$f")
+              done
+            done
+          done
+          for AAR in core/libs/myssh.release.aar core/libs/myssh.debug.aar; do
+            [ -f "$AAR" ] && FILES+=("$AAR")
+          done
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "::error::没有任何可上传的 APK/AAR，取消创建 Release（tag 未创建）"
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "$TAG"
+
+          # tag 一旦推到远端，versionCode 计数就变了。所以 gh release create 失败必须回滚，
+          # 否则会留下一个「没有 Release 的 tag」：既顶高了下次发版的 versionCode，
+          # 又让重跑同名版本直接失败。
+          trap 'echo "::warning::gh release create 失败，回滚远端 tag $TAG";
+                git push origin ":refs/tags/$TAG" >/dev/null 2>&1 || true;
+                git tag -d "$TAG" >/dev/null 2>&1 || true' ERR
+
+          git push origin "$TAG"
+          echo "📦 Uploading ${#FILES[@]} assets to $TAG"
+          gh release create "$TAG" --title "$TAG" --generate-notes "${FILES[@]}"
+          trap - ERR
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
