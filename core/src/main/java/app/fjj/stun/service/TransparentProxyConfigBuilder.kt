@@ -137,6 +137,11 @@ internal object TransparentProxyConfigBuilder {
             BYPASS_APPS_LIST="$bypassApps"
             PROXY_APPS_LIST="$proxyApps"
             BYPASS_DST_LIST="$bypassDstList"
+            # 目的地址是本机自己持有的地址（回环、Wi-Fi/热点 IP、link-local）的流量走直连。
+            # 不做这步，局域网内按设备 IP 拨号的连接会全进隧道 —— WebUI 开着时隧道连接数
+            # 被刷高就是这条。载体由 tproxy.sh 按内核能力选：xt_addrtype 在就交给内核自己
+            # 跟踪地址变化，不在就 ipset + 后台进程跟着 `ip addr` 增删。
+            BYPASS_LOCAL_ADDRS=1
             SSH_SERVER_ENTRY="$sshServerEntry"
             FORCE_MARK_BYPASS=$forceMarkBypass
             ROUTING_MARK=$routingMark
