@@ -371,31 +371,66 @@ class TProxySourceParityTest {
     }
 
     /**
-     * 本机地址旁路的两条载体必须**同语义**。
+     * 本机地址旁路的两条载体必须**同语义**，而且**每个地址族各自决定用哪条**。
      *
      * 局域网里按设备 IP 拨号的连接（不是 127.0.0.1，所以 `PROXY_INTERFACE -i lo` 兜不住）
      * 如果不旁路，会被整包推进隧道 —— WebUI / DB Web 开着时隧道连接数被刷高就是这条。
-     * 首选载体是 `addrtype --dst-type LOCAL`（内核自己跟着地址表走，DHCP 换 IP 也不用管）；
-     * xt_addrtype 缺失时退到 ipset + 后台轮询。两对规则的匹配形状必须一致，否则退路会漏：
-     * **DNS 端口（udp/53）必须仍然进隧道**，劫挂才成立；其余协议才放行。
+     * 首选载体是 `addrtype --dst-type LOCAL`（内核自己跟着地址表走，DHCP 换 IP 也不用管，
+     * 连后台进程都不用）；没有 xt_addrtype 时退到 ipset + 后台进程。两条载体的规则必须成对
+     * 出现且形状一致：**DNS 端口（udp/53）必须仍然进隧道**，劫挂才成立；其余协议才放行。
      *
-     * 反事实：把 ipset 那条 `-p udp ! --dport 53` 改成裸 `-j ACCEPT`，DNS 劫挂静默失效；
-     * 把门槛的 `-ne 1` 删掉，addrtype 在的设备上会多两条永远匹配不到的规则。
+     * 载体要逐族判：`NETFILTER_XT_MATCH_ADDRTYPE` 只是 v4 的符号，它存在不代表 ip6tables
+     * 那半能用。
+     *
+     * 反事实：
+     * - 把 ipset 那条 `-p udp ! --dport 53` 改成裸 `-j ACCEPT`，DNS 劫挂静默失效；
+     * - 把规则引用集合前的 `ipset list` 护栏删掉，空集合会让整条规则插不进去；
+     * - 把 v6 的 ip6tables 判定删掉，没装 ip6tables 的设备会静默丢掉 v6 旁路。
      */
     @Test
-    fun localAddressBypassFallbackKeepsTheDnsHole() {
+    fun localAddressBypassKeepsTheDnsHoleOnBothCarriers() {
         val chain = shellFunctionBody(tproxySh, "setup_proxy_chain")
+        val addrtype = shellFunctionBody(tproxySh, "local_addr_rule_addrtype")
+        val ipsetRule = shellFunctionBody(tproxySh, "local_addr_rule_ipset")
 
-        assertNotNull(
-            "ipset 载体必须只在 HAS_ADDRTYPE=0 时启用",
-            Regex("if \\[ \"\\\$BYPASS_LOCAL_ADDRS\".*\\[ \"\\\$HAS_ADDRTYPE\" -ne 1 \\]").find(chain),
-        )
-        assertTrue("addrtype 载体缺 DNS 例外", chain.contains("addrtype --dst-type LOCAL -p udp ! --dport 53 -j ACCEPT"))
-        assertTrue("addrtype 载体缺非 UDP 放行", chain.contains("addrtype --dst-type LOCAL ! -p udp -j ACCEPT"))
-        assertTrue("ipset 载体缺 DNS 例外", chain.contains("-m set --match-set \"\$_local_set\" dst -p udp ! --dport 53 -j ACCEPT"))
-        assertTrue("ipset 载体缺非 UDP 放行", chain.contains("-m set --match-set \"\$_local_set\" dst ! -p udp -j ACCEPT"))
-        // 规则里引用不存在的 set 会让整条规则加不上 —— 必须有存在性护栏
-        assertTrue("ipset 载体必须先确认集合存在", chain.contains("ipset list \"\$_local_set\""))
+        // 两条载体各成对出现，且都排除 DNS 端口。
+        assertTrue("addrtype 载体缺 DNS 例外",
+            addrtype.contains("addrtype --dst-type LOCAL -p udp ! --dport 53 -j ACCEPT"))
+        assertTrue("addrtype 载体缺非 UDP 放行",
+            addrtype.contains("addrtype --dst-type LOCAL ! -p udp -j ACCEPT"))
+        assertTrue("ipset 载体缺 DNS 例外",
+            ipsetRule.contains("-m set --match-set \"\$set_name\" dst -p udp ! --dport 53 -j ACCEPT"))
+        assertTrue("ipset 载体缺非 UDP 放行",
+            ipsetRule.contains("-m set --match-set \"\$set_name\" dst ! -p udp -j ACCEPT"))
+        // 引用不存在的 set 会让整条规则加不上 —— 必须有存在性护栏。
+        assertTrue("ipset 载体必须先确认集合存在", ipsetRule.contains("ipset list \"\$set_name\""))
+
+        // 建链按 local_addr_carrier 的逐族判定分叉，不自己重复判一遍能力。
+        assertTrue("建链必须按地址族问载体",
+            chain.contains("local _local_primary=\"\$(local_addr_carrier \"\$family\")\""))
+        // addrtype 探测通过不代表规则一定插得进规则链 —— 失败必须能退回 ipset。
+        assertTrue("addrtype 失败必须能退回 ipset 载体", chain.contains("local_addr_rule_ipset \"\$cmd\""))
+        // 回退要现场建集合：初始那轮判定的是 addrtype、没建表，引用空集合等于没规则。
+        assertTrue("回退要先建集合再插规则", chain.contains("setup_local_addr_sets \"\$family\""))
+        assertTrue("回退动作要留痕", chain.contains("falling back to ipset"))
+        // 两条路都失败时不能静默 —— 旁路失效就等于本机流量进隧道。
+        assertTrue("旁路彻底不可用必须告警说明后果", chain.contains("still be proxied"))
+    }
+
+    @Test
+    fun localAddressCarrierIsDecidedPerFamily() {
+        val carrier = shellFunctionBody(tproxySh, "local_addr_carrier")
+        val features = shellFunctionBody(tproxySh, "init_feature_flags")
+
+        assertTrue("有 xt_addrtype 时优先用它", carrier.contains("[ \"\$HAS_ADDRTYPE\" -ne 1 ]"))
+        assertTrue("ipset 载体必须同时具备集合工具与匹配模块",
+            carrier.contains("[ \"\$HAS_IPSET\" -eq 1 ] && [ \"\$HAS_XT_SET\" -eq 1 ]"))
+        // v6 单独判：v4 的 addrtype 符号在，不代表 ip6tables 那半能用。
+        assertTrue("v6 必须单独看 ip6tables", carrier.contains("[ \"\$family\" = \"6\" ]"))
+        assertTrue("ip6tables 探测必须单独采集", features.contains("command -v ip6tables"))
+        assertTrue("ip6tables 探测结果必须落成标志位", features.contains("HAS_IP6TABLES=1"))
+        assertTrue("载体三态齐全", carrier.contains("echo \"addrtype\"")
+            && carrier.contains("echo \"ipset\"") && carrier.contains("echo \"none\""))
     }
 
     /**
@@ -419,6 +454,50 @@ class TProxySourceParityTest {
     }
 
     /**
+     * stop 时的本机地址清理必须**无条件**执行。
+     *
+     * 集合和后台进程是**上一次**启动留下的，这一轮的配置值不能决定要不要清理它们。
+     * 典型漏网场景：`runtime_tproxy.conf` 丢了（半路崩掉、CONFIG_DIR 不一致），stop 回落到
+     * 当前配置，而用户恰好把开关关了 —— 按开关早退就会把一个一直刷日志的孤儿 watcher 和
+     * 两个 ipset 留在那儿。反过来销毁不存在的集合是无害空操作，所以无条件清理总是对的。
+     */
+    @Test
+    fun localAddressCleanupRunsUnconditionallyOnStop() {
+        val cleanup = shellFunctionBody(tproxySh, "cleanup_local_addr")
+
+        assertTrue("必须收掉后台进程", cleanup.contains("stop_local_addr_watcher"))
+        assertTrue("必须销毁两个地址族的集合",
+            cleanup.contains("ipset destroy localaddr") && cleanup.contains("ipset destroy localaddr6"))
+        assertTrue("销毁必须容忍集合不存在", cleanup.contains("ipset destroy localaddr 2> /dev/null || true"))
+        // 允许按当前开关打一条诊断日志，但不能 return —— 早退正是孤儿进程的来源。
+        val guardAt = cleanup.indexOf("[ \"\$BYPASS_LOCAL_ADDRS\" -ne 1 ]")
+        if (guardAt >= 0) {
+            val guardBody = cleanup.substring(guardAt, cleanup.indexOf("\n    fi", guardAt))
+            assertFalse("开关关闭时不能提前 return，只能继续清理", guardBody.contains("return"))
+        }
+    }
+
+    /**
+     * 本机地址旁路的开关与间隔必须校验成正整数。
+     *
+     * 这些值下面全用在算术比较（`[ "$X" -eq 1 ]`）里。写进非数字会让每次比较变成
+     * `[: illegal number`，旁路于是**静默**失效 —— 日志里什么都看不到，本机流量照样进隧道。
+     * 所以要么用合法值，要么回落默认值并响亮告警，不能默默变成立。
+     */
+    @Test
+    fun localAddressBypassNumbersAreValidated() {
+        val load = shellFunctionBody(tproxySh, "load_config")
+
+        assertTrue("必须逐个校验本机地址旁路的数字配置", load.contains("for _var in BYPASS_LOCAL_ADDRS"))
+        assertTrue("校验必须是正整数判定", load.contains("is_positive_integer \"\${!_var}\""))
+        assertTrue("四个开关都要在校验范围内",
+            load.contains("LOCAL_ADDR_USE_MONITOR") && load.contains("LOCAL_ADDR_POLL_INTERVAL")
+                && load.contains("LOCAL_ADDR_SWEEP_INTERVAL"))
+        assertTrue("不合法必须回落默认值", load.contains("DEFAULT_LOCAL_ADDR_POLL_INTERVAL"))
+        assertTrue("回落必须留痕", load.contains("using defaults"))
+    }
+
+    /**
      * 后台同步有两种模式（`ip monitor address` 事件驱动 / 定时轮询），但**对账必须只有一份**。
      *
      * 两种模式各写一份对账逻辑，早晚会在某次改动里只改一处 —— 于是同一个地址变化在两种
@@ -427,16 +506,26 @@ class TProxySourceParityTest {
      *
      * 退化必须是自动的：探测和尝试是同一个动作，monitor 起不来就退轮询，
      * 不需要人工判断的开关。
+     *
+     * 对账要覆盖两个地址族，所以共用点必须是最外层的 `sync_local_ipset_both`：只要有一处
+     * 直接调 `sync_local_ipset ""`，两个族的一致性就会在那一处开始漂移。
      */
     @Test
     fun localAddressSyncIsSharedByEventModeAndPollingFallback() {
         val watch = shellFunctionBody(tproxySh, "local_addr_watch_loop")
         val monitor = shellFunctionBody(tproxySh, "local_addr_monitor_loop")
         val poll = shellFunctionBody(tproxySh, "local_addr_poll_loop")
+        val both = shellFunctionBody(tproxySh, "sync_local_ipset_both")
 
-        // 两种模式调用的是同一个对账函数。
-        assertTrue("事件模式必须走 sync_local_ipset", monitor.contains("sync_local_ipset \"\""))
-        assertTrue("轮询模式必须走 sync_local_ipset", poll.contains("sync_local_ipset \"\""))
+        // 两种模式（含事件模式里的慢速清扫）和启动时的首次对账，走同一个两族入口。
+        assertTrue("事件模式必须走 sync_local_ipset_both", monitor.contains("sync_local_ipset_both"))
+        assertTrue("轮询模式必须走 sync_local_ipset_both", poll.contains("sync_local_ipset_both"))
+        assertTrue("启动时的首次对账也必须走同一入口", watch.contains("sync_local_ipset_both"))
+        // 一次对账两个族，且各族的返回值必须原样透传，不能塌成一个「失败」。
+        assertTrue("两族都要对账", both.contains("sync_local_ipset_family 4")
+            && both.contains("sync_local_ipset_family 6"))
+        assertTrue("非 0 返回值必须原样透传", both.contains("return \"\$rc\""))
+
         // monitor 没跑起来必须退轮询，而不是报错就停着。
         assertTrue("事件模式挂了必须退回轮询", watch.contains("if ! local_addr_monitor_loop; then"))
         assertTrue("退化后必须真的进入轮询循环", watch.contains("local_addr_poll_loop"))
@@ -449,12 +538,70 @@ class TProxySourceParityTest {
     }
 
     /**
+     * 对账的返回值必须能区分三种结局，否则调用方不知道该退、该重试、还是该当成功。
+     *
+     * - 0：已对齐；
+     * - 1：集合没了（代理正在停）—— 调用方应当退出，这正是 watcher 的干净退场方式；
+     * - 2：集合在但写不进去 —— 记日志、下个周期重试，**不能**当成功吞掉。
+     *
+     * 1 与 2 的差别是「退场」与「重试」。混成 2 会让 watcher 空转到下个周期才退；
+     * 混成 0 会留一个永远报「正常」的进程对着已销毁的集合刷日志。
+     */
+    @Test
+    fun localAddressSyncFailureCodesStayDistinct() {
+        val sync = shellFunctionBody(tproxySh, "sync_local_ipset")
+
+        assertTrue("集合不存在必须返回 1", sync.contains("return 1"))
+        assertTrue("写不进去必须返回 2", sync.contains("return 2"))
+        assertTrue("对齐成功必须返回 0", sync.contains("return 0"))
+        // 并发同步是预期内的：事件循环和慢速清扫会同时对同一个集合做增删。add 撞
+        // already-exists 必须当成功，否则每个并发周期都会误报 rc=2。
+        assertTrue("并发 add 撞 already-exists 视为幂等成功", sync.contains("*\"already exists\"*)"))
+        // 开头那次 list 过了、到 add 时集合才被销毁 —— 那是 1 不是 2，别记成误导性 Error。
+        assertTrue("对账中途集合消失必须归为 rc=1", sync.contains("disappeared mid-sync"))
+        // 删不到成员只能是并发同步同时动了它，下一个周期还会再对账，所以不算失败。
+        assertTrue("del 失败必须当作并发幂等而不是错误", sync.contains("not a member"))
+    }
+
+    /**
+     * 同步哪些地址族由「集合真建了没有」决定，不能照搬 PROXY_IPV6。
+     *
+     * `PROXY_IPV6` 表示「v6 代理链要不要建」，`LOCAL_ADDR_FAMILIES` 表示「localaddr6 这个
+     * 集合在不在」。两者不等价：v6 走 addrtype 时代理链在、集合没建，同步它只会每个周期
+     * 刷一条失败。
+     *
+     * 它是推导出来的状态、不在配置文件里，而 watcher 是重新执行本脚本的子进程 —— 不显式
+     * 带过去，子进程会把默认值当事实，去同步一个根本没建的集合。
+     */
+    @Test
+    fun localAddressFamiliesArePassedAcrossTheWatcherReexec() {
+        val familyFn = shellFunctionBody(tproxySh, "sync_local_ipset_family")
+        val watcher = shellFunctionBody(tproxySh, "start_local_addr_watcher")
+        val watch = shellFunctionBody(tproxySh, "local_addr_watch_loop")
+
+        // 族标签 4/6 与集合后缀 ""/6 不是同一个东西，映射错了集合名会变成 localaddr4。
+        assertTrue("族标签到集合后缀必须有显式映射",
+            familyFn.contains("6) suffix=\"6\" ;;") && familyFn.contains("4) suffix=\"\" ;;"))
+        assertTrue("门控必须按 LOCAL_ADDR_FAMILIES 而不是 PROXY_IPV6",
+            familyFn.contains("case \"\$LOCAL_ADDR_FAMILIES\" in"))
+        // 子进程重跑本脚本，推导出来的状态必须靠环境变量带过去。
+        assertTrue("watcher 子进程必须显式继承 LOCAL_ADDR_FAMILIES",
+            watcher.contains("LOCAL_ADDR_FAMILIES=\"\$LOCAL_ADDR_FAMILIES\" nohup"))
+        // 全局初始化不能硬赋值，否则会把继承来的值盖掉。
+        assertTrue("全局默认值必须用 :- 保留继承值",
+            tproxySh.contains("LOCAL_ADDR_FAMILIES=\"\${LOCAL_ADDR_FAMILIES:-4}\""))
+        // 集合没了就退，别对着空集合刷日志。
+        assertTrue("watcher 收到 rc=1 必须退出", watch.contains("exit 0"))
+    }
+
+    /**
      * 事件模式的生命周期必须自己收干净，否则每次 stop/start 都会漏东西。
      *
-     * 三个后果，每一个都必须是「静默失败」而不是「炸一下就算了」：
+     * 四个后果，每一个都必须是「静默失败」而不是「炸一下就算了」：
      * - 用管道（`ip monitor | while read`）时 `exit` 只杀子 shell，watcher 会无限重启 monitor；
      * - `wait` 一个还活着的 monitor 会永久阻塞，集合销毁后进程退不出来；
-     * - stop 走 SIGTERM，循环体内的清理一条都执行不到，monitor 会带着 netlink 句柄变孤儿。
+     * - stop 走 SIGTERM，循环体内的清理一条都执行不到，monitor 会带着 netlink 句柄变孤儿；
+     * - monitor 的 socket 活着却不吐事件时永远不 EOF，事件模式会静默停摆。
      */
     @Test
     fun eventModeWatcherCleansUpAfterItself() {
@@ -468,13 +615,25 @@ class TProxySourceParityTest {
         assertTrue("read 必须从 FIFO 读，不能是管道里的子 shell", monitor.contains("read -r _line < \"\$fifo\""))
         // 退出口必须能真正终止进程：monitor 此刻还活着，wait 会永久阻塞。
         assertTrue("退出前要收掉 monitor 子进程", stop.contains("kill \"\$1\""))
+        assertTrue("退出前要收掉慢速清扫", stop.contains("kill \"\$3\""))
         assertTrue("退出前要清掉 FIFO", stop.contains("rm -f \"\$2\""))
         assertTrue("退出必须真正 exit", stop.contains("exit 0"))
         // SIGTERM 要兜住：信号到达时循环体里的清理不会执行。
         assertTrue("必须装信号 trap 兜 SIGTERM", monitor.contains("trap 'local_addr_monitor_stop"))
+        // 集合被销毁是 rc=1：必须走统一收口，不能直接 exit 0 漏收子进程。
+        assertTrue("集合销毁必须走统一收口",
+            monitor.contains("local_addr_monitor_stop \"\$mp\" \"\$fifo\" \"\$sp\""))
+        // 事件流 EOF 那条路也要收掉慢速清扫，不能只收 monitor。
+        assertTrue("事件流 EOF 后必须收掉慢速清扫", monitor.contains("kill \"\$sp\""))
         // 轮询里的 sleep 得可中断，否则 stop 的 SIGTERM 最长要等一个完整周期。
         assertTrue("poll 的 sleep 必须放后台 + wait 才能被打断", poll.contains("sleep \"\$interval\" &"))
         assertTrue("poll 必须 wait 掉那个 sleep", poll.contains("wait \$!"))
+        // monitor 的 socket 活着却不吐事件时永远不 EOF —— 靠独立节奏的慢速清扫兜住。
+        assertTrue("事件模式必须挂一个独立节奏的慢速清扫",
+            monitor.contains("local_addr_poll_loop \"\$LOCAL_ADDR_SWEEP_INTERVAL\" \"Local address sweep\""))
+        assertTrue("清扫间隔必须可配且有默认值",
+            tproxySh.contains("LOCAL_ADDR_SWEEP_INTERVAL=\"\${LOCAL_ADDR_SWEEP_INTERVAL:-")
+                && tproxySh.contains("DEFAULT_LOCAL_ADDR_SWEEP_INTERVAL="))
         // SIGKILL 那条路 trap 跑不到，stop 时顺手把残留 FIFO 扫掉。
         assertTrue("stop 必须扫掉残留 FIFO", cleanup.contains("localaddr_monitor.*.fifo"))
     }
