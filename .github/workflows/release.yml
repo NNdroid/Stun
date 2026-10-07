@@ -42,12 +42,12 @@ on:
         type: boolean
         default: false
       auto_release:
-        description: '🚀 构建成功后自动创建 release tag 并发布 GitHub Release（须填下方版本号）'
+        description: '🚀 构建成功后自动创建 release tag 并发布 GitHub Release（版本号留空则按当前最高 tag 自动推导）'
         required: true
         type: boolean
         default: false
       version:
-        description: '🔢 自定义版本号，如 1.13 或 v1.13（两者等价，统一按 v 前缀写入；留空 = 自动 v1.0.<UTC日期>.<提交数>-<哈希>）'
+        description: '🔢 版本号，如 1.13（与 v1.13 等价）。留空 + 自动发版 = 按当前最高 tag 推下一个号；留空 + 手动构建 = v1.0.<UTC日期>.<提交数>-<哈希>'
         required: false
         type: string
         default: ''
@@ -262,14 +262,42 @@ jobs:
                 echo "::error::版本号非法（应为 1.13 / 1.13.0 / 1.13-beta 这类）：$RAW_VERSION"
                 exit 1
               fi
+            elif [ "$AUTO_RELEASE" == "true" ]; then
+              # 留空 = 从当前最高的 v* tag 推下一个号：最后一段数字 +1，丢弃预发布后缀。
+              # 这样只勾「自动发版」就能发，不必自己想版本号。
+              # versionCode 仍按 tag 计数走，跟这条线互不干扰。
+              LAST_TAG="$(git tag --list 'v*' | sort -V | tail -n 1)"
+              if [ -z "$LAST_TAG" ]; then
+                VERSION="v1.0.1"
+              else
+                NUM="${LAST_TAG#v}"
+                NUM="${NUM%%-*}"
+                head="${NUM%.*}"
+                minor="${NUM##*.}"
+                case "$minor" in
+                  ''|*[!0-9]*)
+                    echo "::error::版本号留空，但现有 tag 里推不出下一个号，请手填。当前最高 tag：$LAST_TAG"
+                    exit 1
+                    ;;
+                esac
+                NEXT=$((10#$minor + 1))
+                if [ "$head" = "$NUM" ]; then
+                  VERSION="v$NEXT"
+                else
+                  VERSION="v${head}.${NEXT}"
+                fi
+              fi
+              echo "::notice::版本号留空，按当前最高 tag 推导为 $VERSION"
             fi
             echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "release_tag=$VERSION" >> $GITHUB_OUTPUT
-
-            if [ "$AUTO_RELEASE" == "true" ] && [ -z "$VERSION" ]; then
-              echo "::error::勾选了自动创建 Release，但没有填版本号"
-              exit 1
+            # 只有真去发版时才把号交给下游：手动构建填的版本号只进 versionName，
+            # 不该让 release_tag 看起来像「已确定要发这个 tag」。
+            if [ "$AUTO_RELEASE" == "true" ]; then
+              echo "release_tag=$VERSION" >> $GITHUB_OUTPUT
+            else
+              echo "release_tag=" >> $GITHUB_OUTPUT
             fi
+
             # 自动发版却不签名 = 往 Release 页发布装不了的 -unsigned.apk，提前拦下。
             if [ "$AUTO_RELEASE" == "true" ] && [ "$SIGN_RELEASE" != "true" ]; then
               echo "::error::勾选了自动创建 Release 但未签名，产物会是 -unsigned.apk，无法安装"
@@ -313,7 +341,8 @@ jobs:
           # 正整数即触发 CI 自动版本：versionCode = 万位段 + 13 + v* 标签数 + 1；
           # versionName = v1.0.<UTC 日期>.<提交数>-<短哈希>。pr-ci 不设该变量，走手工版本。
           CI_RUN_NUMBER: ${{ github.run_number }}
-          # 「版本号」输入，原样写入 versionName；空串 = 用自动值（见 build.gradle.kts）。
+          # 上一步归一/推导出的版本号，写入 versionName；空串 = 用自动值
+          # （v1.0.<UTC日期>.<提交数>-<哈希>，见 build.gradle.kts）。
           # versionCode 不受它影响，仍按 v* tag 数递增。
           CI_VERSION_NAME: ${{ steps.options.outputs.version }}
           KEYSTORE_FILE: ${{ steps.decode_keystore.outputs.filePath }}
@@ -389,7 +418,7 @@ jobs:
           echo "- **Sign:** ${{ steps.options.outputs.sign }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Clean Build:** ${{ steps.options.outputs.clean }}" >> $GITHUB_STEP_SUMMARY
           if [ -n "${{ steps.options.outputs.version }}" ]; then
-            echo "- **Version (custom):** \`${{ steps.options.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Version:** \`${{ steps.options.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
           fi
           if [ "${{ steps.options.outputs.auto_release }}" == "true" ]; then
             echo "- **Auto Release:** \`${{ steps.options.outputs.release_tag }}\`" >> $GITHUB_STEP_SUMMARY
