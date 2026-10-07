@@ -126,13 +126,20 @@ readonly DEFAULT_MAC_PROXY_MODE="blacklist"
 # 回环接口本身由 `PROXY_INTERFACE -i lo -j RETURN` 兜住了，但走局域网 IP 的流量不是
 # lo 接口流量，所以必须单独判「目的地址属于本机」。
 #
-# 两种载体，按内核能力二选一（见 setup_local_addr_sets）：
-#   HAS_ADDRTYPE=1 -> `-m addrtype --dst-type LOCAL`，内核自己跟踪本机地址表，
-#                     地址怎么变都不用管，本脚本什么都不用做，也不需要后台进程；
-#   HAS_ADDRTYPE=0 -> ipset `localaddr` / `localaddr6`，由后台进程跟着本机地址增删。
+# 两种载体，**每个地址族独立决定**主载体（见 local_addr_carrier）：
+#   addrtype -> `-m addrtype --dst-type LOCAL`，内核自己跟踪本机地址表，
+#               地址怎么变都不用管，也不需要后台进程；
+#   ipset    -> `localaddr` / `localaddr6`，由后台进程跟着本机地址增删；
+#   none     -> 这个地址族的代理链没建起来（或两种载体都不具备），谈不上旁路。
+# v4 与 v6 分开判是刻意的：`NETFILTER_XT_MATCH_ADDRTYPE` 是 v4 的符号，它存在
+# 不代表 v6 那半能用。
+#
+# 主载体是 addrtype 时不建集合、不拉后台进程（常见路径，省一个常驻进程）；但规则
+# 插入失败仍要能退回 ipset —— addrtype 探测通过不代表规则一定插得进规则链。
+# 回退时现场建表（setup_local_addr_sets 带 force 参数），见 setup_proxy_chain。
 #
 # 后台进程的两种触发方式（见 local_addr_watch_loop）：
-#   ip monitor 可用 -> 事件驱动，地址一变立刻同步；
+#   ip monitor 可用 -> 事件驱动，地址一变立刻同步，另挂一个慢速清扫兜底；
 #   ip monitor 不可用 -> 轮询 `ip addr show`，间隔见下面。
 # 两种方式跑的是同一个 sync_local_ipset，对账语义不可能漂移。
 # Android 上的 toybox `ip` 不一定带 netlink monitor，所以先探测、探测不到再轮询，
@@ -141,11 +148,15 @@ readonly DEFAULT_MAC_PROXY_MODE="blacklist"
 #
 # 默认开：关掉能省一条规则，代价是上面那类回灌，得不偿失。
 readonly DEFAULT_BYPASS_LOCAL_ADDRS=1
-# 轮询间隔（秒）。只在 ipset 载体下生效，且只有 ip monitor 不可用时才真的轮询。
+# 轮询间隔（秒）。只有 ip monitor 不可用、退化到轮询时才真的轮询。
 readonly DEFAULT_LOCAL_ADDR_POLL_INTERVAL=2
 # 1 = 先试 `ip monitor address`（事件驱动），拿不到数据再退轮询；0 = 直接轮询。
 # 留这个开关是因为个别版本的 toybox monitor 行为不确定，留一条不改代码的退路。
 readonly DEFAULT_LOCAL_ADDR_USE_MONITOR=1
+# 事件模式下的慢速清扫间隔（秒）。事件流万一静默失效（socket 还活着但不再吐事件），
+# 集合会停在上一次快照上；这个清扫把过期窗口限定在一个周期。复用轮询循环实现，
+# 集合被销毁时它自己退出，就算 watcher 被 SIGKILL 收掉也能自愈。
+readonly DEFAULT_LOCAL_ADDR_SWEEP_INTERVAL=300
 
 # block quic
 readonly DEFAULT_BLOCK_QUIC=0
@@ -282,6 +293,7 @@ load_config() {
     BYPASS_LOCAL_ADDRS="${BYPASS_LOCAL_ADDRS:-$DEFAULT_BYPASS_LOCAL_ADDRS}"
     LOCAL_ADDR_POLL_INTERVAL="${LOCAL_ADDR_POLL_INTERVAL:-$DEFAULT_LOCAL_ADDR_POLL_INTERVAL}"
     LOCAL_ADDR_USE_MONITOR="${LOCAL_ADDR_USE_MONITOR:-$DEFAULT_LOCAL_ADDR_USE_MONITOR}"
+    LOCAL_ADDR_SWEEP_INTERVAL="${LOCAL_ADDR_SWEEP_INTERVAL:-$DEFAULT_LOCAL_ADDR_SWEEP_INTERVAL}"
     CN_IP_FILE="${CN_IP_FILE:-$DEFAULT_CN_IP_FILE}"
     CN_IPV6_FILE="${CN_IPV6_FILE:-$DEFAULT_CN_IPV6_FILE}"
     CN_IP_URL="${CN_IP_URL:-$DEFAULT_CN_IP_URL}"
@@ -307,12 +319,30 @@ load_config() {
                     HOTSPOT_SUBNET_IPV4 HOTSPOT_SUBNET_IPV6 \
                     APP_PROXY_ENABLE PROXY_APPS_LIST BYPASS_APPS_LIST APP_PROXY_MODE \
                     BYPASS_CN_IP BYPASS_LOCAL_ADDRS LOCAL_ADDR_POLL_INTERVAL \
-                    LOCAL_ADDR_USE_MONITOR \
+                    LOCAL_ADDR_USE_MONITOR LOCAL_ADDR_SWEEP_INTERVAL \
                     CN_IP_FILE CN_IPV6_FILE CN_IP_URL CN_IPV6_URL \
                     MAC_FILTER_ENABLE PROXY_MACS_LIST BYPASS_MACS_LIST MAC_PROXY_MODE \
                     BLOCK_QUIC LOG_TIMESTAMP SKIP_CHECK_FEATURE; do
             eval "log Debug \"$_var: \$$_var\""
         done
+    fi
+
+    # 本机地址旁路的开关与间隔下面全用算术比较（[ "$X" -eq 1 ]），写进非数字会让每次
+    # 比较变成 `[: illegal number` —— 旁路就**静默**失效了，日志里什么都看不到。
+    # 这里校验一次，不合法就回到默认值并响亮告警。
+    local _bad_local_addr=""
+    for _var in BYPASS_LOCAL_ADDRS LOCAL_ADDR_USE_MONITOR \
+                LOCAL_ADDR_POLL_INTERVAL LOCAL_ADDR_SWEEP_INTERVAL; do
+        if ! is_positive_integer "${!_var}"; then
+            _bad_local_addr="$_bad_local_addr ${_var}=${!_var}"
+        fi
+    done
+    if [ -n "$_bad_local_addr" ]; then
+        log Warn "Invalid local address bypass config (must be a positive integer):$_bad_local_addr — using defaults"
+        BYPASS_LOCAL_ADDRS="$DEFAULT_BYPASS_LOCAL_ADDRS"
+        LOCAL_ADDR_USE_MONITOR="$DEFAULT_LOCAL_ADDR_USE_MONITOR"
+        LOCAL_ADDR_POLL_INTERVAL="$DEFAULT_LOCAL_ADDR_POLL_INTERVAL"
+        LOCAL_ADDR_SWEEP_INTERVAL="$DEFAULT_LOCAL_ADDR_SWEEP_INTERVAL"
     fi
 
     log Info "Configuration loading completed"
@@ -618,6 +648,9 @@ init_feature_flags() {
     check_kernel_feature "NETFILTER_XT_SET" && HAS_XT_SET=1
     check_kernel_feature "IP6_NF_NAT" && HAS_NAT6=1
     check_kernel_feature "IP6_NF_TARGET_REDIRECT" && HAS_REDIRECT6=1
+    # 单独记一下 ip6tables 在不在：v4 的 addrtype 符号存在**不代表** v6 那半能用，
+    # v6 链起不来时本机地址旁路对该族就是 none，不能拿 v4 的能力推断去充数。
+    command -v ip6tables > /dev/null 2>&1 && HAS_IP6TABLES=1
 }
 
 check_tproxy_support() {
@@ -951,6 +984,38 @@ _add_chain_jumps() {
     done
 }
 
+# 用 addrtype 匹配「目的地址属于本机」：内核自己维护本机地址表，不依赖任何后台进程。
+# 两条必须一起成（见 setup_proxy_chain 的说明），成对返回 0；任一失败返回 1。
+local_addr_rule_addrtype() {
+    local cmd="$1"
+    local table="$2"
+    local chain="$3"
+    if $cmd -t "$table" -A "$chain" -m addrtype --dst-type LOCAL -p udp ! --dport 53 -j ACCEPT && \
+       $cmd -t "$table" -A "$chain" -m addrtype --dst-type LOCAL ! -p udp -j ACCEPT; then
+        log Info "Added local address type bypass ($chain)"
+        return 0
+    fi
+    return 1
+}
+
+# 用 ipset 匹配同一个语义。集合由 setup_local_addr_sets 建表、后台进程增删；
+# 引用不存在的集合会让规则整体插不进去，所以先确认集合在。
+local_addr_rule_ipset() {
+    local cmd="$1"
+    local table="$2"
+    local chain="$3"
+    local set_name="$4"
+    if ! ipset list "$set_name" > /dev/null 2>&1; then
+        return 1
+    fi
+    if $cmd -t "$table" -A "$chain" -m set --match-set "$set_name" dst -p udp ! --dport 53 -j ACCEPT && \
+       $cmd -t "$table" -A "$chain" -m set --match-set "$set_name" dst ! -p udp -j ACCEPT; then
+        log Info "Added ipset-based local address bypass ($set_name)"
+        return 0
+    fi
+    return 1
+}
+
 setup_proxy_chain() {
     local family="$1"
     local mode="$2" # tproxy or redirect
@@ -1081,25 +1146,34 @@ setup_proxy_chain() {
         fi
     fi
 
-    if [ "$HAS_ADDRTYPE" -eq 1 ]; then
-        $cmd -t "$table" -A "BYPASS_IP$suffix" -m addrtype --dst-type LOCAL -p udp ! --dport 53 -j ACCEPT
-        $cmd -t "$table" -A "BYPASS_IP$suffix" -m addrtype --dst-type LOCAL ! -p udp -j ACCEPT
-        log Info "Added local address type bypass"
-    fi
-
-    # xt_addrtype 缺失时内核答不了「这个目的地址属不属于本机」，等价物是 ipset
-    # `localaddr`（由 setup_local_addr_sets 建表并交给后台进程增删）。两条匹配与上面的
-    # addrtype 那对完全一致：UDP 放行但排除 DNS 端口（DNS 劫挂靠在这里），其余协议放行。
-    # 集合不存在时直接跳过 —— 规则里引用不存在的 set 会让整条规则加不上。
-    if [ "$BYPASS_LOCAL_ADDRS" -eq 1 ] && [ "$HAS_ADDRTYPE" -ne 1 ] && \
-       [ "$HAS_XT_SET" -eq 1 ]; then
+    # 本机地址旁路：优先 addrtype（内核自己跟踪本机地址表），插不进去退回 ipset
+    # `localaddr`。两条匹配缺一不可，且两个载体的语义必须一致 —— UDP 放行但排除
+    # DNS 端口（DNS 劫挂靠在这里），其余协议放行。
+    #
+    # 为什么还要回退：local_addr_carrier 只按「模块能不能用」预判，规则真正插入这一
+    # 刻仍可能失败（模块在这台机器上装不起来、规则链已被别的进程占住）。不回退就是
+    # 静默漏旁路 —— 本机流量被推进隧道，用户只会看到连接变慢，日志里什么都没有。
+    # 回退要现场建集合（setup_local_addr_sets 带 force 参数），因为初始那轮判定的是
+    # addrtype、没建表；集合必须灌过首份地址再插规则，引用空集合等于没规则。
+    if [ "$BYPASS_LOCAL_ADDRS" -eq 1 ]; then
         local _local_set="localaddr$suffix"
-        if ipset list "$_local_set" > /dev/null 2>&1; then
-            $cmd -t "$table" -A "BYPASS_IP$suffix" -m set --match-set "$_local_set" dst -p udp ! --dport 53 -j ACCEPT
-            $cmd -t "$table" -A "BYPASS_IP$suffix" -m set --match-set "$_local_set" dst ! -p udp -j ACCEPT
-            log Info "Added ipset-based local address bypass ($_local_set)"
-        else
-            log Warn "ipset '$_local_set' not available, local address bypass skipped"
+        local _local_done=0
+        local _local_primary="$(local_addr_carrier "$family")"
+
+        if [ "$_local_primary" = "addrtype" ]; then
+            local_addr_rule_addrtype "$cmd" "$table" "BYPASS_IP$suffix" && _local_done=1
+            if [ "$_local_done" -eq 0 ]; then
+                log Warn "addrtype rule failed for IPv${family}, falling back to ipset ($_local_set)"
+                if setup_local_addr_sets "$family"; then
+                    local_addr_rule_ipset "$cmd" "$table" "BYPASS_IP$suffix" "$_local_set" && _local_done=1
+                fi
+            fi
+        elif [ "$_local_primary" = "ipset" ]; then
+            local_addr_rule_ipset "$cmd" "$table" "BYPASS_IP$suffix" "$_local_set" && _local_done=1
+        fi
+
+        if [ "$_local_done" -eq 0 ]; then
+            log Warn "Local address bypass unavailable for IPv${family} — local->local traffic will still be proxied"
         fi
     fi
 
@@ -1731,7 +1805,10 @@ list_local_addrs() {
 }
 
 # 让 `localaddr[$suffix]` 的成员集合与本机当前地址完全一致：该删的删、该加的加。
-# $1 = 地址族后缀（"" 为 IPv4，"6" 为 IPv6）。集合被销毁时返回 1，调用方据此退出。
+# $1 = 地址族后缀（"" 为 IPv4，"6" 为 IPv6）。
+# 返回值：0 = 已同步；1 = 集合不存在（调用方应当退出）；2 = 集合还在但写不进去。
+# 必须把 2 传出去 —— 之前只 Warn 然后返回 0，调用方分不清「已同步」和「集合一直是
+# 空的」，watcher 就会永远报成功、永远空转。
 sync_local_ipset() {
     local suffix="${1-}"
     local set_name="localaddr$suffix"
@@ -1746,7 +1823,7 @@ sync_local_ipset() {
     # 必须折成单行：下面的 `case " $cur " in *" $addr "*` 做成员判定，字符串里只要还
     # 留着换行，多元素列表就永远匹配不上 —— 每个 tick 都会把全部成员删一遍再加回来。
     # 本机地址通常不止一个（127.0.0.1 + 局域网 IP），这个坑一定会踩到。
-    local cur prev addr
+    local cur prev addr _err
     cur="$(list_local_addrs "$want6" | sort -u | tr '\n' ' ')"
     prev="$(ipset save "$set_name" 2> /dev/null | awk -v s="$set_name" \
         '$1 == "add" && $2 == s {print $3}' | sort -u | tr '\n' ' ')"
@@ -1756,7 +1833,12 @@ sync_local_ipset() {
             *" $addr "*) ;;
             *)
                 log Debug "[EXEC] ipset del $set_name $addr"
-                [ "$DRY_RUN" -eq 0 ] && ipset del "$set_name" "$addr" 2> /dev/null
+                if [ "$DRY_RUN" -eq 0 ]; then
+                    # 删不到只可能是并发的清扫同时动了它（事件循环和慢速清扫会一起同步）。
+                    # 不算失败：下一个周期还会再对账一次。
+                    ipset del "$set_name" "$addr" 2> /dev/null || \
+                        log Debug "ipset del $set_name $addr: not a member (concurrent sync), skipped"
+                fi
                 log Info "Removed local address bypass entry $addr"
                 ;;
         esac
@@ -1768,8 +1850,23 @@ sync_local_ipset() {
             *)
                 log Debug "[EXEC] ipset add $set_name $addr"
                 if [ "$DRY_RUN" -eq 0 ]; then
-                    ipset add "$set_name" "$addr" 2> /dev/null || \
-                        log Warn "Failed to add local address $addr to $set_name"
+                    _err="$(ipset add "$set_name" "$addr" 2>&1)" || case "$_err" in
+                        *"already exists"*)
+                            # 并发的同步已经加过了，幂等，当成功。
+                            ;;
+                        *)
+                            # add 失败有两种原因，别混：集合在开头那次 list 之后被销毁了
+                            # （stop_proxy 正在收尾），那是 rc=1、该退场；集合还在只是写不
+                            # 进去，才是 rc=2、该重试。混成 2 会让调用方记一条误导性 Error
+                            # 然后空转到下个周期才退。
+                            if ! ipset list "$set_name" > /dev/null 2>&1; then
+                                log Debug "ipset '$set_name' disappeared mid-sync, local address sync stops"
+                                return 1
+                            fi
+                            log Error "Failed to add local address $addr to $set_name: $_err"
+                            return 2
+                            ;;
+                    esac
                 fi
                 log Info "Added local address bypass entry $addr"
                 ;;
@@ -1779,10 +1876,49 @@ sync_local_ipset() {
     return 0
 }
 
+# 只按 LOCAL_ADDR_FAMILIES 决定同步哪个族，不照搬 PROXY_IPV6：后者表示「v6 代理链
+# 要不要建」，前者表示「localaddr6 这个集合在不在」。v6 走 addrtype 时集合压根没
+# 建，同步它每周期都会刷一条失败。
+sync_local_ipset_family() {
+    local family="$1"
+    local suffix=""
+    local rc
+    case "$family" in
+        6) suffix="6" ;;
+        4) suffix="" ;;
+        *) return 0 ;;
+    esac
+    case "$LOCAL_ADDR_FAMILIES" in
+        *"$family"*) ;;
+        *) return 0 ;;
+    esac
+    sync_local_ipset "$suffix"
+    rc=$?
+    return "$rc"
+}
+
+# 一次对账两个族。集合没了返回 1（调用方应当退出），写不进去返回 2 —— 这两个含义
+# 不同，不能塌成一个「失败」。
+sync_local_ipset_both() {
+    local rc
+    sync_local_ipset_family 4
+    rc=$?
+    if [ "$rc" -ne 0 ]; then
+        return "$rc"
+    fi
+    sync_local_ipset_family 6
+    rc=$?
+    if [ "$rc" -ne 0 ]; then
+        return "$rc"
+    fi
+    return 0
+}
+
 # 后台进程主循环。集合被销毁（代理已停）就自行退出，免得有人忘记 stop 时留一个
 # 一直刷日志的孤儿 —— 这一点在两种模式下都必须成立。
 local_addr_watch_loop() {
     local interval="$LOCAL_ADDR_POLL_INTERVAL"
+    local rc
     is_positive_integer "$interval" || interval="$DEFAULT_LOCAL_ADDR_POLL_INTERVAL"
 
     local pf
@@ -1791,8 +1927,15 @@ local_addr_watch_loop() {
 
     # 先对账一次：事件流只报「之后」的变化，启动那一刻的当前状态得自己同步。
     # （setup_local_addr_sets 已经灌过一份，这里幂等，不算重复开销。）
-    sync_local_ipset "" || exit 0
-    [ "$PROXY_IPV6" -eq 1 ] && { sync_local_ipset 6 || exit 0; }
+    # rc=1 是集合没了 -> 退出；rc=2 是写不进去 -> 记日志继续，下个周期再试。
+    sync_local_ipset_both
+    rc=$?
+    if [ "$rc" -eq 1 ]; then
+        exit 0
+    fi
+    if [ "$rc" -eq 2 ]; then
+        log Warn "local address set exists but is not writable (rc=2), retrying in the main loop"
+    fi
 
     if [ "$LOCAL_ADDR_USE_MONITOR" -eq 1 ]; then
         # 事件模式没跑起来就退轮询。注意这里的分支是「没拿到数据」，不是「集合没了」：
@@ -1808,12 +1951,23 @@ local_addr_watch_loop() {
 }
 
 # 轮询模式：定时取一次本机地址快照，跟 ipset 成员做差集。
+# $2 = 日志标签。事件模式里的慢速清扫也复用本函数，标签不同免得日志分不清是谁在跑。
 local_addr_poll_loop() {
     local interval="$1"
-    log Info "Local address watcher running (poll ${interval}s)"
+    local label="${2:-Local address watcher}"
+    local rc
+    log Info "$label running (poll ${interval}s)"
     while :; do
-        sync_local_ipset "" || exit 0
-        [ "$PROXY_IPV6" -eq 1 ] && { sync_local_ipset 6 || exit 0; }
+        # rc=1 = 集合没了（代理已停）-> 退出；rc=2 = 集合在但写不进去 -> 记日志，
+        # 下个周期再试。不能把 2 当成功吞掉，否则 watcher 会一直报「正常」实则空转。
+        sync_local_ipset_both
+        rc=$?
+        if [ "$rc" -eq 1 ]; then
+            exit 0
+        fi
+        if [ "$rc" -eq 2 ]; then
+            log Warn "$label: local address set is not writable (rc=2), retrying next cycle"
+        fi
         # sleep 必须放到后台再 wait：POSIX 规定 shell 在等前台命令完成时收到的
         # trap 要等那条命令结束才执行，前台 sleep 会让 stop 的 SIGTERM 最长推迟
         # 一个周期。后台 + wait 让信号立刻打断。
@@ -1834,26 +1988,28 @@ local_addr_poll_loop() {
 # 销毁就会变成「重启 monitor、同步失败、又重启 monitor」的无限空转。FIFO 让 read
 # 在 watcher 自己的 shell 里阻塞，exit 才能真正退出进程。
 #
-# 代价要说清：事件模式没有周期清扫。轮询里那次 sweep 的作用是自愈「漏掉的事件」，
-# 事件模式下唯一现实的丢事件途径就是 monitor 进程本身没了，而那种情况表现为 EOF、
-# 本函数返回、上面直接退轮询。monitor 挂着但一直不吐数据，等价于这段时间没有地址
-# 变化，本来就不需要同步。
+# 事件模式下另挂一个慢速清扫（见下）：monitor 进程没了表现为 EOF，本函数返回、上面
+# 退轮询；但 socket 还活着却不吐事件的话永远不 EOF，那时靠清扫把过期窗口兜住。
+# 清扫复用轮询循环，集合被销毁时它自己 exit，所以就算 watcher 被 SIGKILL 收掉、
+# trap 没跑，清扫也会在下一次对账时退掉，不留孤儿。
 
-# 收掉 monitor 子进程、清掉 FIFO、退出进程。三处出口共用，少收 monitor 就等于把
-# 挂着 netlink 的进程留成孤儿。
+# 收掉 monitor 与清扫子进程、清掉 FIFO、退出进程。所有出口共用，少收一个就等于把
+# 挂着 netlink（或还在轮询）的进程留成孤儿。
+# $1 = monitor pid；$2 = FIFO 路径；$3 = 慢速清扫 pid。
 #
 # 这里必须用 kill 而不是 wait：monitor 的 FIFO 写端还开着，wait 会阻塞到它自己退出，
 # 而它挂着 netlink 不会自己退 —— `exit 0` 永远执行不到，watcher 就卡死在这里了。
 local_addr_monitor_stop() {
     kill "$1" 2> /dev/null
+    kill "$3" 2> /dev/null
     rm -f "$2"
     exit 0
 }
 
 local_addr_monitor_loop() {
     local fifo="$TMPDIR/localaddr_monitor.$$.fifo"
-    local mp=
-    local _line
+    local mp= sp=
+    local _line rc
     log Info "Local address watcher running (event mode: ip monitor address)"
     if ! mkfifo "$fifo" 2> /dev/null; then
         rm -f "$fifo"
@@ -1861,29 +2017,35 @@ local_addr_monitor_loop() {
         return 1
     fi
 
+    # 先起清扫再起 monitor：万一 monitor 起不来，清扫自己会在下一次对账时退掉。
+    local_addr_poll_loop "$LOCAL_ADDR_SWEEP_INTERVAL" "Local address sweep" &
+    sp=$!
+
     # 重定向让子进程先打开写端（会阻塞到读端打开），我们紧接着打开读端，两边同时
     # 解开 —— 所以不存在「write 端没人读」的 SIGPIPE 窗口。
     ip monitor address > "$fifo" 2> /dev/null &
     mp=$!
 
     # stop 走 SIGTERM，此刻 read 正阻塞在 FIFO 上，循环体里的清理一条都执行不到；
-    # 不兜这个口，`ip monitor` 会带着 netlink 句柄活成孤儿，每 stop/start 一轮漏一个。
-    # 这个 trap 不拆：退化到轮询后 $mp 已是死 pid、$fifo 已删，再触发也只会做两个
-    # 无害空操作然后正常退出。
-    trap 'local_addr_monitor_stop "${mp-}" "${fifo-}"' INT TERM
+    # 不兜这个口，monitor 与清扫会各留一个孤儿。这个 trap 不拆：退化到轮询后
+    # $mp/$sp 已是死 pid、$fifo 已删，再触发也只做无害空操作然后正常退出。
+    trap 'local_addr_monitor_stop "${mp-}" "${fifo-}" "${sp-}"' INT TERM
 
     while IFS= read -r _line < "$fifo"; do
-        if ! sync_local_ipset ""; then
-            local_addr_monitor_stop "$mp" "$fifo"
-        fi
-        if [ "$PROXY_IPV6" -eq 1 ] && ! sync_local_ipset 6; then
-            local_addr_monitor_stop "$mp" "$fifo"
-        fi
+        # rc=1 = 集合被销毁（代理已停）-> 全退；rc=2 = 写不进去 -> 记日志，
+        # 等下一次事件或清扫再对账，不退。
+        sync_local_ipset_both
+        rc=$?
+        case "$rc" in
+            1) local_addr_monitor_stop "$mp" "$fifo" "$sp" ;;
+            2) log Warn "local address set is not writable (rc=2), waiting for next event" ;;
+        esac
     done
 
     # 走到这里说明 read 拿到了 EOF，即 monitor 已经自己退出了，wait 能立刻收尸。
     rm -f "$fifo"
     wait "$mp" 2> /dev/null
+    kill "$sp" 2> /dev/null
     return 1
 }
 
@@ -1892,10 +2054,13 @@ local_addr_pidfile() {
     echo "$CONFIG_DIR/local_addr_watcher.pid"
 }
 
-# 拉起后台进程。start_proxy 在建链之前调用，保证 BYPASS_IP 的规则一加上去集合就在。
+# 拉起后台进程。由 setup_local_addr_sets 在建链之前调用（start_proxy 顺序保证），
+# 让 BYPASS_IP 里的 `-m set` 规则一加上去集合就已经在维护了。
 start_local_addr_watcher() {
     [ "$BYPASS_LOCAL_ADDRS" -eq 1 ] || return 0
-    [ "$HAS_ADDRTYPE" -eq 1 ] && return 0
+    # 不按 HAS_ADDRTYPE 提前返回：那是全局判断，v4 走 addrtype 时 v6 可能仍需要
+    # ipset（见 local_addr_carrier）。要不要集合已由 setup_local_addr_sets 逐族决定，
+    # 它只在确有集合要维护时才调本函数。
     [ "$HAS_IPSET" -eq 1 ] && [ "$HAS_XT_SET" -eq 1 ] || return 0
 
     local pf old_pid
@@ -1916,50 +2081,132 @@ start_local_addr_watcher() {
         return 1
     fi
 
-    log Debug "[EXEC] nohup sh $0 --local-addr-watcher -d $CONFIG_DIR"
-    nohup sh "$0" --local-addr-watcher -d "$CONFIG_DIR" > /dev/null 2>&1 &
+    # LOCAL_ADDR_FAMILIES 是这一轮推导出来的状态，不在配置文件里；子进程重新执行本
+    # 脚本时会把自己的默认值当事实，必须显式带过去，否则它会去同步没建的集合。
+    log Debug "[EXEC] nohup sh $0 --local-addr-watcher -d $CONFIG_DIR (families=$LOCAL_ADDR_FAMILIES)"
+    LOCAL_ADDR_FAMILIES="$LOCAL_ADDR_FAMILIES" nohup sh "$0" --local-addr-watcher -d "$CONFIG_DIR" > /dev/null 2>&1 &
     log Info "Local address watcher launched"
     return 0
 }
 
-# 建表 + 灌首份地址 + 拉后台进程。失败不致命：addrtype 那对规则可能已经够用。
-setup_local_addr_sets() {
-    [ "$BYPASS_LOCAL_ADDRS" -eq 1 ] || return 0
-
-    if [ "$HAS_ADDRTYPE" -eq 1 ]; then
-        log Info "Local address bypass uses addrtype; no ipset needed"
+# 某个地址族用哪种载体：addrtype / ipset / none。
+#
+# v6 必须单独判：HAS_ADDRTYPE 来自 NETFILTER_XT_MATCH_ADDRTYPE，那是 v4 侧的符号，
+# 它存在不代表 ip6tables 那半能用。ip6tables 不存在时 v6 代理链压根没建起来，拿 v4
+# 的能力去充数只会让 v6 的旁路静默缺失 —— 这正是本机地址回灌会出问题的地方。
+local_addr_carrier() {
+    local family="$1"
+    if [ "$HAS_ADDRTYPE" -ne 1 ]; then
+        if [ "$HAS_IPSET" -eq 1 ] && [ "$HAS_XT_SET" -eq 1 ]; then
+            echo "ipset"
+        else
+            echo "none"
+        fi
         return 0
     fi
-
-    if [ "$HAS_IPSET" -ne 1 ] || [ "$HAS_XT_SET" -ne 1 ]; then
-        log Warn "Local address bypass unavailable: HAS_ADDRTYPE=0 and ipset is missing — local->local traffic will still be proxied"
-        return 1
+    if [ "$family" = "6" ] && [ "$HAS_IP6TABLES" -ne 1 ]; then
+        echo "none"
+        return 0
     fi
-    if ! command -v ipset > /dev/null 2>&1; then
-        log Warn "ipset command not found, local address bypass unavailable"
-        return 1
-    fi
+    echo "addrtype"
+}
 
-    log Debug "[EXEC] ipset destroy localaddr"
-    log Debug "[EXEC] ipset destroy localaddr6"
-    log Debug "[EXEC] ipset create localaddr hash:ip family inet hashsize 64 maxelem 128"
-    log Debug "[EXEC] ipset create localaddr6 hash:ip family inet6 hashsize 64 maxelem 128"
+# 建表 + 灌首份地址 + 拉后台进程。
+#
+# $1 可选，形如 "4" / "6" / "46"：强制这些地址族走 ipset 载体。addrtype 规则插入
+# 失败的回退路径用它（见 setup_proxy_chain）—— 探测通过不代表规则一定插得进规则链，
+# 集合建好了才有真东西可匹配。不传就按 local_addr_carrier 的自然判定：addrtype 优先，
+# 不建集合、不拉后台进程（这是常见路径，省一个后台进程）。
+#
+# 返回值：0 = 集合维护已就绪（或按能力判定无需集合）；1 = 集合该建却没建起来，
+# 或者后台进程没起来。这个返回值必须被调用方看见 —— 后台进程没起来意味着集合冻结
+# 在首份快照上，地址一变旁路就漏了，用户得知道。
+setup_local_addr_sets() {
+    local force_ipset="${1-}"
+    [ "$BYPASS_LOCAL_ADDRS" -eq 1 ] || return 0
 
-    if [ "$DRY_RUN" -eq 0 ]; then
-        ipset destroy localaddr 2> /dev/null || true
-        ipset destroy localaddr6 2> /dev/null || true
-        ipset create localaddr hash:ip family inet hashsize 64 maxelem 128 || {
-            log Error "Failed to create ipset 'localaddr'"
+    local force_v4=0 force_v6=0
+    case "$force_ipset" in *4*) force_v4=1 ;; esac
+    case "$force_ipset" in *6*) force_v6=1 ;; esac
+
+    local need_v4=0 need_v6=0 _carrier _any_none=0
+
+    if [ "$HAS_IPSET" -ne 1 ] || [ "$HAS_XT_SET" -ne 1 ] || \
+       ! command -v ipset > /dev/null 2>&1; then
+        # 没有 ipset 就只能靠 addrtype；它也不在，这个族就没有任何旁路手段。
+        _carrier="$(local_addr_carrier 4)"
+        if [ "$_carrier" = "none" ]; then
+            _any_none=1
+            log Warn "Local address bypass unavailable for IPv4 (no addrtype module and no ipset support) — local->local IPv4 traffic will still be proxied"
+        fi
+        if [ "$PROXY_IPV6" -eq 1 ]; then
+            _carrier="$(local_addr_carrier 6)"
+            if [ "$_carrier" = "none" ]; then
+                _any_none=1
+                log Warn "Local address bypass unavailable for IPv6 (no addrtype on this stack and no ipset) — local->local IPv6 traffic will still be proxied"
+            fi
+        fi
+        if [ -n "$force_ipset" ]; then
+            log Warn "Local address bypass cannot fall back to ipset (ipset unavailable)"
             return 1
-        }
-        [ "$PROXY_IPV6" -eq 1 ] && \
-            ipset create localaddr6 hash:ip family inet6 hashsize 64 maxelem 128 || true
+        fi
+        [ "$_any_none" -eq 0 ] && return 0
+        return 1
     fi
 
-    sync_local_ipset ""
-    [ "$PROXY_IPV6" -eq 1 ] && sync_local_ipset 6
+    _carrier="$(local_addr_carrier 4)"
+    if [ "$_carrier" = "ipset" ] || [ "$force_v4" -eq 1 ]; then
+        need_v4=1
+    elif [ "$_carrier" = "none" ] && [ "$force_v4" -eq 0 ]; then
+        log Warn "Local address bypass unavailable for IPv4 (no addrtype module and no ipset support) — local->local IPv4 traffic will still be proxied"
+    fi
+    if [ "$PROXY_IPV6" -eq 1 ]; then
+        _carrier="$(local_addr_carrier 6)"
+        if [ "$_carrier" = "ipset" ] || [ "$force_v6" -eq 1 ]; then
+            need_v6=1
+        elif [ "$_carrier" = "none" ] && [ "$force_v6" -eq 0 ]; then
+            log Warn "Local address bypass unavailable for IPv6 (no addrtype on this stack and no ipset) — local->local IPv6 traffic will still be proxied"
+        fi
+    fi
 
-    start_local_addr_watcher
+    [ "$need_v4" -eq 0 ] && [ "$need_v6" -eq 0 ] && return 0
+
+    if [ "$need_v4" -eq 1 ]; then
+        log Debug "[EXEC] ipset destroy localaddr"
+        log Debug "[EXEC] ipset create localaddr hash:ip family inet hashsize 64 maxelem 128"
+        if [ "$DRY_RUN" -eq 0 ]; then
+            ipset destroy localaddr 2> /dev/null || true
+            ipset create localaddr hash:ip family inet hashsize 64 maxelem 128 || {
+                log Error "Failed to create ipset 'localaddr'"
+                return 1
+            }
+        fi
+    fi
+    if [ "$need_v6" -eq 1 ]; then
+        log Debug "[EXEC] ipset destroy localaddr6"
+        log Debug "[EXEC] ipset create localaddr6 hash:ip family inet6 hashsize 64 maxelem 128"
+        if [ "$DRY_RUN" -eq 0 ]; then
+            ipset destroy localaddr6 2> /dev/null || true
+            ipset create localaddr6 hash:ip family inet6 hashsize 64 maxelem 128 || {
+                log Warn "Failed to create ipset 'localaddr6'"
+                need_v6=0
+            }
+        fi
+    fi
+
+    LOCAL_ADDR_FAMILIES=""
+    [ "$need_v4" -eq 1 ] && LOCAL_ADDR_FAMILIES="${LOCAL_ADDR_FAMILIES}4"
+    [ "$need_v6" -eq 1 ] && LOCAL_ADDR_FAMILIES="${LOCAL_ADDR_FAMILIES}6"
+    log Info "Local address ipset families: ${LOCAL_ADDR_FAMILIES:-none}"
+
+    if ! sync_local_ipset_both; then
+        return 1
+    fi
+
+    if ! start_local_addr_watcher; then
+        log Warn "Local address sets created but the watcher did not start — sets are frozen at the initial snapshot, address changes will NOT be followed"
+        return 1
+    fi
     log Info "Local address bypass sets ready"
     return 0
 }
@@ -1977,9 +2224,13 @@ stop_local_addr_watcher() {
 }
 
 cleanup_local_addr() {
+    # 不按 BYPASS_LOCAL_ADDRS 提前返回：集合和后台进程是**上一次**启动留下的，
+    # 这一轮的配置值不能决定要不要清理它们。典型漏网场景是 runtime_tproxy.conf
+    # 丢失（半路崩掉、CONFIG_DIR 不一致），此时回落到当前配置，用户恰好把开关关
+    # 了 —— 跳过清理就会把一个一直刷日志的孤儿 watcher 和两个 ipset 留在那儿。
+    # 反过来销毁不存在的集合是无害空操作，所以无条件清理总是对的。
     if [ "$BYPASS_LOCAL_ADDRS" -ne 1 ]; then
-        log Debug "Local address bypass is disabled, cleanup skipped"
-        return 0
+        log Debug "Local address bypass is off in the current config; still cleaning up leftovers from a previous run"
     fi
     stop_local_addr_watcher
     log Debug "[EXEC] ipset destroy localaddr"
@@ -2471,6 +2722,12 @@ VERBOSE=0
 CONFIG_DIR=""
 MAIN_CMD=""
 LOCAL_ADDR_WATCHER=0
+# 哪些地址族真的建了 ipset（"4" / "6" 的子集）。watcher 据此决定同步哪几个集合，
+# 而不是照搬 PROXY_IPV6 —— 后者表示「v6 代理链要不要建」，跟「localaddr6 在不在」
+# 不是一回事（v6 走 addrtype 时集合没建，同步它只会每周期刷一条失败）。
+# 用 ${VAR:-4} 而不是硬赋值：watcher 是重新执行本脚本的子进程，这个值必须靠启动
+# 方用环境变量带进来（见 start_local_addr_watcher），硬赋值会把传进来的值盖掉。
+LOCAL_ADDR_FAMILIES="${LOCAL_ADDR_FAMILIES:-4}"
 USE_TPROXY=0
 HAS_TPROXY=0
 HAS_CONNTRACK=0
@@ -2484,6 +2741,7 @@ HAS_IPSET=0
 HAS_XT_SET=0
 HAS_NAT6=0
 HAS_REDIRECT6=0
+HAS_IP6TABLES=0
 
 parse_args "$@"
 
