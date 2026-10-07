@@ -47,12 +47,12 @@ on:
         type: boolean
         default: false
       version:
-        description: '🔢 自定义版本号，如 1.13（留空 = 自动 v1.0.<UTC日期>.<提交数>-<哈希>）'
+        description: '🔢 自定义版本号，如 1.13 或 v1.13（两者等价，统一按 v 前缀写入；留空 = 自动 v1.0.<UTC日期>.<提交数>-<哈希>）'
         required: false
         type: string
         default: ''
       custom_tag:
-        description: '🏷️ 产物命名称后缀 (可选)'
+        description: '🏷️ 产物命名后缀，仅用于本次运行的 artifact 包名（可选）'
         required: false
         type: string
         default: ''
@@ -60,10 +60,35 @@ on:
 permissions:
   contents: write
 
+# 同一 ref 的构建互斥：省 runner 之外，还堵住「两次自动发版同时打同一个 tag」的竞态 ——
+# tag 存在性检查与 git push 之间存在时间窗，并发时双方都能通过检查。
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build & Sign Release
-    runs-on: ubuntu-latest
+    # 自触发去重，顺带堵一个 versionCode 相撞的隐患。
+    #
+    # 下面 Create Release Tag 里的 `gh release create` 以 bot 身份发布 Release，那个动作本身
+    # 又会产生一次 release: published 事件，把本工作流整条再跑一遍 —— 历史上同一个 tag 就在
+    # 3 分钟内完整构建过两次，白烧约 10 分钟 runner。更要紧的是两次的 versionCode 不同：
+    # 第一次构建时 tag 还不存在，按「已有 tag 数 + 1」算；tag 推上去之后第二次构建再算一遍，
+    # 算出高 1 的值，而它上传的资产会覆盖第一次的。于是 Release 页上留的是那个「多算的」值，
+    # 而下一次发版仍按「已有 tag 数 + 1」算出同一个数 —— 同号，Play 直接拒收。
+    #
+    # 人工发布的 Release 照常构建；bot 自己发的那一次跳过（资产已经由 gh release create 带上）。
+    # 副作用：对 bot 发的 Release 用「Re-run all jobs」同样会被跳过 —— 想重建就删掉 release
+    # 重新发布，或直接走 workflow_dispatch。
+    if: github.event_name != 'release' || github.actor != 'github-actions[bot]'
+
+    # 与 pr-ci 同一个镜像，别用 ubuntu-latest：它会被 GitHub 悄悄升级，
+    # 让发版跑在一个与 PR 校验无关的工具链上。
+    runs-on: ubuntu-24.04
+    # 五个模块 × 两个变体 + gomobile 编译，正常十几分钟。不设上限的话，
+    # 一次卡死会白占默认 6 小时额度，且看不出是卡住还是只是慢。
+    timeout-minutes: 90
 
     steps:
       - name: Checkout Code with Submodules
@@ -71,7 +96,7 @@ jobs:
         with:
           # 必须全量：自动版本号用 `git tag --list 'v*'` 算 versionCode、
           # `git rev-list --count HEAD` 算 versionName 里的提交数。默认的 fetch-depth: 1
-          # 是浅克隆，tag 拿不到、提交数算成 1，versionCode 会永远卡在 15。
+          # 是浅克隆：没有 tag 可数（versionCode 退化成 万位段+13+1）、提交数算成 1。
           fetch-depth: 0
           submodules: recursive
 
@@ -88,10 +113,16 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
+          # 不在此处开 Gradle 缓存：下面 actions/cache 那步用更精确的 key
+          # （**/*.gradle.kts + libs.versions.toml）并额外缓存 wrapper，两处都开是重复劳动。
 
       - name: Set up Android NDK & gomobile
         run: |
+          # -e 与 -o pipefail 是 GitHub 默认 shell 自带的，这里补的是 -u：
+          # 引用了不存在的变量直接报错，而不是悄悄按空串走。
+          # 顺带让这个块能用普通 bash 在本地复现。
+          set -euo pipefail
+
           # 只认形如 27.0.12077973 的版本号目录。
           # 不能用 `find ... | sort -V | tail -n 1`：那排的是**完整路径**，
           # 而 `$ANDROID_HOME/ndk` 里可能混有非 NDK 目录（实测 Android Studio
@@ -131,6 +162,7 @@ jobs:
       - name: Build myssh AAR from core/jni/myssh
         working-directory: core/jni/myssh
         run: |
+          set -euo pipefail
           mkdir -p ../../libs
           # 与 core/jni/myssh/scripts/build_android_libs.sh 保持一致：v1.0.YYYYMMDD-<myssh 提交短哈希>
           VERSION="v1.0.$(date -u +%Y%m%d)-$(git rev-parse --short=7 HEAD)"
@@ -152,7 +184,7 @@ jobs:
       - name: Extract myssh classes.jar & build slim AARs
         working-directory: core/libs
         run: |
-          set -e
+          set -euo pipefail
           for VARIANT in release debug; do
             AAR="myssh.${VARIANT}.aar"
             WORK="work_${VARIANT}"
@@ -187,9 +219,18 @@ jobs:
           restore-keys: |
             ndk-${{ runner.os }}-
 
+      # version / custom_tag 是仅有的两个自由文本输入。${{ }} 会把值原文拼进脚本文本再交给
+      # bash 执行，值里只要有一个引号或换行就会破坏语法；这两个改走 env 注入，由 shell 按
+      # 变量引用取值。其余输入是 choice / boolean，取值被 GitHub 限定死，内联是安全的。
       - name: Set Build Options
         id: options
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          INPUT_TAG: ${{ github.event.inputs.custom_tag }}
         run: |
+          # 两个分支都必须写全下面这些键：缺一个键，后续 steps.options.outputs.*
+          # 会静默变成空串，问题会漂到十几分钟后才暴露。
+          set -euo pipefail
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "build_module=${{ github.event.inputs.build_module }}" >> $GITHUB_OUTPUT
             echo "build_variant=${{ github.event.inputs.build_variant }}" >> $GITHUB_OUTPUT
@@ -199,47 +240,63 @@ jobs:
 
             # 用户输入先净化再落进 $GITHUB_OUTPUT：这些值后面会进 shell 命令，
             # 若原样拼进去，填个 `1.13; rm -rf /` 就会在 shell 里被当成命令执行。
-            RAW_VERSION="${{ github.event.inputs.version }}"
-            RAW_TAG="${{ github.event.inputs.custom_tag }}"
+            RAW_VERSION="${INPUT_VERSION}"
+            RAW_TAG="${INPUT_TAG}"
             AUTO_RELEASE="${{ github.event.inputs.auto_release }}"
+            SIGN_RELEASE="${{ github.event.inputs.sign_release }}"
             AUTO_RELEASE=${AUTO_RELEASE:-false}
             RAW_VERSION=${RAW_VERSION//[!0-9A-Za-z._+-]/}
             RAW_TAG=${RAW_TAG//[!0-9A-Za-z._+-]/}
             echo "auto_release=$AUTO_RELEASE" >> $GITHUB_OUTPUT
-            echo "version=$RAW_VERSION" >> $GITHUB_OUTPUT
-
-            # 自动发版：tag 名由版本号派生（1.13 → v1.13）。必须在**构建之前**校验 ——
-            # 否则跑完十几分钟才在打 tag 那一步失败，白烧一次 runner。
-            if [ "$AUTO_RELEASE" == "true" ]; then
-              if [ -z "$RAW_VERSION" ]; then
-                echo "::error::勾选了自动创建 Release，但没有填版本号"
-                exit 1
-              fi
-              TAG="v${RAW_VERSION#v}"
-              if ! printf '%s' "$TAG" | grep -Eq '^v[0-9]+(\.[0-9]+){0,2}(-[0-9A-Za-z.-]+)?$'; then
-                echo "::error::版本号非法（应为 1.13 / 1.13.0 / 1.13-beta 这类）：${{ github.event.inputs.version }}"
-                exit 1
-              fi
-              echo "release_tag=$TAG" >> $GITHUB_OUTPUT
-            else
-              echo "release_tag=" >> $GITHUB_OUTPUT
-            fi
             echo "tag=$RAW_TAG" >> $GITHUB_OUTPUT
+
+            # 版本号统一成 v 开头：tag 必须是 v* 才会被 versionCode 的
+            # `git tag --list 'v*'` 计到（见 build.gradle.kts），所以 1.13 与 v1.13
+            # 是同一个版本号。versionName 用同一形态，避免出现「远端 tag 是 v1.13、
+            # 包里却写着 1.13」的两套编号。校验放在构建之前 —— 否则白跑十几分钟
+            # 才在打 tag 那一步失败。
+            VERSION=""
+            if [ -n "$RAW_VERSION" ]; then
+              VERSION="v${RAW_VERSION#v}"
+              if ! printf '%s' "$VERSION" | grep -Eq '^v[0-9]+(\.[0-9]+){0,2}(-[0-9A-Za-z.-]+)?$'; then
+                echo "::error::版本号非法（应为 1.13 / 1.13.0 / 1.13-beta 这类）：$RAW_VERSION"
+                exit 1
+              fi
+            fi
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "release_tag=$VERSION" >> $GITHUB_OUTPUT
+
+            if [ "$AUTO_RELEASE" == "true" ] && [ -z "$VERSION" ]; then
+              echo "::error::勾选了自动创建 Release，但没有填版本号"
+              exit 1
+            fi
+            # 自动发版却不签名 = 往 Release 页发布装不了的 -unsigned.apk，提前拦下。
+            if [ "$AUTO_RELEASE" == "true" ] && [ "$SIGN_RELEASE" != "true" ]; then
+              echo "::error::勾选了自动创建 Release 但未签名，产物会是 -unsigned.apk，无法安装"
+              exit 1
+            fi
+            if [ "$AUTO_RELEASE" != "true" ] && [ -n "$VERSION" ]; then
+              echo "::notice::版本号 $VERSION 只写入 versionName，不会创建 tag 或 Release"
+            fi
           else
-            # 自动触发时（Release 发布）全量构建所有端；AAB 必须构建 —— 它是本 run 的 artifact
+            # release 事件已自带 tag 和 GitHub Release，不再重复创建；
+            # versionName 沿用自动值，不做覆盖。
+            # AAB 必须构建 —— 它是本 run 的唯一 artifact。
             echo "build_module=all" >> $GITHUB_OUTPUT
             echo "build_variant=both" >> $GITHUB_OUTPUT
             echo "build_aab=true" >> $GITHUB_OUTPUT
             echo "sign=true" >> $GITHUB_OUTPUT
             echo "clean=false" >> $GITHUB_OUTPUT
-            # release 事件本身已经带着 tag 和 GitHub Release，不再重复创建；
-            # versionName 沿用自动值，不做覆盖。
             echo "auto_release=false" >> $GITHUB_OUTPUT
             echo "version=" >> $GITHUB_OUTPUT
             echo "release_tag=" >> $GITHUB_OUTPUT
             echo "tag=" >> $GITHUB_OUTPUT
           fi
 
+      # 产物经 -Pandroid.injected.signing.store.file 传给 gradle，再由 build.gradle.kts
+      # 的 signingConfigs 块接上（AGP 不会自己读这些 -P 参数）。sign=false 时这一步
+      # 跳过，decode_keystore.outputs.filePath 是空串 —— 下面的 PARAMS 同样被跳过，
+      # 所以不会把空路径喂给 gradle；代价是 release 产物名会带 -unsigned 后缀。
       - name: Decode Keystore
         if: steps.options.outputs.sign == 'true'
         id: decode_keystore
@@ -264,7 +321,15 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
+          set -euo pipefail
           MODULE_CHOICE="${{ steps.options.outputs.build_module }}"
+          VARIANT="${{ steps.options.outputs.build_variant }}"
+          BUILD_AAB="${{ steps.options.outputs.build_aab }}"
+          SIGN="${{ steps.options.outputs.sign }}"
+          CLEAN="${{ steps.options.outputs.clean }}"
+
+          # build_module 是 choice 输入，但 case 仍显式列出：模块名写错只会让 gradle
+          # 报一个看不出具体的 unknown task，不如在这里就能看出。
           case "$MODULE_CHOICE" in
             app)  MODULES="app" ;;
             tv)   MODULES="tv" ;;
@@ -275,17 +340,14 @@ jobs:
           esac
 
           TASKS=""
-          if [ "${{ steps.options.outputs.clean }}" == "true" ]; then
+          if [ "$CLEAN" == "true" ]; then
             TASKS="clean"
           fi
 
-          VARIANT="${{ steps.options.outputs.build_variant }}"
-          
           for mod in $MODULES; do
-            # Build APKs
             if [ "$VARIANT" == "release" ] || [ "$VARIANT" == "both" ]; then
               TASKS="$TASKS :$mod:assembleRelease"
-              if [ "${{ steps.options.outputs.build_aab }}" == "true" ]; then
+              if [ "$BUILD_AAB" == "true" ]; then
                 TASKS="$TASKS :$mod:bundleRelease"
               fi
             fi
@@ -293,16 +355,20 @@ jobs:
               TASKS="$TASKS :$mod:assembleDebug"
             fi
           done
-          
-          if [ -z "$TASKS" ] || [ "$TASKS" == "clean" ]; then
-            echo "⚠️ No build tasks selected. Skipping Gradle build."
-            exit 0
-          fi
 
-          echo "🚀 Running tasks: $TASKS"
+          echo "🚀 Running tasks:$TASKS"
 
+          # -P 参数只在签名时传：build.gradle.kts 的 signingConfigs 块靠「属性是否存在」
+          # 决定要不要启用，传了空值会让 gradle 去打开一个不存在的路径。
           PARAMS=""
-          if [ "${{ steps.options.outputs.sign }}" == "true" ]; then
+          if [ "$SIGN" == "true" ]; then
+            # 四个值缺一个时，-P 会把空串写成「属性存在但值为空」，signingConfigs 照样启用，
+            # 然后 gradle 报一个和「secret 没配」完全无关的签名错误。在这里就说清。
+            if [ -z "$KEYSTORE_FILE" ] || [ -z "$KEYSTORE_PASSWORD" ] \
+               || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+              echo "::error::勾选了签名，但 KEYSTORE_BASE64 / KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD 有未配置的项"
+              exit 1
+            fi
             PARAMS="-Pandroid.injected.signing.store.file=$KEYSTORE_FILE \
                     -Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD \
                     -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
@@ -314,23 +380,43 @@ jobs:
       - name: Generate Build Summary
         if: always()
         run: |
+          # 本步 if: always()，构建失败时也会跑。关掉 -e：这里只是写报告，
+          # find|grep|sed 在产物为空时返回非零，不该把一个已经失败的 job 再弄得更难看。
+          set +e
           echo "## 🚀 Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "- **Module:** ${{ steps.options.outputs.build_module }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Variant:** ${{ steps.options.outputs.build_variant }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Sign:** ${{ steps.options.outputs.sign }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Clean Build:** ${{ steps.options.outputs.clean }}" >> $GITHUB_STEP_SUMMARY
           if [ -n "${{ steps.options.outputs.version }}" ]; then
-            echo "- **Version:** \`${{ steps.options.outputs.version }}\`（自定义，原样写入 versionName）" >> $GITHUB_STEP_SUMMARY
+            echo "- **Version (custom):** \`${{ steps.options.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
           fi
           if [ "${{ steps.options.outputs.auto_release }}" == "true" ]; then
             echo "- **Auto Release:** \`${{ steps.options.outputs.release_tag }}\`" >> $GITHUB_STEP_SUMMARY
           fi
           if [ -n "${{ steps.options.outputs.tag }}" ]; then
-            echo "- **Custom Tag:** ${{ steps.options.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Artifact Name Suffix:** ${{ steps.options.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📦 Artifacts generated:" >> $GITHUB_STEP_SUMMARY
-          find . -name "*.apk" -o -name "*.aab" | grep "/build/outputs/" | sed 's/.*\//- /' >> $GITHUB_STEP_SUMMARY
+          find . \( -name "*.apk" -o -name "*.aab" \) -path "*/build/outputs/*" \
+            | sed 's|.*|- |' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # versionCode / versionName 是 Play 单调性的核对依据
+          # （versionCode = 万位段 + 13 + v* tag 数 + 1）。从产物的元数据里读实际值，
+          # 而不是复述输入 —— 发布前一眼就能确认单调性和 ① 五个模块互不相同。
+          echo "### 🔢 Version (from build outputs)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          find . -path "*/build/outputs/apk/*/output-metadata.json" 2>/dev/null | sort \
+            | while IFS= read -r f; do
+                mod=${f#./}; mod=${mod%%/*}
+                variant=$(basename "$(dirname "$f")")
+                vc=$(grep -oE '"versionCode":[[:space:]]*[0-9]+' "$f" | head -1 | grep -oE '[0-9]+$')
+                vn=$(grep -oE '"versionName":"[^"]*"' "$f" | head -1 | cut -d'"' -f4)
+                printf '%-6s %-7s code=%-7s name=%s\n' "$mod" "$variant" "${vc:--}" "${vn:--}"
+              done >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
       # tag（release 发布）触发：AAB bundle 挂到本 Action Run 的 artifact；
       # APK 与 AAR 才是 Release 页面的资产（见下面 Upload Release Assets）。
@@ -371,6 +457,10 @@ jobs:
       # workflow_dispatch + 自动发版：在 HEAD 上打 tag 并发布 GitHub Release。
       # tag 故意放在**构建之后**：versionCode 按 `v* tag 数 + 1` 算（见 build.gradle.kts），
       # 那个 +1 指的就是「本次将要创建的 tag」。若先打 tag 再构建，计数会多 1、versionCode 虚高。
+      #
+      # gh release create 会再产生一次 release: published 事件（GitHub 并没有阻止
+      # 工作流被自己的事件触发 —— 历史上同一个 tag 就因此完整构建过两次）。
+      # 那一次由 job 顶部的 if: github.actor != 'github-actions[bot]' 挡掉，见那里的说明。
       - name: Create Release Tag & Publish Release
         if: github.event_name == 'workflow_dispatch' && steps.options.outputs.auto_release == 'true'
         env:
@@ -401,6 +491,7 @@ jobs:
             exit 1
           fi
 
+          # tag 作者标成 bot，而不是 checkout 留下的占位身份。
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$TAG" -m "$TAG"
@@ -412,6 +503,9 @@ jobs:
                 git push origin ":refs/tags/$TAG" >/dev/null 2>&1 || true;
                 git tag -d "$TAG" >/dev/null 2>&1 || true' ERR
 
+          # git push 用的是 actions/checkout 持久化的凭据，不是上面的 GH_TOKEN
+          # （GH_TOKEN 只给 gh CLI 用）。checkout 的 persist-credentials 默认 true；
+          # 谁若把它关掉，这里会直接 Permission denied。
           git push origin "$TAG"
           echo "📦 Uploading ${#FILES[@]} assets to $TAG"
           gh release create "$TAG" --title "$TAG" --generate-notes "${FILES[@]}"

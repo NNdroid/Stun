@@ -64,7 +64,22 @@ if (ciBuild) {
     println(":${project.name} versionName=$autoVersionName versionCode=$autoVersionCode (CI run #$ciRunNumber)")
 }
 
+// CI 签名密钥：release.yml 经 -Pandroid.injected.signing.* 注入。这些参数本身不会被 AGP 读取，
+// 必须由下面的 signingConfigs 块接上；本地不传 → null → 整段空操作，
+// debug 仍用调试密钥、release 仍产 unsigned 包，本地构建完全不受影响。
+val ciSignStoreFile = providers.gradleProperty("android.injected.signing.store.file").orNull
+
 android {
+    signingConfigs {
+        if (ciSignStoreFile != null) {
+            create("ciRelease") {
+                storeFile = file(ciSignStoreFile)
+                storePassword = providers.gradleProperty("android.injected.signing.store.password").orNull
+                keyAlias = providers.gradleProperty("android.injected.signing.key.alias").orNull
+                keyPassword = providers.gradleProperty("android.injected.signing.key.password").orNull
+            }
+        }
+    }
     namespace = "app.fjj.stun.wear"
     compileSdk = 37
 
@@ -104,6 +119,7 @@ android {
     buildTypes {
         release {
             versionNameSuffix = if (ciBuild) "" else "-release+$gitHash"
+            signingConfig = ciSignStoreFile?.let { signingConfigs.getByName("ciRelease") }
             isMinifyEnabled = true
             isShrinkResources = true
             isDebuggable = false
