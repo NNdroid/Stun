@@ -418,6 +418,67 @@ class TProxySourceParityTest {
         assertTrue("stop_proxy 必须清本机地址集合（含后台进程）", stop.contains("cleanup_local_addr"))
     }
 
+    /**
+     * 后台同步有两种模式（`ip monitor address` 事件驱动 / 定时轮询），但**对账必须只有一份**。
+     *
+     * 两种模式各写一份对账逻辑，早晚会在某次改动里只改一处 —— 于是同一个地址变化在两种
+     * 模式下得到不同结果，而退化路径（monitor 不可用自动切轮询）会把这个分歧藏掉：开发机上
+     * monitor 可用，线上机型不一定。
+     *
+     * 退化必须是自动的：探测和尝试是同一个动作，monitor 起不来就退轮询，
+     * 不需要人工判断的开关。
+     */
+    @Test
+    fun localAddressSyncIsSharedByEventModeAndPollingFallback() {
+        val watch = shellFunctionBody(tproxySh, "local_addr_watch_loop")
+        val monitor = shellFunctionBody(tproxySh, "local_addr_monitor_loop")
+        val poll = shellFunctionBody(tproxySh, "local_addr_poll_loop")
+
+        // 两种模式调用的是同一个对账函数。
+        assertTrue("事件模式必须走 sync_local_ipset", monitor.contains("sync_local_ipset \"\""))
+        assertTrue("轮询模式必须走 sync_local_ipset", poll.contains("sync_local_ipset \"\""))
+        // monitor 没跑起来必须退轮询，而不是报错就停着。
+        assertTrue("事件模式挂了必须退回轮询", watch.contains("if ! local_addr_monitor_loop; then"))
+        assertTrue("退化后必须真的进入轮询循环", watch.contains("local_addr_poll_loop"))
+        // 开关默认开；配置里没写时按 `:-` 落到默认值，而不是落成空串。
+        assertTrue(
+            "monitor 开关必须走 :- 默认值",
+            tproxySh.contains("LOCAL_ADDR_USE_MONITOR=\"\${LOCAL_ADDR_USE_MONITOR:-"),
+        )
+        assertTrue("默认应开启 monitor", tproxySh.contains("DEFAULT_LOCAL_ADDR_USE_MONITOR=1"))
+    }
+
+    /**
+     * 事件模式的生命周期必须自己收干净，否则每次 stop/start 都会漏东西。
+     *
+     * 三个后果，每一个都必须是「静默失败」而不是「炸一下就算了」：
+     * - 用管道（`ip monitor | while read`）时 `exit` 只杀子 shell，watcher 会无限重启 monitor；
+     * - `wait` 一个还活着的 monitor 会永久阻塞，集合销毁后进程退不出来；
+     * - stop 走 SIGTERM，循环体内的清理一条都执行不到，monitor 会带着 netlink 句柄变孤儿。
+     */
+    @Test
+    fun eventModeWatcherCleansUpAfterItself() {
+        val monitor = shellFunctionBody(tproxySh, "local_addr_monitor_loop")
+        val stop = shellFunctionBody(tproxySh, "local_addr_monitor_stop")
+        val poll = shellFunctionBody(tproxySh, "local_addr_poll_loop")
+        val cleanup = shellFunctionBody(tproxySh, "cleanup_local_addr")
+
+        // FIFO 而不是管道：read 必须在 watcher 自己的 shell 里阻塞，exit 才能真正退出。
+        assertTrue("必须用 mkfifo 建命名管道", monitor.contains("mkfifo"))
+        assertTrue("read 必须从 FIFO 读，不能是管道里的子 shell", monitor.contains("read -r _line < \"\$fifo\""))
+        // 退出口必须能真正终止进程：monitor 此刻还活着，wait 会永久阻塞。
+        assertTrue("退出前要收掉 monitor 子进程", stop.contains("kill \"\$1\""))
+        assertTrue("退出前要清掉 FIFO", stop.contains("rm -f \"\$2\""))
+        assertTrue("退出必须真正 exit", stop.contains("exit 0"))
+        // SIGTERM 要兜住：信号到达时循环体里的清理不会执行。
+        assertTrue("必须装信号 trap 兜 SIGTERM", monitor.contains("trap 'local_addr_monitor_stop"))
+        // 轮询里的 sleep 得可中断，否则 stop 的 SIGTERM 最长要等一个完整周期。
+        assertTrue("poll 的 sleep 必须放后台 + wait 才能被打断", poll.contains("sleep \"\$interval\" &"))
+        assertTrue("poll 必须 wait 掉那个 sleep", poll.contains("wait \$!"))
+        // SIGKILL 那条路 trap 跑不到，stop 时顺手把残留 FIFO 扫掉。
+        assertTrue("stop 必须扫掉残留 FIFO", cleanup.contains("localaddr_monitor.*.fifo"))
+    }
+
     @Test
     fun scriptAcceptsTheTwoProxyModesWeEmit() {
         assertTrue(
