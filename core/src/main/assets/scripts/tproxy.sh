@@ -128,16 +128,24 @@ readonly DEFAULT_MAC_PROXY_MODE="blacklist"
 #
 # 两种载体，按内核能力二选一（见 setup_local_addr_sets）：
 #   HAS_ADDRTYPE=1 -> `-m addrtype --dst-type LOCAL`，内核自己跟踪本机地址表，
-#                     地址怎么变都不用管，本脚本什么都不用做；
-#   HAS_ADDRTYPE=0 -> ipset `localaddr` / `localaddr6`，由后台进程跟着 `ip addr` 增删。
-#                    Android 上的 toybox `ip` 经常不带 netlink monitor（`ip monitor
-#                    address` 直接不可用），所以后台进程轮询而不是监听 —— 结果一样，
-#                    还不用维护一个解析器。
+#                     地址怎么变都不用管，本脚本什么都不用做，也不需要后台进程；
+#   HAS_ADDRTYPE=0 -> ipset `localaddr` / `localaddr6`，由后台进程跟着本机地址增删。
+#
+# 后台进程的两种触发方式（见 local_addr_watch_loop）：
+#   ip monitor 可用 -> 事件驱动，地址一变立刻同步；
+#   ip monitor 不可用 -> 轮询 `ip addr show`，间隔见下面。
+# 两种方式跑的是同一个 sync_local_ipset，对账语义不可能漂移。
+# Android 上的 toybox `ip` 不一定带 netlink monitor，所以先探测、探测不到再轮询，
+# 不能假设它一定有 —— 这个探测是「试着真跑一次看进程活不活」，不解析 ip help
+# （各版本帮助格式都不一样）。
 #
 # 默认开：关掉能省一条规则，代价是上面那类回灌，得不偿失。
 readonly DEFAULT_BYPASS_LOCAL_ADDRS=1
-# 轮询间隔（秒）。只在 ipset 载体下生效。
+# 轮询间隔（秒）。只在 ipset 载体下生效，且只有 ip monitor 不可用时才真的轮询。
 readonly DEFAULT_LOCAL_ADDR_POLL_INTERVAL=2
+# 1 = 先试 `ip monitor address`（事件驱动），拿不到数据再退轮询；0 = 直接轮询。
+# 留这个开关是因为个别版本的 toybox monitor 行为不确定，留一条不改代码的退路。
+readonly DEFAULT_LOCAL_ADDR_USE_MONITOR=1
 
 # block quic
 readonly DEFAULT_BLOCK_QUIC=0
@@ -273,6 +281,7 @@ load_config() {
     BYPASS_CN_IP="${BYPASS_CN_IP:-$DEFAULT_BYPASS_CN_IP}"
     BYPASS_LOCAL_ADDRS="${BYPASS_LOCAL_ADDRS:-$DEFAULT_BYPASS_LOCAL_ADDRS}"
     LOCAL_ADDR_POLL_INTERVAL="${LOCAL_ADDR_POLL_INTERVAL:-$DEFAULT_LOCAL_ADDR_POLL_INTERVAL}"
+    LOCAL_ADDR_USE_MONITOR="${LOCAL_ADDR_USE_MONITOR:-$DEFAULT_LOCAL_ADDR_USE_MONITOR}"
     CN_IP_FILE="${CN_IP_FILE:-$DEFAULT_CN_IP_FILE}"
     CN_IPV6_FILE="${CN_IPV6_FILE:-$DEFAULT_CN_IPV6_FILE}"
     CN_IP_URL="${CN_IP_URL:-$DEFAULT_CN_IP_URL}"
@@ -298,6 +307,7 @@ load_config() {
                     HOTSPOT_SUBNET_IPV4 HOTSPOT_SUBNET_IPV6 \
                     APP_PROXY_ENABLE PROXY_APPS_LIST BYPASS_APPS_LIST APP_PROXY_MODE \
                     BYPASS_CN_IP BYPASS_LOCAL_ADDRS LOCAL_ADDR_POLL_INTERVAL \
+                    LOCAL_ADDR_USE_MONITOR \
                     CN_IP_FILE CN_IPV6_FILE CN_IP_URL CN_IPV6_URL \
                     MAC_FILTER_ENABLE PROXY_MACS_LIST BYPASS_MACS_LIST MAC_PROXY_MODE \
                     BLOCK_QUIC LOG_TIMESTAMP SKIP_CHECK_FEATURE; do
@@ -1769,8 +1779,8 @@ sync_local_ipset() {
     return 0
 }
 
-# 后台进程主循环：轮询本机地址并同步 ipset。集合被销毁（代理已停）就自行退出，
-# 免得有人忘记 stop 时留一个一直刷日志的孤儿。
+# 后台进程主循环。集合被销毁（代理已停）就自行退出，免得有人忘记 stop 时留一个
+# 一直刷日志的孤儿 —— 这一点在两种模式下都必须成立。
 local_addr_watch_loop() {
     local interval="$LOCAL_ADDR_POLL_INTERVAL"
     is_positive_integer "$interval" || interval="$DEFAULT_LOCAL_ADDR_POLL_INTERVAL"
@@ -1779,12 +1789,102 @@ local_addr_watch_loop() {
     pf="$(local_addr_pidfile)"
     [ "$DRY_RUN" -eq 0 ] && echo $$ > "$pf"
 
+    # 先对账一次：事件流只报「之后」的变化，启动那一刻的当前状态得自己同步。
+    # （setup_local_addr_sets 已经灌过一份，这里幂等，不算重复开销。）
+    sync_local_ipset "" || exit 0
+    [ "$PROXY_IPV6" -eq 1 ] && { sync_local_ipset 6 || exit 0; }
+
+    if [ "$LOCAL_ADDR_USE_MONITOR" -eq 1 ]; then
+        # 事件模式没跑起来就退轮询。注意这里的分支是「没拿到数据」，不是「集合没了」：
+        # 集合被销毁时 monitor 循环内部已经 exit 0，不会走到这里。
+        if ! local_addr_monitor_loop; then
+            log Info "ip monitor unavailable, local address watcher falls back to polling (${interval}s)"
+        fi
+    else
+        log Debug "LOCAL_ADDR_USE_MONITOR=0, using polling (${interval}s)"
+    fi
+
+    local_addr_poll_loop "$interval"
+}
+
+# 轮询模式：定时取一次本机地址快照，跟 ipset 成员做差集。
+local_addr_poll_loop() {
+    local interval="$1"
     log Info "Local address watcher running (poll ${interval}s)"
     while :; do
         sync_local_ipset "" || exit 0
         [ "$PROXY_IPV6" -eq 1 ] && { sync_local_ipset 6 || exit 0; }
-        sleep "$interval"
+        # sleep 必须放到后台再 wait：POSIX 规定 shell 在等前台命令完成时收到的
+        # trap 要等那条命令结束才执行，前台 sleep 会让 stop 的 SIGTERM 最长推迟
+        # 一个周期。后台 + wait 让信号立刻打断。
+        sleep "$interval" &
+        wait $! 2> /dev/null
     done
+}
+
+# 事件模式：`ip monitor address` 挂在 netlink 上，任何地址变化立刻往管道吐数据，
+# read 被唤醒后跑的就是同一个 sync_local_ipset —— 两种模式对账语义不可能漂移。
+#
+# 探测和退化是同一个动作，不做单独探测：monitor 不支持或中途挂了，read 立刻拿到
+# EOF、while 不执行，本函数返回 1，调用方退轮询。代价只是一次失败 fork，不用
+# 解析 `ip help`（各版本格式都不一样），也不需要 toybox 不一定有的 timeout。
+#
+# 必须用 FIFO 而不是管道（`ip monitor | while read`）：管道右半边的 while 跑在
+# **子 shell** 里，里面的 `exit 0` 只杀子 shell、杀不掉 watcher 本身 —— 集合一旦被
+# 销毁就会变成「重启 monitor、同步失败、又重启 monitor」的无限空转。FIFO 让 read
+# 在 watcher 自己的 shell 里阻塞，exit 才能真正退出进程。
+#
+# 代价要说清：事件模式没有周期清扫。轮询里那次 sweep 的作用是自愈「漏掉的事件」，
+# 事件模式下唯一现实的丢事件途径就是 monitor 进程本身没了，而那种情况表现为 EOF、
+# 本函数返回、上面直接退轮询。monitor 挂着但一直不吐数据，等价于这段时间没有地址
+# 变化，本来就不需要同步。
+
+# 收掉 monitor 子进程、清掉 FIFO、退出进程。三处出口共用，少收 monitor 就等于把
+# 挂着 netlink 的进程留成孤儿。
+#
+# 这里必须用 kill 而不是 wait：monitor 的 FIFO 写端还开着，wait 会阻塞到它自己退出，
+# 而它挂着 netlink 不会自己退 —— `exit 0` 永远执行不到，watcher 就卡死在这里了。
+local_addr_monitor_stop() {
+    kill "$1" 2> /dev/null
+    rm -f "$2"
+    exit 0
+}
+
+local_addr_monitor_loop() {
+    local fifo="$TMPDIR/localaddr_monitor.$$.fifo"
+    local mp=
+    local _line
+    log Info "Local address watcher running (event mode: ip monitor address)"
+    if ! mkfifo "$fifo" 2> /dev/null; then
+        rm -f "$fifo"
+        log Warn "mkfifo failed, local address watcher falls back to polling"
+        return 1
+    fi
+
+    # 重定向让子进程先打开写端（会阻塞到读端打开），我们紧接着打开读端，两边同时
+    # 解开 —— 所以不存在「write 端没人读」的 SIGPIPE 窗口。
+    ip monitor address > "$fifo" 2> /dev/null &
+    mp=$!
+
+    # stop 走 SIGTERM，此刻 read 正阻塞在 FIFO 上，循环体里的清理一条都执行不到；
+    # 不兜这个口，`ip monitor` 会带着 netlink 句柄活成孤儿，每 stop/start 一轮漏一个。
+    # 这个 trap 不拆：退化到轮询后 $mp 已是死 pid、$fifo 已删，再触发也只会做两个
+    # 无害空操作然后正常退出。
+    trap 'local_addr_monitor_stop "${mp-}" "${fifo-}"' INT TERM
+
+    while IFS= read -r _line < "$fifo"; do
+        if ! sync_local_ipset ""; then
+            local_addr_monitor_stop "$mp" "$fifo"
+        fi
+        if [ "$PROXY_IPV6" -eq 1 ] && ! sync_local_ipset 6; then
+            local_addr_monitor_stop "$mp" "$fifo"
+        fi
+    done
+
+    # 走到这里说明 read 拿到了 EOF，即 monitor 已经自己退出了，wait 能立刻收尸。
+    rm -f "$fifo"
+    wait "$mp" 2> /dev/null
+    return 1
 }
 
 local_addr_pidfile() {
@@ -1887,6 +1987,9 @@ cleanup_local_addr() {
     if [ "$DRY_RUN" -eq 0 ]; then
         ipset destroy localaddr 2> /dev/null || true
         ipset destroy localaddr6 2> /dev/null || true
+        # 事件模式的 FIFO 由后台进程自己清；但它被 SIGTERM 收掉时清理不会跑。
+        # 按 pid 命名所以互不冲突，这里在 stop 时顺手扫掉，免得 $TMPDIR 里慢慢堆。
+        rm -f "$TMPDIR"/localaddr_monitor.*.fifo 2> /dev/null
     fi
     log Info "Local address sets destroyed"
 }
