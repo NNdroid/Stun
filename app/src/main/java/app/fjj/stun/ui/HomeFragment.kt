@@ -112,6 +112,16 @@ class HomeFragment : Fragment() {
     private var latestExitDisplayDual: String? = null
 
     /**
+     * 未连接行当前挂着的状态覆盖（如「连接失败」）。
+     *
+     * 延迟测试完成只会改**副文案**，不能顺手把主文案刷回「未连接」——否则一次连接失败后，
+     * 用户点一下底栏想看看这个节点通不通，测完「连接失败」就悄悄没了，只剩「未连接」，
+     * 既丢了失败信号，也看不出刚才为什么连不上。要真正回到普通断开态，由
+     * [VpnState.DISCONNECTED] 分支显式清空。
+     */
+    private var disconnectedStateCaption: String? = null
+
+    /**
      * 本次会话的出口探测是否已有结论（查到、或查完没拿到，都算有结论）。
      *
      * 底栏的出口行是**预留**的：可见性只跟随连接状态，所以在探测出结果之前要有东西顶上，
@@ -565,8 +575,12 @@ class HomeFragment : Fragment() {
         }
         renderBottomExit(connected || reconnecting)
         if (connected || reconnecting) {
-            binding.tvStatus.text = profile?.name?.takeIf { it.isNotBlank() }
-                ?: getString(CoreR.string.main_connected)
+            // 重连中的隧道是**断的**：主文案写节点名会和「已连接」一模一样，用户以为隧道还活着。
+            // 「重连中」由 updateUiState 的 RECONNECTING 分支写好，这里不动它，只刷副文案。
+            if (connected) {
+                binding.tvStatus.text = profile?.name?.takeIf { it.isNotBlank() }
+                    ?: getString(CoreR.string.main_connected)
+            }
             binding.tvStatusSubtitle.visibility = View.VISIBLE
             binding.tvStatusSubtitle.text = if (latencyTestInProgress) {
                 // 连接中的这次「探测」实际是出口 IP 查询，断开态才是真正的延迟测试。
@@ -575,7 +589,9 @@ class HomeFragment : Fragment() {
                     else CoreR.string.main_testing_latency,
                 )
             } else if (reconnecting) {
-                getString(CoreR.string.main_reconnecting)
+                // 主文案已是「重连中」，副文案让位给节点名，免得两行写同一句话。
+                profile?.name?.takeIf { it.isNotBlank() }
+                    ?: getString(CoreR.string.main_reconnecting)
             } else {
                 latestLatencyLabel
                     ?: StunRepository.latencyMs.value?.takeIf { it >= 0L }?.let { "$it ms" }
@@ -640,26 +656,33 @@ class HomeFragment : Fragment() {
     /**
      * 未连接态（含失败）的底栏身份行。
      *
-     * 主文案给"当前选中的节点名"，副文案给状态或时延 —— 这样底栏左侧的信息密度与连接态对称，
-     * 不会只剩"未连接"三个字、右边一整片空着。断开这件事由红点表达，不需要再用大字重复一遍。
+     * **主文案是连接状态，不是节点名** —— 底栏左侧是「我现在连上了吗」的第一眼答案。
+     * 断开后还挂着节点名，读起来跟连接态（主文案也是节点名）一模一样，用户会误以为隧道还活着；
+     * 所以断开必须落回"未连接"，与连接成功前是同一个样子。连接 / 断开的对称关系才成立。
      *
-     * 时延永远走**副文案**（红点之后），不往主文案后面拼括号 —— 那是改版前的写法
+     * 节点名让位给副文案（红点之后），不丢这条信息：底栏本来就是「即将连到谁」的快捷栏，
+     * 头像字母只有首字，全名得靠这里。有过测量时让位给时延 —— 那才是断开态真正能回答的问题
+     * （「这个节点现在通不通」），优先级高于「我选了谁」。
+     *
+     * 时延永远走**副文案**，不往主文案后面拼括号 —— 那是改版前的写法
      * （`"未连接 (500 ms)"`），会把状态和测量值挤成一句读不出重点的话。
      *
-     * @param subtitle 副文案（如时延结果）；为空时回落成"未连接"
+     * @param stateCaption 主文案的状态覆盖（如"连接失败"）；为空时沿用上一次的状态覆盖，
+     *                     再没有才回落成"未连接"
      */
-    private fun renderDisconnectedIdentity(subtitle: String?) {
+    private fun renderDisconnectedIdentity(stateCaption: String?) {
         if (_binding == null || !isAdded) return
         val ctx = context ?: return
         val nodeName = activeBottomProfile?.name?.takeIf { it.isNotBlank() }
-        binding.tvStatus.text = nodeName ?: ctx.getString(CoreR.string.main_disconnected)
+        if (!stateCaption.isNullOrBlank()) disconnectedStateCaption = stateCaption
+        val caption = disconnectedStateCaption
+        binding.tvStatus.text = caption ?: ctx.getString(CoreR.string.main_disconnected)
         binding.tvStatusSubtitle.setTextColor(ContextCompat.getColor(ctx, R.color.connection_state_offline))
-        // 一个节点都没有时主文案本身就是"未连接"，副文案再写一遍纯属重复 —— 那种情况交给
-        // 空状态视图去引导，这里直接收起副文案。
-        val caption = subtitle?.takeIf { it.isNotBlank() }
-            ?: getString(CoreR.string.main_disconnected).takeIf { nodeName != null }
-        binding.tvStatusSubtitle.text = caption.orEmpty()
-        binding.tvStatusSubtitle.visibility = if (caption == null) View.GONE else View.VISIBLE
+        // 时延优先于节点名（见上文说明）；两者都没有时收起副文案，交给空状态视图去引导，
+        // 免得主文案"未连接"和副文案再重复一遍。
+        val detail = latestLatencyLabel?.takeIf { it.isNotBlank() } ?: nodeName
+        binding.tvStatusSubtitle.text = detail.orEmpty()
+        binding.tvStatusSubtitle.visibility = if (detail == null) View.GONE else View.VISIBLE
     }
 
     /**
@@ -1353,6 +1376,12 @@ class HomeFragment : Fragment() {
             updateNodeTabCounts(profiles)
             activeBottomProfile = profiles.firstOrNull { it.id == effectiveSelectedId }
             renderConnectionIdentity()
+            // renderConnectionIdentity 只管头像字母与连接态文案；未连接态的身份行得单独刷，
+            // 否则列表刷新（加节点、改节点、导入）之后副文案还挂着旧节点名或旧时延。
+            val vpnState = StunRepository.vpnState.value
+            if (vpnState == VpnState.DISCONNECTED || vpnState == VpnState.ERROR) {
+                renderDisconnectedIdentity(null)
+            }
             app.fjj.stun.widget.StunWidgets.refreshAll(ctx)
         }
 
@@ -1460,6 +1489,10 @@ class HomeFragment : Fragment() {
                 setFabColor(getThemeColor("colorPrimaryContainer", android.graphics.Color.LTGRAY),
                     getThemeColor("colorOnPrimaryContainer", android.graphics.Color.BLACK))
                 binding.statusDot.backgroundTintList = android.content.res.ColorStateList.valueOf(errorColor)
+                // 真正回到普通断开态：清掉「连接失败」一类状态覆盖。
+                // 延迟测试完成走同一个渲染函数但 stateCaption 传 null，不经过这里，
+                // 所以失败提示不会在测完一次速之后被清掉。
+                disconnectedStateCaption = null
                 renderDisconnectedIdentity(null)
                 binding.progressBar.visibility = View.GONE
                 binding.layoutTraffic.visibility = View.GONE
@@ -1656,7 +1689,10 @@ class HomeFragment : Fragment() {
                     activeBottomProfile = profile
                     latestLatencyLabel = null
                     setExitLocation(null)
+                    // renderConnectionIdentity 只刷头像字母（未连接态不碰 tv_status），
+                    // 得再走一遍未连接渲染，底栏才会换上新节点名。
                     renderConnectionIdentity()
+                    renderDisconnectedIdentity(null)
                     app.fjj.stun.widget.StunWidgets.refreshAll(requireContext())
                     Toast.makeText(requireContext(), getString(CoreR.string.main_selected, profile.name), Toast.LENGTH_SHORT).show()
                 } else {
@@ -2167,7 +2203,8 @@ class HomeFragment : Fragment() {
                     withContext(Dispatchers.Main) {
                         if (_binding != null && isAdded && activeBottomProfile?.id == profileId && !isVpnRunning) {
                             adapter.updateDelay(profileId, result)
-                            renderDisconnectedIdentity(result)
+                            latestLatencyLabel = result
+                            renderDisconnectedIdentity(null)
                             updateStatusContentDescription()
                         }
                     }
@@ -2184,7 +2221,7 @@ class HomeFragment : Fragment() {
                         } else {
                             adapter.updateDelay(profileId, result)
                             latestLatencyLabel = result
-                            renderDisconnectedIdentity(result)
+                            renderDisconnectedIdentity(null)
                         }
                         updateStatusContentDescription()
                     }
