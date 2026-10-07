@@ -9,9 +9,11 @@
                 android:height="160dp" />
         </shape>
     </item>
-    <!-- Centered Fox Logo -->
+    <!-- Centered Fox Logo.120dp display size, far above the point where the
+         gradient and rim lightalias, so this is the one place the 3D variant
+         is safe. -->
     <item
-        android:drawable="@drawable/ic_fox_logo"
+        android:drawable="@drawable/ic_fox_logo_3d"
         android:gravity="center"
         android:width="120dp"
         android:height="120dp" />

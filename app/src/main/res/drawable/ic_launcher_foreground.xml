@@ -1,4 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
@@ -20,15 +22,40 @@
             android:fillColor="#FF9800"
             android:pathData="M68,35 C76,20 88,30 83,50 L58,45 Z" />
 
-        <!-- Main Head Body - Rounded (Orange) -->
-        <path
-            android:fillColor="#FB8C00"
-            android:pathData="M54,35 C28,35 15,52 15,72 C15,92 35,102 54,102 C73,102 93,92 93,72 C93,52 80,35 54,35 Z" />
+        <!-- Main Head Body - soft volume gradient lit from upper-left 45deg.
+             Wide stops only: a tight highlight would alias at 48dp. -->
+        <path android:pathData="M54,35 C28,35 15,52 15,72 C15,92 35,102 54,102 C73,102 93,92 93,72 C93,52 80,35 54,35 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="38"
+                    android:startY="47"
+                    android:endX="74"
+                    android:endY="88">
+                    <item
+                        android:color="#FFC46B"
+                        android:offset="0.0" />
+                    <item
+                        android:color="#FB8C00"
+                        android:offset="0.62" />
+                    <item
+                        android:color="#E64A19"
+                        android:offset="1.0" />
+                </gradient>
+            </aapt:attr>
+        </path>
 
-        <!-- Head Shading (Left Half) -->
+
+        <!-- Rim light: thin bright edge hugging the upper-left contour.
+             Path generated from the head outline itself, inset 1.1u so the
+             stroke sits inside the silhouette and cannot soften the edge. -->
         <path
-            android:fillColor="#E64A19"
-            android:pathData="M54,35 C28,35 15,52 15,72 C15,92 35,102 54,102 L54,35 Z" />
+            android:pathData="M45.4,36.7 L45.0,36.8 L44.7,36.8 L44.4,36.9 L44.0,36.9 L43.7,37.0 L43.4,37.1 L43.1,37.1 L42.7,37.2 L42.4,37.3 L42.1,37.4 L41.8,37.5 L41.5,37.5 L41.2,37.6 L40.9,37.7 L40.6,37.8 L40.2,37.9 L39.9,38.0 L39.6,38.1 L39.3,38.2 L39.0,38.3 L38.8,38.4 L38.5,38.5 L38.2,38.6 L37.9,38.7 L37.6,38.8 L37.3,38.9 L37.0,39.0 L36.7,39.1 L36.5,39.2 L36.2,39.4 L35.9,39.5 L35.6,39.6 L35.4,39.7 L35.1,39.9 L34.8,40.0 L34.6,40.1 L34.3,40.2 L34.0,40.4 L33.8,40.5 L33.5,40.6 L33.2,40.8 L33.0,40.9 L32.7,41.1 L32.5,41.2 L32.2,41.4 L32.0,41.5 L31.7,41.7 L31.5,41.8 L31.3,42.0 L31.0,42.1 L30.8,42.3 L30.6,42.4 L30.3,42.6 L30.1,42.7 L29.9,42.9 L29.6,43.1"
+            android:strokeAlpha="0.6"
+            android:strokeColor="#FFE0B2"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:strokeWidth="1.4" />
 
         <!-- Puffy White Cheeks/Muzzle -->
         <path

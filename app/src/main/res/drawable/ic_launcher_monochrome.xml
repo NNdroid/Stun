@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Themed-icon (Android 13+) silhouette for the launcher icon.
+
+  Why this file exists: `monochrome` used to point at the full-colour
+  foreground. Themed icons only read the alpha channel and discard colour, and
+  in the coloured art the white glints and the white muzzle have the SAME alpha
+  as the orange head — so every facial feature merged into one solid blob.
+
+  Rule for editing: convey features with HOLES (fillType evenOdd), never with
+  fill colours. Only the alpha channel survives the tint.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108"
+    android:tint="#000000">
+
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.8"
+        android:scaleY="0.8">
+
+        <!-- Ears, merged into the silhouette -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M40,35 C32,20 20,30 25,50 L50,45 Z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M68,35 C76,20 88,30 83,50 L58,45 Z" />
+
+        <!-- Head outline with the eyes and nose punched out as holes.
+             Circles are two half arcs of opposite sweep; a single arc back to
+             the start point is degenerate and gets dropped. The nose has to
+             be a true CIRCLE (r1.6) rather than the 2x1.5 ellipse used in the
+             colour art — the flattened arc does not survive evenOdd here and
+             the nose comes out solid. Feature size is a silhouette choice
+             anyway, and the coloured nose reads the same at icon sizes. -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M54,35 C28,35 15,52 15,72 C15,92 35,102 54,102 C73,102 93,92 93,72 C93,52 80,35 54,35 Z M38,68 A5,5 0 0,0 48,68 A5,5 0 0,0 38,68 Z M60,68 A5,5 0 0,0 70,68 A5,5 0 0,0 60,68 Z M52.4,82 A1.6,1.6 0 0,0 55.6,82 A1.6,1.6 0 0,0 52.4,82 Z" />
+
+    </group>
+</vector>
