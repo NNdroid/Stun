@@ -15,7 +15,7 @@ jobs:
   verify:
     name: JNI patches + Android debug build
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - name: Checkout recursively
@@ -44,6 +44,10 @@ jobs:
 
       - name: Set up gomobile
         run: |
+          # 与 release.yml 同名步骤保持一致：补 -u，引用了不存在的变量直接报错，
+          # 而不是悄悄按空串走；顺带让这个块能用普通 bash 在本地复现。
+          set -euo pipefail
+
           # 只认形如 27.0.12077973 的版本号目录。
           # 不能用 `find ... | sort -V | tail -n 1`：那排的是**完整路径**，
           # 而 `$ANDROID_HOME/ndk` 里可能混有非 NDK 目录（实测 Android Studio
@@ -107,3 +111,25 @@ jobs:
 
       - name: Unit tests and native debug build
         run: ./gradlew :core:testDebugUnitTest :core:assembleDebug --stacktrace --no-daemon
+
+      # 下面的步骤都不会设置 CI_RUN_NUMBER，所以 build.gradle.kts 走的是本地分支。
+      # 这一步唯一的目的：让 CI_RUN_NUMBER>0 那条分支真正执行一遍
+      # （git tag --list 'v*' 算 versionCode、git rev-list --count HEAD 算提交数）。
+      # 本 job 是 fetch-depth: 1，标签数=0、提交数=1，算出来的值不对没关系 ——
+      # 目的是证明这条路径在真实 gradle 环境下不会抛异常、不会破坏配置缓存。
+      - name: Smoke-test the CI version path
+        env:
+          CI_RUN_NUMBER: 1
+        run: ./gradlew help --stacktrace --no-daemon
+
+      # 上面只编译 :core —— app / tv / car / wear / xr 的 Kotlin 源码在 PR CI 里从未被
+      # 编译过（Gradle 会配置全部模块的 build 脚本，但不会执行它们的任务图），
+      # 所以一个编译不过的 app 改动照样能绿。这里补齐，与 release.yml 同源的五个模块都过一遍。
+      - name: Compile all app modules
+        # 用 run: | 而不是多行 run: —— YAML 纯标量里反斜杠是字面量不是续行符，
+        # 那样写出来的实际字符串是 `./gradlew \ :app:assembleDebug ...`。
+        run: |
+          ./gradlew \
+            :app:assembleDebug :tv:assembleDebug :car:assembleDebug \
+            :wear:assembleDebug :xr:assembleDebug \
+            --stacktrace --no-daemon --parallel
