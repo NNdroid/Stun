@@ -56,6 +56,21 @@ on:
         required: false
         type: string
         default: ''
+      run_checks:
+        description: '✅ 构建前运行单元测试（:core 始终包含，其余按所选模块）'
+        required: true
+        type: boolean
+        default: true
+      prerelease:
+        description: '🧪 自动发版时标记为预发布（配合版本号后缀 -beta / -rc 使用）'
+        required: true
+        type: boolean
+        default: false
+      upload_mapping:
+        description: '🗺️ 附加 R8 混淆表 mapping.txt.gz（约 4 MB/模块，用于反解线上崩溃堆栈）'
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -244,11 +259,31 @@ jobs:
             RAW_TAG="${INPUT_TAG}"
             AUTO_RELEASE="${{ github.event.inputs.auto_release }}"
             SIGN_RELEASE="${{ github.event.inputs.sign_release }}"
+            RUN_CHECKS="${{ github.event.inputs.run_checks }}"
+            PRERELEASE="${{ github.event.inputs.prerelease }}"
+            UPLOAD_MAPPING="${{ github.event.inputs.upload_mapping }}"
+            BUILD_AAB="${{ github.event.inputs.build_aab }}"
+            VARIANT_CHOICE="${{ github.event.inputs.build_variant }}"
             AUTO_RELEASE=${AUTO_RELEASE:-false}
+            RUN_CHECKS=${RUN_CHECKS:-true}
             RAW_VERSION=${RAW_VERSION//[!0-9A-Za-z._+-]/}
             RAW_TAG=${RAW_TAG//[!0-9A-Za-z._+-]/}
             echo "auto_release=$AUTO_RELEASE" >> $GITHUB_OUTPUT
             echo "tag=$RAW_TAG" >> $GITHUB_OUTPUT
+            echo "run_checks=$RUN_CHECKS" >> $GITHUB_OUTPUT
+            echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
+            echo "upload_mapping=$UPLOAD_MAPPING" >> $GITHUB_OUTPUT
+
+            # bundleRelease 只在 release / both 下才会被加进 TASKS，
+            # debug 变体没有 bundle 任务（library 才产出 AAR）。选 debug + 勾 AAB
+            # 原先会静默不产出 AAB，log 里也不提 —— 这里明说，避免「勾了却没东西」。
+            if [ "$BUILD_AAB" == "true" ] && [ "$VARIANT_CHOICE" == "debug" ]; then
+              echo "::warning::variant=debug 时不会生成 AAB（只有 release / both 有 bundleRelease 任务）"
+            fi
+            # 只出 debug 包却去发布 = Release 页上一堆 debug APK 被当成正式版推给用户。
+            if [ "$AUTO_RELEASE" == "true" ] && [ "$VARIANT_CHOICE" == "debug" ]; then
+              echo "::warning::自动发版但 variant=debug，Release 页只会得到 debug 包"
+            fi
 
             # 版本号统一成 v 开头：tag 必须是 v* 才会被 versionCode 的
             # `git tag --list 'v*'` 计到（见 build.gradle.kts），所以 1.13 与 v1.13
@@ -303,6 +338,11 @@ jobs:
             echo "version=" >> $GITHUB_OUTPUT
             echo "release_tag=" >> $GITHUB_OUTPUT
             echo "tag=" >> $GITHUB_OUTPUT
+            # 打了 tag 就是要发出去的，测试不能省；上传混淆表默认关，
+            # 免得每个 Release 页面凭空多出约 20 MB 资产（想开就把这行改成 true）。
+            echo "run_checks=true" >> $GITHUB_OUTPUT
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+            echo "upload_mapping=false" >> $GITHUB_OUTPUT
           fi
 
       # 产物经 -Pandroid.injected.signing.store.file 传给 gradle，再由 build.gradle.kts
@@ -319,6 +359,33 @@ jobs:
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
+
+      # 本仓库之前没有这一步：release 流程里既没跑测试也没跑 lint，
+      # 提交只在 pr-ci 上验过，而那是另一条工具链、另一个变体。
+      - name: Run Unit Tests
+        if: steps.options.outputs.run_checks == 'true'
+        run: |
+          set -euo pipefail
+          # :core 是 5 个 app 模块的公共库，也含本仓库最多的测试源文件（71 个），
+          # 无论选哪个模块都要过。其余按所选模块追加。
+          # 没有 src/test 的模块直接跳过：空测试的 task 能跑通，但 5 个模块全拉起来
+          # 只为跑 0 个断言，白等一分多钟。
+          TASKS=":core:testDebugUnitTest"
+          case "${{ steps.options.outputs.build_module }}" in
+            app)  MODS="app" ;;
+            tv)   MODS="tv" ;;
+            car)  MODS="car" ;;
+            wear) MODS="wear" ;;
+            xr)   MODS="xr" ;;
+            *)    MODS="app tv car wear xr" ;;
+          esac
+          for mod in $MODS; do
+            if [ -d "$mod/src/test" ]; then
+              TASKS="$TASKS :$mod:testDebugUnitTest"
+            fi
+          done
+          echo "🧪 $TASKS"
+          ./gradlew $TASKS --stacktrace
 
       - name: Build and Sign APK & AAB
         env:
@@ -390,6 +457,25 @@ jobs:
 
           ./gradlew $TASKS $PARAMS
 
+      # mapping.txt 只有 release 变体经过 R8 才会产出。原始 45~55 MB/模块，
+      # 直接传 5 个模块会白占 200+ MB；gzip -9 后约 4 MB/模块。
+      # if: always() 让构建失败时它照样跑（该步骤本身不依赖构建成功），
+      # 找不到文件就 notice 一下，不因为前置失败被整体跳过。
+      - name: Compress R8 mapping files
+        if: always() && steps.options.outputs.upload_mapping == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p build/mapping
+          for MOD in app tv car wear xr; do
+            MAP="$MOD/build/outputs/mapping/release/mapping.txt"
+            if [ -f "$MAP" ]; then
+              gzip -c -9 "$MAP" > "build/mapping/${MOD}.mapping.txt.gz"
+              echo "🗺️  ${MOD}.mapping.txt.gz  $(du -h "build/mapping/${MOD}.mapping.txt.gz" | cut -f1)"
+            else
+              echo "::notice::$MOD 没有 mapping.txt（该模块未构建 release 变体）"
+            fi
+          done
+
       - name: Generate Build Summary
         if: always()
         run: |
@@ -401,19 +487,29 @@ jobs:
           echo "- **Variant:** ${{ steps.options.outputs.build_variant }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Sign:** ${{ steps.options.outputs.sign }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Clean Build:** ${{ steps.options.outputs.clean }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Unit Tests:** ${{ steps.options.outputs.run_checks }}" >> $GITHUB_STEP_SUMMARY
           if [ -n "${{ steps.options.outputs.version }}" ]; then
             echo "- **Version:** \`${{ steps.options.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
           fi
           if [ "${{ steps.options.outputs.auto_release }}" == "true" ]; then
             echo "- **Auto Release:** \`${{ steps.options.outputs.release_tag }}\`" >> $GITHUB_STEP_SUMMARY
           fi
+          if [ "${{ steps.options.outputs.auto_release }}" == "true" ] \
+             && [ "${{ steps.options.outputs.prerelease }}" == "true" ]; then
+            echo "- **Pre-release:** yes" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ steps.options.outputs.upload_mapping }}" == "true" ]; then
+            echo "- **R8 Mapping Attached:** yes" >> $GITHUB_STEP_SUMMARY
+          fi
           if [ -n "${{ steps.options.outputs.tag }}" ]; then
             echo "- **Artifact Name Suffix:** ${{ steps.options.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📦 Artifacts generated:" >> $GITHUB_STEP_SUMMARY
+          # 不能用 sed 's|.*|- |'：.* 贪婪匹配会把整行连同文件名一起吃掉，只剩 "- "，
+          # 于是产物明明有十个、summary 里却渲染成十个空点。
           find . \( -name "*.apk" -o -name "*.aab" \) -path "*/build/outputs/*" \
-            | sed 's|.*|- |' >> $GITHUB_STEP_SUMMARY
+            | while IFS= read -r f; do echo "- $(basename "$f")"; done >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # versionCode / versionName 是 Play 单调性的核对依据
@@ -425,8 +521,11 @@ jobs:
             | while IFS= read -r f; do
                 mod=${f#./}; mod=${mod%%/*}
                 variant=$(basename "$(dirname "$f")")
+                # AGP 把 output-metadata.json 写成 pretty 格式：冒号后面**带空格**。
+                # versionCode 那行有 [[:space:]]* 所以一直是对的，versionName 这行漏了，
+                # 结果十行全打 name=- —— 看着像产物没版本号，其实是正则匹配不上。
                 vc=$(grep -oE '"versionCode":[[:space:]]*[0-9]+' "$f" | head -1 | grep -oE '[0-9]+$')
-                vn=$(grep -oE '"versionName":"[^"]*"' "$f" | head -1 | cut -d'"' -f4)
+                vn=$(grep -oE '"versionName":[[:space:]]*"[^"]*"' "$f" | head -1 | cut -d'"' -f4)
                 printf '%-6s %-7s code=%-7s name=%s\n' "$mod" "$variant" "${vc:--}" "${vn:--}"
               done >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
@@ -465,6 +564,7 @@ jobs:
             xr/build/outputs/apk/**/*.apk
             xr/build/outputs/bundle/**/*.aab
             core/libs/*.aar
+            build/mapping/*.gz
           if-no-files-found: warn
 
       # workflow_dispatch + 自动发版：在 HEAD 上打 tag 并发布 GitHub Release。
@@ -499,10 +599,18 @@ jobs:
           for AAR in core/libs/myssh.release.aar core/libs/myssh.debug.aar; do
             [ -f "$AAR" ] && FILES+=("$AAR")
           done
+          # 混淆表随 Release 走，而不是只挂 run artifact：run artifact 90 天后过期，
+          # 那时线上崩溃堆栈已经无法反解了。所以它必须跟 tag 一起长期保留。
+          if [ "${{ steps.options.outputs.upload_mapping }}" == "true" ]; then
+            for MOD in app tv car wear xr; do
+              [ -f "build/mapping/${MOD}.mapping.txt.gz" ] && FILES+=("build/mapping/${MOD}.mapping.txt.gz")
+            done
+          fi
           if [ ${#FILES[@]} -eq 0 ]; then
             echo "::error::没有任何可上传的 APK/AAR，取消创建 Release（tag 未创建）"
             exit 1
           fi
+          echo "📦 共 ${#FILES[@]} 个资产待上传"
 
           # tag 作者标成 bot，而不是 checkout 留下的占位身份。
           git config user.name "github-actions[bot]"
@@ -521,7 +629,16 @@ jobs:
           # 谁若把它关掉，这里会直接 Permission denied。
           git push origin "$TAG"
           echo "📦 Uploading ${#FILES[@]} assets to $TAG"
-          gh release create "$TAG" --title "$TAG" --generate-notes "${FILES[@]}"
+          # 版本号正则允许 -beta / -rc 后缀，但 gh release create 默认仍发布为正式 Release
+          # —— 页面上不会标「预发布」，用户会以为那是稳定版。这里补上这个开关。
+          # 用数组而不是拼字符串：空数组在 set -u 下展开为空，不会报错
+          # （runner 的 bash 5.2 支持；bash 4.3 及以下需要显式判空）。
+          EXTRA_ARGS=()
+          if [ "${{ steps.options.outputs.prerelease }}" == "true" ]; then
+            EXTRA_ARGS+=("--prerelease")
+            echo "🧪 标记为预发布 Release"
+          fi
+          gh release create "$TAG" --title "$TAG" --generate-notes "${EXTRA_ARGS[@]}" "${FILES[@]}"
           trap - ERR
 
       - name: Upload Release Assets
@@ -541,4 +658,5 @@ jobs:
             xr/build/outputs/apk/debug/*.apk
             core/libs/myssh.release.aar
             core/libs/myssh.debug.aar
+            build/mapping/*.gz
           fail_on_unmatched_files: false
