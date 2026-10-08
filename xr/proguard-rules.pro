@@ -2,10 +2,19 @@
 -renamesourcefileattribute SourceFile
 -keepattributes SourceFile,LineNumberTable
 
-# ─── 2. ZXing & QR Generator ───
--keep class com.google.zxing.** { *; }
--keep class com.journeyapps.barcodescanner.** { *; }
--dontwarn com.google.zxing.**
+# ─── 2. ZXing & QR Generator（已删，勿加回）───
+# 原先是两条 `**` 通配。删除依据：本模块源码 0 处 import、layout 0 处引用、没有调用 :core
+# 的 app.fjj.stun.qr 包，xr/build.gradle.kts 里也没有 zxing 依赖。
+#
+# 重要修正：与 wear 一样，这两条不是「0 命中」的死规则 —— 依赖图里仍传进来了 zxing，规则
+# 命中了类。正确说法是「冗余」：zxing-android-embedded 的 AAR manifest 声明的
+# CaptureActivity 是 R8 keep 根，那 ~143 个 zxing / journeyapps 类被 keep 住与我们的规则
+# 无关。实测删掉这两条 keep 后 xr 的 mapping.txt 里仍剩 106 个 com.google.zxing 与 37 个
+# com.journeyapps 类。真正起作用的删法在 xr/src/main/AndroidManifest.xml 的
+# tools:node="remove"。
+#
+# 同 wear 的提醒：AR/XR 端若要做扫码，journeyapps 的全屏 CaptureActivity 不适用，需另选
+# 方案，别把这两行原样抄回来。
 
 # ─── 3. 已删除的过宽规则（有意为之，勿加回）───
 # -keep class com.google.android.material.** { *; }
