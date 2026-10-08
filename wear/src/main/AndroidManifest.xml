@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -20,6 +21,14 @@
         android:label="@string/wear_app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.Stun">
+
+        <!-- 同 car：依赖图里 zxing-android-embedded 的 AAR manifest 声明了这个全屏扫码
+             Activity，而 manifest 组件声明是 R8 keep 根 —— 不删它，那 ~143 个 zxing /
+             journeyapps 类就被整个钉在 dex 里，删不删 proguard 规则都一样。
+             本模块 build.gradle.kts 甚至没声明 zxing 依赖，源码里也 0 处引用扫码；
+             watch 上跑不了全屏 CaptureActivity，本就无意义。删掉这行即可恢复。 -->
+        <activity android:name="com.journeyapps.barcodescanner.CaptureActivity"
+            tools:node="remove" />
 
         <activity
             android:name=".WearMainActivity"

@@ -31,6 +31,15 @@
             android:name="androidx.car.app.minCarApiLevel"
             android:value="1" />
 
+        <!-- 依赖图里的 zxing-android-embedded（经 :core 传递）在其 AAR manifest 中声明了这个
+             全屏扫码 Activity。manifest 里的组件声明是 R8 的 keep 根 —— 只要它还在合并后的
+             manifest 里，那 ~143 个 zxing / journeyapps 类就会被整个钉在 dex 中，删不删
+             proguard 规则都一样。本模块 0 处引用扫码，:app 用的是自己实现的
+             AnimatedQrScanActivity 且在自己的 manifest 里单独重声明了 CaptureActivity，
+             不受这里影响。删掉这行即可恢复扫码能力。 -->
+        <activity android:name="com.journeyapps.barcodescanner.CaptureActivity"
+            tools:node="remove" />
+
         <activity
             android:name=".CarMainActivity"
             android:exported="true"
