@@ -121,7 +121,13 @@ android {
             versionNameSuffix = if (ciBuild) "" else "-release+$gitHash"
             signingConfig = ciSignStoreFile?.let { signingConfigs.getByName("ciRelease") }
             isMinifyEnabled = true
-            isShrinkResources = true
+            // 必须为 false：与下面的 splits.abi 互斥。开 splits 后 minifyReleaseWithR8
+            // 每个 ABI 各产出一份 shrunk_resources，buildReleasePreBundle 在同一目录里
+            // 找不到唯一的那份而失败（issuetracker.google.com/402800800）。CI 对五个模块
+            // 都跑 bundleRelease（Play 走 AAB），所以只能让资源混淆让路。
+            // 代价实测很小：本应用资源本身就很瘦（1118 个文件、未压缩 1.1 MB），关掉只多
+            // 741 KB APK / 360 KB AAB，换来单 ABI 包 −21.6 MB。
+            isShrinkResources = false
             isDebuggable = false
             isProfileable = false
             proguardFiles(
@@ -136,6 +142,25 @@ android {
                     keepDebugSymbols.add("**/*.so")
                 }
             }
+        }
+    }
+
+    // 按 ABI 拆 APK。四个 ABI 全部保留（不删任何一个），各出一份单 ABI 包；
+    // isUniversalApk = true 额外留一份含全部 ABI 的通用包，不想挑 ABI 的继续装它。
+    //
+    // native 库是体积大头：压缩后 28.1 MB，占 APK 的 61-65%。实测通用包 46.4 MB，
+    // 拆开后单 ABI 包 22.7-25.7 MB（约 −47%）。:app 上 Play 走 AAB、App Bundle 本就按
+    // ABI 分发，这里只对 GitHub Release 直装的 APK 有意义。
+    //
+    // 产物布局实测：平铺在 variant 目录下，ABI 编进文件名（app-arm64-v8a-release-unsigned.apk、
+    // app-universal-release-unsigned.apk），不是 <abi>/ 子目录。release.yml 的收集 glob
+    // 仍写成递归 apk/**/*.apk，以兼容 AGP 未来改成子目录布局。
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
+            isUniversalApk = true
         }
     }
 

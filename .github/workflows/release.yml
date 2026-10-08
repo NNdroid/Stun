@@ -220,7 +220,10 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml') }}
+          # gradle.properties 也在版本管理里，且里面有几个真正影响依赖解析/配置的开关
+          # （configuration-cache、suppressUnsupportedCompileSdk、jvmargs）。漏掉它会让
+          # 「只改这一个文件」的 PR 命中旧缓存，把配置变了这件事静默吃掉。
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', '**/gradle.properties', '**/libs.versions.toml') }}
           restore-keys: |
             gradle-${{ runner.os }}-
 
@@ -591,9 +594,15 @@ jobs:
           FILES=()
           for MOD in app tv car wear xr; do
             for VARIANT in release debug; do
-              for f in "$MOD"/build/outputs/apk/$VARIANT/*.apk; do
-                [ -f "$f" ] && FILES+=("$f")
-              done
+              # 用 find 递归收集而非非递归 glob：AGP 实测把 split APK 平铺在 variant
+              # 目录下（app-arm64-v8a-release-unsigned.apk、app-universal-...），今天非递归
+              # 也能匹配；但若 AGP 改成 <variant>/<abi>/ 子目录布局就会静默漏上传。
+              # -print0 兼容带空格的路径，上面的 [ -d ] 兼容某个 variant 根本没构建。
+              OUT="$MOD"/build/outputs/apk/$VARIANT
+              [ -d "$OUT" ] || continue
+              while IFS= read -r -d '' f; do
+                FILES+=("$f")
+              done < <(find "$OUT" -type f -name '*.apk' -print0)
             done
           done
           for AAR in core/libs/myssh.release.aar core/libs/myssh.debug.aar; do
@@ -646,17 +655,25 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            app/build/outputs/apk/release/*.apk
-            tv/build/outputs/apk/release/*.apk
-            car/build/outputs/apk/release/*.apk
-            wear/build/outputs/apk/release/*.apk
-            xr/build/outputs/apk/release/*.apk
-            app/build/outputs/apk/debug/*.apk
-            tv/build/outputs/apk/debug/*.apk
-            car/build/outputs/apk/debug/*.apk
-            wear/build/outputs/apk/debug/*.apk
-            xr/build/outputs/apk/debug/*.apk
+            # apk/** 一行同时覆盖 release 与 debug 两种 variant。写成递归是稳妥起见：
+            # AGP 实测把 split APK 平铺在 variant 目录下（app-arm64-v8a-release-unsigned.apk、
+            # app-universal-release-unsigned.apk），非递归 *.apk 今天其实也能匹配到；但一旦
+            # AGP 改成 <variant>/<abi>/ 子目录布局，非递归就会静默漏掉全部单 ABI 包。
+            # 上面 workflow_dispatch 的 Upload Build Artifacts 步骤已经用 apk/**，这里同一口径。
+            # ** 在两种布局下都至少展开一层（release、release/abi），所以不依赖各 glob 实现
+            # 对「零段匹配」的差异解释。
+            app/build/outputs/apk/**/*.apk
+            tv/build/outputs/apk/**/*.apk
+            car/build/outputs/apk/**/*.apk
+            wear/build/outputs/apk/**/*.apk
+            xr/build/outputs/apk/**/*.apk
             core/libs/myssh.release.aar
             core/libs/myssh.debug.aar
+            # 在 tag 推送路径上这一行永远匹配不到文件：mapping 压缩步骤被
+            # upload_mapping == 'true' 门控，而这个开关只在 workflow_dispatch 的输入里
+            # 存在 —— tag 路径上 steps.options 根本不会跑。留着它是因为 tag 路径和
+            # dispatch 路径共用这一份文件列表，删掉会让 dispatch 路径丢 mapping。
+            # fail_on_unmatched_files: false 已让它静默无害。真要给 tag 路径也带 mapping，
+            # 需要在 dispatch 之外单独加一步压缩，那是一个体积/成本决策，不在本次范围。
             build/mapping/*.gz
           fail_on_unmatched_files: false
