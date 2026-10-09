@@ -30,11 +30,29 @@ object VpnConfigBuilder {
         return if (tail.length <= 5 && tail.all { it.isDigit() }) addr.substring(0, idx) else addr
     }
 
+    /** 逗号分隔的 geosite / geoip 标签串 → 去空白后的标签列表。
+     *
+     * 必须 trim：myssh 侧 tagMap 按小写精确查表，" apple" 匹配不到 "apple"，
+     * 该标签会静默失效且不报错。
+     *
+     * 整串空白时**原样返回空列表，绝不回退默认值**：空数组是合法配置，
+     * 语义是「不做域名 / IP 分流，全部走代理」。
+     */
+    private fun splitDirectTags(raw: String): List<String> =
+        raw.split(",").map { it.trim() }.filter { it.isNotBlank() }
+
     fun buildGlobalConfig(context: Context, profile: Profile): String {
         val remoteDns = if (profile.dnsOverride) profile.remoteDns else SettingsManager.getRemoteDnsServer(context)
         val localDns = if (profile.dnsOverride) profile.localDns else SettingsManager.getLocalDnsServer(context)
-        val geositeDirect = if (profile.dnsOverride) profile.geositeDirect.split(",").filter { it.isNotBlank() } else SettingsManager.getGeositeDirectTags(context)
-        val geoipDirect = if (profile.dnsOverride) profile.geoipDirect.split(",").filter { it.isNotBlank() } else SettingsManager.getGeoipDirectTags(context)
+        // 两个字段共用一条归一路径（trim + 滤空项）。原先 dnsOverride 分支只 filter 不 trim、
+        // 全局分支两者都不做：「cn, apple」里的 " apple" 在 myssh 侧永远匹配不到、标签静默失效，
+        // 全局分支还会把空项一并下发。空数组本身照原样下发，语义由配置者决定。
+        val geositeDirect = splitDirectTags(
+            if (profile.dnsOverride) profile.geositeDirect else SettingsManager.getGeositeDirect(context),
+        )
+        val geoipDirect = splitDirectTags(
+            if (profile.dnsOverride) profile.geoipDirect else SettingsManager.getGeoipDirect(context),
+        )
 
         return JSONObject().apply {
             put("remote_dns_server", remoteDns)
