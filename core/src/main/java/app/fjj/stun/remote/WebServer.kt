@@ -447,8 +447,11 @@ object WebServer {
                 try {
                     val body = call.receive<Map<String, String>>()
                     val sshAddr = body["sshAddr"]?.trim() ?: return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing sshAddr"))
-                    val fp = withContext(Dispatchers.IO) { myssh.Myssh.getSSHFingerprint(sshAddr) }
-                    val detailsJson = withContext(Dispatchers.IO) { myssh.Myssh.getSSHServerDetailsJSON(sshAddr) }
+                    val bindInterface = body["bindInterface"]?.trim() ?: ""
+                    // 详情里已含 fingerprint_sha256，不必再单独打一次 SSH 密钥交换取指纹。
+                    // bindInterface 必须与隧道一致，否则绑了网卡的节点会探到另一台机器。
+                    val detailsJson = withContext(Dispatchers.IO) { myssh.Myssh.getSSHServerDetailsJSON(sshAddr, bindInterface) }
+                    val fp = JSONObject(detailsJson).optString("fingerprint_sha256")
                     call.respond(HttpStatusCode.OK, mapOf("status" to "success", "fingerprint" to fp, "detailsJson" to detailsJson))
                 } catch (e: Exception) {
                     call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Failed to fetch SSH fingerprint")))
@@ -461,8 +464,13 @@ object WebServer {
                     val body = call.receive<Map<String, String>>()
                     val target = body["target"]?.trim() ?: return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing target"))
                     val serverName = body["serverName"]?.trim() ?: ""
-                    val fp = withContext(Dispatchers.IO) { myssh.Myssh.getTLSCertFingerprint(target, serverName) }
-                    val detailsJson = withContext(Dispatchers.IO) { myssh.Myssh.getTLSCertDetailsJSON(target, serverName) }
+                    val bindInterface = body["bindInterface"]?.trim() ?: ""
+                    // 指纹与详情来自同一次握手：detailsJson 里的 fingerprint_sha256 就是指纹。
+                    // 此前这里分两次调用，等于对同一台服务器做两次完整握手；探测只有 6s
+                    // 预算，远端节点稍慢一点第二次就会单独超时，把第一次已拿到的指纹
+                    // 一起带崩成「获取失败」。bindInterface 同理必须与隧道出口一致。
+                    val detailsJson = withContext(Dispatchers.IO) { myssh.Myssh.getTLSCertDetailsJSON(target, serverName, bindInterface) }
+                    val fp = JSONObject(detailsJson).optString("fingerprint_sha256")
                     call.respond(HttpStatusCode.OK, mapOf("status" to "success", "fingerprint" to fp, "detailsJson" to detailsJson))
                 } catch (e: Exception) {
                     call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Failed to fetch TLS certificate fingerprint")))

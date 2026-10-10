@@ -4735,6 +4735,13 @@ let currentDetailsApplyFp = '';
 let currentDetailsTargetId = '';
 let currentDetailsCheckboxId = '';
 
+// 探测要与隧道走同一条出口：绑了网卡（wlan0/rmnet0）的节点如果从默认出口探测，
+// 拿到的是另一台机器的主机密钥/证书，写下的 pin 会在真连接时校验失败。
+function editBindInterface() {
+  const el = document.getElementById('edit-node-bind-interface');
+  return el ? el.value.trim() : '';
+}
+
 async function fetchSSHFingerprint() {
   const sshAddr = document.getElementById('edit-node-ssh-addr').value.trim();
   if (!sshAddr) {
@@ -4748,7 +4755,7 @@ async function fetchSSHFingerprint() {
     const res = await fetch('/api/diagnostics/ssh-fingerprint?token=' + token, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ sshAddr })
+      body: JSON.stringify({ sshAddr, bindInterface: editBindInterface() })
     });
     const data = await res.json();
     if (res.ok && data.status === 'success' && data.fingerprint) {
@@ -4779,7 +4786,7 @@ async function fetchSSHDetails() {
     const res = await fetch('/api/diagnostics/ssh-fingerprint?token=' + token, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ sshAddr })
+      body: JSON.stringify({ sshAddr, bindInterface: editBindInterface() })
     });
     const data = await res.json();
     if (res.ok && data.status === 'success' && data.detailsJson) {
@@ -4819,7 +4826,7 @@ async function fetchCertFingerprint() {
     const res = await fetch('/api/diagnostics/tls-fingerprint?token=' + token, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ target, serverName })
+      body: JSON.stringify({ target, serverName, bindInterface: editBindInterface() })
     });
     const data = await res.json();
     if (res.ok && data.status === 'success' && data.fingerprint) {
@@ -4854,7 +4861,7 @@ async function fetchCertDetails() {
     const res = await fetch('/api/diagnostics/tls-fingerprint?token=' + token, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ target, serverName })
+      body: JSON.stringify({ target, serverName, bindInterface: editBindInterface() })
     });
     const data = await res.json();
     if (res.ok && data.status === 'success' && data.detailsJson) {
