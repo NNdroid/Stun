@@ -328,6 +328,8 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
         // Fetch Fingerprint Buttons
         binding.btnFetchSshFingerprint.setOnClickListener {
             val sshAddr = binding.etSshAddr.text.toString().trim()
+            // 探测必须与隧道同出口，否则绑了网卡的节点会探到另一台机器（见 Go 侧 probeConfig）。
+            val bindInterface = binding.etBindInterface.text.toString().trim()
             if (sshAddr.isBlank()) {
                 binding.layoutSshAddr.error = getString(CoreR.string.error_missing_ssh_addr)
                 binding.etSshAddr.requestFocus()
@@ -337,7 +339,7 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
             binding.btnFetchSshFingerprint.isEnabled = false
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
-                    val fp = myssh.Myssh.getSSHFingerprint(sshAddr)
+                    val fp = myssh.Myssh.getSSHFingerprint(sshAddr, bindInterface)
                     withContext(Dispatchers.Main) {
                         binding.btnFetchSshFingerprint.isEnabled = true
                         binding.etSshFingerprint.setText(fp)
@@ -357,9 +359,10 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
         }
 
         binding.btnFetchCertFingerprint.setOnClickListener {
-            val target = binding.etProxyAddr.text.toString().trim().ifBlank { 
-                binding.etSshAddr.text.toString().trim() 
+            val target = binding.etProxyAddr.text.toString().trim().ifBlank {
+                binding.etSshAddr.text.toString().trim()
             }
+            val bindInterface = binding.etBindInterface.text.toString().trim()
             if (target.isBlank()) {
                 binding.layoutProxyAddr.error = getString(CoreR.string.error_missing_proxy_or_ssh_addr)
                 binding.etProxyAddr.requestFocus()
@@ -374,7 +377,7 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
             binding.btnFetchCertFingerprint.isEnabled = false
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
-                    val fp = myssh.Myssh.getTLSCertFingerprint(target, serverName)
+                    val fp = myssh.Myssh.getTLSCertFingerprint(target, serverName, bindInterface)
                     withContext(Dispatchers.Main) {
                         binding.btnFetchCertFingerprint.isEnabled = true
                         binding.etCertFingerprint.setText(fp)
@@ -396,6 +399,7 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
         // Details Buttons
         binding.btnDetailsSsh.setOnClickListener {
             val sshAddr = binding.etSshAddr.text.toString().trim()
+            val bindInterface = binding.etBindInterface.text.toString().trim()
             if (sshAddr.isBlank()) {
                 binding.layoutSshAddr.error = getString(CoreR.string.error_missing_ssh_addr)
                 binding.etSshAddr.requestFocus()
@@ -406,7 +410,7 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
             Toast.makeText(this, getString(CoreR.string.fetching_details), Toast.LENGTH_SHORT).show()
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
-                    val jsonStr = myssh.Myssh.getSSHServerDetailsJSON(sshAddr)
+                    val jsonStr = myssh.Myssh.getSSHServerDetailsJSON(sshAddr, bindInterface)
                     withContext(Dispatchers.Main) {
                         binding.btnDetailsSsh.isEnabled = true
                         showSSHDetailsDialog(jsonStr)
@@ -423,9 +427,10 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
         }
 
         binding.btnDetailsCert.setOnClickListener {
-            val target = binding.etProxyAddr.text.toString().trim().ifBlank { 
-                binding.etSshAddr.text.toString().trim() 
+            val target = binding.etProxyAddr.text.toString().trim().ifBlank {
+                binding.etSshAddr.text.toString().trim()
             }
+            val bindInterface = binding.etBindInterface.text.toString().trim()
             if (target.isBlank()) {
                 binding.layoutProxyAddr.error = getString(CoreR.string.error_missing_proxy_or_ssh_addr)
                 binding.etProxyAddr.requestFocus()
@@ -438,7 +443,7 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
             Toast.makeText(this, getString(CoreR.string.fetching_details), Toast.LENGTH_SHORT).show()
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
-                    val jsonStr = myssh.Myssh.getTLSCertDetailsJSON(target, serverName)
+                    val jsonStr = myssh.Myssh.getTLSCertDetailsJSON(target, serverName, bindInterface)
                     withContext(Dispatchers.Main) {
                         binding.btnDetailsCert.isEnabled = true
                         showTLSDetailsDialog(jsonStr)
