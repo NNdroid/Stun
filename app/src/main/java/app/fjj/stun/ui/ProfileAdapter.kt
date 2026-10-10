@@ -133,12 +133,16 @@ class ProfileAdapter(
             val isSSHAuthPassword = profile.authType == Profile.AUTH_TYPE_PASSWORD
             ivSshAuthPassword.visibility = if (isSSHAuthPassword) View.VISIBLE else View.GONE
 
-            // ICMP_CUSTOM 不发 custom_host/server_name（见 VpnConfigBuilder），该类协议不支持自定义 Host
+            // 徽标只在隧道**真的发送** custom_host 时才显示。消费点：tunnel_ws.go:86 /
+            // tunnel_h2.go:47 / tunnel_xhttp.go:58 都直接拿 cfg.CustomHost 填 HTTP Host: 头，
+            // 与 TLS 开关无关；tunnel_quic.go 与 kcp 完全不读它（QUIC 走 h3，:authority 由
+            // SNI 推导）。旧写法把 ws/h2 在开启 TLS 时、以及整个 raw 都判成不支持，而
+            // raw+TLS 正是 xhttp——恰是会发 Host 的那一种，于是两个只差 Host 的卡片长得一样。
             val isCustomHostSupported = when (profile.tunnelType) {
-                Profile.TUNNEL_TYPE_RAW, Profile.TUNNEL_TYPE_QUIC, Profile.TUNNEL_TYPE_DNS,
-                Profile.TUNNEL_TYPE_KCP, Profile.TUNNEL_TYPE_UDP_CUSTOM,
-                Profile.TUNNEL_TYPE_ICMP_CUSTOM -> false
-                Profile.TUNNEL_TYPE_WEBSOCKET, Profile.TUNNEL_TYPE_H2 -> !profile.tunnelTlsEnabled
+                Profile.TUNNEL_TYPE_WEBSOCKET, Profile.TUNNEL_TYPE_H2 -> true
+                Profile.TUNNEL_TYPE_RAW -> profile.tunnelTlsEnabled // 仅 xhttp 消费
+                Profile.TUNNEL_TYPE_QUIC, Profile.TUNNEL_TYPE_KCP, Profile.TUNNEL_TYPE_DNS,
+                Profile.TUNNEL_TYPE_UDP_CUSTOM, Profile.TUNNEL_TYPE_ICMP_CUSTOM -> false
                 else -> true
             }
 

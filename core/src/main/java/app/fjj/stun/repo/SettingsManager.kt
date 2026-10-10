@@ -252,10 +252,20 @@ object SettingsManager {
         StunLogger.setLogLevel(level)
     }
 
-    fun getRemoteDnsServer(context: Context): String = getPrefs(context).getString(KEY_REMOTE_DNS_SERVER, DEFAULT_REMOTE_DNS_SERVER) ?: DEFAULT_REMOTE_DNS_SERVER
+    // 用 isNullOrBlank 而不是 ?: 兜底。Settings 的 DNS 输入框带 clear_text，点一下清空
+    // 再保存就会把空串写进 prefs；那时 key 已经存在，?: 只在 null 时生效，空串会一路
+    // 透传进 global config——「remote_dns_server": ""，所有节点 DNS 直接废掉，
+    // 而且没有任何报错。
+    fun getRemoteDnsServer(context: Context): String {
+        val v = getPrefs(context).getString(KEY_REMOTE_DNS_SERVER, DEFAULT_REMOTE_DNS_SERVER)
+        return if (v.isNullOrBlank()) DEFAULT_REMOTE_DNS_SERVER else v
+    }
     fun saveRemoteDnsServer(context: Context, dns: String) = getPrefs(context).edit { putString(KEY_REMOTE_DNS_SERVER, dns) }
 
-    fun getLocalDnsServer(context: Context): String = getPrefs(context).getString(KEY_LOCAL_DNS_SERVER, DEFAULT_LOCAL_DNS_SERVER) ?: DEFAULT_LOCAL_DNS_SERVER
+    fun getLocalDnsServer(context: Context): String {
+        val v = getPrefs(context).getString(KEY_LOCAL_DNS_SERVER, DEFAULT_LOCAL_DNS_SERVER)
+        return if (v.isNullOrBlank()) DEFAULT_LOCAL_DNS_SERVER else v
+    }
     fun saveLocalDnsServer(context: Context, dns: String) = getPrefs(context).edit { putString(KEY_LOCAL_DNS_SERVER, dns) }
 
     fun getUdpgwVersion(context: Context): String = getPrefs(context).getString(KEY_UDPGW_VERSION, DEFAULT_UDPGW_VERSION) ?: DEFAULT_UDPGW_VERSION
@@ -478,11 +488,19 @@ object SettingsManager {
     fun getWebAuthMode(context: Context): Int = getPrefs(context).getInt(KEY_WEB_AUTH_MODE, WEB_AUTH_MODE_RANDOM)
     fun saveWebAuthMode(context: Context, mode: Int) = getPrefs(context).edit { putInt(KEY_WEB_AUTH_MODE, mode) }
 
+    // @Synchronized 不是白加的：读时发现为空就现造，两个调用方并发进入会各自造一个，
+    // 后写的覆盖先写的——而先返回的那个调用方已经把它拼进分享链接，用户打开的是一个
+    // 从未存在过的 token。double-check 让第二个进来的人直接拿到第一个的结果。
+    @Synchronized
     fun getWebPermanentToken(context: Context): String {
         var token = getPrefs(context).getString(KEY_WEB_PERMANENT_TOKEN, "") ?: ""
         if (token.isBlank()) {
+            // SecureRandom：这个 token 是控制台凭据之一，而且会挂在 ?token= 上传输
+            // （进路由日志、HTTP 代理日志）。String.random() 走确定性 PRNG、种子取自
+            // 粗粒度时钟，观测到一个 token 就能反推整条流。顺带从 8 位提到 16 位。
+            val rng = java.security.SecureRandom()
             val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-            token = (1..8).map { chars.random() }.joinToString("")
+            token = (1..16).map { chars[rng.nextInt(chars.length)] }.joinToString("")
             getPrefs(context).edit { putString(KEY_WEB_PERMANENT_TOKEN, token) }
         }
         return token

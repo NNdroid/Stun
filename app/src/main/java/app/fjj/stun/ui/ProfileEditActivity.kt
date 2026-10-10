@@ -365,9 +365,11 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
                 binding.etProxyAddr.requestFocus()
                 return@setOnClickListener
             }
-            val serverName = binding.etServerName.text.toString().trim().ifBlank {
-                binding.etCustomHost.text.toString().trim()
-            }
+            // SNI 只取 server_name，刻意**不**回落 custom_host：custom_host 在 myssh 里只当
+            // HTTP Host 头用（tunnel_h2/ws/http/xhttp），从不作为 SNI，拿它顶替会让探测握手
+            // 到另一个虚拟主机。留空是合法配置（FieldRules 不要求非空），空即不发 SNI，与
+            // 运行时握手一致——这正是 pin 写回后能校验通过的前提。
+            val serverName = binding.etServerName.text.toString().trim()
 
             binding.btnFetchCertFingerprint.isEnabled = false
             lifecycleScope.launch(Dispatchers.IO) {
@@ -429,9 +431,8 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
                 binding.etProxyAddr.requestFocus()
                 return@setOnClickListener
             }
-            val serverName = binding.etServerName.text.toString().trim().ifBlank {
-                binding.etCustomHost.text.toString().trim()
-            }
+            // 同「获取指纹」：SNI 只取 server_name，不回落 custom_host。
+            val serverName = binding.etServerName.text.toString().trim()
 
             binding.btnDetailsCert.isEnabled = false
             Toast.makeText(this, getString(CoreR.string.fetching_details), Toast.LENGTH_SHORT).show()
@@ -867,6 +868,8 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
             proxyAddr = b.etProxyAddr.text.toString().trim(),
             serverName = b.etServerName.text.toString().trim(),
             customPath = b.etCustomPath.text.toString().trim(),
+            // 直接取控件自身的可见性，让「校验」与「显示」由同一个表达式驱动
+            customPathVisible = b.layoutCustomPath.isVisible,
             dnsServers = b.etDnsTunnelServers.text.toString().trim(),
             dnsDomain = b.etDnsTunnelDomain.text.toString().trim(),
             dnsRecordType = b.spinnerDnsRecordType.text.toString(),

@@ -154,7 +154,10 @@ object StunMcpServer {
     private val streamableSessions = ConcurrentHashMap<String, StreamableSession>()
     // Active OAuth 2.0 Tokens: token -> expiry timestamp
     private val activeOAuthTokens = ConcurrentHashMap<String, Long>()
-    private val activeAuthCodes = ConcurrentHashMap<String, Long>()
+    // code -> (expiry timestamp, requesting client_id)。绑定 client_id 是为了让
+    // /authorize 换码必须和 /token 换 token 是同一个 client，否则拿到的码只能被
+    // 任意 client 兑换。
+    private val activeAuthCodes = ConcurrentHashMap<String, Pair<Long, String>>()
     /**
      * 只读出口用的 Gson：凡是把 `Profile` 序列化出去（`get_profile_detail` 工具、
      * `stun://profiles` 资源）都会把凭据字段换成 [ProfileSecrets.MASK]，不再把
@@ -571,18 +574,33 @@ url = "$scheme://$targetHost/mcp"$headersBlock
 
                             val handleAuthorize: suspend (ApplicationCall) -> Unit = { call ->
                                 val clientId = call.request.queryParameters["client_id"] ?: ""
+                                val clientSecret = call.request.queryParameters["client_secret"] ?: ""
                                 val redirectUri = call.request.queryParameters["redirect_uri"] ?: ""
                                 val state = call.request.queryParameters["state"] ?: ""
-                                val authCode = "stunc_auth_" + UUID.randomUUID().toString().replace("-", "")
-                                activeAuthCodes[authCode] = System.currentTimeMillis() + 600000L // 10 mins
 
-                                val redirectUrl = if (redirectUri.isNotBlank()) {
-                                    val sep = if (redirectUri.contains("?")) "&" else "?"
-                                    "$redirectUri${sep}code=$authCode&state=$state"
-                                } else null
+                                // 这条路由在 validateAuth 之前注册，所以它自己必须把关。
+                                // 旧实现无条件签发 code：任何能到达这个端口的人 GET 一次
+                                // /authorize 就能换到 24 小时有效的全权限 token（解锁
+                                // start/stop_vpn 与 profile 读写）。换成与 client_credentials
+                                // 同一套凭据校验。
+                                if (!mcpOAuthClientValid(clientId, clientSecret, appContext)) {
+                                    call.respondText(
+                                        "{\"error\": \"unauthorized_client\", \"error_description\": \"Invalid or missing client_id/client_secret for /authorize\"}",
+                                        ContentType.Application.Json,
+                                        HttpStatusCode.Unauthorized
+                                    )
+                                } else {
+                                    val authCode = "stunc_auth_" + UUID.randomUUID().toString().replace("-", "")
+                                    activeAuthCodes[authCode] = System.currentTimeMillis() + 600000L to clientId // 10 mins
 
-                                val html = renderOAuthAuthorizeHtml(clientId, redirectUrl, authCode, call, appContext)
-                                call.respondText(html, ContentType.Text.Html)
+                                    val redirectUrl = if (redirectUri.isNotBlank()) {
+                                        val sep = if (redirectUri.contains("?")) "&" else "?"
+                                        "$redirectUri${sep}code=$authCode&state=$state"
+                                    } else null
+
+                                    val html = renderOAuthAuthorizeHtml(clientId, redirectUrl, authCode, call, appContext)
+                                    call.respondText(html, ContentType.Text.Html)
+                                }
                             }
 
                             get("/oauth/authorize") { handleAuthorize(call) }
@@ -604,13 +622,20 @@ url = "$scheme://$targetHost/mcp"$headersBlock
                                         authorized = true
                                     }
                                 } else if (grantType == "authorization_code") {
-                                    val expiry = activeAuthCodes.remove(code)
-                                    if (expiry != null && System.currentTimeMillis() <= expiry) {
+                                    // 必须校验 client_id 与签发该 code 的是同一个：code 本身
+                                    // 是不可预测的随机串，但一旦落在别人手里，任何 client
+                                    // 都能拿它换出 24 小时全权限 token。
+                                    val issued = activeAuthCodes.remove(code)
+                                    if (issued != null && System.currentTimeMillis() <= issued.first && issued.second == clientId) {
                                         authorized = true
                                     }
-                                } else if (grantType == "refresh_token") {
-                                    authorized = true
                                 }
+                                // 刻意**不**支持 refresh_token：本实现从不签发 refresh token，
+                                // 若照 OAuth 惯例在这里直接 authorized = true，任何人只要
+                                // POST /token grant_type=refresh_token 就能不带任何凭据换到
+                                // 24 小时有效的全权限 token（解锁 start/stop_vpn、profile
+                                // CRUD）。这些路由在 validateAuth 之前注册，所以那道检查拦不住。
+                                // 未知 grant_type 一律落到下方 invalid_grant。
 
                                 if (!authorized) {
                                     call.respondText(
@@ -2199,6 +2224,23 @@ url = "$scheme://$targetHost/mcp"$headersBlock
                 gson.toJson(errResp)
             }
         }
+    }
+
+    /**
+     * OAuth 客户端凭据校验，供 /token 的 client_credentials 分支与 /authorize 共用。
+     *
+     * 配置了 client_secret 时两者都要对上；没配 secret 时只要求 client_id 对上
+     * （对应 metadata 声明的 token_endpoint_auth_method: none）。
+     *
+     * configuredClientId 为空一律拒绝：那时不存在任何可信的 client 标识，放行等于
+     * 公开签发授权码。
+     */
+    private fun mcpOAuthClientValid(clientId: String, clientSecret: String, context: Context): Boolean {
+        val configuredClientId = SettingsManager.getMcpOAuthClientId(context)
+        val configuredSecret = SettingsManager.getMcpOAuthClientSecret(context)
+        if (configuredClientId.isBlank()) return false
+        if (configuredSecret.isBlank()) return clientId == configuredClientId
+        return clientId == configuredClientId && clientSecret == configuredSecret
     }
 
     private fun validateAuth(call: ApplicationCall, context: Context): Boolean {

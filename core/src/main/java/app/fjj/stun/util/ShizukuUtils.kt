@@ -33,9 +33,12 @@ enum class ShizukuState {
  * 在仓库里被复制了 4 份（两个 Service 各一份、`KeepAliveManager` 一份、`HomeFragment` 一份），
  * 而且 4 份都各自包了一层 `if (isReady())` —— 而真正执行的两个函数内部还会再判一次。
  *
- * Shizuku API 的两个坑（都在这里被兜住了，别在调用点重复处理）：
+ * Shizuku API 的三个坑（都在这里被兜住了，别在调用点重复处理）：
  *  - `pingBinder()` 在极少数 ROM 上抛的是 `Error`/链接错误，不是 `Exception`；
- *  - 授权结果只能靠 listener 回调，没有同步查询接口。
+ *  - 授权结果只能靠 listener 回调，没有同步查询接口；
+ *  - `requestPermission()` / `addRequestPermissionResultListener()` 在 binder 死亡时抛
+ *    `RuntimeException` 而不是返回值，必须兜住并 `resume(false)`，否则 continuation 永远不被
+ *    恢复（见 [requestPermissionInternal]）。
  */
 object ShizukuUtils {
     private const val TAG = "ShizukuUtils"
@@ -117,16 +120,10 @@ object ShizukuUtils {
             return@suspendCancellableCoroutine
         }
 
-        // 用户勾了「不再询问」并拒绝：此时 Shizuku 不会再投递回调，必须自行早退，
-        // 否则 continuation 永远等不到 resume。
-        // ⚠️ shouldShowRequestPermissionRationale 的语义是「还能再问」（被拒过但未勾不再询问），
-        // 不是「问不了」；原写法把条件写反，导致任何路径都弹不出授权框。
-        // 走到这里 isReady() 已为 false（权限确定未授予），所以 false 只可能是「已永久拒绝」。
-        if (!Shizuku.shouldShowRequestPermissionRationale()) {
-            StunLogger.w(TAG, "Shizuku permission permanently denied (never ask again).")
-            continuation.resume(false)
-            return@suspendCancellableCoroutine
-        }
+        // 刻意**不**先查 `shouldShowRequestPermissionRationale()`：它的返回值语义随 Shizuku
+        // 服务端实现变化（13.1.5 客户端只透传 binder attach 时下发的一个布尔，语义无法从
+        // 客户端 jar 确认），拿它做「问不了」的判定会误杀首问场景。要挡的「勾了不再询问」
+        // Shizuku 自己也不会回调，下方 `withTimeoutOrNull` 的超时已经兜住。
 
         // 创建一个局部 Listener
         val listener = object : Shizuku.OnRequestPermissionResultListener {
@@ -144,14 +141,25 @@ object ShizukuUtils {
             }
         }
 
-        // 注册监听器并处理协程取消的情况
-        Shizuku.addRequestPermissionResultListener(listener)
-        continuation.invokeOnCancellation {
-            Shizuku.removeRequestPermissionResultListener(listener)
-        }
+        try {
+            // 注册监听器并处理协程取消的情况
+            Shizuku.addRequestPermissionResultListener(listener)
+            continuation.invokeOnCancellation {
+                Shizuku.removeRequestPermissionResultListener(listener)
+            }
 
-        // 真正发起权限请求
-        Shizuku.requestPermission(SHIZUKU_REQUEST_CODE)
+            // 真正发起权限请求
+            Shizuku.requestPermission(SHIZUKU_REQUEST_CODE)
+        } catch (e: Exception) {
+            // addRequestPermissionResultListener / requestPermission 在 binder 死亡时抛的是
+            // RuntimeException，不是返回值。这里必须 resume(false)：continuation 一旦不被
+            // resume，调用方会一直挂到 PERMISSION_REQUEST_TIMEOUT_MS 超时——在启动链路里那
+            // 不只是 Shizuku 没授权，VPN 也起不来。
+            // 走到 catch 时 listener 可能已注册；removeRequestPermissionResultListener 幂等。
+            Shizuku.removeRequestPermissionResultListener(listener)
+            StunLogger.e(TAG, "Failed to request Shizuku permission: ${e.message}")
+            continuation.resume(false)
+        }
     }
 
     /**

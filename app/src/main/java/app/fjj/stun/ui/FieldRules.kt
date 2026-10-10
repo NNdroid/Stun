@@ -32,6 +32,8 @@ data class FieldInputs(
     val proxyAddr: String,
     val serverName: String,
     val customPath: String,
+    /** 路径输入框当前是否可见（MASQUE 关掉自定义路径时为 false）——隐藏字段不参与校验 */
+    val customPathVisible: Boolean,
     val dnsServers: String,
     val dnsDomain: String,
     val dnsRecordType: String,
@@ -211,7 +213,11 @@ object FieldRules {
         if (i.tlsActive && i.serverName.isNotEmpty() && i.serverName.any { it.isWhitespace() }) {
             errors[FieldKey.SERVER_NAME] = CoreR.string.error_invalid_server_name
         }
-        if (i.spec.customPath && i.customPath.isNotEmpty() && !i.customPath.startsWith("/")) {
+        // 只对可见字段校验。MASQUE 关掉「自定义路径」时该输入框是 gone，值仍是上一个
+        // 隧道留下的残留（比如从 Clash 导入的 "abc"）——若照常校验，保存会失败在一个
+        // 用户看不见的 TextInputLayout 上，requestFocus() 落在 gone 的控件上静默无操作，
+        // 按钮表现为「点了没反应」。
+        if (i.spec.customPath && i.customPathVisible && i.customPath.isNotEmpty() && !i.customPath.startsWith("/")) {
             errors[FieldKey.CUSTOM_PATH] = CoreR.string.error_invalid_path
         }
         if (i.verifySshFp) require(FieldKey.SSH_FINGERPRINT, i.sshFingerprint.isNotEmpty() && isSshFingerprint(i.sshFingerprint), CoreR.string.error_invalid_ssh_fingerprint)

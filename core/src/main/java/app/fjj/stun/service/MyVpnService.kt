@@ -274,7 +274,13 @@ class MyVpnService : VpnService() {
                 
                 StunRepository.registerEngineCallback(this)
                 val cfgStatus = StunRepository.proxy.loadGlobalConfig(VpnConfigBuilder.buildGlobalConfig(this, profile))
-                if (cfgStatus != 0L) throw RuntimeException("Global config load failed: $cfgStatus")
+                // -2：配置 JSON 本身坏了，中止；-3：Geo 规则文件损坏，Go 侧已保留上一份
+                // 分流表、全部流量照走代理——继续启动但必须留痕，否则用户只看到「直连分流
+                // 消失了」却找不到原因（Go 侧只有日志，UI 上没有对应提示）。
+                if (cfgStatus == -2L) throw RuntimeException("Global config parse failed: $cfgStatus")
+                if (cfgStatus != 0L) {
+                    StunLogger.w(TAG, "Geo rule files failed to load (status=$cfgStatus); continuing with the previous rule set — direct routing may be reduced")
+                }
 
                 myssh.Myssh.registerProtector { fd: Int ->
                     this@MyVpnService.protect(fd)

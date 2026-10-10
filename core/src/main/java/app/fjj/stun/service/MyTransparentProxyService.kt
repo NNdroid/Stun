@@ -200,7 +200,13 @@ class MyTransparentProxyService : Service() {
                 // 不在此清零流量基准：Go 的 TxTotal/RxTotal 为进程级全局单调计数器，
                 // 清零会导致每次会话开始把整个累计值重新写库，跨重连重复计数。基准跨重连保留。
                 val cfgStatus = StunRepository.proxy.loadGlobalConfig(VpnConfigBuilder.buildGlobalConfig(context, profile))
-                if (cfgStatus != 0L) throw RuntimeException("Global config load failed: $cfgStatus")
+                // -2：配置 JSON 本身坏了，中止；-3：Geo 规则文件损坏，Go 侧已保留上一份
+                // 分流表、全部流量照走代理——继续启动但必须留痕，否则用户只看到「直连分流
+                // 消失了」却找不到原因（Go 侧只有日志，UI 上没有对应提示）。
+                if (cfgStatus == -2L) throw RuntimeException("Global config parse failed: $cfgStatus")
+                if (cfgStatus != 0L) {
+                    StunLogger.w(TAG, "Geo rule files failed to load (status=$cfgStatus); continuing with the previous rule set — direct routing may be reduced")
+                }
                 // 必须在 start 之前注册：start 内部立刻拨 SSH，socket 一旦建出来首个 SYN
                 // 就发出去，此时若还没有 mark 通路，SSH 连接会被自己的 TPROXY 抓回本地 socks5。
                 // 探测结果决定 applyRules 走 mark 还是 uid 旁路。
@@ -621,6 +627,13 @@ class MyTransparentProxyService : Service() {
         teardownScope.launch {
             statsSink.flushPending(tx, rx)
         }
+
+        // 锁的兜底释放。startTProxy 的早退分支（root 被拒）会先把 isRunning 清掉再
+        // stopSelf，而 stopTProxy 开头的 isRunning 守卫会因此直接 return、跳过头部的
+        // releaseLocks()——WIFI_MODE_FULL_HIGH_PERF 和 24h 的 PARTIAL_WAKE_LOCK 就一直
+        // 挂着，UI 上却已经是断开状态。releaseLocks 幂等，这里无条件再放一次，
+        // 让「服务销毁 ⇒ 锁已释放」成为恒成立的不变量。
+        releaseLocks()
 
         // 先停核心、再停 tproxy：反过来的话停机过程自身产生的收尾流量（FIN/RST 等）
         // 不会有下一帧回调，那一段就落在刚补齐的区间之外。
