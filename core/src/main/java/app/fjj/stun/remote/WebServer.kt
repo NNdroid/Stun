@@ -130,8 +130,13 @@ object WebServer {
     var onAuthConfigChanged: ((newUrl: String) -> Unit)? = null
 
     private fun generateRandomToken(): String {
+        // SecureRandom：这个 token 是控制台唯一的凭据，而且是 ?token= 挂在 URL 上传输
+        // （会进路由日志、HTTP 代理日志、Android 网络日志）。String.random() 走
+        // Random 的确定性 PRNG、种子取自粗粒度时钟，整条流能从单个观测到的 token
+        // 反推——那「随机」就不成立。顺带从 8 位提到 16 位（31 字符集 ≈ 76 bit）。
+        val rng = java.security.SecureRandom()
         val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-        return (1..8).map { chars.random() }.joinToString("")
+        return (1..16).map { chars[rng.nextInt(chars.length)] }.joinToString("")
     }
 
     fun getEffectiveToken(context: Context): String {
@@ -221,28 +226,38 @@ object WebServer {
 
     fun start(context: Context, port: Int = DEFAULT_PORT): Int {
         if (isRunning.compareAndSet(false, true)) {
-            val appContext = context.applicationContext
-            token = getEffectiveToken(appContext)
+            try {
+                val appContext = context.applicationContext
+                token = getEffectiveToken(appContext)
 
-            actualPort = try {
-                ServerSocket(port).use { it.localPort }
-            } catch (_: Exception) {
-                ServerSocket(0).use { it.localPort }
+                actualPort = try {
+                    ServerSocket(port).use { it.localPort }
+                } catch (_: Exception) {
+                    ServerSocket(0).use { it.localPort }
+                }
+
+                appContextRef = appContext
+                // Kotlin 不接受「实现 FunctionN 的普通 class」直接充当函数类型参数，必须显式断言一次。
+                // 断言目标就是函数类型本身，运行时检查的是 instanceof Function1，恒成立。
+                val module: Application.() -> Unit = WebConsoleModule() as Application.() -> Unit
+                server = embeddedServer(CIO, port = actualPort, module = module)
+                    .start(wait = false)
+
+                val fullUrl = getEffectiveUrl(context, actualPort)
+                // 粘滞标记：保活 worker 靠它判断"这台设备本来就跑控制台"，从而不必在
+                // 从没起过控制台的设备上（如手机端）凭空开一个监听端口。只置位不清除。
+                SettingsManager.markWebConsoleEverStarted(appContext)
+                StunLogger.i(TAG, "WebServer started → $fullUrl")
+                return actualPort
+            } catch (e: Exception) {
+                // 起不来必须把 isRunning 回滚：否则标志位永久卡在 true，
+                // RemoteControlHost.restoreWebConsole 一看 isRunning() 就返回 "webui-alive"，
+                // 保活 worker（前台服务重启、Shizuku worker）会一直认为控制台活着、永不重试。
+                // 表现是：一次端口竞争之后控制台静默死掉，日志还一直报 webui-alive，
+                // 只有杀进程才能恢复。
+                isRunning.set(false)
+                StunLogger.e(TAG, "WebServer failed to start: ${e.message}", e)
             }
-
-            appContextRef = appContext
-            // Kotlin 不接受「实现 FunctionN 的普通 class」直接充当函数类型参数，必须显式断言一次。
-            // 断言目标就是函数类型本身，运行时检查的是 instanceof Function1，恒成立。
-            val module: Application.() -> Unit = WebConsoleModule() as Application.() -> Unit
-            server = embeddedServer(CIO, port = actualPort, module = module)
-                .start(wait = false)
-
-            val fullUrl = getEffectiveUrl(context, actualPort)
-            // 粘滞标记：保活 worker 靠它判断"这台设备本来就跑控制台"，从而不必在
-            // 从没起过控制台的设备上（如手机端）凭空开一个监听端口。只置位不清除。
-            SettingsManager.markWebConsoleEverStarted(appContext)
-            StunLogger.i(TAG, "WebServer started → $fullUrl")
-            return actualPort
         }
         return -1
     }

@@ -3542,7 +3542,23 @@ function formatBytes(bytes) {
 
 function escapeHtml(str) {
   if (!str) return '';
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// 内联事件里的 JS 字符串实参专用。这里有**两层**解析：HTML 先解码实体，然后 JS 才看到
+// 得到的源码。所以单引号必须转成 \'（HTML 不解码反斜杠，JS 会把它当成转义引号），
+// 而**不能**用 escapeHtml 的 &#39;——&#39; 在 HTML 解码后变回裸 '，正好把引号闭合掉，
+// 等于转义完全失效。双引号仍要用 &quot;，因为属性本身是用 " 包住的。
+function jsArg(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/\\/g, '\\\\')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/'/g, "\\'");
 }
 
 function switchTab(tabId) {
@@ -3853,12 +3869,13 @@ function renderConnections() {
 
   const now = Math.floor(Date.now() / 1000);
   const html = pageItems.map(c => {
-    const target = c.target_addr || c.TargetAddr || '-';
-    const proxy = c.proxy_addr || c.ProxyAddr || 'Direct';
+    // 目标地址来自真实流量（域名/Host 头，客户端可控），未经转义直接 innerHTML 会被当成标签解析。
+    const target = escapeHtml(c.target_addr || c.TargetAddr || '-');
+    const proxy = escapeHtml(c.proxy_addr || c.ProxyAddr || 'Direct');
     const rb = c.read_bytes || c.ReadBytes || 0;
     const wb = c.write_bytes || c.WriteBytes || 0;
-    
-    let durationStr = '< 1s';
+
+    let durationStr = '&lt; 1s';
     let startTime = c.start_time || c.StartTime;
     if (startTime) {
       let startSec = typeof startTime === 'number' ? startTime : Math.floor(new Date(startTime).getTime() / 1000);
@@ -4041,16 +4058,18 @@ async function syncSubscriptionNow() {
 
 function getLatencyBadgeHtml(id) {
   const d = profileDelays[id];
-  if (!d) return `<span class="latency-badge" id="delay-badge-${id}">—</span>`;
-  if (d.testing) return `<span class="latency-badge testing" id="delay-badge-${id}">...</span>`;
-  
+  // id 会进 DOM 属性和内联事件，同样按不可信处理。
+  const safeId = escapeHtml(id);
+  if (!d) return `<span class="latency-badge" id="delay-badge-${safeId}">—</span>`;
+  if (d.testing) return `<span class="latency-badge testing" id="delay-badge-${safeId}">...</span>`;
+
   let cls = 'bad';
   if (d.ok) {
     if (d.latencyMs < 150) cls = 'good';
     else if (d.latencyMs < 350) cls = 'mid';
     else cls = 'bad';
   }
-  return `<span class="latency-badge ${cls}" id="delay-badge-${id}">⚡ ${escapeHtml(d.display || '—')}</span>`;
+  return `<span class="latency-badge ${cls}" id="delay-badge-${safeId}">⚡ ${escapeHtml(d.display || '—')}</span>`;
 }
 
 function renderProfiles(profiles) {
@@ -4074,12 +4093,18 @@ function renderProfiles(profiles) {
     return;
   }
 
-  const html = shown.map(p => `
+  const html = shown.map(p => {
+    // 节点名/id 都是用户输入，且同时出现在 HTML 属性和内联事件的 JS 字符串里，
+    // 两处要用不同的转义（见 jsArg 的说明）。
+    const pid = jsArg(p.id);
+    const pname = jsArg(p.name);
+    const badge = escapeHtml((p.tunnelType === 'kcptun' ? 'KCP' : (p.tunnelType || 'TLS')).toUpperCase());
+    return `
     <div class="profile-card ${p.isSelected ? 'selected' : ''}">
       <div class="profile-header">
-        <button class="fav-star ${p.favorite ? 'on' : ''}" onclick="toggleFavorite('${p.id}')" title="${t(p.favorite ? 'fav_remove' : 'fav_add')}">${p.favorite ? '⭐' : '☆'}</button>
+        <button class="fav-star ${p.favorite ? 'on' : ''}" onclick="toggleFavorite('${pid}')" title="${t(p.favorite ? 'fav_remove' : 'fav_add')}">${p.favorite ? '⭐' : '☆'}</button>
         <span class="profile-name">${escapeHtml(p.name)}</span>
-        <span class="profile-badge">${((p.tunnelType === 'kcptun' ? 'KCP' : (p.tunnelType || 'TLS'))).toUpperCase()}</span>
+        <span class="profile-badge">${badge}</span>
         ${p.subName ? `<span class="profile-badge" title="${escapeHtml(p.subName)}">${t('badge_from_subscription')}</span>` : ''}
       </div>
       <div class="profile-addr">🌐 ${escapeHtml(p.sshAddr)}</div>
@@ -4089,13 +4114,14 @@ function renderProfiles(profiles) {
         ${getLatencyBadgeHtml(p.id)}
       </div>
       <div class="profile-actions">
-        ${p.isSelected ? '<span style="color:var(--primary);font-size:0.82rem;font-weight:800">' + t('badge_selected') + '</span>' : `<button class="btn btn-sm btn-primary" onclick="selectProfile('${p.id}', '${escapeHtml(p.name)}')">${t('btn_select_this')}</button>`}
-        <button class="btn btn-sm" id="btn-ping-${p.id}" onclick="testSingleProfileLatency('${p.id}', '${escapeHtml(p.name)}')">${t('btn_ping')}</button>
-        <button class="btn btn-sm" onclick="openEditModal('${p.id}')">${t('btn_edit_profile')}</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteProfile('${p.id}', '${escapeHtml(p.name)}')">${t('btn_delete')}</button>
+        ${p.isSelected ? '<span style="color:var(--primary);font-size:0.82rem;font-weight:800">' + t('badge_selected') + '</span>' : `<button class="btn btn-sm btn-primary" onclick="selectProfile('${pid}', '${pname}')">${t('btn_select_this')}</button>`}
+        <button class="btn btn-sm" id="btn-ping-${escapeHtml(p.id)}" onclick="testSingleProfileLatency('${pid}', '${pname}')">${t('btn_ping')}</button>
+        <button class="btn btn-sm" onclick="openEditModal('${pid}')">${t('btn_edit_profile')}</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteProfile('${pid}', '${pname}')">${t('btn_delete')}</button>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   container.innerHTML = html;
   quickContainer.innerHTML = html;
@@ -4783,8 +4809,9 @@ async function fetchCertFingerprint() {
     document.getElementById('edit-node-proxy-addr').focus();
     return;
   }
-  let serverName = document.getElementById('edit-node-server-name').value.trim();
-  if (!serverName) serverName = document.getElementById('edit-node-custom-host').value.trim();
+  // SNI 只取 server-name，不回落 custom-host：后者在 myssh 里只作 HTTP Host 头，
+  // 从不作为 SNI。留空合法（校验不要求非空），空即不发 SNI，与隧道握手一致。
+  const serverName = document.getElementById('edit-node-server-name').value.trim();
 
   const btn = document.getElementById('t-btn-fetch-cert-fp');
   if (btn) btn.disabled = true;
@@ -4818,8 +4845,8 @@ async function fetchCertDetails() {
     document.getElementById('edit-node-proxy-addr').focus();
     return;
   }
-  let serverName = document.getElementById('edit-node-server-name').value.trim();
-  if (!serverName) serverName = document.getElementById('edit-node-custom-host').value.trim();
+  // 同 fetchCertFingerprint：SNI 只取 server-name，不回落 custom-host。
+  const serverName = document.getElementById('edit-node-server-name').value.trim();
 
   const btn = document.getElementById('t-btn-details-cert');
   if (btn) btn.disabled = true;
@@ -4988,9 +5015,16 @@ async function openEditModal(id) {
   document.getElementById('edit-node-udp-custom-send-window').value = p.udpCustomSendWindow || '';
   document.getElementById('edit-node-udp-custom-max-pkt').value = p.udpCustomMaxPkt || '';
   document.getElementById('edit-node-udp-custom-mtu-probe').value = ['auto', 'on', 'off'].includes(p.udpCustomMtuProbe) ? p.udpCustomMtuProbe : 'auto';
-  document.getElementById('edit-node-noise-public-key').value = p.tunnelType === 'dns_custom'
-    ? (p.dnsTunnelPublicKey || p.noisePublicKey || '')
-    : (p.udpCustomPublicKey || p.noisePublicKey || '');
+  // Noise 公钥有三个隧道专属字段 + 一个遗留字段，必须按隧道对号入座。
+  // 旧写法把 icmp_custom 也回落到 udpCustomPublicKey：打开一个 ICMP 节点会读到
+  // UDP 节点的公钥，保存时再被写回 icmpCustomPublicKey，把 ICMP 自己的密钥覆盖掉。
+  // （保存侧已按隧道三选一写入，只有加载侧漏了 icmp。）
+  const noiseKeyField = p.tunnelType === 'dns_custom' ? 'dnsTunnelPublicKey'
+    : p.tunnelType === 'udp_custom' ? 'udpCustomPublicKey'
+    : p.tunnelType === 'icmp_custom' ? 'icmpCustomPublicKey'
+    : null;
+  document.getElementById('edit-node-noise-public-key').value =
+    (noiseKeyField && p[noiseKeyField]) || p.noisePublicKey || '';
   document.getElementById('edit-node-xhttp-chunk-size').value = p.xhttpChunkSizeKB || '';
   document.getElementById('edit-node-xhttp-stream-mode').value = ['auto', 'stream', 'poll'].includes(p.xhttpStreamMode) ? p.xhttpStreamMode : 'auto';
   document.getElementById('edit-node-bind-interface').value = p.bindInterface || '';
@@ -5837,8 +5871,10 @@ async function webdavRestoreNow() {
 
 function openWebDavPicker(backups) {
   const list = document.getElementById('webdav-picker-list');
+  // 目录名来自远端 WebDAV 服务器，完全不可信（服务端可命名为 '); alert(1) //），
+  // 而 formatBackupDir 在时间戳正则不匹配时会原样回显入参。
   list.innerHTML = backups.map(b =>
-    `<button class="btn" style="text-align:left" onclick="webdavPickRestore('${b}')">📦 ${formatBackupDir(b)}</button>`
+    `<button class="btn" style="text-align:left" onclick="webdavPickRestore('${jsArg(b)}')">📦 ${escapeHtml(formatBackupDir(b))}</button>`
   ).join('');
   document.getElementById('webdav-picker-modal').classList.add('active');
 }

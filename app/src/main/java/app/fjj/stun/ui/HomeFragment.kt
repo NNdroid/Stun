@@ -2334,22 +2334,30 @@ class HomeFragment : Fragment() {
             binding.fabStartStop.isEnabled = false
             binding.progressBar.visibility = View.VISIBLE
             viewLifecycleOwner.lifecycleScope.launch {
-                val profile = withContext(Dispatchers.IO) { ProfileManager.getSelectedProfile(requireContext()) }
-                if (!validateSelectedProfile(profile)) {
-                    finishStartRequest()
-                    return@launch
-                }
-                
-                isStopping = false
-                if (SettingsManager.getServiceMode(requireContext()) == SettingsManager.SERVICE_MODE_TPROXY) {
-                    if (!withContext(Dispatchers.IO) { RootShell.isRoot() }) {
-                        Snackbar.make(binding.root, getString(CoreR.string.error_root_required), Snackbar.LENGTH_LONG).show()
+                try {
+                    val profile = withContext(Dispatchers.IO) { ProfileManager.getSelectedProfile(requireContext()) }
+                    if (!validateSelectedProfile(profile)) {
                         finishStartRequest()
                         return@launch
                     }
+
+                    isStopping = false
+                    if (SettingsManager.getServiceMode(requireContext()) == SettingsManager.SERVICE_MODE_TPROXY) {
+                        if (!withContext(Dispatchers.IO) { RootShell.isRoot() }) {
+                            Snackbar.make(binding.root, getString(CoreR.string.error_root_required), Snackbar.LENGTH_LONG).show()
+                            finishStartRequest()
+                            return@launch
+                        }
+                    }
+                    applyShizukuKeepAlive()
+                    checkAndRequestNotificationPermission()
+                } catch (e: Exception) {
+                    // 启动链路此前完全没有异常兜底：任一步抛异常都会让 startRequestInProgress
+                    // 卡在 true、按钮永久 disabled（表现就是「点了启动没反应」）。
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    StunLogger.e("HomeFragment", "Start request failed: ${e.message}", e)
+                    finishStartRequest()
                 }
-                applyShizukuKeepAlive()
-                checkAndRequestNotificationPermission()
             }
         }
     }

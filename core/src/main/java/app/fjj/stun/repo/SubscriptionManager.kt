@@ -187,6 +187,23 @@ object SubscriptionManager {
         return !uri.host.isNullOrBlank() && scheme == "https"
     }
 
+    /**
+     * 把订阅 URL 变成可以安全写日志的形态：去掉 fragment、query，并把 userinfo 换成 ***。
+     *
+     * 订阅 URL 通常本身就是凭据（鉴权参数或账号密码直接编在 URL 里），而日志会明文落盘、
+     * 在日志界面可见、还会跟着备份走。[Uri] 不直接暴露 userinfo，所以这里按 '@' 手工切分。
+     */
+    private fun redactedUrl(raw: String): String {
+        val noFragment = raw.substringBefore('#')
+        val noQuery = noFragment.substringBefore('?')
+        val at = noQuery.lastIndexOf('@')
+        if (at < 0) return noQuery
+        val schemeEnd = noQuery.indexOf("://")
+        val authorityStart = (schemeEnd + 3).coerceAtLeast(0)
+        if (at <= authorityStart) return noQuery
+        return noQuery.substring(0, authorityStart) + "***@" + noQuery.substring(at + 1)
+    }
+
     /** 仅 http/https 视为可点击的首页地址。 */
     private fun isValidWebUrl(url: String): Boolean {
         val text = url.trim()
@@ -751,10 +768,13 @@ object SubscriptionManager {
                 message = context.getString(R.string.error_invalid_subscription_url))
         }
         try {
-            StunLogger.i(TAG, "Fetching subscription from: $subUrl")
+            // 订阅 URL 本身就是凭据（多数订阅服务把鉴权直接编在 URL 里），而 StunLogger
+            // 的日志是明文落盘、还会被日志界面与备份带上走的。INFO 级别会进更多采集面，
+            // 所以这里只打 host，把 query/userinfo 部分去掉。
+            StunLogger.i(TAG, "Fetching subscription from: ${redactedUrl(subUrl)}")
             StunLogger.d(
                 TAG,
-                "Sync start [$subUrl]: pin=${if (sub.pin.isBlank()) "none" else "set"}, " +
+                "Sync start [${redactedUrl(subUrl)}]: pin=${if (sub.pin.isBlank()) "none" else "set"}, " +
                     "existing entries in DB: ${existingById.size}"
             )
             val request = Request.Builder()
