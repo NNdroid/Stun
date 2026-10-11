@@ -101,6 +101,13 @@ class StunApp : Application() {
             }
         }
 
+        startupStep("桌面图标外观") {
+            // 桌面读哪个 activity-alias 做启动入口，就显示哪个 android:icon。组件状态可能被
+            // 降级安装或第三方清组件工具改掉，所以每次冷启动都重算一遍：幂等，代价是几次
+            // 组件查询。放这里而不是 Activity 里，用户还没看到任何界面时图标就已经对齐了。
+            app.fjj.stun.util.LauncherIconManager.applyOnStartup(this@StunApp)
+        }
+
         startupStep("桌面快捷方式与小组件") {
             // Initialize Dynamic Launcher Shortcuts & Desktop App Widget
             app.fjj.stun.util.DynamicShortcutManager.updateShortcuts(this@StunApp)

@@ -193,6 +193,318 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- Section: 桌面图标外观 —— 5 档 adaptive-icon 预览，点选即切。
+                 必须插在 UDP 网关小节之前：UdpGatewaySettingsI18nTest 用「UDP 网关小节起点 ..
+                 自定义直连路由小节起点」的行号区间判定字段归属，插到后面会让它误判。
+                 （注释里刻意不写那两节的 view id / 串键名，测试是按字面串定位行号的。） -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_icon_theme_section"
+                style="?attr/materialCardViewFilledStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_4"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+                app:cardCornerRadius="@dimen/corner_lg"
+                app:strokeWidth="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_4">
+
+                    <!-- 区块头：徽标 + 标题 + 副标题（副标题提醒用户部分桌面要重启才刷新） -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="@dimen/badge_size"
+                            android:layout_height="@dimen/badge_size"
+                            android:background="@drawable/bg_icon_badge"
+                            android:contentDescription="@null"
+                            android:padding="@dimen/space_2"
+                            android:src="@drawable/ic_palette"
+                            app:tint="?attr/colorOnSecondaryContainer" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_3"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/icon_theme_title"
+                                android:textAppearance="?attr/textAppearanceTitleMedium"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/space_1"
+                                android:text="@string/icon_theme_desc"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:alpha="0.7" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- 5 档预览。格子宽度按 320dp 最窄机计算：
+                         320 - 32（页边） - 32（卡内边） = 256dp，5 格 + 4 个 4dp 间距 ⇒ 每格 48dp，
+                         装得下 36dp 预览图 + 9sp 标签。
+
+                         标签故意给两行（maxLines=2），横向内边距必须归零：
+                         320dp 下每格只有 48dp，留 4dp 边距就只剩 40dp 文字宽，
+                         日文的グレープ（含长音符号、不可断行）在 1.5 倍字号下会被挤成
+                         「グ / レー…」——见 IconThemeSectionLayoutTest 的语言扫描用例。
+                         预览图本身是 36dp，比格子窄，归零边距也不会顶到卡片边缘。 -->
+                    <LinearLayout
+                        android:id="@+id/row_icon_theme"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_4"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/card_icon_theme_default"
+                            style="?attr/materialCardViewFilledStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:checkable="true"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:contentDescription="@string/icon_theme_default"
+                            app:cardBackgroundColor="?attr/colorSurfaceContainer"
+                            app:cardCornerRadius="@dimen/corner_sm"
+                            app:checkedIconEnabled="false"
+                            app:strokeWidth="0dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_horizontal"
+                                android:orientation="vertical"
+                                android:paddingHorizontal="0dp"
+                                android:paddingVertical="@dimen/space_2">
+
+                                <ImageView
+                                    android:id="@+id/iv_icon_theme_default"
+                                    android:layout_width="36dp"
+                                    android:layout_height="36dp"
+                                    android:contentDescription="@null"
+                                    android:scaleType="fitCenter"
+                                    android:src="@mipmap/ic_launcher" />
+
+                                <TextView
+                                    android:id="@+id/tv_icon_theme_default"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="@dimen/space_1"
+                                    android:ellipsize="end"
+                                    android:gravity="center"
+                                    android:importantForAccessibility="no"
+                                    android:maxLines="2"
+                                    android:text="@string/icon_theme_default"
+                                    android:textAppearance="?attr/textAppearanceBodySmall"
+                                    android:textSize="@dimen/text_widget_xs" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/card_icon_theme_aurora"
+                            style="?attr/materialCardViewFilledStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_1"
+                            android:layout_weight="1"
+                            android:checkable="true"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:contentDescription="@string/icon_theme_aurora"
+                            app:cardBackgroundColor="?attr/colorSurfaceContainer"
+                            app:cardCornerRadius="@dimen/corner_sm"
+                            app:checkedIconEnabled="false"
+                            app:strokeWidth="0dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_horizontal"
+                                android:orientation="vertical"
+                                android:paddingHorizontal="0dp"
+                                android:paddingVertical="@dimen/space_2">
+
+                                <ImageView
+                                    android:id="@+id/iv_icon_theme_aurora"
+                                    android:layout_width="36dp"
+                                    android:layout_height="36dp"
+                                    android:contentDescription="@null"
+                                    android:scaleType="fitCenter"
+                                    android:src="@mipmap/ic_launcher_aurora" />
+
+                                <TextView
+                                    android:id="@+id/tv_icon_theme_aurora"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="@dimen/space_1"
+                                    android:ellipsize="end"
+                                    android:gravity="center"
+                                    android:importantForAccessibility="no"
+                                    android:maxLines="2"
+                                    android:text="@string/icon_theme_aurora"
+                                    android:textAppearance="?attr/textAppearanceBodySmall"
+                                    android:textSize="@dimen/text_widget_xs" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/card_icon_theme_ocean"
+                            style="?attr/materialCardViewFilledStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_1"
+                            android:layout_weight="1"
+                            android:checkable="true"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:contentDescription="@string/icon_theme_ocean"
+                            app:cardBackgroundColor="?attr/colorSurfaceContainer"
+                            app:cardCornerRadius="@dimen/corner_sm"
+                            app:checkedIconEnabled="false"
+                            app:strokeWidth="0dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_horizontal"
+                                android:orientation="vertical"
+                                android:paddingHorizontal="0dp"
+                                android:paddingVertical="@dimen/space_2">
+
+                                <ImageView
+                                    android:id="@+id/iv_icon_theme_ocean"
+                                    android:layout_width="36dp"
+                                    android:layout_height="36dp"
+                                    android:contentDescription="@null"
+                                    android:scaleType="fitCenter"
+                                    android:src="@mipmap/ic_launcher_ocean" />
+
+                                <TextView
+                                    android:id="@+id/tv_icon_theme_ocean"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="@dimen/space_1"
+                                    android:ellipsize="end"
+                                    android:gravity="center"
+                                    android:importantForAccessibility="no"
+                                    android:maxLines="2"
+                                    android:text="@string/icon_theme_ocean"
+                                    android:textAppearance="?attr/textAppearanceBodySmall"
+                                    android:textSize="@dimen/text_widget_xs" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/card_icon_theme_mint"
+                            style="?attr/materialCardViewFilledStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_1"
+                            android:layout_weight="1"
+                            android:checkable="true"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:contentDescription="@string/icon_theme_mint"
+                            app:cardBackgroundColor="?attr/colorSurfaceContainer"
+                            app:cardCornerRadius="@dimen/corner_sm"
+                            app:checkedIconEnabled="false"
+                            app:strokeWidth="0dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_horizontal"
+                                android:orientation="vertical"
+                                android:paddingHorizontal="0dp"
+                                android:paddingVertical="@dimen/space_2">
+
+                                <ImageView
+                                    android:id="@+id/iv_icon_theme_mint"
+                                    android:layout_width="36dp"
+                                    android:layout_height="36dp"
+                                    android:contentDescription="@null"
+                                    android:scaleType="fitCenter"
+                                    android:src="@mipmap/ic_launcher_mint" />
+
+                                <TextView
+                                    android:id="@+id/tv_icon_theme_mint"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="@dimen/space_1"
+                                    android:ellipsize="end"
+                                    android:gravity="center"
+                                    android:importantForAccessibility="no"
+                                    android:maxLines="2"
+                                    android:text="@string/icon_theme_mint"
+                                    android:textAppearance="?attr/textAppearanceBodySmall"
+                                    android:textSize="@dimen/text_widget_xs" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/card_icon_theme_grape"
+                            style="?attr/materialCardViewFilledStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/space_1"
+                            android:layout_weight="1"
+                            android:checkable="true"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:contentDescription="@string/icon_theme_grape"
+                            app:cardBackgroundColor="?attr/colorSurfaceContainer"
+                            app:cardCornerRadius="@dimen/corner_sm"
+                            app:checkedIconEnabled="false"
+                            app:strokeWidth="0dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_horizontal"
+                                android:orientation="vertical"
+                                android:paddingHorizontal="0dp"
+                                android:paddingVertical="@dimen/space_2">
+
+                                <ImageView
+                                    android:id="@+id/iv_icon_theme_grape"
+                                    android:layout_width="36dp"
+                                    android:layout_height="36dp"
+                                    android:contentDescription="@null"
+                                    android:scaleType="fitCenter"
+                                    android:src="@mipmap/ic_launcher_grape" />
+
+                                <TextView
+                                    android:id="@+id/tv_icon_theme_grape"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="@dimen/space_1"
+                                    android:ellipsize="end"
+                                    android:gravity="center"
+                                    android:importantForAccessibility="no"
+                                    android:maxLines="2"
+                                    android:text="@string/icon_theme_grape"
+                                    android:textAppearance="?attr/textAppearanceBodySmall"
+                                    android:textSize="@dimen/text_widget_xs" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
             <!-- Section: UDP Gateway —— 区块头 + 实现/地址/会话限制三块平铺内容（无子卡嵌套）。
                  card_udpgw_section 是预览测试的锚点（外层卡自身，别挂在子卡内的视图上）。 -->
             <com.google.android.material.card.MaterialCardView

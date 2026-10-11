@@ -46,12 +46,13 @@
             android:theme="@style/Theme.App.Starting"
             android:exported="true"
             android:windowSoftInputMode="adjustResize" >
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
 
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-
+            <!--
+                启动入口（MAIN/LAUNCHER）在下面的 activity-alias 上，每个图标外观一个；
+                留在这里会让每个外观都在桌面各出一个图标。
+                stun:// 深链必须留在 Activity 上而不是 alias 上 —— alias 的启用状态会随
+                用户切换外观而变化，深链跟着会时灵时不灵。
+            -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 
@@ -66,6 +67,108 @@
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
         </activity>
+
+        <!--
+            图标外观：桌面读到的启动组件是哪个 alias，就用哪个 android:icon。
+            运行时切换靠 PackageManager.setComponentEnabledSetting 让其中恰好一个为 ENABLED
+            （见 LauncherIconManager）。MainActivity 不再带 MAIN/LAUNCHER，因此 alias 必须
+            自己也声明 android.app.shortcuts —— 静态快捷方式按启动组件查 meta-data，
+            否则长按菜单的静态项会丢。
+        -->
+        <activity-alias
+            android:name=".LauncherDefault"
+            android:targetActivity=".ui.MainActivity"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:label="@string/app_name"
+            android:exported="true"
+            android:enabled="true" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LauncherAurora"
+            android:targetActivity=".ui.MainActivity"
+            android:icon="@mipmap/ic_launcher_aurora"
+            android:roundIcon="@mipmap/ic_launcher_aurora"
+            android:label="@string/app_name"
+            android:exported="true"
+            android:enabled="false" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LauncherOcean"
+            android:targetActivity=".ui.MainActivity"
+            android:icon="@mipmap/ic_launcher_ocean"
+            android:roundIcon="@mipmap/ic_launcher_ocean"
+            android:label="@string/app_name"
+            android:exported="true"
+            android:enabled="false" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LauncherMint"
+            android:targetActivity=".ui.MainActivity"
+            android:icon="@mipmap/ic_launcher_mint"
+            android:roundIcon="@mipmap/ic_launcher_mint"
+            android:label="@string/app_name"
+            android:exported="true"
+            android:enabled="false" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LauncherGrape"
+            android:targetActivity=".ui.MainActivity"
+            android:icon="@mipmap/ic_launcher_grape"
+            android:roundIcon="@mipmap/ic_launcher_grape"
+            android:label="@string/app_name"
+            android:exported="true"
+            android:enabled="false" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+        </activity-alias>
 
         <activity
             android:name=".ui.ProfileEditActivity"

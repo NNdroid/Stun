@@ -462,6 +462,14 @@
     <string name="mcp_basic_password_hint">密碼（使用者：admin）</string>
     <string name="mcp_oauth_secret_hint">用戶端密鑰（client_id: stun-client）</string>
     <string name="show_notification_speed">通知欄顯示即時網速</string>
+    <string name="icon_theme_title">桌面圖示外觀</string>
+    <string name="icon_theme_desc">部分桌面需要重啟後才刷新圖示。</string>
+    <string name="icon_theme_default">經典</string>
+    <string name="icon_theme_aurora">虹彩</string>
+    <string name="icon_theme_ocean">深海</string>
+    <string name="icon_theme_mint">薄荷</string>
+    <string name="icon_theme_grape">香芋</string>
+    <string name="icon_theme_applied">圖示外觀已設為「%1$s」</string>
     <string name="dns_tunnel_record_type">DNS 資料記錄類型</string>
     <string name="dns_tunnel_domain_hint">權威隧道網域 (例如 tunnel.example.com)</string>
     <string name="dns_tunnel_servers_hint">權威 DNS 伺服器 (例如 8.8.8.8:53, 1.1.1.1:53)</string>
