@@ -466,6 +466,14 @@
     <string name="mcp_basic_password_hint">パスワード（ユーザー：admin）</string>
     <string name="mcp_oauth_secret_hint">クライアントシークレット（client_id: stun-client）</string>
     <string name="show_notification_speed">通知バーに速度を表示</string>
+    <string name="icon_theme_title">アイコンの外観</string>
+    <string name="icon_theme_desc">一部のラウンチャーは再起動後にのみアイコンを更新します。</string>
+    <string name="icon_theme_default">標準</string>
+    <string name="icon_theme_aurora">オーロラ</string>
+    <string name="icon_theme_ocean">深海</string>
+    <string name="icon_theme_mint">ミント</string>
+    <string name="icon_theme_grape">グレープ</string>
+    <string name="icon_theme_applied">アイコンの外観を「%1$s」に設定しました</string>
     <string name="dns_tunnel_record_type">DNSレコードタイプ</string>
     <string name="dns_tunnel_domain_hint">権威ドメイン (例: tunnel.example.com)</string>
     <string name="dns_tunnel_servers_hint">DNSサーバー (例: 8.8.8.8:53)</string>

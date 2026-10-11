@@ -13,6 +13,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.ArrayAdapter
 import android.widget.FrameLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat
@@ -38,7 +39,9 @@ import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.ui.viewmodel.SettingsState
 import app.fjj.stun.ui.viewmodel.SettingsViewModel
 import app.fjj.stun.util.ClipboardUtils
+import app.fjj.stun.util.LauncherIconManager
 import app.fjj.stun.util.revealAboveBottomPadding
+import com.google.android.material.card.MaterialCardView
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
@@ -58,6 +61,10 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
 
     // Geo 标签选择器的回写目标；旋转后以 kind 兜底重解析到 binding 字段
     private var geoTagPickerTarget: com.google.android.material.textfield.TextInputEditText? = null
+
+    // 桌面图标外观：id → (预览卡, 标签)。跟 _binding 同生命周期，onDestroyView 一并置空，
+    // 别在视图销毁后留着引用（Fragment 可能比 Activity 活得久）。
+    private var iconThemeChoices: Map<String, Pair<MaterialCardView, TextView>>? = null
 
     private val logLevels = arrayOf("DEBUG", "INFO", "WARN", "ERROR")
     private lateinit var serviceModes: Array<String>
@@ -125,6 +132,19 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
         binding.cbWebdavSectionSettings.setOnCheckedChangeListener { _, _ -> saveWebDavSectionSelection() }
         binding.cbWebdavSectionSubscription.setOnCheckedChangeListener { _, _ -> saveWebDavSectionSelection() }
         binding.cbWebdavSectionSubscriptionUsage.setOnCheckedChangeListener { _, _ -> saveWebDavSectionSelection() }
+
+        // 桌面图标外观：点哪个就切到哪个，点完立刻生效（不排队等底部「保存」）。
+        iconThemeChoices = linkedMapOf(
+            SettingsManager.ICON_THEME_DEFAULT to (binding.cardIconThemeDefault to binding.tvIconThemeDefault),
+            SettingsManager.ICON_THEME_AURORA to (binding.cardIconThemeAurora to binding.tvIconThemeAurora),
+            SettingsManager.ICON_THEME_OCEAN to (binding.cardIconThemeOcean to binding.tvIconThemeOcean),
+            SettingsManager.ICON_THEME_MINT to (binding.cardIconThemeMint to binding.tvIconThemeMint),
+            SettingsManager.ICON_THEME_GRAPE to (binding.cardIconThemeGrape to binding.tvIconThemeGrape),
+        )
+        iconThemeChoices?.forEach { (id, choice) ->
+            choice.first.setOnClickListener { applyIconTheme(id) }
+        }
+        applyIconThemeTint()
 
         binding.toolbar.setNavigationIcon(R.drawable.ic_back)
         binding.toolbar.setNavigationOnClickListener {
@@ -529,6 +549,51 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
         val tunSelected = binding.rbUdpgwTun2proxy.isChecked
         tintSelectionCard(binding.cardUdpgwTun2proxy, binding.tvUdpgwTun2proxyTitle, tunSelected)
         tintSelectionCard(binding.cardUdpgwBadvpn, binding.tvUdpgwBadvpnTitle, !tunSelected)
+    }
+
+    /**
+     * 选中标签页里那一档外观。点选即生效，**不**走底部「保存」：它只改桌面启动入口，
+     * 跟 VPN 配置无关，排队保存会让人以为「没点保存所以没生效」。
+     *
+     * 也不用动 initialFormSnapshot：MaterialCardView 既不是 CompoundButton 也不是 EditText，
+     * captureFormState() 扫不到它，不会误报「有未保存的改动」。
+     */
+    private fun applyIconTheme(id: String) {
+        val theme = LauncherIconManager.byId(id)
+        LauncherIconManager.apply(requireContext(), theme.id)
+        applyIconThemeTint()
+        Toast.makeText(
+            requireContext(),
+            getString(CoreR.string.icon_theme_applied, getString(theme.labelRes)),
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
+    /**
+     * 外观卡的选中态：选中卡描一道 colorSecondary 边框（与小节徽标同色系）、标签转为
+     * colorOnSurface，其余卡退回中性底色 + 弱边框。
+     *
+     * 刻意不复用 tintSelectionCard() 的「整卡铺 secondaryContainer」——
+     * 预览图本身就是彩色玻璃背景，铺一层半透明色块会把它糊掉，用户就分不清选了哪一档了。
+     */
+    private fun applyIconThemeTint() {
+        val selectedId = SettingsManager.getIconTheme(requireContext())
+        val strokePx = (2f * resources.displayMetrics.density).toInt()
+        for ((id, choice) in iconThemeChoices.orEmpty()) {
+            val (card, label) = choice
+            val isSelected = id == selectedId
+            card.strokeWidth = if (isSelected) strokePx else 0
+            card.strokeColor = MaterialColors.getColor(
+                card,
+                if (isSelected) com.google.android.material.R.attr.colorSecondary
+                else com.google.android.material.R.attr.colorOutlineVariant
+            )
+            label.setTextColor(MaterialColors.getColor(
+                card,
+                if (isSelected) com.google.android.material.R.attr.colorOnSurface
+                else com.google.android.material.R.attr.colorOnSurfaceVariant
+            ))
+        }
     }
 
     private fun updateFilterSelectedCount(packages: String) {
@@ -1233,6 +1298,7 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
             _binding?.scrollView?.viewTreeObserver?.removeOnGlobalFocusChangeListener(it)
         }
         globalFocusChangeListener = null
+        iconThemeChoices = null
         imeVisible = false
         super.onDestroyView()
         _binding = null

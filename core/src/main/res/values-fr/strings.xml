@@ -453,6 +453,14 @@
     <string name="mcp_basic_password_hint">Mot de passe (utilisateur : admin)</string>
     <string name="mcp_oauth_secret_hint">Secret client (client_id : stun-client)</string>
     <string name="show_notification_speed">Afficher vitesse en temps réel en notification</string>
+    <string name="icon_theme_title">Apparence de l\'icône</string>
+    <string name="icon_theme_desc">Certaines interfaces ne rafraîchissent l\'icône qu\'après un redémarrage.</string>
+    <string name="icon_theme_default">Normal</string>
+    <string name="icon_theme_aurora">Aurore</string>
+    <string name="icon_theme_ocean">Océan</string>
+    <string name="icon_theme_mint">Menthe</string>
+    <string name="icon_theme_grape">Raisin</string>
+    <string name="icon_theme_applied">Apparence de l\'icône définie sur « %1$s »</string>
     <string name="dns_tunnel_record_type">Type d\'enregistrement DNS</string>
     <string name="dns_tunnel_domain_hint">Domaine d\'autorité (ex: tunnel.example.com)</string>
     <string name="dns_tunnel_servers_hint">Serveur(s) DNS (ex: 8.8.8.8:53, 1.1.1.1:53)</string>

@@ -467,6 +467,14 @@
     <string name="mcp_basic_password_hint">Passwort (Benutzer: admin)</string>
     <string name="mcp_oauth_secret_hint">Client-Secret (client_id: stun-client)</string>
     <string name="show_notification_speed">Echtzeit-Geschwindigkeit in Benachrichtigung anzeigen</string>
+    <string name="icon_theme_title">Symbol-Erscheinungsbild</string>
+    <string name="icon_theme_desc">Manche Launcher zeigen das neue Symbol erst nach einem Neustart.</string>
+    <string name="icon_theme_default">Normal</string>
+    <string name="icon_theme_aurora">Aurora</string>
+    <string name="icon_theme_ocean">Ozean</string>
+    <string name="icon_theme_mint">Minze</string>
+    <string name="icon_theme_grape">Traube</string>
+    <string name="icon_theme_applied">Symbol-Erscheinungsbild gesetzt auf „%1$s“</string>
     <string name="dns_tunnel_record_type">DNS-Record-Typ</string>
     <string name="dns_tunnel_domain_hint">Autoritative Tunnel-Domain (z.B. tunnel.example.com)</string>
     <string name="dns_tunnel_servers_hint">DNS-Server (z.B. 8.8.8.8:53, 1.1.1.1:53)</string>

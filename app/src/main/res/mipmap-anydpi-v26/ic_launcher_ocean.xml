@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  图标外观「ocean」。与 ic_launcher.xml 的差异只在 <background>：
+  背景是 432/324/216px 烘好的位图（drawable-{xxxhdpi,xxhdpi,xhdpi}），
+  渐变 + 光池 + 顶部环境光 + 底部厚度这些效果 VectorDrawable 表达不了（没有高斯模糊）。
+
+  刻意**不带 <monochrome>**：themed-icon 启动器（Android 13+ 默认）会把所有图标压成单色剪影，
+  带上它这四种配色在任何桌面上都看不见。留着 ic_launcher.xml 的 monochrome，
+  用户在「经典」外观下仍能拿到系统剪影效果。
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_background_ocean"/>
+    <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+</adaptive-icon>

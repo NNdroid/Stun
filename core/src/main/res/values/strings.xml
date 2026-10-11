@@ -474,6 +474,14 @@
     <string name="mcp_basic_password_hint">Password (user: admin)</string>
     <string name="mcp_oauth_secret_hint">Client Secret (client_id: stun-client)</string>
     <string name="show_notification_speed">Show Real-Time Speed in Notification</string>
+    <string name="icon_theme_title">Icon Appearance</string>
+    <string name="icon_theme_desc">Some launchers refresh the icon only after a restart.</string>
+    <string name="icon_theme_default">Classic</string>
+    <string name="icon_theme_aurora">Aurora</string>
+    <string name="icon_theme_ocean">Ocean</string>
+    <string name="icon_theme_mint">Mint</string>
+    <string name="icon_theme_grape">Grape</string>
+    <string name="icon_theme_applied">Icon appearance set to "%1$s"</string>
     <string name="dns_tunnel_record_type">DNS Record Type</string>
     <string name="dns_tunnel_domain_hint">Tunnel Authority Domain (e.g. tunnel.example.com)</string>
     <string name="dns_tunnel_servers_hint">DNS Server(s) (e.g. 8.8.8.8:53, 1.1.1.1:53)</string>

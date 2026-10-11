@@ -52,6 +52,26 @@ object SettingsManager {
     private const val KEY_FILTER_MODE = "filter_mode"
     private const val KEY_SERVICE_MODE = "service_mode"
     private const val KEY_LANGUAGE = "language"
+
+    // 桌面图标外观（设置页「图标外观」）。存通用库而不是设备态库：这是用户偏好，
+    // 跨设备云备份有意义；在 [webDavSettingsSnapshot] 里它只是普通字符串，无需特判。
+    private const val KEY_ICON_THEME = "icon_theme"
+    const val ICON_THEME_DEFAULT = "default"
+    const val ICON_THEME_AURORA = "aurora"
+    const val ICON_THEME_OCEAN = "ocean"
+    const val ICON_THEME_MINT = "mint"
+    const val ICON_THEME_GRAPE = "grape"
+    const val DEFAULT_ICON_THEME = ICON_THEME_DEFAULT
+
+    /** 合法取值全集。云端快照可能带回不认识的值，读端一律兜回默认（见 [getIconTheme]）。 */
+    val ICON_THEMES: Set<String> = setOf(
+        ICON_THEME_DEFAULT,
+        ICON_THEME_AURORA,
+        ICON_THEME_OCEAN,
+        ICON_THEME_MINT,
+        ICON_THEME_GRAPE
+    )
+
     private const val KEY_SHOW_NOTIFICATION_SPEED = "show_notification_speed"
 
     // 保活开关（Web 控制台「保活与后台」卡片）。默认关：两条路径都会在设备上动手脚
@@ -432,6 +452,16 @@ object SettingsManager {
 
     fun getLanguage(context: Context): String = getPrefs(context).getString(KEY_LANGUAGE, "auto") ?: "auto"
     fun saveLanguage(context: Context, lang: String) = getPrefs(context).edit { putString(KEY_LANGUAGE, lang) }
+
+    // 读端兜底：云端快照回传、历史版本或误写入都可能带来不认识的值，一律当默认处理，
+    // 避免 LauncherIconManager 拿着一份没有对应 alias 的字符串去改组件状态。
+    fun getIconTheme(context: Context): String =
+        getPrefs(context).getString(KEY_ICON_THEME, DEFAULT_ICON_THEME)
+            ?.takeIf { it in ICON_THEMES }
+            ?: DEFAULT_ICON_THEME
+
+    fun saveIconTheme(context: Context, theme: String) =
+        getPrefs(context).edit { putString(KEY_ICON_THEME, if (theme in ICON_THEMES) theme else DEFAULT_ICON_THEME) }
 
     fun getShowNotificationSpeed(context: Context): Boolean = getPrefs(context).getBoolean(KEY_SHOW_NOTIFICATION_SPEED, true)
     fun saveShowNotificationSpeed(context: Context, enabled: Boolean) = getPrefs(context).edit { putBoolean(KEY_SHOW_NOTIFICATION_SPEED, enabled) }
