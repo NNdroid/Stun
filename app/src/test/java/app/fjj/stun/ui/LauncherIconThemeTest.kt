@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.util.LauncherIconManager
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,6 +29,18 @@ import java.io.File
  *
  * 判据选「恰好一个 ENABLED」而不是「选中的那个 ENABLED」：如果两处都漏禁，
  * 桌面上会同时出现两个 Stun 图标，用户会以为自己点了两次。
+ *
+ * 真机踩过的一次（也是这类盲区里最阴的一处）：`ComponentName(pkg, 短类名)` 送进 PMS，
+ * 五个 alias 全部报 `IllegalArgumentException: Component class LauncherX does not exist`，
+ * 每次冷启动五条 ERROR、图标永远切不动。原因是 API 35 的 `ComponentName(String,String)`
+ * **不会**自动补包名前缀，className 原样就是短类名。而 shadow 只把 ComponentName 原样存进
+ * 覆盖表、不校验组件是否存在，单测一条都没报。
+ *
+ * 所以必须钉住这条不变量：**生产代码拼出来的类名必须是全限定名，且能在组件表里查到**。
+ * 判据见 `传给 PackageManager 的必须是全限定组件名` —— 用真实实现反编译验证过：
+ * 传短类名时 `className` 就是短类名，这条断言会立刻红。
+ * 另有一条源码层面的守卫 `alias 短类名不能与 manifest 里的声明漂移`，防 manifest 改名
+ * 而 THEMES 没跟上（同样会抛 does not exist，但那是另一个原因）。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = android.app.Application::class)
@@ -37,7 +50,16 @@ class LauncherIconThemeTest {
     private val pm: PackageManager get() = ctx.packageManager
     private val launchIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
 
-    private fun component(alias: String) = ComponentName(ctx.packageName, alias)
+    /**
+     * 读回覆盖值用的键，按**全限定类名**独立拼，不复用 [LauncherIconManager.componentName]。
+     *
+     * shadow 的覆盖表按 ComponentName 原样做键（`componentList.put`，不规范化），
+     * 生产代码若拼出别的形状，这个键就不存在，读回得到 DEFAULT，断言会红。
+     * 「类名必须是全限定」这条本身由 `传给 PackageManager 的必须是全限定组件名` 直接断言。
+     *
+     * 双参数是因为本项目的 android.jar stub 与 API 35 的实现都没有 `ComponentName(String)`。
+     */
+    private fun component(alias: String) = ComponentName(ctx.packageName, full(alias))
     private fun full(alias: String) = "${ctx.packageName}.$alias"
 
     private fun enabledState(alias: String) = pm.getComponentEnabledSetting(component(alias))
@@ -176,6 +198,59 @@ class LauncherIconThemeTest {
     }
 
     // ─────────────────────────── 3. 运行时侧：任何时刻恰好一个 ENABLED ───────────────────────────
+
+    @Test
+    fun `传给 PackageManager 的必须是全限定组件名`() {
+        // 这条是实打实从线上日志里捞出来的：曾经用 `ComponentName(pkg, 短类名)`，
+        // API 35 不会自动补前缀，className 原样是 `LauncherX`，PMS 查不到，五个 alias
+        // 每次冷启动各报一条 `Component class LauncherX does not exist in app.fjj.stun`，
+        // 图标永远切不动，而 shadow 不校验组件存在性、单测全绿。
+        //
+        // 修好后特意回退成短类名验证过本用例：
+        // expected:<[app.fjj.stun.]LauncherDefault> but was:<[]LauncherDefault> —— 立刻红。
+        for (theme in LauncherIconManager.THEMES) {
+            val cn = LauncherIconManager.componentName(ctx.packageName, theme.aliasClassName)
+            assertEquals(
+                "${theme.aliasClassName} 包名应是应用自己的包",
+                ctx.packageName, cn.packageName
+            )
+            assertEquals(
+                "${theme.aliasClassName} 类名必须带包名前缀",
+                full(theme.aliasClassName), cn.className
+            )
+
+            // 更实的一条：这个名字得在组件表里真的查得到。查不到的名字即使格式对，
+            // setComponentEnabledSetting 同样会抛——等于把整条链路验了一遍。
+            // 必须带 MATCH_DISABLED_COMPONENTS：不带的话，表里有但 manifest 里
+            // enabled="false" 的四个 alias 会以 NameNotFoundException 抛回来，
+            // 那四个反而是切换最常触及的。
+            val info = pm.getActivityInfo(cn, PackageManager.MATCH_DISABLED_COMPONENTS)
+            assertNotNull(
+                "${theme.aliasClassName} 拼出的组件名在 PackageManager 里查不到：${cn.flattenToString()}",
+                info
+            )
+        }
+    }
+
+    @Test
+    fun `alias 短类名不能与 manifest 里的声明漂移`() {
+        // 这是上面那条不变量在源码层面的另一半：代码表和 manifest 说的是同一个东西。
+        // manifest 侧的 alias 声明由「manifest 合并后五个启动 alias 都在启动查询里」覆盖，
+        // 这里补上代码侧 —— THEMES 里的短类名必须逐个出现在源码 manifest 里。
+        val manifest = File("src/main/AndroidManifest.xml")
+            .takeIf { it.isFile }
+            ?: File("../src/main/AndroidManifest.xml")
+        assertTrue("找不到 app 的 manifest（工作目录 ${File(".").absolutePath}）", manifest.isFile)
+        val text = manifest.readText()
+        for (theme in LauncherIconManager.THEMES) {
+            val relative = ".${theme.aliasClassName}"
+            assertTrue(
+                "manifest 里没有 $relative —— THEMES 与声明不同步，" +
+                    "setComponentEnabledSetting 会报 Component class does not exist",
+                "\"$relative\"" in text || "\"${ctx.packageName}.${theme.aliasClassName}\"" in text
+            )
+        }
+    }
 
     @Test
     fun `切换后每个 alias 的组件状态覆盖都写对了`() {
