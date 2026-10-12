@@ -4,7 +4,9 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import java.io.File
+import java.io.IOException
 import java.net.URL
+import java.security.MessageDigest
 import app.fjj.stun.backup.SettingsBackupCodec
 import app.fjj.stun.util.KeystoreUtils
 import kotlin.concurrent.thread
@@ -146,6 +148,18 @@ object SettingsManager {
 
     /** 进度回调最小步长，避免每读 64KB 就发一次 UI 更新。 */
     private const val DOWNLOAD_PROGRESS_STEP_BYTES = 256L * 1024L
+
+    /**
+     * 规则文件摘要 sidecar 的后缀。规则重建时 sidecar 与文件一同发布，所以它是判断一次
+     * 下载是否完整可信的权威依据（见 [downloadRuleFile]）。
+     */
+    private const val SHA256_SIDECAR_SUFFIX = ".sha256sum"
+
+    /** sidecar 正文的上限：4 KiB 已是合理行数上限的 ~50 倍，多读只为防御性截断。 */
+    private const val SHA256_SIDECAR_MAX_BYTES = 4096
+
+    /** 校验和不匹配时的最大尝试次数（含首次），见 [downloadRuleFile] 里的说明。 */
+    private const val RULE_DOWNLOAD_MAX_ATTEMPTS = 2
 
     const val DEFAULT_UPDATE_INTERVAL = 86400L // 24 hours
     const val DEFAULT_GEOSITE_DIRECT_FLAGS = "cn,apple"
@@ -668,9 +682,12 @@ object SettingsManager {
         val tempGeoipPath = "${getGeoipCachePath(context)}.tmp"
 
         try {
-            // Download to temporary files first
-            downloadFile(getGeositeUrl(context), tempGeositePath)
-            downloadFile(getGeoipUrl(context), tempGeoipPath)
+            // 先下到临时文件、校验通过才留下，正式文件只有下面那两步 rename 才会被碰。
+            // downloadRuleFile 自己在 destPath 旁再做一层 .tmp（见它自己的说明），所以这里
+            // 是 temp.tmp → temp → 正式名；多一层是为了让「两份都通过才一起覆盖」和
+            // 「任何一份失败都不动已有文件」同时成立。
+            downloadRuleFile(getGeositeUrl(context), tempGeositePath)
+            downloadRuleFile(getGeoipUrl(context), tempGeoipPath)
 
             val tempGeositeFile = File(tempGeositePath)
             val tempGeoipFile = File(tempGeoipPath)
@@ -678,19 +695,23 @@ object SettingsManager {
             // Validate: Both files must exist and have content
             if (tempGeositeFile.exists() && tempGeositeFile.length() > 0 &&
                 tempGeoipFile.exists() && tempGeoipFile.length() > 0) {
-                
-                // Atomically (well, as close as possible) replace the old files
-                tempGeositeFile.renameTo(File(getGeositeCachePath(context)))
-                tempGeoipFile.renameTo(File(getGeoipCachePath(context)))
+
+                // 两份都校验通过了，一起覆盖正式文件。替换失败就当作更新失败：老文件还在，
+                // 不该记下「已更新」的时间戳。
+                if (!replaceFile(tempGeositeFile, File(getGeositeCachePath(context))) ||
+                    !replaceFile(tempGeoipFile, File(getGeoipCachePath(context)))
+                ) {
+                    throw IOException("failed to replace rule files in ${context.cacheDir}")
+                }
 
                 val currentTime = System.currentTimeMillis() / 1000
                 saveLastUpdateTime(context, currentTime)
-                StunLogger.i("SettingsManager", "GeoData update completed and replaced successfully.")
+                StunLogger.i(TAG, "GeoData update completed and replaced successfully.")
             } else {
                 throw RuntimeException("Downloaded GeoData files are empty or missing")
             }
         } catch (e: Exception) {
-            StunLogger.e("SettingsManager", "Update GeoData failed, keeping original files", e)
+            StunLogger.e(TAG, "Update GeoData failed, keeping original files", e)
             throw e
         } finally {
             // Clean up temporary files if they still exist
@@ -749,10 +770,256 @@ object SettingsManager {
                 }
                 // 收尾补一次，让进度条能真正走到 100%
                 if (onProgress != null && read > lastReported) onProgress(read, total)
+
+                // 服务端声明了 Content-Length 却只发了这些字节：jsDelivr 这类 CDN 会正常
+                // 返回 200 然后中途停发，流照常收尾时完全看不出来。不查的话截断的文件会
+                // 通过下面的「非空」校验直接覆盖生效（Go 侧 downloadOnce 里是同一条判断）。
+                // 没给 Content-Length（分块传输）时 total == -1，这条自动跳过。
+                if (total > 0L && read != total) {
+                    throw IOException("received $read of $total bytes from $urlStr")
+                }
             }
         }
         return read
     }
+
+    // ── 规则文件下载与校验 ──
+
+    /**
+     * 下载一份规则文件并通过 [destPath] 交付，返回写入的字节数。下载写的是 [destPath] 旁的
+     * `.tmp`，三层校验全过才改名落定——所以任何一步失败，[destPath] 上原有的那份都原样保留。
+     *
+     * 校验分三层，对齐 myssh 的 geo_download.go：
+     *
+     *  1. 传输完整性 —— [downloadFile] 里的短读检测。
+     *  2. 内容完整性 —— 与发布源随文件一起发布的 sha256 sidecar 比对。
+     *  3. 结构完整性 —— [isBrokenRuleFile]，确认顶层 wire 流真的走到了文件末尾。
+     *
+     * sidecar 的 URL 直接由载荷 URL 派生（[SHA256_SIDECAR_SUFFIX]），不做成独立配置项：
+     * 载荷源是用户可配的，而 Go 那边是四个写死的常量所以不需要派生。镜像不发布 sidecar
+     * 时取不到就**降级**——只剩 1 和 3 两层——而不是拒绝更新，这与 Go 的
+     * `expected == ""` 分支一致：sidecar 挂掉不代表载荷有问题，拒绝更新会让规则永久停更。
+     *
+     * 校验失败时**绝不**调用 Go 导出的 repairRuleFile（虽然它就在编译类路径上）：那个
+     * 函数只用写死的 jsDelivr 源，而且会把 geoip.dat 和 geosite.dat **两份**都按默认源
+     * 重写一遍——用户用自己镜像下的文件会被静默替换，而 sidecar 与载荷同源、校验根本
+     * 发现不了这个替换。文件损坏的兜底仍然交给 Go 侧在 loadGlobalConfig 时自愈。
+     *
+     * 刻意与 Go 的一处不同：Go 里每份文件独立下载独立提交，一份失败不影响另一份；这里
+     * 保持原有的「两份都通过才一起覆盖」，因为这两份本来就同源同发布，成对提交更省事。
+     */
+    internal fun downloadRuleFile(
+        url: String,
+        destPath: String,
+        onProgress: ((Long, Long) -> Unit)? = null,
+    ): Long {
+        if (url.isBlank()) return 0L // 与 downloadFile 一致：交给调用方按「空文件」报错
+
+        var expected = fetchExpectedSha256(sumUrlOf(url))
+        if (expected.isEmpty()) {
+            StunLogger.w(TAG, "no usable sha256 for $url, relying on length and structure checks only")
+        }
+
+        var lastError: IOException? = null
+        for (attempt in 1..RULE_DOWNLOAD_MAX_ATTEMPTS) {
+            try {
+                return downloadOnceVerified(url, expected, destPath, onProgress)
+            } catch (e: ChecksumMismatchException) {
+                lastError = e
+                if (attempt < RULE_DOWNLOAD_MAX_ATTEMPTS) {
+                    // 唯一值得重试的情况：CDN 正在滚动发布。sidecar 与载荷是两个独立对象，
+                    // 跨发布时刻的请求会合法地配上「新字节 + 旧摘要」。重取两边一次就能跨
+                    // 过去；第二次还不一致就是真损坏。其它失败一律不重试——传输挂了、状态码
+                    // 不对、文件截断，重试只会得到同一个答案。
+                    StunLogger.w(TAG, "$url ${e.message}; re-fetching digest and payload once in case the CDN is mid-rollover")
+                    expected = fetchExpectedSha256(sumUrlOf(url))
+                }
+            }
+        }
+        throw lastError ?: IOException("sha256 mismatch for $url")
+    }
+
+    /**
+     * 单次下载 + 三层校验。先写 [destPath] 旁的临时文件，全部通过才改名到 [destPath]——
+     * 和 Go 的 downloadOnce 同一个形状。这样失败路径上**不可能**碰到 [destPath] 已有内容，
+     * 而「删掉未验证的文件」是这一族 bug 里最贵的一种：旧文件是唯一的可用副本。
+     */
+    private fun downloadOnceVerified(
+        url: String,
+        expected: String,
+        destPath: String,
+        onProgress: ((Long, Long) -> Unit)?,
+    ): Long {
+        val staging = File("$destPath.tmp")
+        try {
+            val written = downloadFile(url, staging.absolutePath, onProgress)
+            if (written <= 0L) {
+                throw IOException("downloaded file is empty: $url")
+            }
+
+            val data = staging.readBytes()
+
+            if (expected.isNotEmpty()) {
+                val actual = sha256Hex(data)
+                if (!actual.equals(expected, ignoreCase = true)) {
+                    throw ChecksumMismatchException(
+                        "sha256 mismatch for $url (${written} bytes): got $actual, want $expected"
+                    )
+                }
+                StunLogger.d(TAG, "sha256 verified for $url: $actual")
+            }
+
+            if (isBrokenRuleFile(data)) {
+                throw IOException("downloaded file is not a usable rule file (${written} bytes)")
+            }
+
+            if (!replaceFile(staging, File(destPath))) {
+                throw IOException("failed to replace $destPath with ${staging.absolutePath}")
+            }
+            return written
+        } finally {
+            staging.delete()
+        }
+    }
+
+    /**
+     * 把 [source] 落到已存在的 [dest] 上。Linux/Android 上一条 rename 就是原子替换，
+     * Windows 的 MoveFile 会拒绝覆盖已存在的文件——那边得先删目标再改一次。
+     */
+    private fun replaceFile(source: File, dest: File): Boolean =
+        source.renameTo(dest) || (dest.exists() && dest.delete() && source.renameTo(dest))
+
+    /**
+     * 取载荷 URL 对应 sidecar 里公布的 sha256，取不到返回空串。
+     *
+     * 任何失败都返回 "" 而不是抛：sidecar 与载荷是两个独立对象，它挂了不代表载荷有问题，
+     * 而因此拒绝更新会让规则永久停更。降级后剩下的两层校验见 [downloadRuleFile]。
+     */
+    internal fun fetchExpectedSha256(sumUrl: String): String {
+        if (sumUrl.isBlank()) return ""
+        return try {
+            val connection = URL(sumUrl).openConnection()
+            connection.connectTimeout = DOWNLOAD_CONNECT_TIMEOUT_MS
+            connection.readTimeout = DOWNLOAD_READ_TIMEOUT_MS
+            connection.useCaches = false
+            connection.setRequestProperty("User-Agent", "Stun-Android")
+            // getInputStream() 对非 2xx 会抛 IOException，由下面的 catch 统一处理。
+            connection.getInputStream().use { input ->
+                val buffer = ByteArray(SHA256_SIDECAR_MAX_BYTES)
+                var total = 0
+                while (total < SHA256_SIDECAR_MAX_BYTES) {
+                    val count = input.read(buffer, total, SHA256_SIDECAR_MAX_BYTES - total)
+                    if (count <= 0) break
+                    total += count
+                }
+                parseSha256Sum(String(buffer, 0, total, Charsets.UTF_8)).ifEmpty {
+                    StunLogger.w(TAG, "sha256 sidecar held no usable digest: $sumUrl")
+                    ""
+                }
+            }
+        } catch (e: IOException) {
+            StunLogger.w(TAG, "sha256 sidecar unreachable ($sumUrl): ${e.message}")
+            ""
+        }
+    }
+
+    /**
+     * 从 sha256sum 文件内容里取摘要。
+     *
+     * 规则照抄 Go 的 parseSHA256Sum：取每行第一个空白分隔字段，必须是 64 位十六进制，
+     * 统一转小写。文件名 token 完全不看——所以 `hash  geoip.dat`、`hash *geoip.dat`
+     * （GNU `--binary`）和 `hash some file.dat` 三种写法都接受；注释行和空行被静默跳过
+     * 而不是判为错误。
+     */
+    internal fun parseSha256Sum(text: String): String {
+        for (line in text.split("\n")) {
+            val candidate = line.trim().split(Regex("\\s+")).firstOrNull() ?: continue
+            if (candidate.length != 64) continue
+            val lower = candidate.lowercase()
+            if (lower.all { it in '0'..'9' || it in 'a'..'f' }) return lower
+        }
+        return ""
+    }
+
+    /**
+     * 判断一份规则文件是否在结构上不可用。
+     *
+     * geosite.dat / geoip.dat 是 protobuf：顶层就是一串 `field 1, length-delimited` 的
+     * entry，所以完整性判据只有一条——顶层流能不能一路走到文件末尾。
+     *
+     * 这个函数**只做可证明的判定**，其余一律放行：
+     *
+     *  - 返回 true 只出现在「varint 续位之后没有字节」「声明的长度越过文件末尾」
+     *    「出现未知 wire type」这类已经确定的损坏上；
+     *  - 没把握的情况（varint 超过 10 字节、field 0）一律返回 false。误判一次等于让所有
+     *    规则更新从此失败；漏判一次最坏是 Go 侧下次 loadGlobalConfig 时再修一次。
+     *
+     * entry 内部结构异常不算截断——Go 的 extractGeoFileTags 对 entry 内部是「放弃该条、
+     * 继续扫」，同样不设 truncated。entry 计数只用来挡掉「能解析完但一条规则都没有」的空壳。
+     */
+    internal fun isBrokenRuleFile(data: ByteArray): Boolean {
+        var pos = 0
+        var entries = 0
+        while (pos < data.size) {
+            val (key, consumed) = readVarint(data, pos) ?: return true // 续位之后没有字节 = 截断
+            pos += consumed
+            if (key < 1L) return false
+            when (key and 0x7L) {
+                0L -> { // varint：跳过值本身
+                    val (value, valueConsumed) = readVarint(data, pos) ?: return true
+                    if (valueConsumed < 0) return false
+                    pos += valueConsumed
+                }
+                1L -> { // fixed64
+                    if (pos + 8 > data.size) return true
+                    pos += 8
+                }
+                2L -> { // length-delimited：唯一的 entry 形式
+                    val (length, lengthConsumed) = readVarint(data, pos) ?: return true
+                    if (lengthConsumed < 0) return false
+                    pos += lengthConsumed
+                    if (length < 0L) return false
+                    if (pos + length > data.size) return true // 声明的长度越过文件末尾 = 截断
+                    pos += length.toInt()
+                    if ((key ushr 3) == 1L) entries++
+                }
+                5L -> { // fixed32
+                    if (pos + 4 > data.size) return true
+                    pos += 4
+                }
+                else -> return true // 未知 wire type：不是规则文件
+            }
+        }
+        return entries == 0
+    }
+
+    /**
+     * 读一个 protobuf varint，返回 `(值, 消耗的字节数)`。
+     *
+     * 返回 null 只有两种情况，调用方都按「可证明的截断」处理：续位之后没有字节；或者
+     * 字节数超过 protobuf 规定的 10 字节上限。
+     */
+    private fun readVarint(data: ByteArray, from: Int): Pair<Long, Int>? {
+        var value = 0L
+        for (byteIndex in 0..9) {
+            val index = from + byteIndex
+            if (index >= data.size) return null
+            val byte = data[index].toInt() and 0xFF
+            value = value or ((byte and 0x7F).toLong() shl (7 * byteIndex))
+            if (byte and 0x80 == 0) return value to (byteIndex + 1)
+        }
+        return null
+    }
+
+    private fun sumUrlOf(url: String) = url + SHA256_SIDECAR_SUFFIX
+
+    /** 小写十六进制 SHA-256，与 sidecar 的格式一致。 */
+    private fun sha256Hex(data: ByteArray): String =
+        MessageDigest.getInstance("SHA-256").digest(data)
+            .joinToString("") { "%02x".format(it.toInt() and 0xFF) }
+
+    /** 传输是好的、但字节和公布的摘要对不上。只有这种情况值得重下一次。 */
+    private class ChecksumMismatchException(message: String) : IOException(message)
 
     // ── WebDAV 云备份配置（敏感值 Keystore 加密存储） ──
     private const val KEY_WEBDAV_URL = "webdav_url"
