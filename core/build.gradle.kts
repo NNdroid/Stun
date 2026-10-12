@@ -1,5 +1,6 @@
 import java.io.File
 import java.net.URI
+import java.security.MessageDigest
 
 plugins {
     alias(libs.plugins.android.library)
@@ -290,24 +291,80 @@ val downloadRulesDat = tasks.register("downloadRulesDat") {
         "geosite.dat" to "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geosite.dat"
     )
 
+    /** 取 url 对应 .sha256sum 里公布的摘要，取不到返回空串（不视为失败）。 */
+    val sidecarSha256: (String) -> String = { url ->
+        try {
+            val connection = URI("$url.sha256sum").toURL().openConnection()
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 15_000
+            connection.useCaches = false
+            val text = connection.inputStream.bufferedReader().use { it.readText() }
+            text.lineSequence().map { it.trim().split(Regex("\\s+")).firstOrNull() ?: "" }
+                .firstOrNull { it.length == 64 && it.all { c -> c in '0'..'9' || c in 'a'..'f' || c in 'A'..'F' } }
+                ?.lowercase()
+                ?: ""
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
+    /** 小写十六进制 SHA-256。 */
+    val sha256Of: (File) -> String = { file ->
+        MessageDigest.getInstance("SHA-256").digest(file.readBytes())
+            .joinToString("") { "%02x".format(it.toInt() and 0xFF) }
+    }
+
     doLast {
         if (!outputDir.exists()) outputDir.mkdirs()
         filesToDownload.forEach { (name, url) ->
             val outputFile = File(outputDir, name)
-            if (!outputFile.exists()) {
-                println("Downloading $name from $url...")
-                try {
-                    URI(url).toURL().openStream().use { input ->
-                        outputFile.outputStream().use { output ->
-                            input.copyTo(output)
-                        }
-                    }
-                    println("Successfully downloaded $name")
-                } catch (e: Exception) {
-                    println("Failed to download $name: ${e.message}")
-                }
-            } else {
+            if (outputFile.exists()) {
                 println("$name already exists, skipping download.")
+                return@forEach
+            }
+
+            // 先下 .tmp、校验通过才落最终名。这里踩过一次真事：copyTo 中途断了会留下一个
+            // 只有几 MB 的半截文件，而上面的 "already exists" 判据只看文件在不在——于是
+            // 之后每次构建都打印 "already exists, skipping download."，截断的 geoip.dat
+            // 一直被打进 APK，Go 侧 LoadGeoIP 报 truncated、直连 IP 分流全部失效，
+            // 只有等运行时网络下载才会自愈。失败必须删掉临时文件让下次重新下载。
+            val tempFile = File(outputDir, "$name.tmp")
+            try {
+                println("Downloading $name from $url...")
+                val connection = URI(url).toURL().openConnection()
+                connection.connectTimeout = 15_000
+                connection.readTimeout = 120_000
+                connection.useCaches = false
+                val declared = connection.contentLengthLong
+                connection.inputStream.use { input ->
+                    tempFile.outputStream().use { output -> input.copyTo(output) }
+                }
+
+                val actual = tempFile.length()
+                // 检查一：服务端声明了 Content-Length 就必须在字节数上对得上。jsDelivr 这类
+                // CDN 会正常返回 200 然后中途停发，copyTo 照常收尾时看不出来。
+                if (declared > 0L && actual != declared) {
+                    throw Exception("received $actual of $declared bytes from $url (truncated)")
+                }
+
+                // 检查二：与随文件一起发布的 .sha256sum 比对。sidecar 取不到就跳过而不是
+                // 失败——离线环境构建不该被这个挡住，检查一仍然生效。
+                val expected = sidecarSha256(url)
+                if (expected.isNotBlank()) {
+                    val actualSha = sha256Of(tempFile)
+                    if (!actualSha.equals(expected, ignoreCase = true)) {
+                        throw Exception("sha256 mismatch for $name: got $actualSha, want $expected")
+                    }
+                }
+
+                if (!tempFile.renameTo(outputFile)) {
+                    throw Exception("failed to move $tempFile to $outputFile")
+                }
+                println("Successfully downloaded $name (${actual} bytes)")
+            } catch (e: Exception) {
+                tempFile.delete()
+                println("Failed to download $name: ${e.message}")
+                println("  Partial download deleted so the next build retries instead of reusing a broken asset.")
             }
         }
     }
