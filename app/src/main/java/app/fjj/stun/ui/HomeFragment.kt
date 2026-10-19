@@ -2001,8 +2001,11 @@ class HomeFragment : Fragment() {
 
     private fun shouldUseBottomMenu(): Boolean {
         val config = resources.configuration
+        // 用当前窗口的最小边，不用 smallestScreenWidthDp：那是设备指标，分屏 / 多窗口 /
+        // 桌面模式下窗口缩到 320dp 宽时它仍是 600+，会把一张侧栏硬塞进窄窗口。
+        // orientation 那条保留 —— 手机横屏（780×360）宽度够但高度不够，侧栏比底部菜单合适。
         return config.orientation != Configuration.ORIENTATION_LANDSCAPE &&
-            config.smallestScreenWidthDp < 600
+            minOf(config.screenWidthDp, config.screenHeightDp) < 600
     }
 
     private fun prepareMainMenu() {
@@ -2097,7 +2100,9 @@ class HomeFragment : Fragment() {
         val sideSheet = SideSheetDialog(requireContext())
         sideSheet.setFitsSystemWindows(false)
         val config = resources.configuration
-        val useWideLayout = config.smallestScreenWidthDp >= 600 && config.screenWidthDp >= 840
+        // 只看窗口宽，不看 smallestScreenWidthDp（设备指标，窗口缩放时不变）：窗口窄到
+        // 840dp 以下时宽版侧栏会顶到边缘，那种窗口该用紧凑版。
+        val useWideLayout = config.screenWidthDp >= 840
         val view = layoutInflater.inflate(
             if (useWideLayout) R.layout.side_sheet_main_wide else R.layout.side_sheet_main,
             null
@@ -2105,7 +2110,9 @@ class HomeFragment : Fragment() {
         val density = resources.displayMetrics.density
         if (useWideLayout) {
             val maxWidth = (680 * density).toInt()
-            val responsiveWidth = (resources.displayMetrics.widthPixels * 0.64f).toInt()
+            // 同样取窗口宽，不取 displayMetrics.widthPixels：Fragment 的 resources 拿到的
+            // 是设备指标，多窗口 / 桌面模式下按设备宽算出来的侧栏可能比窗口本身还宽。
+            val responsiveWidth = (config.screenWidthDp * density * 0.64f).toInt()
             view.layoutParams = ViewGroup.LayoutParams(
                 minOf(maxWidth, responsiveWidth),
                 ViewGroup.LayoutParams.MATCH_PARENT
