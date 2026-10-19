@@ -284,12 +284,16 @@ val copyTProxyBinaries = tasks.register("copyTProxyBinaries") {
 
 // Ensure rules are downloaded before build (Now in :core)
 val downloadRulesDat = tasks.register("downloadRulesDat") {
-    description = "Downloads geoip.dat and geosite.dat"
+    description = "Downloads geoip.dat and geosite.dat, keeping whatever copy is already on disk when the download fails"
     val outputDir = project.layout.projectDirectory.dir("src/main/assets/rules-dat").asFile
     val filesToDownload = mapOf(
         "geoip.dat" to "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geoip.dat",
         "geosite.dat" to "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geosite.dat"
     )
+    // 离线/CI 的逃生口：-PrefreshRulesDat=false。在配置期就读出来 —— doLast 里直接引用
+    // `providers` 会解析到 Project 的隐式接收者，执行期那是 null，直接炸
+    // "Cannot read field \"$$implicitReceiver_Project\""。
+    val refreshRulesDat = project.providers.gradleProperty("refreshRulesDat").getOrElse("true").toBoolean()
 
     /** 取 url 对应 .sha256sum 里公布的摘要，取不到返回空串（不视为失败）。 */
     val sidecarSha256: (String) -> String = { url ->
@@ -314,57 +318,123 @@ val downloadRulesDat = tasks.register("downloadRulesDat") {
             .joinToString("") { "%02x".format(it.toInt() and 0xFF) }
     }
 
+    /**
+     * 下载 url 到 [tempFile] 并做两层校验，返回写入字节数；任何不通过都删掉 [tempFile] 并抛。
+     *
+     * 校验只作用在临时文件上：最终名在 replace() 成功前一直是唯一可用副本，失败路径碰不到它。
+     */
+    val fetchVerified: (String, String, File) -> Long = { url, expected, tempFile ->
+        try {
+            val connection = URI(url).toURL().openConnection()
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 120_000
+            connection.useCaches = false
+            val declared = connection.contentLengthLong
+            connection.inputStream.use { input ->
+                tempFile.outputStream().use { output -> input.copyTo(output) }
+            }
+
+            val actual = tempFile.length()
+            // 检查一：服务端声明了 Content-Length 就必须在字节数上对得上。jsDelivr 这类
+            // CDN 会正常返回 200 然后中途停发，copyTo 照常收尾时看不出来。
+            if (declared > 0L && actual != declared) {
+                throw Exception("received $actual of $declared bytes from $url (truncated)")
+            }
+            // 检查二：与随文件一起发布的 .sha256sum 比对。长度对得上也可能内容整份错了。
+            if (expected.isNotBlank()) {
+                val actualSha = sha256Of(tempFile)
+                if (!actualSha.equals(expected, ignoreCase = true)) {
+                    throw Exception("sha256 mismatch for $url: got $actualSha, want $expected")
+                }
+            }
+            actual
+        } catch (e: Exception) {
+            tempFile.delete()
+            throw e
+        }
+    }
+
+    /** 用 [source] 替换 [dest]。Windows 的 rename 不会覆盖已存在的目标，得先删再改一次。 */
+    val replace: (File, File) -> Boolean = { source, dest ->
+        source.renameTo(dest) || (dest.exists() && dest.delete() && source.renameTo(dest))
+    }
+
     doLast {
+        // 离线或 CI 不该为这两份文件付 27 MB 传输 + 15 秒超时。
+        if (!refreshRulesDat) {
+            println("downloadRulesDat skipped by -PrefreshRulesDat=false")
+            return@doLast
+        }
+
         if (!outputDir.exists()) outputDir.mkdirs()
         filesToDownload.forEach { (name, url) ->
             val outputFile = File(outputDir, name)
-            if (outputFile.exists()) {
-                println("$name already exists, skipping download.")
+            val tempFile = File(outputDir, "$name.tmp")
+
+            // 每次都花一次 ~90 字节的摘要请求问 CDN「有没有新版本」，只有摘要变了才真的下
+            // 16 MB 载荷。这比"文件存在就永远跳过"新鲜——后者会让工作区那份一直停在旧版，
+            // 直到有人手动删文件；也比"每次构建都全量下载"便宜。摘要相等就说明本地那份
+            // 就是发布源上的最新版，没必要再下一次。
+            val published = sidecarSha256(url)
+            if (published.isBlank()) {
+                if (outputFile.exists() && outputFile.length() > 0) {
+                    println("$name: sha256 sidecar 取不到，沿用本地版本（${outputFile.length()} bytes）")
+                    return@forEach
+                }
+                // 本地没有、摘要也取不到：继续构建等于把缺这条 asset 的 APK 静默发出去，
+                // Go 侧所有直连分流会失效而且不留任何提示。这种情况必须炸出来。
+                throw GradleException(
+                    "$name is missing and its sha256 sidecar is unreachable: ${url}.sha256sum"
+                )
+            }
+
+            if (outputFile.exists() && outputFile.length() > 0 && sha256Of(outputFile) == published) {
+                println("$name: 已是最新版本（${outputFile.length()} bytes）")
                 return@forEach
             }
 
-            // 先下 .tmp、校验通过才落最终名。这里踩过一次真事：copyTo 中途断了会留下一个
-            // 只有几 MB 的半截文件，而上面的 "already exists" 判据只看文件在不在——于是
-            // 之后每次构建都打印 "already exists, skipping download."，截断的 geoip.dat
-            // 一直被打进 APK，Go 侧 LoadGeoIP 报 truncated、直连 IP 分流全部失效，
-            // 只有等运行时网络下载才会自愈。失败必须删掉临时文件让下次重新下载。
-            val tempFile = File(outputDir, "$name.tmp")
+            var lastError: Exception? = null
             try {
-                println("Downloading $name from $url...")
-                val connection = URI(url).toURL().openConnection()
-                connection.connectTimeout = 15_000
-                connection.readTimeout = 120_000
-                connection.useCaches = false
-                val declared = connection.contentLengthLong
-                connection.inputStream.use { input ->
-                    tempFile.outputStream().use { output -> input.copyTo(output) }
-                }
-
-                val actual = tempFile.length()
-                // 检查一：服务端声明了 Content-Length 就必须在字节数上对得上。jsDelivr 这类
-                // CDN 会正常返回 200 然后中途停发，copyTo 照常收尾时看不出来。
-                if (declared > 0L && actual != declared) {
-                    throw Exception("received $actual of $declared bytes from $url (truncated)")
-                }
-
-                // 检查二：与随文件一起发布的 .sha256sum 比对。sidecar 取不到就跳过而不是
-                // 失败——离线环境构建不该被这个挡住，检查一仍然生效。
-                val expected = sidecarSha256(url)
-                if (expected.isNotBlank()) {
-                    val actualSha = sha256Of(tempFile)
-                    if (!actualSha.equals(expected, ignoreCase = true)) {
-                        throw Exception("sha256 mismatch for $name: got $actualSha, want $expected")
+                // 最多两次。唯一值得重试的情况是 CDN 正在滚动发布：sidecar 与载荷是两个独立
+                // 对象，跨发布时刻的请求会合法地配上「新摘要 + 旧字节」。重取两边一次就跨
+                // 过去了；其它失败（断流、截断、404）重试只会得到同一个答案。
+                for (attempt in 1..2) {
+                    val expected = if (attempt == 1) published else sidecarSha256(url)
+                    if (expected.isBlank()) {
+                        lastError = Exception("sha256 sidecar unreachable on retry")
+                        break
+                    }
+                    try {
+                        val written = fetchVerified(url, expected, tempFile)
+                        if (!replace(tempFile, outputFile)) {
+                            throw Exception("failed to replace $outputFile from ${tempFile.absolutePath}")
+                        }
+                        println("Successfully downloaded $name (${written} bytes)")
+                        lastError = null
+                        break
+                    } catch (e: Exception) {
+                        lastError = e
+                        if (attempt < 2) {
+                            println("  ${e.message}; re-fetching digest and payload in case the CDN is mid-rollover")
+                        }
                     }
                 }
-
-                if (!tempFile.renameTo(outputFile)) {
-                    throw Exception("failed to move $tempFile to $outputFile")
-                }
-                println("Successfully downloaded $name (${actual} bytes)")
-            } catch (e: Exception) {
+            } finally {
+                // 校验失败时 fetchVerified 已经删过一次；rename 成功之后它已经不存在，
+                // 这里 delete() 返回 false 是正常收尾，两次都不会留下半截 .tmp。
                 tempFile.delete()
-                println("Failed to download $name: ${e.message}")
-                println("  Partial download deleted so the next build retries instead of reusing a broken asset.")
+            }
+
+            if (lastError != null) {
+                if (outputFile.exists() && outputFile.length() > 0) {
+                    // 最新版拉不到，但本地还有一份能用的：沿用旧的，不阻塞构建。
+                    println("Failed to refresh $name: ${lastError.message}")
+                    println("  Keeping the existing local copy (${outputFile.length()} bytes).")
+                } else {
+                    throw GradleException(
+                        "$name is missing and could not be downloaded: ${lastError.message}", lastError
+                    )
+                }
             }
         }
     }
