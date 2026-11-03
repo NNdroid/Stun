@@ -246,37 +246,53 @@ val applyJniPatches = tasks.register("applyJniPatches") {
 // （"cannot deserialize Gradle script object references"），任务直接失败。
 private val nativeExecutables = listOf("hev-socks5-tproxy", "sockmark")
 
-// Automate moving the native executables to assets (Now in :core)
-val copyTProxyBinaries = tasks.register("copyTProxyBinaries") {
-    description = "Copies hev-socks5-tproxy and sockmark from core build intermediates to assets"
-    val projectDirectory = project.layout.projectDirectory
-    val buildDirectory = project.layout.buildDirectory
-    val executables = nativeExecutables
+// 每个变体一个独立任务：只读自己变体的 cxx 目录，缺产物直接失败。
+//
+// 两条约束都是踩出来的：
+// 1. 早先遍历整个 `intermediates/cxx`，Debug 与 Release 的产物同时可见，
+//    `walkBottomUp()` 的顺序决定谁覆盖谁 —— release 包可能拿到未 strip 的 debug 二进制。
+// 2. 早先缺产物只 `println` 后继续，`mergeAssets` 照样成功，打出一个没有
+//    tproxy/sockmark 的包，直到设备上 AssetDeployer 报 FileNotFoundException 才暴露。
+listOf("Debug", "Release").forEach { variant ->
+    val variantName = variant
+    tasks.register("copyTProxyBinaries$variantName") {
+        group = "build"
+        description = "Copies $variantName native executables from cxx/$variantName into assets"
 
-    doLast {
+        val projectDirectory = project.layout.projectDirectory
+        val buildDirectory = project.layout.buildDirectory
+        val executables = nativeExecutables
         val abis = listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
-        val coreBuildDir = buildDirectory.dir("intermediates/cxx").get().asFile
 
-        if (!coreBuildDir.exists()) {
-            println("CXX intermediates directory not found: ${coreBuildDir.path}")
-            return@doLast
-        }
+        // clean 后 merge*Assets 可能先于 ndk-build 被调度，此时 cxx 目录还不存在。
+        // 显式依赖聚合任务，保证产物先编出来再拷。
+        dependsOn("buildNdkBuild$variantName")
 
-        abis.forEach { abi ->
-            executables.forEach { exeName ->
-                var found = false
-                coreBuildDir.walkBottomUp().forEach { file ->
-                    if (file.isFile && file.name == exeName && file.parentFile.name == abi) {
+        doLast {
+            val cxxDir = buildDirectory.dir("intermediates/cxx/$variantName").get().asFile
+            val missing = mutableListOf<String>()
+
+            abis.forEach { abi ->
+                executables.forEach { exeName ->
+                    val src = cxxDir.walkTopDown().firstOrNull {
+                        it.isFile && it.name == exeName && it.parentFile.name == abi
+                    }
+                    if (src == null) {
+                        missing += "$abi/$exeName"
+                    } else {
                         val destDir = projectDirectory.dir("src/main/assets/bin/$abi").asFile
                         destDir.mkdirs()
-                        file.copyTo(File(destDir, exeName), overwrite = true)
-                        println("Copied $abi/$exeName to assets from: ${file.path}")
-                        found = true
+                        src.copyTo(File(destDir, exeName), overwrite = true)
+                        println("Copied $abi/$exeName from cxx/$variantName")
                     }
                 }
-                if (!found) {
-                    println("Could not find $exeName for ABI: $abi")
-                }
+            }
+
+            if (missing.isNotEmpty()) {
+                throw GradleException(
+                    "Missing native executables for $variantName: ${missing.joinToString()}. " +
+                        "Refusing to package an APK/AAR that would fail at runtime."
+                )
             }
         }
     }
@@ -500,10 +516,20 @@ tasks.named("preBuild") {
     dependsOn(downloadRulesDat)
 }
 
-// Ensure assets are copied before merging
+// Ensure assets are copied before merging.
+// mergeDebugAssets / mergeReleaseAssets / mergeDebugUnitTestAssets 分别依赖对应变体的拷贝任务，
+// 不再共用一个跨变体遍历的任务。
 tasks.configureEach {
     if (name.startsWith("merge") && name.endsWith("Assets")) {
-        dependsOn(copyTProxyBinaries)
+        val variant = name.removePrefix("merge").removeSuffix("Assets")
+        val base = when {
+            variant.startsWith("Release") -> "Release"   // Release / ReleaseUnitTest
+            variant.startsWith("Debug") -> "Debug"       // Debug / DebugUnitTest
+            else -> null
+        }
+        if (base != null) {
+            dependsOn("copyTProxyBinaries$base")
+        }
     }
 }
 
