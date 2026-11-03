@@ -24,6 +24,32 @@ jobs:
           fetch-depth: 1
           submodules: recursive
 
+      - name: Submodule freshness check
+        run: |
+          set -euo pipefail
+          # 递归拉取各子模块远端，用于新鲜度比对；私有仓库 / 无网时容忍失败。
+          git submodule foreach --recursive 'git fetch origin --quiet || true'
+          # 记录指针落后于远端默认分支 → warning（不阻断构建，仅报警）。
+          git submodule status | awk '{print $2}' | while IFS= read -r sub; do
+            [ -n "$sub" ] || continue
+            for b in main master; do
+              if git -C "$sub" rev-parse --verify -q "origin/$b" >/dev/null 2>&1; then
+                behind=$(git -C "$sub" rev-list --count "HEAD..origin/$b" 2>/dev/null || echo 0)
+                if [ "${behind:-0}" -gt 0 ]; then
+                  echo "::warning::$sub 落后于 origin/$b 共 $behind 个提交（建议 bump）"
+                fi
+                break
+              fi
+            done
+          done
+          # 本地一致性硬性检查：递归检出后 checked-out 必须与记录一致、已初始化。
+          if git submodule status | grep -qE '^[+-U]'; then
+            echo "::error::子模块本地状态异常（未初始化 / 与记录不符 / 冲突）："
+            git submodule status | grep -E '^[+-U]'
+            exit 1
+          fi
+          echo "✅ 子模块本地一致性 OK"
+
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
