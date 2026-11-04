@@ -21,7 +21,8 @@ enum class FieldKey {
     AUTH_USER, AUTH_PASS, AUTH_TOKEN,
     SSH_FINGERPRINT, CERT_FINGERPRINT,
     SERVER_NAME, CUSTOM_PATH,
-    CHUNK_SIZE, HEARTBEAT, PADDING_MIN_BYTES, MASQUE_ALPN
+    CHUNK_SIZE, HEARTBEAT, PADDING_MIN_BYTES, MASQUE_ALPN,
+    XHTTP_PADDING, XHTTP_WINDOW_SIZE, XHTTP_MAX_CONNS
 }
 
 /** 编辑界面当前的字段快照（全部已 trim 的字符串；开关为布尔）。 */
@@ -67,6 +68,10 @@ data class FieldInputs(
     val heartbeat: String,
     val paddingMinBytes: String,
     val masqueAlpn: String,
+    /** myssh 24195a2：xhttp 帧填充规则 / 发送窗口 MiB / 并发会话上限 */
+    val xhttpPadding: String,
+    val xhttpWindowSizeMB: String,
+    val xhttpMaxConns: String,
     /** udp/icmp 的 PSK 允许回退到 SSH 密码（VpnConfigBuilder 有同回退） */
     val sshPassFallbackAvailable: Boolean
 )
@@ -167,6 +172,59 @@ object FieldRules {
     fun isChunkSize(value: String): Boolean =
         value.isEmpty() || (value.toIntOrNull()?.let { it == 0 || it in 16..900 } == true)
 
+    /**
+     * myssh 24195a2 的 xhttp_padding，与 xhttptunnel `SetPadding`/`parsePaddingSpec` 同源的形状校验：
+     * - 空 / auto / default / off / none（大小写、首尾空格忽略）
+     * - 否则是逗号分隔的 `MIN-MAX` 或 `BELOW:MIN-MAX` 分段，最多 8 段
+     * - 每段：MIN>=1、MIN<=MAX<=65535、显式阈值>=1、MIN>=BELOW-1、阈值严格递增
+     *
+     * 刻意只做「能不能被 SDK 解析」的静态校验：SDK 还有进程级策略冲突（不同 profile
+     * 声明不同规则）检查，那只能在 Go 侧启动时判定，UI 无法预知。
+     */
+    fun isXhttpPadding(value: String): Boolean {
+        val spec = value.trim().lowercase()
+        if (spec in setOf("", "auto", "default", "off", "none")) return true
+        val parts = spec.split(',')
+        if (parts.size > 8) return false
+        var previousBelow = -1
+        for (raw in parts) {
+            val part = raw.trim()
+            if (part.isEmpty()) return false
+            var explicitBelow: Int? = null
+            var range = part
+            val colon = part.indexOf(':')
+            if (colon >= 0) {
+                explicitBelow = parsePaddingSize(part.substring(0, colon)) ?: return false
+                range = part.substring(colon + 1)
+            }
+            // SDK 用 strings.Cut(range, "-")：只认**第一个** '-'，且不收 +/-
+            val dash = range.indexOf('-')
+            if (dash < 0) return false
+            val minTotal = parsePaddingSize(range.substring(0, dash)) ?: return false
+            val maxTotal = parsePaddingSize(range.substring(dash + 1)) ?: return false
+            if (minTotal < 1 || minTotal > maxTotal || maxTotal > 65535) return false
+            val below = explicitBelow ?: minTotal
+            if (below < 1 || minTotal < below - 1 || below <= previousBelow) return false
+            previousBelow = below
+        }
+        return true
+    }
+
+    /** SDK parsePaddingSize：trim 后只接受十进制数字串，'+' / '-' / 空一律拒绝。 */
+    private fun parsePaddingSize(s: String): Int? {
+        val t = s.trim()
+        if (t.isEmpty() || !t.all { it in '0'..'9' }) return null
+        return t.toIntOrNull()
+    }
+
+    /** 0 = SDK 默认 8 MiB；显式范围 1-64（SDK windowBytes 越界直接拒建连）。 */
+    fun isXhttpWindowSizeMB(value: String): Boolean =
+        value.isEmpty() || (value.toIntOrNull()?.let { it == 0 || it in 1..64 } == true)
+
+    /** <=0 = SDK 默认 2000；UI 是数字键盘，负值也直接拒掉。 */
+    fun isXhttpMaxConns(value: String): Boolean =
+        value.isEmpty() || (value.toIntOrNull()?.let { it >= 0 } == true)
+
     /** DNS 上游列表：逗号/空格/换行分隔，允许 scheme 前缀 udp/tcp/tls/dot/https */
     fun isDnsServerList(value: String): Boolean {
         val items = value.split(',', ' ', '\n', '\t').map { it.trim() }.filter { it.isNotEmpty() }
@@ -226,7 +284,11 @@ object FieldRules {
         warn(FieldKey.CERT_FINGERPRINT, i.spec.xhttpOptions && i.tlsActive && !i.verifyCertFp, CoreR.string.warn_xhttp_no_fingerprint)
 
         // 代理鉴权（§2/§4：required=true 但对应凭据空 = 硬错误）
-        if (i.spec.proxyAuth != ProxyAuthMode.NONE && i.authEnabled) {
+        // ⚠️ myssh 24195a2 取消了 xhttp 的 open mode：xhttp 无条件把 proxy_auth_token
+        // 当 PSK 读取，忽略 proxy_auth_required。所以 xhttp 的 token 必填与开关解耦，
+        // 否则「开关关掉 + 空 token」会存出一份启动时必被 SDK 拒绝的配置。
+        val authRequired = i.authEnabled || i.spec.proxyAuthAlwaysRequired
+        if (i.spec.proxyAuth != ProxyAuthMode.NONE && authRequired) {
             when (i.spec.proxyAuth) {
                 ProxyAuthMode.USER_PASS -> {
                     require(FieldKey.AUTH_USER, i.authUser.isNotEmpty())
@@ -284,6 +346,9 @@ object FieldRules {
 
         if (i.spec.xhttpOptions) {
             require(FieldKey.CHUNK_SIZE, isChunkSize(i.chunkSize), CoreR.string.error_xhttp_chunk_size)
+            require(FieldKey.XHTTP_PADDING, isXhttpPadding(i.xhttpPadding), CoreR.string.error_xhttp_padding)
+            require(FieldKey.XHTTP_WINDOW_SIZE, isXhttpWindowSizeMB(i.xhttpWindowSizeMB), CoreR.string.error_xhttp_window_size)
+            require(FieldKey.XHTTP_MAX_CONNS, isXhttpMaxConns(i.xhttpMaxConns), CoreR.string.error_xhttp_max_conns)
         }
 
         if (i.spec.heartbeat) {

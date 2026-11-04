@@ -8,7 +8,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Profile::class, Subscription::class], version = 25, exportSchema = true)
+@Database(entities = [Profile::class, Subscription::class], version = 26, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun profileDao(): ProfileDao
     abstract fun subscriptionDao(): SubscriptionDao
@@ -18,7 +18,7 @@ abstract class AppDatabase : RoomDatabase() {
         // 迁移 22_23 不重复粘贴这份清单，改为在其后追加新列，避免两处漂移。
         //
         // ⚠️ 这几个清单**故意声明成 internal**（而不是 private）：`SubscriptionSchemaPinTest`
-        // 要拿它们跟 KSP 导出的 `schemas/25.json` 逐列比对。手抄一份到测试里就是再造一处漂移源，
+        // 要拿它们跟 KSP 导出的 `schemas/26.json` 逐列比对。手抄一份到测试里就是再造一处漂移源，
         // 而这些串一旦跟实体对不上，症状是运行时 "Migration didn't properly handle" 直接崩。
         internal const val PROFILES_V22_COLUMN_DEFS =
             "`id` TEXT NOT NULL, `name` TEXT NOT NULL, `sshAddr` TEXT NOT NULL, `user` TEXT NOT NULL, `pass` TEXT NOT NULL, `authType` TEXT NOT NULL, `privateKey` TEXT NOT NULL, `tunnelType` TEXT NOT NULL, `tunnelTlsEnabled` INTEGER NOT NULL, `icmpCustomPsk` TEXT NOT NULL, `icmpCustomMagic` TEXT NOT NULL, `icmpCustomPublicKey` TEXT NOT NULL, `icmpCustomMtuMode` TEXT NOT NULL, `icmpCustomMaxPayload` INTEGER NOT NULL, `icmpCustomPaceMS` INTEGER NOT NULL, `icmpCustomIdRange` TEXT NOT NULL, `proxyAddr` TEXT NOT NULL, `customHost` TEXT NOT NULL, `serverName` TEXT NOT NULL, `customPath` TEXT NOT NULL, `enableCustomPath` INTEGER NOT NULL, `proxyAuthRequired` INTEGER NOT NULL, `proxyAuthToken` TEXT NOT NULL, `proxyAuthUser` TEXT NOT NULL, `proxyAuthPass` TEXT NOT NULL, `httpPayload` TEXT NOT NULL, `type` TEXT NOT NULL, `dnsOverride` INTEGER NOT NULL, `remoteDns` TEXT NOT NULL, `localDns` TEXT NOT NULL, `udpgwVersion` TEXT NOT NULL, `udpgwAddr` TEXT NOT NULL, `geositeDirect` TEXT NOT NULL, `geoipDirect` TEXT NOT NULL, `appFilterOverride` INTEGER NOT NULL, `filterApps` TEXT NOT NULL, `filterMode` INTEGER NOT NULL, `disableStatusCheck` INTEGER NOT NULL, `verifyFingerprint` INTEGER NOT NULL, `serverFingerprint` TEXT NOT NULL, `verifyCertFingerprint` INTEGER NOT NULL, `serverCertFingerprint` TEXT NOT NULL, `alpn` TEXT NOT NULL, `keyPass` TEXT NOT NULL, `dnsTunnelDomain` TEXT NOT NULL, `dnsTunnelServers` TEXT NOT NULL, `dnsTunnelType` TEXT NOT NULL, `dnsTunnelPublicKey` TEXT NOT NULL, `dnsTunnelEDNS0` INTEGER NOT NULL, `dnsTunnelPsk` TEXT NOT NULL, `dnsTunnelMarker` TEXT NOT NULL, `kcpPassword` TEXT NOT NULL, `kcpCrypt` TEXT NOT NULL, `kcpMode` TEXT NOT NULL, `kcpDataShards` INTEGER NOT NULL, `kcpParityShards` INTEGER NOT NULL, `kcpSndWnd` INTEGER NOT NULL, `kcpRcvWnd` INTEGER NOT NULL, `kcpMtu` INTEGER NOT NULL, `kcpNoComp` INTEGER NOT NULL, `kcpSmuxVer` INTEGER NOT NULL, `kcpKeepAlive` INTEGER NOT NULL, `udpCustomPsk` TEXT NOT NULL, `udpCustomMagic` TEXT NOT NULL, `udpCustomPublicKey` TEXT NOT NULL, `udpCustomPaths` INTEGER NOT NULL, `udpCustomSockets` INTEGER NOT NULL, `udpCustomSendWindow` INTEGER NOT NULL, `udpCustomMaxPkt` INTEGER NOT NULL, `udpCustomMtuProbe` TEXT NOT NULL, `noisePublicKey` TEXT NOT NULL, `xhttpChunkSizeKB` INTEGER NOT NULL, `xhttpStreamMode` TEXT NOT NULL, `bindInterface` TEXT NOT NULL, `lastConnectedAt` INTEGER NOT NULL, `heartbeatIntervalMs` INTEGER NOT NULL, `paddingMinBytes` INTEGER NOT NULL, `masqueAlpn` TEXT NOT NULL, `totalTx` INTEGER NOT NULL, `totalRx` INTEGER NOT NULL, `sortIndex` INTEGER NOT NULL"
@@ -45,11 +45,19 @@ abstract class AppDatabase : RoomDatabase() {
         internal const val PROFILES_V25_COLUMN_NAMES =
             "$PROFILES_V23_COLUMN_NAMES, `subId`"
 
+        // v26 = v25 + xhttp 三个调优项（myssh 24195a2）。老节点全部取声明默认值：
+        // 空填充规则 / 0 MiB / 0 会话上限，语义都是"沿用 SDK 默认"，不会改变既有连接行为。
+        internal const val PROFILES_V26_COLUMN_DEFS =
+            "$PROFILES_V25_COLUMN_DEFS, `xhttpPadding` TEXT NOT NULL, " +
+                "`xhttpWindowSizeMB` INTEGER NOT NULL, `xhttpMaxConns` INTEGER NOT NULL"
+        internal const val PROFILES_V26_COLUMN_NAMES =
+            "$PROFILES_V25_COLUMN_NAMES, `xhttpPadding`, `xhttpWindowSizeMB`, `xhttpMaxConns`"
+
         /**
          * `subscriptions` 表的建表语句（v25 引入）。
          *
          * 声明成常量而不是内联在迁移里：`SubscriptionSchemaPinTest` 要拿它跟
-         * KSP 导出的 `schemas/25.json` 逐列比对。这两处一旦对不上，症状是运行时
+         * KSP 导出的 `schemas/26.json` 逐列比对。这两处一旦对不上，症状是运行时
          * "Migration didn't properly handle" 崩，而不是编译期报错。
          */
         internal const val SUBSCRIPTIONS_TABLE_DDL =
@@ -98,6 +106,28 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                 db.execSQL("DROP TABLE `profiles`")
                 db.execSQL("ALTER TABLE `profiles_new_v25` RENAME TO `profiles`")
+            }
+        }
+
+        /**
+         * v25 → v26：myssh 24195a2 暴露的三个 xhttp 调优项落库。
+         *
+         * 同样整表重建（Room 2.8.4 对 `ALTER TABLE ADD COLUMN ... DEFAULT` 的残留默认值
+         * 会报 "Migration didn't properly handle"）。老节点一律取声明默认值：
+         * 空填充规则 / 0 MiB 窗口 / 0 会话上限，三者语义都是"沿用 SDK 默认"，
+         * 所以升级不会改变既有节点的连接行为。
+         */
+        val MIGRATION_25_26 = object : Migration(25, 26) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE `profiles_new_v26` ($PROFILES_V26_COLUMN_DEFS, PRIMARY KEY(`id`))"
+                )
+                db.execSQL(
+                    "INSERT INTO `profiles_new_v26` ($PROFILES_V26_COLUMN_NAMES) " +
+                        "SELECT $PROFILES_V25_COLUMN_NAMES, '', 0, 0 FROM `profiles`"
+                )
+                db.execSQL("DROP TABLE `profiles`")
+                db.execSQL("ALTER TABLE `profiles_new_v26` RENAME TO `profiles`")
             }
         }
 
@@ -334,7 +364,7 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
                     MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17,
                     MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22,
-                    MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25
+                    MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26
                 )
                 .fallbackToDestructiveMigration(true)
                 .build()

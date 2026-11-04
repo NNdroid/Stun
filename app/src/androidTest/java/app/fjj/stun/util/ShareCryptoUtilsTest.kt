@@ -68,6 +68,9 @@ class ShareCryptoUtilsTest {
             udpCustomSockets = 3,
             udpCustomSendWindow = 384,
             xhttpChunkSizeKB = 512,
+            xhttpPadding = "23:120-200,400:400-600",
+            xhttpWindowSizeMB = 16,
+            xhttpMaxConns = 64,
             heartbeatIntervalMs = 12_000
         )
 
@@ -80,6 +83,9 @@ class ShareCryptoUtilsTest {
         assertEquals(3, restored.udpCustomSockets)
         assertEquals(384, restored.udpCustomSendWindow)
         assertEquals(512, restored.xhttpChunkSizeKB)
+        assertEquals("23:120-200,400:400-600", restored.xhttpPadding)
+        assertEquals(16, restored.xhttpWindowSizeMB)
+        assertEquals(64, restored.xhttpMaxConns)
         assertEquals(12_000, restored.heartbeatIntervalMs)
     }
 

@@ -254,6 +254,11 @@ object ProfileFields {
         if (r.has("appFilterOverride")) existing.appFilterOverride = bool(r, "appFilterOverride") ?: existing.appFilterOverride
         if (r.has("heartbeatIntervalMs")) existing.heartbeatIntervalMs = intNonNegative(r, "heartbeatIntervalMs") ?: existing.heartbeatIntervalMs
         if (r.has("xhttpChunkSizeKB")) existing.xhttpChunkSizeKB = intNonNegative(r, "xhttpChunkSizeKB") ?: existing.xhttpChunkSizeKB
+        // myssh 24195a2：xhttp 帧填充 / 发送窗口 / 并发上限。窗口与上限的 0 都表示"用 SDK 默认"，
+        // 负值无语义（不像 paddingMinBytes 的负数 = 关闭），故统一 clamp 到 >= 0。
+        if (r.has("xhttpPadding")) existing.xhttpPadding = text(r, "xhttpPadding") ?: existing.xhttpPadding
+        if (r.has("xhttpWindowSizeMB")) existing.xhttpWindowSizeMB = intNonNegative(r, "xhttpWindowSizeMB") ?: existing.xhttpWindowSizeMB
+        if (r.has("xhttpMaxConns")) existing.xhttpMaxConns = intNonNegative(r, "xhttpMaxConns") ?: existing.xhttpMaxConns
         if (r.has("udpCustomPaths")) existing.udpCustomPaths = intNonNegative(r, "udpCustomPaths") ?: existing.udpCustomPaths
         if (r.has("udpCustomSockets")) existing.udpCustomSockets = intNonNegative(r, "udpCustomSockets") ?: existing.udpCustomSockets
         if (r.has("udpCustomSendWindow")) existing.udpCustomSendWindow = intNonNegative(r, "udpCustomSendWindow") ?: existing.udpCustomSendWindow
@@ -333,6 +338,9 @@ object ProfileFields {
         p.heartbeatIntervalMs = intNonNegative(r, "heartbeatIntervalMs") ?: d.heartbeatIntervalMs
         p.xhttpChunkSizeKB = intNonNegative(r, "xhttpChunkSizeKB") ?: d.xhttpChunkSizeKB
         p.xhttpStreamMode = enum(r, "xhttpStreamMode", XHTTP_STREAM_MODES) ?: d.xhttpStreamMode
+        p.xhttpPadding = str(r, "xhttpPadding") ?: d.xhttpPadding
+        p.xhttpWindowSizeMB = intNonNegative(r, "xhttpWindowSizeMB") ?: d.xhttpWindowSizeMB
+        p.xhttpMaxConns = intNonNegative(r, "xhttpMaxConns") ?: d.xhttpMaxConns
         p.bindInterface = str(r, "bindInterface") ?: d.bindInterface
         p.paddingMinBytes = intRaw(r, "paddingMinBytes") ?: d.paddingMinBytes
         p.masqueAlpn = str(r, "masqueAlpn") ?: d.masqueAlpn

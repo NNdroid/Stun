@@ -562,6 +562,14 @@
     <string name="opt_stream_poll">Poll (erzwungenes Polling)</string>
     <string name="bind_interface">Interface-Bindung (z. B. wlan0, leer = Standard)</string>
     <string name="xhttp_chunk_size_kb">Chunk-Größe KB (0 = Standard 256, Bereich 16-900)</string>
+    <string name="xhttp_padding">Frame-Padding (leer = Standard 400-600)</string>
+    <string name="xhttp_padding_hint">z. B. 400-600, 23:120-200,400:400-600, off</string>
+    <string name="xhttp_window_size_mb">Sendefenster MiB (0 = Standard 8, Bereich 1-64)</string>
+    <string name="xhttp_max_conns">Max. Sitzungen (0 = Standard 2000)</string>
+    <string name="error_xhttp_padding">400-600, BELOW:MIN-MAX-Bänder, off oder leer eingeben</string>
+    <string name="error_xhttp_window_size">0 für Standard eingeben, oder 1 bis 64 MiB</string>
+    <string name="error_xhttp_max_conns">0 für Standard eingeben, oder eine positive Obergrenze</string>
+    <string name="xhttp_psk_required">XHTTP benötigt dieses Token immer als PSK</string>
     <string name="heartbeat_interval_ms">Heartbeat-Intervall ms (0 = Standard 25000)</string>
     <string name="search">Suchen</string>
     <string name="share">Teilen</string>

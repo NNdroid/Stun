@@ -208,6 +208,14 @@ object VpnConfigBuilder {
                 if (streamMode.isNotBlank()) {
                     put("xhttp_stream_mode", streamMode)
                 }
+                // myssh 24195a2：三个新增调优项。xhttp_padding 是 SDK 的进程级策略，
+                // 空串 = 内置默认（400-600），每次 Start 重新声明，所以这里无条件下发。
+                // 窗口/并发上限的 0 都表示"用 SDK 默认"（8 MiB / 2000 条）。
+                put("xhttp_padding", profile.xhttpPadding?.trim().orEmpty())
+                put("xhttp_window_size_mb", profile.xhttpWindowSizeMB)
+                put("xhttp_max_conns", profile.xhttpMaxConns)
+                // ⚠️ SDK 已取消 open mode：xhttp 无条件读取 proxy_auth_token 作为 PSK，
+                // 忽略 proxy_auth_required。上面公共字段已无条件下发 token，此处不再覆写开关。
             }
             // KEEPALIVE heartbeat is consumed by the h2-family tunnels only.
             if (profile.tunnelType in listOf(

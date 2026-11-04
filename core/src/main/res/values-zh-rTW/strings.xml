@@ -552,6 +552,14 @@
     <string name="opt_stream_poll">輪詢（強制輪詢下行）</string>
     <string name="bind_interface">綁定網路介面（如 wlan0，留空 = 預設）</string>
     <string name="xhttp_chunk_size_kb">分塊大小 KB (0 = 預設 256，範圍 16-900)</string>
+    <string name="xhttp_padding">訊框填充規則（留空 = 預設 400-600）</string>
+    <string name="xhttp_padding_hint">例如 400-600、23:120-200,400:400-600、off</string>
+    <string name="xhttp_window_size_mb">傳送視窗 MiB（0 = 預設 8，範圍 1-64）</string>
+    <string name="xhttp_max_conns">並行工作階段上限（0 = 預設 2000）</string>
+    <string name="error_xhttp_padding">請填寫 400-600、BELOW:MIN-MAX 分段、off，或留空</string>
+    <string name="error_xhttp_window_size">請輸入 0 使用預設值，或輸入 1 到 64 MiB</string>
+    <string name="error_xhttp_max_conns">請輸入 0 使用預設值，或輸入正整數上限</string>
+    <string name="xhttp_psk_required">XHTTP 一律需要此權杖作為 PSK</string>
     <string name="heartbeat_interval_ms">心跳間隔 ms (0 = 預設 25000)</string>
     <string name="error_xhttp_chunk_size">請輸入 0 使用預設值，或輸入 16 到 900 KB</string>
     <string name="error_heartbeat_interval">請輸入 0 使用預設值，或輸入 5000 到 300000 ms</string>

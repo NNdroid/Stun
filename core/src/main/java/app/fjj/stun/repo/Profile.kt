@@ -236,7 +236,24 @@ data class Profile(
     // 归属自动恢复；只有"升级前就已从订阅下架、且未收藏"的节点会永久留在手动节点里。
     // 纯元数据，不参与 VpnConfigBuilder 的任何连接参数。
     @SerializedName("subId")
-    var subId: String = ""
+    var subId: String = "",
+
+    // ── myssh 24195a2 新增的 xhttp 调优项 ──────────────────────────────
+    // ⚠️ 必须留在实体末尾：AppDatabase.PROFILES_V26_COLUMN_DEFS 是
+    // "v25 清单 + 这三列"，Room 的 createSql 按声明顺序生成。挪到中间会让
+    // 迁移建表语句与 26.json 逐字不一致（SubscriptionSchemaPinTest 会红）。
+    // xhttp 帧填充规则（"400-600" / "23:120-200,400:400-600" / "off"）；
+    // 空串 = SDK 默认。进程级策略，每次 Start 由 myssh 重新声明。
+    @SerializedName("xhttpPadding")
+    var xhttpPadding: String = "",
+
+    // 可靠发送窗口（MiB）；0 = SDK 默认 8，显式范围 1-64。
+    @SerializedName("xhttpWindowSizeMB")
+    var xhttpWindowSizeMB: Int = 0,
+
+    // 并发会话上限；<=0 = SDK 默认 2000。
+    @SerializedName("xhttpMaxConns")
+    var xhttpMaxConns: Int = 0
 ) : java.io.Serializable {
     companion object {
         // myssh 4735512：类型收敛为 13 个，TLS 由 tunnelTlsEnabled 开关控制。

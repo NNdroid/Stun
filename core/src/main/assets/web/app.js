@@ -113,6 +113,14 @@ const I18N = {
     error_noise_public_key: "公钥必须是 64 位十六进制或 32 字节 Base64",
     error_dns_noise_record_type: "Noise 加密不能使用 A/AAAA 记录类型",
     error_xhttp_chunk_size: "分块大小只能为 0，或 16 到 900 KB",
+    error_xhttp_padding: "填充规则请填 400-600、BELOW:MIN-MAX 分段、off，或留空",
+    error_xhttp_window_size: "发送窗口只能是 0，或 1 到 64 MiB",
+    error_xhttp_max_conns: "会话上限只能是 0 或正整数",
+    label_edit_xhttp_padding: "帧填充规则（留空 = 默认 400-600）：",
+    label_edit_xhttp_window_size: "发送窗口 MiB (0 = 默认 8，范围 1-64)：",
+    label_edit_xhttp_max_conns: "并发会话上限 (0 = 默认 2000)：",
+    note_edit_xhttp_padding: "例如 400-600、23:120-200,400:400-600、off",
+    xhttp_psk_required: "XHTTP 始终需要此令牌作为 PSK",
     error_invalid_host_only: "请填写对端 IP（ICMP 无端口，格式如 1.1.1.1 或 IPv6）",
     error_invalid_dns_servers: "请填写至少一个 DNS 服务器（逗号或换行分隔，可用 udp/tcp/tls/dot/https:// 前缀）",
     error_invalid_path: "路径必须以 / 开头",
@@ -608,6 +616,14 @@ label_tunnel_tls: '🔒 TLS 加密',
     error_noise_public_key: "公鑰必須是 64 位十六進位或 32 位元組 Base64",
     error_dns_noise_record_type: "Noise 加密不能使用 A/AAAA 記錄類型",
     error_xhttp_chunk_size: "分塊大小只能為 0，或 16 到 900 KB",
+    error_xhttp_padding: "填充規則請填 400-600、BELOW:MIN-MAX 分段、off，或留空",
+    error_xhttp_window_size: "傳送視窗只能是 0，或 1 到 64 MiB",
+    error_xhttp_max_conns: "工作階段上限只能是 0 或正整數",
+    label_edit_xhttp_padding: "訊框填充規則（留空 = 預設 400-600）：",
+    label_edit_xhttp_window_size: "傳送視窗 MiB (0 = 預設 8，範圍 1-64)：",
+    label_edit_xhttp_max_conns: "並行工作階段上限 (0 = 預設 2000)：",
+    note_edit_xhttp_padding: "例如 400-600、23:120-200,400:400-600、off",
+    xhttp_psk_required: "XHTTP 一律需要此權杖作為 PSK",
     error_invalid_host_only: "請填寫對端 IP（ICMP 無連接埠，格式如 1.1.1.1 或 IPv6）",
     error_invalid_dns_servers: "請填寫至少一個 DNS 伺服器（逗號或換行分隔，可用 udp/tcp/tls/dot/https:// 前綴）",
     error_invalid_path: "路徑必須以 / 開頭",
@@ -1102,6 +1118,14 @@ label_tunnel_tls: '🔒 TLS 加密',
     error_noise_public_key: "Public key must be 64 hex characters or 32-byte Base64",
     error_dns_noise_record_type: "Noise encryption cannot use A or AAAA records",
     error_xhttp_chunk_size: "Chunk size must be 0, or from 16 to 900 KB",
+    error_xhttp_padding: "Use 400-600, BELOW:MIN-MAX bands, off, or leave blank",
+    error_xhttp_window_size: "Window must be 0, or from 1 to 64 MiB",
+    error_xhttp_max_conns: "Session cap must be 0 or a positive number",
+    label_edit_xhttp_padding: "Frame Padding (blank = default 400-600):",
+    label_edit_xhttp_window_size: "Send Window MiB (0 = default 8, range 1-64):",
+    label_edit_xhttp_max_conns: "Max Sessions (0 = default 2000):",
+    note_edit_xhttp_padding: "e.g. 400-600, 23:120-200,400:400-600, off",
+    xhttp_psk_required: "XHTTP always requires this token as its PSK",
     error_invalid_host_only: "Enter the peer IP (ICMP has no port, e.g. 1.1.1.1 or IPv6)",
     error_invalid_dns_servers: "Enter at least one DNS server (comma or newline separated; udp/tcp/tls/dot/https:// prefixes allowed)",
     error_invalid_path: "Path must start with /",
@@ -1622,6 +1646,14 @@ label_tunnel_tls: '🔒 TLS encryption',
     error_noise_public_key: "公開鍵は 64 文字の 16 進数または 32 バイト Base64 である必要があります",
     error_dns_noise_record_type: "Noise 暗号化では A/AAAA レコードを使用できません",
     error_xhttp_chunk_size: "チャンクサイズは 0、または 16〜900 KB である必要があります",
+    error_xhttp_padding: "400-600、BELOW:MIN-MAX 形式、off、または空欄にしてください",
+    error_xhttp_window_size: "送信ウィンドウは 0、または 1〜64 MiB にしてください",
+    error_xhttp_max_conns: "最大セッション数は 0 または正の整数にしてください",
+    label_edit_xhttp_padding: "フレームパディング (空 = 既定 400-600)：",
+    label_edit_xhttp_window_size: "送信ウィンドウ MiB (0 = 既定 8、範囲 1-64)：",
+    label_edit_xhttp_max_conns: "最大セッション数 (0 = 既定 2000)：",
+    note_edit_xhttp_padding: "例: 400-600, 23:120-200,400:400-600, off",
+    xhttp_psk_required: "XHTTP はこのトークンを常に PSK として必要とします",
     error_invalid_host_only: "対向 IP を入力してください（ICMP にポートはありません。例: 1.1.1.1 または IPv6）",
     error_invalid_dns_servers: "DNS サーバーを 1 つ以上入力してください（カンマまたは改行区切り、udp/tcp/tls/dot/https:// 接頭辞可）",
     error_invalid_path: "パスは / で始める必要があります",
@@ -2116,6 +2148,14 @@ label_tunnel_tls: '🔒 TLS 暗号化',
     error_noise_public_key: "Der Public Key muss 64 Hex-Zeichen oder 32-Byte-Base64 sein",
     error_dns_noise_record_type: "Noise-Verschlüsselung kann keine A-/AAAA-Records nutzen",
     error_xhttp_chunk_size: "Chunk-Größe muss 0 oder zwischen 16 und 900 KB liegen",
+    error_xhttp_padding: "400-600, BELOW:MIN-MAX-Bänder, off oder leer eingeben",
+    error_xhttp_window_size: "Fenster muss 0 oder zwischen 1 und 64 MiB liegen",
+    error_xhttp_max_conns: "Obergrenze muss 0 oder eine positive Zahl sein",
+    label_edit_xhttp_padding: "Frame-Padding (leer = Standard 400-600):",
+    label_edit_xhttp_window_size: "Sendefenster MiB (0 = Standard 8, Bereich 1-64):",
+    label_edit_xhttp_max_conns: "Max. Sitzungen (0 = Standard 2000):",
+    note_edit_xhttp_padding: "z. B. 400-600, 23:120-200,400:400-600, off",
+    xhttp_psk_required: "XHTTP benötigt dieses Token immer als PSK",
     error_invalid_host_only: "Gegenüber-IP eingeben (ICMP hat keinen Port, z. B. 1.1.1.1 oder IPv6)",
     error_invalid_dns_servers: "Mindestens einen DNS-Server eingeben (durch Komma oder Zeilenumbruch getrennt; Präfixe udp/tcp/tls/dot/https:// erlaubt)",
     error_invalid_path: "Pfad muss mit / beginnen",
@@ -2612,6 +2652,14 @@ label_tunnel_tls: '🔒 TLS-Verschlüsselung',
     error_noise_public_key: "La clé publique doit être 64 caractères hex ou Base64 de 32 octets",
     error_dns_noise_record_type: "Le chiffrement Noise ne peut pas utiliser d\'enregistrements A ou AAAA",
     error_xhttp_chunk_size: "La taille de chunk doit être 0, ou entre 16 et 900 Ko",
+    error_xhttp_padding: "Utiliser 400-600, des bandes BELOW:MIN-MAX, off, ou laisser vide",
+    error_xhttp_window_size: "La fenêtre doit être 0, ou entre 1 et 64 Mio",
+    error_xhttp_max_conns: "La limite doit être 0 ou un nombre positif",
+    label_edit_xhttp_padding: "Remplissage de trame (vide = défaut 400-600) :",
+    label_edit_xhttp_window_size: "Fenêtre d'envoi Mio (0 = défaut 8, plage 1-64) :",
+    label_edit_xhttp_max_conns: "Sessions max. (0 = défaut 2000) :",
+    note_edit_xhttp_padding: "ex. 400-600, 23:120-200,400:400-600, off",
+    xhttp_psk_required: "XHTTP requiert toujours ce jeton comme PSK",
     error_invalid_host_only: "Saisissez l\'IP de la passerelle (ICMP n\'a pas de port, ex. 1.1.1.1 ou IPv6)",
     error_invalid_dns_servers: "Saisissez au moins un serveur DNS (séparés par virgule ou saut de ligne ; préfixes udp/tcp/tls/dot/https:// admis)",
     error_invalid_path: "Le chemin doit commencer par /",
@@ -3300,6 +3348,17 @@ function applyI18n() {
   document.getElementById('t-label-edit-xhttp-chunk').textContent = t('label_edit_xhttp_chunk');
   const xhttpStreamLabel = document.getElementById('t-label-edit-xhttp-stream-mode');
   if (xhttpStreamLabel) xhttpStreamLabel.textContent = t('label_edit_xhttp_stream_mode');
+  // myssh 24195a2 的三个 xhttp 调优项 + PSK 说明
+  const padLabel = document.getElementById('t-label-edit-xhttp-padding');
+  if (padLabel) padLabel.textContent = t('label_edit_xhttp_padding');
+  const padNote = document.getElementById('t-note-xhttp-padding');
+  if (padNote) padNote.textContent = t('note_edit_xhttp_padding');
+  const winLabel = document.getElementById('t-label-edit-xhttp-window-size-mb');
+  if (winLabel) winLabel.textContent = t('label_edit_xhttp_window_size');
+  const connsLabel = document.getElementById('t-label-edit-xhttp-max-conns');
+  if (connsLabel) connsLabel.textContent = t('label_edit_xhttp_max_conns');
+  const pskNote = document.getElementById('t-note-xhttp-psk');
+  if (pskNote) pskNote.textContent = t('xhttp_psk_required');
   const bindIfaceLabel = document.getElementById('t-label-edit-bind-interface');
   if (bindIfaceLabel) bindIfaceLabel.textContent = t('label_edit_bind_interface');
   document.getElementById('t-label-edit-heartbeat-interval').textContent = t('label_edit_heartbeat_interval');
@@ -4287,7 +4346,9 @@ function tunnelFieldSpec(type) {
     alpn: false, httpPayload: false, statusCheck: false,
     dnsOptions: false, noise: false, heartbeat: false, xhttpOptions: false,
     kcpOptions: false, udpOptions: false, icmpOptions: false,
-    paddingOptions: false, masqueAlpnOptions: false, proxyAddrWhenTlsOnly: false
+    paddingOptions: false, masqueAlpnOptions: false, proxyAddrWhenTlsOnly: false,
+    // myssh 24195a2：xhttp 无条件读取 proxy_auth_token 作为 PSK，忽略开关
+    proxyAuthAlwaysRequired: false
   };
   const t = (o) => Object.assign({}, base, o);
   switch (type) {
@@ -4298,7 +4359,7 @@ function tunnelFieldSpec(type) {
     case 'h3': case 'webtransport': return t({ customHost: true, customPath: true, proxyAuth: 'bearer', tlsFixed: true, heartbeat: true, paddingOptions: true });
     case 'masque': return t({ customHost: true, customPath: true, proxyAuth: 'bearer', tlsFixed: true, heartbeat: true, paddingOptions: true, masqueAlpnOptions: true });
     case 'quic': return t({ tlsFixed: true });
-    case 'xhttp': return t({ customHost: true, customPath: true, proxyAuth: 'bearer', tlsCapable: true, alpn: true, xhttpOptions: true });
+    case 'xhttp': return t({ customHost: true, customPath: true, proxyAuth: 'bearer', tlsCapable: true, alpn: true, xhttpOptions: true, proxyAuthAlwaysRequired: true });
     case 'kcptun': return t({ kcpOptions: true });
     case 'udp_custom': return t({ proxyAddr: 'range', udpOptions: true, noise: true });
     case 'dns_custom': return t({ proxyAddr: 'hidden', dnsOptions: true, noise: true });
@@ -4336,7 +4397,10 @@ const LV_KEY_TO_ID = {
   AUTH_USER: 'edit-node-auth-user', AUTH_PASS: 'edit-node-auth-pass', AUTH_TOKEN: 'edit-node-auth-token',
   SSH_FINGERPRINT: 'edit-node-ssh-fingerprint', CERT_FINGERPRINT: 'edit-node-cert-fingerprint',
   CHUNK_SIZE: 'edit-node-xhttp-chunk-size', HEARTBEAT: 'edit-node-heartbeat-interval',
-  PADDING_MIN_BYTES: 'edit-node-padding-min-bytes', MASQUE_ALPN: 'edit-node-masque-alpn'
+  PADDING_MIN_BYTES: 'edit-node-padding-min-bytes', MASQUE_ALPN: 'edit-node-masque-alpn',
+  XHTTP_PADDING: 'edit-node-xhttp-padding',
+  XHTTP_WINDOW_SIZE: 'edit-node-xhttp-window-size-mb',
+  XHTTP_MAX_CONNS: 'edit-node-xhttp-max-conns'
 };
 
 // 凭据框（见 SECRET_INPUT_IDS）在**显示态**是「空框 + hint」，服务端给的哨兵暂存在 `dataset.secret`。
@@ -4376,6 +4440,32 @@ function isIntJP(v){ return /^[+-]?\d+$/.test(v); }
 function intOrBlankInRangeJP(v,min,max){ return v==='' || (isIntJP(v) && +v>=min && +v<=max); }
 function intOrBlankOrZeroInJP(v,min,max){ return v==='' || (isIntJP(v) && (+v===0 || (+v>=min && +v<=max))); }
 function isChunkSizeJP(v){ return v==='' || (isIntJP(v) && (+v===0 || (+v>=16 && +v<=900))); }
+// myssh 24195a2：与 xhttptunnel parsePaddingSpec / native isXhttpPadding 同一份形状校验。
+// 空/auto/default/off/none 合法；否则逗号分隔的 MIN-MAX 或 BELOW:MIN-MAX（≤8 段、
+// 阈值严格递增、MIN≥1、MIN≤MAX≤65535、MIN≥BELOW-1）。进程级策略冲突只能由 Go 侧判定。
+function isXhttpPaddingJP(v){
+  const spec=v.trim().toLowerCase();
+  if(['','auto','default','off','none'].includes(spec)) return true;
+  const parts=spec.split(',');
+  if(parts.length>8) return false;
+  const size=s=>{ const q=s.trim(); if(!/^\d+$/.test(q)) return null; const n=Number(q); return Number.isSafeInteger(n)?n:null; };
+  let prev=-1;
+  for(const raw of parts){
+    const part=raw.trim(); if(!part) return false;
+    let below=null, range=part;
+    const colon=part.indexOf(':');
+    if(colon>=0){ below=size(part.slice(0,colon)); if(below===null) return false; range=part.slice(colon+1); }
+    const dash=range.indexOf('-'); if(dash<0) return false;
+    const lo=size(range.slice(0,dash)), hi=size(range.slice(dash+1));
+    if(lo===null||hi===null||lo<1||lo>hi||hi>65535) return false;
+    const b=below===null?lo:below;
+    if(b<1||lo<b-1||b<=prev) return false;
+    prev=b;
+  }
+  return true;
+}
+function isXhttpWindowSizeJP(v){ return v==='' || (isIntJP(v) && +v>=0 && +v<=64); }
+function isXhttpMaxConnsJP(v){ return v==='' || (isIntJP(v) && +v>=0); }
 // DNS 上游列表：与 Kotlin isDnsServerList 一致 —— 除了要有条目，
 // 每条在 scheme（udp/tcp/tls/dot/https）前缀之后还必须有 host（udp:// 会放行到 host 为空）
 function isDnsServerListJP(v){
@@ -4413,6 +4503,9 @@ function readEditorSnapshot(){
     verifyCertFp: document.getElementById('edit-node-verify-cert').checked, certFingerprint: lvVal('edit-node-cert-fingerprint'),
     chunkSize: lvVal('edit-node-xhttp-chunk-size'), heartbeat: lvVal('edit-node-heartbeat-interval'),
     paddingMinBytes: lvVal('edit-node-padding-min-bytes'), masqueAlpn: lvVal('edit-node-masque-alpn'),
+    xhttpPadding: lvVal('edit-node-xhttp-padding'),
+    xhttpWindowSizeMB: lvVal('edit-node-xhttp-window-size-mb'),
+    xhttpMaxConns: lvVal('edit-node-xhttp-max-conns'),
     sshPassFallbackAvailable: lvVal('edit-node-pass') !== ''
   };
 }
@@ -4542,7 +4635,9 @@ function computeFieldVerdict(s){
   if(s.verifySshFp) need('SSH_FINGERPRINT', !!s.sshFingerprint && isSshFingerprintJP(s.sshFingerprint), 'error_invalid_fingerprint');
   if(s.tlsActive && s.verifyCertFp) need('CERT_FINGERPRINT', !!s.certFingerprint && isFingerprintJP(s.certFingerprint), 'error_invalid_fingerprint');
   warn('CERT_FINGERPRINT', s.spec.xhttpOptions && s.tlsActive && !s.verifyCertFp, 'warn_xhttp_no_fingerprint');
-  if(s.spec.proxyAuth!=='none' && s.authEnabled){
+  // ⚠️ myssh 24195a2 取消 xhttp open mode：token 恒被当 PSK 读取，忽略 proxyAuthRequired 开关。
+  const authRequired = s.authEnabled || s.spec.proxyAuthAlwaysRequired;
+  if(s.spec.proxyAuth!=='none' && authRequired){
     if(s.spec.proxyAuth==='userpass'){ need('AUTH_USER', !!s.authUser); need('AUTH_PASS', !!s.authPass); }
     else need('AUTH_TOKEN', !!s.authToken);
   }
@@ -4577,7 +4672,12 @@ function computeFieldVerdict(s){
     need('KCP_DATA_SHARDS', intOrBlankInRangeJP(s.kcpDataShards,0,255), 'error_invalid_number');
     need('KCP_PARITY_SHARDS', intOrBlankInRangeJP(s.kcpParityShards,0,255), 'error_invalid_number');
   }
-  if(s.spec.xhttpOptions) need('CHUNK_SIZE', isChunkSizeJP(s.chunkSize), 'error_xhttp_chunk_size');
+  if(s.spec.xhttpOptions){
+    need('CHUNK_SIZE', isChunkSizeJP(s.chunkSize), 'error_xhttp_chunk_size');
+    need('XHTTP_PADDING', isXhttpPaddingJP(s.xhttpPadding), 'error_xhttp_padding');
+    need('XHTTP_WINDOW_SIZE', isXhttpWindowSizeJP(s.xhttpWindowSizeMB), 'error_xhttp_window_size');
+    need('XHTTP_MAX_CONNS', isXhttpMaxConnsJP(s.xhttpMaxConns), 'error_xhttp_max_conns');
+  }
   if(s.spec.heartbeat) need('HEARTBEAT', intOrBlankOrZeroInJP(s.heartbeat,5000,300000), 'error_heartbeat_interval');
   if(s.spec.paddingOptions) need('PADDING_MIN_BYTES', intOrBlankInRangeJP(s.paddingMinBytes,-1,65535), 'error_invalid_number');
   if(s.spec.masqueAlpnOptions) need('MASQUE_ALPN', isMasqueAlpnJP(s.masqueAlpn), 'error_invalid_masque_alpn');
@@ -4687,6 +4787,9 @@ function updateEditModalTunnelFields() {
 
   // 8. Proxy Auth（凭据注入在公共路径，与 TLS 无关）
   document.getElementById('edit-group-proxy-auth-container').style.display = spec.proxyAuth !== 'none' ? 'flex' : 'none';
+  // xhttp 的开关已被 SDK 忽略（token 恒为 PSK），隐藏避免误导
+  const authSwitchRow = document.getElementById('edit-proxy-auth-switch-row');
+  if (authSwitchRow) authSwitchRow.style.display = spec.proxyAuthAlwaysRequired ? 'none' : 'flex';
   toggleProxyAuthInputs();
 
   // 9. DNS Container
@@ -4936,11 +5039,15 @@ function toggleCertFingerprintInput() {
 function toggleProxyAuthInputs() {
   const spec = tunnelFieldSpec(document.getElementById('edit-node-tunnel-type').value);
   const isContainerVisible = document.getElementById('edit-group-proxy-auth-container').style.display !== 'none';
-  const isAuthEnabled = document.getElementById('edit-node-proxy-auth').checked && isContainerVisible;
+  // myssh 24195a2：xhttp 忽略开关，token 输入框必须始终可见
+  const always = spec.proxyAuthAlwaysRequired;
+  const isAuthEnabled = always || (document.getElementById('edit-node-proxy-auth').checked && isContainerVisible);
 
   // 凭据形态由消费矩阵决定（tunnel_ws.go/h2/xhttp），与 TLS 开关无关
   document.getElementById('edit-group-auth-token').style.display = (isAuthEnabled && spec.proxyAuth === 'bearer') ? 'flex' : 'none';
-  document.getElementById('edit-group-auth-userpass').style.display = (isAuthEnabled && spec.proxyAuth === 'userpass') ? 'grid' : 'none';
+  document.getElementById('edit-group-auth-userpass').style.display = (!always && isAuthEnabled && spec.proxyAuth === 'userpass') ? 'grid' : 'none';
+  const pskNote = document.getElementById('t-note-xhttp-psk');
+  if (pskNote) pskNote.style.display = always ? 'inline' : 'none';
 }
 
 async function openEditModal(id) {
@@ -5034,6 +5141,10 @@ async function openEditModal(id) {
     (noiseKeyField && p[noiseKeyField]) || p.noisePublicKey || '';
   document.getElementById('edit-node-xhttp-chunk-size').value = p.xhttpChunkSizeKB || '';
   document.getElementById('edit-node-xhttp-stream-mode').value = ['auto', 'stream', 'poll'].includes(p.xhttpStreamMode) ? p.xhttpStreamMode : 'auto';
+  // myssh 24195a2：空串 / 0 = SDK 默认，编辑时留空
+  document.getElementById('edit-node-xhttp-padding').value = p.xhttpPadding || '';
+  document.getElementById('edit-node-xhttp-window-size-mb').value = p.xhttpWindowSizeMB || '';
+  document.getElementById('edit-node-xhttp-max-conns').value = p.xhttpMaxConns || '';
   document.getElementById('edit-node-bind-interface').value = p.bindInterface || '';
   document.getElementById('edit-node-heartbeat-interval').value = p.heartbeatIntervalMs || '';
   document.getElementById('edit-node-padding-min-bytes').value = p.paddingMinBytes || '';
@@ -5261,6 +5372,12 @@ async function submitEditProfileImpl() {
   const bindInterface = document.getElementById('edit-node-bind-interface').value.trim();
   const heartbeatRaw = document.getElementById('edit-node-heartbeat-interval').value.trim();
   const xhttpChunkSizeKB = xhttpChunkRaw === '' ? 0 : Number(xhttpChunkRaw);
+  // myssh 24195a2：空串/0 = SDK 默认；负数在 computeFieldVerdict 已被拦下，这里再夹一次保底
+  const xhttpPadding = document.getElementById('edit-node-xhttp-padding').value.trim();
+  const xhttpWindowRaw = document.getElementById('edit-node-xhttp-window-size-mb').value.trim();
+  const xhttpConnsRaw = document.getElementById('edit-node-xhttp-max-conns').value.trim();
+  const xhttpWindowSizeMB = xhttpWindowRaw === '' ? 0 : (Math.max(0, Number(xhttpWindowRaw)) || 0);
+  const xhttpMaxConns = xhttpConnsRaw === '' ? 0 : (Math.max(0, Number(xhttpConnsRaw)) || 0);
   const heartbeatIntervalMs = heartbeatRaw === '' ? 0 : Number(heartbeatRaw);
   const paddingMinBytes = parseInt(document.getElementById('edit-node-padding-min-bytes').value) || 0;
   const masqueAlpn = document.getElementById('edit-node-masque-alpn').value.trim();
@@ -5289,7 +5406,8 @@ async function submitEditProfileImpl() {
     udpCustomPsk, udpCustomMagic, udpCustomPublicKey, udpCustomPaths, udpCustomSockets, udpCustomSendWindow, udpCustomMaxPkt, udpCustomMtuProbe,
     icmpCustomPsk, icmpCustomMagic, icmpCustomPublicKey, icmpCustomMtuMode,
     icmpCustomMaxPayload, icmpCustomPaceMS, icmpCustomIdRange,
-    xhttpChunkSizeKB, xhttpStreamMode, bindInterface, heartbeatIntervalMs, paddingMinBytes, masqueAlpn,
+    xhttpChunkSizeKB, xhttpStreamMode, xhttpPadding, xhttpWindowSizeMB, xhttpMaxConns,
+    bindInterface, heartbeatIntervalMs, paddingMinBytes, masqueAlpn,
     dnsOverride, remoteDns, localDns, udpgwVersion, udpgwAddr, geositeDirect, geoipDirect,
     appFilterOverride, filterMode, filterApps
   };

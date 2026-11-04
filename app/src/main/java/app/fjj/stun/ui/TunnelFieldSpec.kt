@@ -49,6 +49,11 @@ data class TunnelFieldSpec(
     val alpn: Boolean = false,
     val httpPayload: Boolean = false,
     val xhttpOptions: Boolean = false,
+    /**
+     * 凭据无条件必填（忽略 proxyAuthRequired 开关）。myssh 24195a2 起 xhttp 取消 open mode，
+     * proxy_auth_token 恒被当作 PSK，开关关掉也不能留空。
+     */
+    val proxyAuthAlwaysRequired: Boolean = false,
     val dnsOptions: Boolean = false,
     val kcpOptions: Boolean = false,
     val udpOptions: Boolean = false,
@@ -128,7 +133,7 @@ object TunnelFieldSpecs {
             customHost = true, customPath = true,
             proxyAuth = ProxyAuthMode.BEARER,
             tlsCapable = true,
-            alpn = true, xhttpOptions = true
+            alpn = true, xhttpOptions = true, proxyAuthAlwaysRequired = true
         )
 
         Profile.TUNNEL_TYPE_KCP -> TunnelFieldSpec(

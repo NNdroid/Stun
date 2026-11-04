@@ -567,6 +567,14 @@
     <string name="opt_stream_poll">Poll (forced polling downlink)</string>
     <string name="bind_interface">Bind Interface (e.g. wlan0, blank = default)</string>
     <string name="xhttp_chunk_size_kb">Chunk Size KB (0 = default 256, range 16-900)</string>
+    <string name="xhttp_padding">Frame Padding (blank = default 400-600)</string>
+    <string name="xhttp_padding_hint">e.g. 400-600, 23:120-200,400:400-600, off</string>
+    <string name="xhttp_window_size_mb">Send Window MiB (0 = default 8, range 1-64)</string>
+    <string name="xhttp_max_conns">Max Sessions (0 = default 2000)</string>
+    <string name="error_xhttp_padding">Use 400-600, BELOW:MIN-MAX bands, off, or leave blank</string>
+    <string name="error_xhttp_window_size">Enter 0 for default, or a window from 1 to 64 MiB</string>
+    <string name="error_xhttp_max_conns">Enter 0 for the default, or a positive session cap</string>
+    <string name="xhttp_psk_required">XHTTP always requires this token as its PSK</string>
     <string name="heartbeat_interval_ms">Heartbeat Interval ms (0 = default 25000)</string>
     <string name="error_xhttp_chunk_size">Enter 0 for the default, or a value from 16 to 900 KB</string>
     <string name="error_heartbeat_interval">Enter 0 for the default, or a value from 5000 to 300000 ms</string>

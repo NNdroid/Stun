@@ -1001,6 +1001,20 @@ Host: [host]
                 <option value="poll" id="opt-stream-poll">轮询（强制轮询下行）</option>
               </select>
             </div>
+            <!-- myssh 24195a2：帧填充 / 发送窗口 / 并发会话上限 -->
+            <div class="form-group">
+              <label id="t-label-edit-xhttp-padding" class="form-label">帧填充规则（留空 = 默认 400-600）：</label>
+              <input id="edit-node-xhttp-padding" class="text-input" type="text" placeholder="400-600">
+              <span id="t-note-xhttp-padding" class="helper-text">例如 400-600、23:120-200,400:400-600、off</span>
+            </div>
+            <div class="form-group">
+              <label id="t-label-edit-xhttp-window-size-mb" class="form-label">发送窗口 MiB (0 = 默认 8，范围 1-64)：</label>
+              <input id="edit-node-xhttp-window-size-mb" class="text-input" type="number" min="0" max="64" placeholder="8">
+            </div>
+            <div class="form-group">
+              <label id="t-label-edit-xhttp-max-conns" class="form-label">并发会话上限 (0 = 默认 2000)：</label>
+              <input id="edit-node-xhttp-max-conns" class="text-input" type="number" min="0" placeholder="2000">
+            </div>
           </div>
         </div>
 
@@ -1148,7 +1162,7 @@ Host: [host]
 
         <!-- 上游代理认证 Proxy Auth Row -->
         <div id="edit-group-proxy-auth-container" style="display:none;flex-direction:column;gap:8px">
-          <div class="switch-row">
+          <div class="switch-row" id="edit-proxy-auth-switch-row">
             <label id="t-label-edit-proxy-auth" class="switch-label" for="edit-node-proxy-auth">
               <span id="t-label-edit-proxy-auth">🔑 启用上游代理身份验证 (Proxy Auth)</span>
             </label>
@@ -1160,6 +1174,8 @@ Host: [host]
           <div class="dynamic-subcard" id="edit-group-auth-token" style="display:none">
             <label id="t-label-edit-auth-token" class="form-label">Proxy Auth Token：</label>
             <input id="edit-node-auth-token" class="text-input" type="text" placeholder="Token_Secret_888">
+            <!-- myssh 24195a2 起 xhttp 取消 open mode，token 恒为 PSK；仅 xhttp 显示 -->
+            <span id="t-note-xhttp-psk" class="helper-text" style="display:none">XHTTP 始终需要此令牌作为 PSK</span>
           </div>
           <div class="dynamic-subcard" id="edit-group-auth-userpass" style="display:none">
             <div class="form-grid">

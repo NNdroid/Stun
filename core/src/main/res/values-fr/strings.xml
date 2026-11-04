@@ -548,6 +548,14 @@
     <string name="opt_stream_poll">Poll (polling forcé)</string>
     <string name="bind_interface">Interface liée (ex. wlan0, vide = par défaut)</string>
     <string name="xhttp_chunk_size_kb">Taille de chunk Ko (0 = par défaut 256, plage 16-900)</string>
+    <string name="xhttp_padding">Remplissage de trame (vide = défaut 400-600)</string>
+    <string name="xhttp_padding_hint">ex. 400-600, 23:120-200,400:400-600, off</string>
+    <string name="xhttp_window_size_mb">Fenêtre d\'envoi Mio (0 = défaut 8, plage 1-64)</string>
+    <string name="xhttp_max_conns">Sessions max. (0 = défaut 2000)</string>
+    <string name="error_xhttp_padding">Utiliser 400-600, des bandes BELOW:MIN-MAX, off, ou laisser vide</string>
+    <string name="error_xhttp_window_size">Saisir 0 pour le défaut, ou une fenêtre de 1 à 64 Mio</string>
+    <string name="error_xhttp_max_conns">Saisir 0 pour le défaut, ou une limite positive</string>
+    <string name="xhttp_psk_required">XHTTP requiert toujours ce jeton comme PSK</string>
     <string name="heartbeat_interval_ms">Intervalle de heartbeat ms (0 = par défaut 25000)</string>
     <string name="search">Rechercher</string>
     <string name="share">Partager</string>

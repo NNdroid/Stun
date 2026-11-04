@@ -561,6 +561,14 @@
     <string name="opt_stream_poll">Poll（ポーリング強制）</string>
     <string name="bind_interface">インターフェースバインド（例：wlan0、空 = デフォルト）</string>
     <string name="xhttp_chunk_size_kb">チャンクサイズ KB (0 = デフォルト 256、範囲 16-900)</string>
+    <string name="xhttp_padding">フレームパディング (空 = 既定 400-600)</string>
+    <string name="xhttp_padding_hint">例: 400-600, 23:120-200,400:400-600, off</string>
+    <string name="xhttp_window_size_mb">送信ウィンドウ MiB (0 = 既定 8、範囲 1-64)</string>
+    <string name="xhttp_max_conns">最大セッション数 (0 = 既定 2000)</string>
+    <string name="error_xhttp_padding">400-600、BELOW:MIN-MAX 形式、off、または空欄にしてください</string>
+    <string name="error_xhttp_window_size">既定は 0、または 1〜64 MiB を入力してください</string>
+    <string name="error_xhttp_max_conns">既定は 0、または正の上限を入力してください</string>
+    <string name="xhttp_psk_required">XHTTP はこのトークンを常に PSK として必要とします</string>
     <string name="heartbeat_interval_ms">ハートビート間隔 ms (0 = デフォルト 25000)</string>
     <string name="search">検索</string>
     <string name="share">共有</string>

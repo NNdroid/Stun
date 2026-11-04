@@ -8,7 +8,8 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Room schema ↔ 迁移 DDL 的**逐字对齐**回归（v25：订阅升格为独立表 + 关联键由 URL 换成 subId）。
+ * Room schema ↔ 迁移 DDL 的**逐字对齐**回归（最新 v26：myssh 24195a2 的三个 xhttp 调优项；
+ * v25：订阅升格为独立表 + 关联键由 URL 换成 subId）。
  *
  * ## 为什么需要它
  * Room 只在**运行时**校验"迁移建出来的表"与"实体声明的表"是否一致，对不上就抛
@@ -61,6 +62,47 @@ class SubscriptionSchemaPinTest {
     /** 从 `\`a\`, \`b\` …` 形式的反引号清单里抽列名。 */
     private fun parseBackticked(list: String): List<String> =
         Regex("`([A-Za-z0-9_]+)`").findAll(list).map { it.groupValues[1] }.toList()
+
+    @Test
+    fun `v26 subscriptions 建表语句与 Room schema 逐字一致`() {
+        assertEquals(createSql(26, "subscriptions"), AppDatabase.SUBSCRIPTIONS_TABLE_DDL)
+    }
+
+    /** v26 是当前 @Database(version)，MIGRATION_25_26 建出来的表必须跟它逐字一致。 */
+    @Test
+    fun `v26 profiles 建表语句与 Room schema 逐字一致`() {
+        val built = "CREATE TABLE IF NOT EXISTS `profiles` " +
+            "(${AppDatabase.PROFILES_V26_COLUMN_DEFS}, PRIMARY KEY(`id`))"
+        assertEquals(createSql(26, "profiles"), built)
+    }
+
+    /**
+     * `INSERT INTO profiles_new_v26 (V26_NAMES) SELECT V25_NAMES, '', 0, 0`
+     * 两侧列序必须逐位对应；否则数据整列错位，且不会有任何编译期/运行时报错。
+     */
+    @Test
+    fun `v26 profiles 的列名清单与 schema 列序一致_且等于 v25 清单加三个 xhttp 项`() {
+        assertEquals(
+            schemaColumns(26, "profiles"),
+            parseBackticked(AppDatabase.PROFILES_V26_COLUMN_NAMES)
+        )
+        assertEquals(
+            parseBackticked(AppDatabase.PROFILES_V25_COLUMN_NAMES) +
+                listOf("xhttpPadding", "xhttpWindowSizeMB", "xhttpMaxConns"),
+            parseBackticked(AppDatabase.PROFILES_V26_COLUMN_NAMES)
+        )
+    }
+
+    /** 反事实：新列确实进了实体，而不是只挂在迁移常量里。 */
+    @Test
+    fun `Profile 实体含 myssh 24195a2 的三个 xhttp 字段`() {
+        val fields = Profile::class.java.declaredFields.filterNot { it.isSynthetic }.map { it.name }
+        val columns = schemaColumns(26, "profiles")
+        for (name in listOf("xhttpPadding", "xhttpWindowSizeMB", "xhttpMaxConns")) {
+            assertTrue("Profile 实体缺 $name", name in fields)
+            assertTrue("26.json 里 profiles 缺 $name", name in columns)
+        }
+    }
 
     @Test
     fun `v25 subscriptions 建表语句与 Room schema 逐字一致`() {

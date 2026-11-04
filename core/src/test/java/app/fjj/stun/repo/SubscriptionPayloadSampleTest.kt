@@ -75,6 +75,10 @@ class SubscriptionPayloadSampleTest {
         assertEquals(defaults.enableCustomPath, second.enableCustomPath)
         assertFalse(second.dnsOverride)
         assertEquals(defaults.xhttpChunkSizeKB, second.xhttpChunkSizeKB)
+        // myssh 24195a2：订阅里没写的新字段必须落到「沿用 SDK 默认」的空串/0
+        assertEquals(defaults.xhttpPadding, second.xhttpPadding)
+        assertEquals(defaults.xhttpWindowSizeMB, second.xhttpWindowSizeMB)
+        assertEquals(defaults.xhttpMaxConns, second.xhttpMaxConns)
     }
 
     // ── 同一份内容的其它两种合法外壳 ──────────────────────────────────────────

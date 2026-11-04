@@ -473,6 +473,10 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
         liveWatch(binding.etNoisePublicKey, FieldKey.NOISE_KEY)
         liveWatch(binding.etHttpPayload, FieldKey.HTTP_PAYLOAD)
         liveWatch(binding.etXhttpChunkSize, FieldKey.CHUNK_SIZE)
+        // myssh 24195a2
+        liveWatch(binding.etXhttpPadding, FieldKey.XHTTP_PADDING)
+        liveWatch(binding.etXhttpWindowSizeMb, FieldKey.XHTTP_WINDOW_SIZE)
+        liveWatch(binding.etXhttpMaxConns, FieldKey.XHTTP_MAX_CONNS)
         liveWatch(binding.etHeartbeatInterval, FieldKey.HEARTBEAT)
         // myssh 152c556
         liveWatch(binding.etPaddingMinBytes, FieldKey.PADDING_MIN_BYTES)
@@ -561,6 +565,10 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
             etNoisePublicKey.setText(protocolPublicKey.ifBlank { profile.noisePublicKey })
             etXhttpChunkSize.setText(if (profile.xhttpChunkSizeKB > 0) profile.xhttpChunkSizeKB.toString() else "")
             spinnerXhttpStreamMode.setText(profile.xhttpStreamMode.ifBlank { "auto" }, false)
+            // myssh 24195a2：空串/0 都表示「SDK 默认」，编辑页留空比显示 0 更不容易误改
+            etXhttpPadding.setText(profile.xhttpPadding)
+            etXhttpWindowSizeMb.setText(if (profile.xhttpWindowSizeMB > 0) profile.xhttpWindowSizeMB.toString() else "")
+            etXhttpMaxConns.setText(if (profile.xhttpMaxConns > 0) profile.xhttpMaxConns.toString() else "")
             etBindInterface.setText(profile.bindInterface)
             etHeartbeatInterval.setText(if (profile.heartbeatIntervalMs > 0) profile.heartbeatIntervalMs.toString() else "")
             // myssh 152c556
@@ -745,6 +753,10 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
             layoutNoisePublicKey.isVisible = spec.noisePublicKey
             layoutXhttpChunkSize.isVisible = spec.xhttpOptions
             layoutXhttpStreamMode.isVisible = spec.xhttpOptions
+            // myssh 24195a2
+            layoutXhttpPadding.isVisible = spec.xhttpOptions
+            layoutXhttpWindowSizeMb.isVisible = spec.xhttpOptions
+            layoutXhttpMaxConns.isVisible = spec.xhttpOptions
             layoutIcmpCustomContainer.isVisible = spec.icmpOptions
             layoutHeartbeatInterval.isVisible = spec.heartbeat
             // h2tunnel 出站帧最小填充（流量混淆）：h2 家族 + masque 才消费
@@ -770,7 +782,8 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
 
             switchDisableStatusCheck.isVisible = spec.disableStatusCheck
             // 代理鉴权与 TLS 无关：tunnel_ws.go / tunnel_h2.go 的凭据注入在公共路径上
-            switchAuthRequired.isVisible = spec.proxyAuth != ProxyAuthMode.NONE
+            // xhttp 的鉴权是 SDK 无条件读取的 PSK，开关已被忽略 ⇒ 隐藏，避免误导
+            switchAuthRequired.isVisible = spec.proxyAuth != ProxyAuthMode.NONE && !spec.proxyAuthAlwaysRequired
 
             updateProxyAuthVisibility()
 
@@ -784,11 +797,15 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
 
     private fun updateProxyAuthVisibility() {
         val spec = TunnelFieldSpecs.forType(binding.spinnerTunnelType.text.toString())
-        val isEnabled = binding.switchAuthRequired.isVisible && binding.switchAuthRequired.isChecked
+        // myssh 24195a2：xhttp 忽略开关，token 恒为必填 PSK，输入框必须始终可见
+        val always = spec.proxyAuthAlwaysRequired
+        val isEnabled = always || (binding.switchAuthRequired.isVisible && binding.switchAuthRequired.isChecked)
 
         binding.layoutAuthToken.isVisible = isEnabled && spec.proxyAuth == ProxyAuthMode.BEARER
-        binding.layoutAuthUser.isVisible = isEnabled && spec.proxyAuth == ProxyAuthMode.USER_PASS
-        binding.layoutAuthPass.isVisible = isEnabled && spec.proxyAuth == ProxyAuthMode.USER_PASS
+        binding.layoutAuthUser.isVisible = !always && isEnabled && spec.proxyAuth == ProxyAuthMode.USER_PASS
+        binding.layoutAuthPass.isVisible = !always && isEnabled && spec.proxyAuth == ProxyAuthMode.USER_PASS
+        binding.layoutAuthToken.helperText =
+            if (always) getString(CoreR.string.xhttp_psk_required) else null
     }
 
     private fun updateAuthTypeVisibility(authType: String) {
@@ -826,6 +843,9 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
         FieldKey.NOISE_KEY -> binding.layoutNoisePublicKey
         FieldKey.HTTP_PAYLOAD -> binding.layoutHttpPayload
         FieldKey.CHUNK_SIZE -> binding.layoutXhttpChunkSize
+        FieldKey.XHTTP_PADDING -> binding.layoutXhttpPadding
+        FieldKey.XHTTP_WINDOW_SIZE -> binding.layoutXhttpWindowSizeMb
+        FieldKey.XHTTP_MAX_CONNS -> binding.layoutXhttpMaxConns
         FieldKey.HEARTBEAT -> binding.layoutHeartbeatInterval
         FieldKey.AUTH_USER -> binding.layoutAuthUser
         FieldKey.AUTH_PASS -> binding.layoutAuthPass
@@ -908,6 +928,9 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
             heartbeat = b.etHeartbeatInterval.text.toString().trim(),
             paddingMinBytes = b.etPaddingMinBytes.text.toString().trim(),
             masqueAlpn = b.spinnerMasqueAlpn.text.toString().trim(),
+            xhttpPadding = b.etXhttpPadding.text.toString().trim(),
+            xhttpWindowSizeMB = b.etXhttpWindowSizeMb.text.toString().trim(),
+            xhttpMaxConns = b.etXhttpMaxConns.text.toString().trim(),
             sshPassFallbackAvailable = b.etPass.text.toString().isNotEmpty() || currentProfile.pass.isNotEmpty()
         )
     }
@@ -1051,6 +1074,11 @@ class ProfileEditActivity : BaseActivity(), GeoTagsPickerBottomSheet.OnTagsConfi
             xhttpChunkSizeKB = binding.etXhttpChunkSize.text.toString().toIntOrNull()?.let { if (it > 0) it else 0 } ?: 0,
             // Dropdown carries the raw values ("auto"/"stream"/"poll"); unknown text falls back to auto
             xhttpStreamMode = binding.spinnerXhttpStreamMode.text.toString().takeIf { it in xhttpStreamModeOptions } ?: "auto",
+            // myssh 24195a2：空串/0 = SDK 默认。padding 保留用户输入的大小写原样，
+            // SDK 自身大小写不敏感；空白串归一到空串。
+            xhttpPadding = binding.etXhttpPadding.text.toString().trim(),
+            xhttpWindowSizeMB = binding.etXhttpWindowSizeMb.text.toString().toIntOrNull()?.coerceAtLeast(0) ?: 0,
+            xhttpMaxConns = binding.etXhttpMaxConns.text.toString().toIntOrNull()?.coerceAtLeast(0) ?: 0,
             // Hidden on Android because the unprivileged myssh process cannot
             // use SO_BINDTODEVICE. Preserve imported/remote values verbatim.
             bindInterface = currentProfile.bindInterface,

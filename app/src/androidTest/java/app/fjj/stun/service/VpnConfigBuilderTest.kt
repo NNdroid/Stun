@@ -204,6 +204,34 @@ class VpnConfigBuilderTest {
     }
 
     @Test
+    fun buildMySshConfig_xhttpPaddingWindowAndSessionCap() {
+        val p = Profile(
+            tunnelType = Profile.TUNNEL_TYPE_XHTTP,
+            proxyAuthToken = "psk-token",
+            xhttpPadding = "23:120-200,400:400-600",
+            xhttpWindowSizeMB = 16,
+            xhttpMaxConns = 64,
+            dnsOverride = true
+        )
+        val json = JSONObject(VpnConfigBuilder.buildMySshConfig(context, p, 1080, 53))
+        assertEquals("23:120-200,400:400-600", json.getString("xhttp_padding"))
+        assertEquals(16, json.getInt("xhttp_window_size_mb"))
+        assertEquals(64, json.getInt("xhttp_max_conns"))
+        // myssh 24195a2 取消 open mode：无论 proxyAuthRequired 是否勾选，token 都要下发
+        assertEquals("psk-token", json.getString("proxy_auth_token"))
+    }
+
+    @Test
+    fun buildMySshConfig_xhttpDefaultsAreEmittedForOldProfiles() {
+        val p = Profile(tunnelType = Profile.TUNNEL_TYPE_XHTTP, dnsOverride = true)
+        val json = JSONObject(VpnConfigBuilder.buildMySshConfig(context, p, 1080, 53))
+        // 旧节点三列取迁移默认值；空规则 / 0 / 0 必须原样下发，SDK 才回落到内置策略
+        assertEquals("", json.getString("xhttp_padding"))
+        assertEquals(0, json.getInt("xhttp_window_size_mb"))
+        assertEquals(0, json.getInt("xhttp_max_conns"))
+    }
+
+    @Test
     fun buildMySshConfig_heartbeatForH2Family() {
         for (t in listOf(
             Profile.TUNNEL_TYPE_H2, Profile.TUNNEL_TYPE_GRPC, Profile.TUNNEL_TYPE_H3,
