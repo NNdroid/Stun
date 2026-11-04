@@ -239,6 +239,7 @@ object WebServer {
                 appContextRef = appContext
                 // Kotlin 不接受「实现 FunctionN 的普通 class」直接充当函数类型参数，必须显式断言一次。
                 // 断言目标就是函数类型本身，运行时检查的是 instanceof Function1，恒成立。
+                @Suppress("UNCHECKED_CAST")
                 val module: Application.() -> Unit = WebConsoleModule() as Application.() -> Unit
                 server = embeddedServer(CIO, port = actualPort, module = module)
                     .start(wait = false)
@@ -274,6 +275,7 @@ object WebServer {
     // 只有「构造器不止一个」抛 IllegalArgumentException，不在它的 catch 范围内，才是真崩点。
     // 具名 class 只有一个无参构造器、类身份固定可被 keep 规则锁定，不随 lambda 壳子被合并。
     private class WebConsoleModule : Function1<Application, Unit> {
+        @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
         override fun invoke(application: Application) {
             val appContext = appContextRef ?: error("WebServer.start() was not called")
             application.configureConsole(appContext)

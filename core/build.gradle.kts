@@ -411,10 +411,12 @@ val downloadRulesDat = tasks.register("downloadRulesDat") {
 
             var lastError: Exception? = null
             try {
-                // 最多两次。唯一值得重试的情况是 CDN 正在滚动发布：sidecar 与载荷是两个独立
-                // 对象，跨发布时刻的请求会合法地配上「新摘要 + 旧字节」。重取两边一次就跨
-                // 过去了；其它失败（断流、截断、404）重试只会得到同一个答案。
-                for (attempt in 1..2) {
+                // 首发 1 次 + 最多 3 次重试。唯一值得重试的情况是 CDN 正在滚动发布：
+                // sidecar 与载荷是两个独立对象，跨发布时刻的请求会合法地配上「新摘要 + 旧字节」。
+                // 每次重试都重取两边，通常 1 次就能跨过去；给 3 次重试是为发布窗口较长的 CDN
+                // 留余量，其它失败（断流、截断、404）重试只会得到同一个答案，但开销可接受。
+                val maxRetries = 3
+                for (attempt in 1..(maxRetries + 1)) {
                     val expected = if (attempt == 1) published else sidecarSha256(url)
                     if (expected.isBlank()) {
                         lastError = Exception("sha256 sidecar unreachable on retry")
@@ -430,8 +432,8 @@ val downloadRulesDat = tasks.register("downloadRulesDat") {
                         break
                     } catch (e: Exception) {
                         lastError = e
-                        if (attempt < 2) {
-                            println("  ${e.message}; re-fetching digest and payload in case the CDN is mid-rollover")
+                        if (attempt <= maxRetries) {
+                            println("  ${e.message}; re-fetching digest and payload in case the CDN is mid-rollover (retry ${attempt}/$maxRetries)")
                         }
                     }
                 }

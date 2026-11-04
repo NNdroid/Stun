@@ -1,6 +1,7 @@
 package app.fjj.stun.ui
 
 import android.os.Bundle
+import androidx.core.os.BundleCompat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -72,7 +73,7 @@ class GeoTagsPickerBottomSheet : BottomSheetDialogFragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val args = requireArguments()
-        kind = args.getSerializable(ARG_KIND) as? TagKind ?: TagKind.SITE
+        kind = BundleCompat.getSerializable(args, ARG_KIND, TagKind::class.java) ?: TagKind.SITE
         // 来源数据里 geoip 国家码可能是大写（CN）；统一小写保证与列表勾选匹配、
         // 确认输出一致（过滤端同样按小写比较）
         selected = (args.getStringArrayList(ARG_SELECTED) ?: arrayListOf())

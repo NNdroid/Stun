@@ -524,7 +524,7 @@ object RemoteSyncManager {
      */
     private fun resolveHostCandidates(serviceInfo: NsdServiceInfo): List<String> =
         serviceInfo.hostAddresses
-            .map { it.hostAddress.trim() }
+            .mapNotNull { it.hostAddress?.trim() }
             .filter { it.isNotEmpty() }
             .distinct()
             .sortedBy { addressRank(it) }
