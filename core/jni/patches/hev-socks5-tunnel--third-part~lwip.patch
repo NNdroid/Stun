@@ -1,0 +1,32 @@
+diff --git a/src/include/lwip/errno.h b/src/include/lwip/errno.h
+index 48d6b53..900d19a 100644
+--- a/src/include/lwip/errno.h
++++ b/src/include/lwip/errno.h
+@@ -179,13 +179,26 @@ extern int errno;
+ 
+ #else /* LWIP_PROVIDE_ERRNO */
+ 
+-/* Define LWIP_ERRNO_STDINCLUDE if you want to include <errno.h> here */
++/*
++ * NDK r30 的 clang 按 C23 语义对 #include 的头名做宏展开：bionic 的 <errno.h>
++ * 定义了 `#define errno (*__errno())`，本头文件此处再 #include <errno.h> 时，
++ * 头名里的 `errno` token 会被展开成 `(*__errno()).h`，直接 fatal error。
++ * 用 push_macro/pop_macro 把 errno 宏暂时压栈清空，保住真正的系统头；
++ * clang/GCC/MSVC 均支持该 pragma。详见
++ * patches/hev-socks5-tunnel--third-part~lwip.patch
++ */
+ #ifdef LWIP_ERRNO_STDINCLUDE
++#pragma push_macro("errno")
++#undef errno
+ #include <errno.h>
++#pragma pop_macro("errno")
+ #else /* LWIP_ERRNO_STDINCLUDE */
+ /* Define LWIP_ERRNO_INCLUDE to an equivalent of <errno.h> to include the error defines here */
+ #ifdef LWIP_ERRNO_INCLUDE
++#pragma push_macro("errno")
++#undef errno
+ #include LWIP_ERRNO_INCLUDE
++#pragma pop_macro("errno")
+ #endif /* LWIP_ERRNO_INCLUDE */
+ #endif /* LWIP_ERRNO_STDINCLUDE */
+ 

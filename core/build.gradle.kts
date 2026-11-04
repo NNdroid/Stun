@@ -97,30 +97,32 @@ val applyJniPatches = tasks.register("applyJniPatches") {
          * 把 patch 文件名映射成它所针对的 submodule 目录。
          *
          * 命名规则：文件名去掉 `.patch` 后，`--` 之前是顶层 submodule 名
-         * （下划线转斜杠），`--` 之后是该 submodule 内部的相对路径
-         * （同样下划线转斜杠）。例如
-         *   `hev-socks5-tproxy.patch`             -> `hev-socks5-tproxy`
-         *   `hev-socks5-tproxy--src-core.patch`   -> `hev-socks5-tproxy/src/core`
+         * （下划线转斜杠），`--` 之后是该 submodule 内部的相对路径。
+         * 嵌套段有两代映射：
+         *   - `-` 转斜杠（历史约定）：`hev-socks5-tproxy--src-core.patch`
+         *     -> `hev-socks5-tproxy/src/core`。仅当映射出的目录真实存在才采用。
+         *   - `~` 转斜杠（追加）：路径里**本身就带连字符**的目录没法用上一条表达
+         *     （`third-part/lwip` 会被 `-` 映射拆成 `third/part/lwip`），用 `~`
+         *     表达斜杠、连字符保持字面量：`hev-socks5-tunnel--third-part~lwip.patch`
+         *     -> `hev-socks5-tunnel/third-part/lwip`。
          *
-         * 为什么要支持第二层：`hev-socks5-client.c` / `hev-socks5-misc.c` 这些
-         * **连接与解析的核心逻辑住在 `src/core`**（它本身是个嵌套 submodule，
-         * 父仓库里是模式 160000 的 gitlink）。改它们（例如 connect 失败后按
-         * 另一个 IP 版本重试）无法靠改顶层文件绕过，只能直接改 core。
-         *
-         * 用 `--` 分隔、嵌套段内用 `-` 表示斜杠：顶层名里本来就有大量 `-`
-         * （`hev-socks5-tproxy`），不能再让它承担路径语义，所以嵌套段的
-         * 分隔符必须与顶层区分开。`a--b-c` 表达「顶层 a 下的 b/c」，
-         * 不会出现歧义。
+         * 为什么要支持第二层：`hev-socks5-client.c` 这些**连接与解析的核心逻辑住在
+         * `src/core`**（它本身是个嵌套 submodule，父仓库里是模式 160000 的 gitlink）。
+         * 改它们（例如 connect 失败后按另一个 IP 版本重试）无法靠改顶层文件绕过，
+         * 只能直接改 core；lwip 这类 third-part 嵌套 submodule 同理。
          */
         fun submoduleDirFor(patchName: String): File {
             val stem = patchName.removeSuffix(".patch")
             val topLevel = stem.substringBefore("--").replace('_', '/')
             val nested = stem.substringAfter("--", "")
-            return if (nested.isEmpty()) {
-                File(jniDir, topLevel)
-            } else {
-                File(jniDir, "$topLevel/${nested.replace('-', '/')}")
+            if (nested.isEmpty()) {
+                return File(jniDir, topLevel)
             }
+            val dashMapped = File(jniDir, "$topLevel/${nested.replace('-', '/')}")
+            if (dashMapped.isDirectory) {
+                return dashMapped
+            }
+            return File(jniDir, "$topLevel/${nested.replace('~', '/')}")
         }
 
         patchesDir.listFiles { _, name -> name.endsWith(".patch") }
@@ -461,6 +463,11 @@ val downloadRulesDat = tasks.register("downloadRulesDat") {
 android {
     namespace = "app.fjj.stun.core"
     compileSdk = 37
+    // 37.1 是 minor 版本平台（android-37.1）；targetSdk DSL 无 minor 概念，整数 37 已是最新
+    compileSdkMinor = 1
+    // NDK 钉死 30.0.14904198：不钉则用 AGP 默认值，且与 CI 里 gomobile 用的
+    // ANDROID_NDK_HOME（同样钉 30，见 .github/workflows）错位时产物不可复现。
+    ndkVersion = "30.0.14904198"
 
     defaultConfig {
         minSdk = 28
