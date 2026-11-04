@@ -466,6 +466,15 @@
     <string name="mcp_auth_secret_hint">Token / Geheimnis (Optional)</string>
     <string name="mcp_basic_password_hint">Passwort (Benutzer: admin)</string>
     <string name="mcp_oauth_secret_hint">Client-Secret (client_id: stun-client)</string>
+
+    <!-- Lokale SOCKS5-Eingangsauthentifizierung (RFC 1929 am Loopback-Port der myssh-Engine) -->
+    <string name="socks5_auth_title">Lokale SOCKS5-Authentifizierung</string>
+    <string name="socks5_auth_summary">Schützt den SOCKS5-Proxy des Geräts mit Benutzername/Passwort. Die Zugangsdaten werden beim ersten Start zufällig erzeugt; Tunnel-Engine und Exit-IP-Prüfung übertragen sie automatisch. Beide Felder leeren deaktiviert die Authentifizierung.</string>
+    <string name="socks5_auth_user">Benutzername</string>
+    <string name="socks5_auth_pass">Passwort</string>
+    <string name="socks5_auth_regen">Zugangsdaten neu erzeugen</string>
+    <string name="socks5_auth_regen_done">Neue Zugangsdaten erzeugt</string>
+    <string name="socks5_auth_pair_required">Beide Felder ausfüllen oder beide leeren, um die Authentifizierung zu deaktivieren.</string>
     <string name="show_notification_speed">Echtzeit-Geschwindigkeit in Benachrichtigung anzeigen</string>
     <string name="icon_theme_title">Symbol-Erscheinungsbild</string>
     <string name="icon_theme_desc">Manche Launcher zeigen das neue Symbol erst nach einem Neustart.</string>

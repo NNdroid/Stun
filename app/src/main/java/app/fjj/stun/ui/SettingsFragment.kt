@@ -307,6 +307,15 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
         binding.etDbWebUser.doAfterTextChanged { findTextInputLayout(binding.etDbWebUser)?.error = null }
         binding.etDbWebPass.doAfterTextChanged { binding.layoutDbWebPass.error = null }
 
+        // 本地 SOCKS5 认证：输入清错；「重新生成」只填表单（Save 时才落盘，取消可无损放弃）
+        binding.etSocks5AuthUser.doAfterTextChanged { findTextInputLayout(binding.etSocks5AuthUser)?.error = null }
+        binding.etSocks5AuthPass.doAfterTextChanged { findTextInputLayout(binding.etSocks5AuthPass)?.error = null }
+        binding.btnSocks5AuthRegen.setOnClickListener {
+            val (user, pass) = SettingsManager.newSocks5CredentialPair()
+            binding.etSocks5AuthUser.setText(user)
+            binding.etSocks5AuthPass.setText(pass)
+        }
+
         binding.btnCopyMcpConfig.setOnClickListener {
             MaterialAlertDialogBuilder(requireContext())
                 .setTitle(CoreR.string.mcp_server_copy_config)
@@ -375,6 +384,9 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
             binding.switchDbWeb.isChecked = state.dbWebEnabled
             updateDbWebControlsEnabled(state.dbWebEnabled)
             updateDbWebStatus()
+
+            binding.etSocks5AuthUser.setText(state.socks5AuthUser)
+            binding.etSocks5AuthPass.setText(state.socks5AuthPass)
 
             updateLastUpdateText(state.lastUpdateTime)
             binding.root.post {
@@ -651,6 +663,18 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
             return
         }
 
+        // 本地 SOCKS5 认证：两项要么都空（= 关闭认证）要么都填。单边配置会被 myssh
+        // 的 validateSocks5AuthConfig 拒绝启动 —— 用户看到的是"连不上"而不是"填错了"。
+        val socks5AuthUser = binding.etSocks5AuthUser.text.toString().trim()
+        val socks5AuthPass = binding.etSocks5AuthPass.text.toString()
+        if (socks5AuthUser.isBlank() != socks5AuthPass.isBlank()) {
+            val emptyEditor = if (socks5AuthUser.isBlank()) binding.etSocks5AuthUser else binding.etSocks5AuthPass
+            findTextInputLayout(emptyEditor)?.error = getString(CoreR.string.socks5_auth_pair_required)
+            emptyEditor.requestFocus()
+            scrollToFocusedView(emptyEditor)
+            return
+        }
+
         // 空值当作 0（= 引擎默认），与 updateInterval 的处理一致；但越界必须在
         // 保存前拦住：myssh 的 validatePerformanceConfig 会让 proxy.start 直接失败，
         // 用户看到的是"连不上"而不是"填错了"。
@@ -701,7 +725,9 @@ class SettingsFragment : Fragment(), GeoTagsPickerBottomSheet.OnTagsConfirmedLis
             dbWebEnabled = dbEnabled,
             dbWebPort = dbPort ?: SettingsManager.DEFAULT_DB_WEB_PORT,
             dbWebUser = dbUser,
-            dbWebPass = dbPass
+            dbWebPass = dbPass,
+            socks5AuthUser = socks5AuthUser,
+            socks5AuthPass = socks5AuthPass
         )
 
         val langIndex = languageLabels.indexOf(binding.spinnerLanguage.text.toString())

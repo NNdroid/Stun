@@ -36,7 +36,10 @@ data class SettingsState(
     val dbWebEnabled: Boolean = false,
     val dbWebPort: Int = SettingsManager.DEFAULT_DB_WEB_PORT,
     val dbWebUser: String = "admin",
-    val dbWebPass: String = ""
+    val dbWebPass: String = "",
+    // 本地 SOCKS5 入站认证凭据（首启随机生成；两项都空 = 关闭认证）
+    val socks5AuthUser: String = "",
+    val socks5AuthPass: String = ""
 )
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -80,7 +83,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 dbWebEnabled = SettingsManager.isDbWebEnabled(context),
                 dbWebPort = SettingsManager.getDbWebPort(context),
                 dbWebUser = SettingsManager.getDbWebUser(context),
-                dbWebPass = SettingsManager.getDbWebPass(context)
+                dbWebPass = SettingsManager.getDbWebPass(context),
+                socks5AuthUser = SettingsManager.getSocks5AuthUser(context),
+                socks5AuthPass = SettingsManager.getSocks5AuthPass(context)
             )
             _settingsState.postValue(state)
         }
@@ -120,6 +125,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     SettingsManager.setDbWebPort(context, state.dbWebPort)
                     SettingsManager.setDbWebUser(context, state.dbWebUser)
                     if (state.dbWebPass.isNotBlank()) SettingsManager.setDbWebPass(context, state.dbWebPass)
+                    // 本地 SOCKS5 认证：成对写入（Fragment 已校验要么都空要么都填）。
+                    // 任一非空都落盘 —— 清空两项即显式关闭认证。
+                    SettingsManager.setSocks5AuthUser(context, state.socks5AuthUser)
+                    SettingsManager.setSocks5AuthPass(context, state.socks5AuthPass)
                     // Language is handled specially in Fragment for recreation.
                 }.exceptionOrNull()
             }

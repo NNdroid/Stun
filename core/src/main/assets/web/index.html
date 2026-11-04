@@ -502,6 +502,29 @@
         </div>
       </div>
     </div>
+
+    <!-- 7.5 本地 SOCKS5 认证（myssh 引擎 127.0.0.1 回环端口的 RFC 1929 入站认证） -->
+    <div class="card">
+      <div class="card-header">
+        <span id="t-settings-socks5-title" class="card-title">🔐 本地 SOCKS5 认证</span>
+      </div>
+      <div class="form-grid">
+        <div class="form-group" style="grid-column: 1 / -1">
+          <div id="t-desc-socks5-auth" class="setting-desc">保护设备本地 SOCKS5 代理：凭据首次启动时随机生成，隧道引擎与出口探测自动携带。清空两项并保存 = 关闭认证；密码显示 ***** 表示保持原值不变。</div>
+        </div>
+        <div class="form-group">
+          <label id="t-label-socks5-user" class="form-label">用户名：</label>
+          <input id="input-socks5-auth-user" class="text-input" type="text" placeholder="用户名（清空两项 = 关闭认证）">
+        </div>
+        <div class="form-group">
+          <label id="t-label-socks5-pass" class="form-label">密码：</label>
+          <input id="input-socks5-auth-pass" class="text-input" type="text" placeholder="***** = 保持原值">
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1">
+          <button id="btn-socks5-auth-regen" class="btn btn-sm" onclick="regenerateSocks5Credentials()">🎲 重新生成凭据</button>
+        </div>
+      </div>
+    </div>
     <!-- 8. 保活与后台（让远程控制面在进程被回收后自动回来） -->
     <div class="card">
       <div class="card-header">

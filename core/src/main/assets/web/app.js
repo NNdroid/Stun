@@ -6111,6 +6111,11 @@ function applySettingsFields(data) {
     if (document.getElementById('input-mcp-secret')) {
       document.getElementById('input-mcp-secret').value = data.mcpAuthSecret || '';
     }
+    // 5.5 本地 SOCKS5 认证：密码是掩码哨兵（***** = 保持原值），原样回传即可
+    if (document.getElementById('input-socks5-auth-user')) {
+      document.getElementById('input-socks5-auth-user').value = data.socks5AuthUser || '';
+      document.getElementById('input-socks5-auth-pass').value = data.socks5AuthPass || '';
+    }
     updateMcpTabVisibility(data);
 
     // 6. Auth Token
@@ -6235,6 +6240,11 @@ async function saveAllSettings() {
     mcpServerPort: parseInt(document.getElementById('input-mcp-port')?.value) || 37180,
     mcpAuthMode: parseInt(document.getElementById('select-mcp-auth-mode')?.value) || 0,
     mcpAuthSecret: document.getElementById('input-mcp-secret')?.value?.trim() || '',
+    // 本地 SOCKS5 认证：元素不存在时不发键，避免被服务端当成「清空两项」误关认证
+    ...(document.getElementById('input-socks5-auth-user') ? {
+      socks5AuthUser: document.getElementById('input-socks5-auth-user').value.trim(),
+      socks5AuthPass: document.getElementById('input-socks5-auth-pass').value
+    } : {}),
     authMode: mode,
     customToken: customToken
   };
@@ -6260,12 +6270,43 @@ async function saveAllSettings() {
 
       updateAccessUrlPreview();
       updateMcpTabVisibility(data);
+      // 重生成后回填服务端返回的新凭据（仅该次响应携带明文）
+      if (data.socks5AuthRegenerated && document.getElementById('input-socks5-auth-user')) {
+        document.getElementById('input-socks5-auth-user').value = data.socks5AuthUser || '';
+        document.getElementById('input-socks5-auth-pass').value = data.socks5AuthPass || '';
+      }
       showToast(t('settings_save_success'));
       try {
         const newUrlObj = new URL(data.effectiveUrl || document.getElementById('display-access-url').value);
         window.history.replaceState({}, '', newUrlObj.pathname + newUrlObj.search);
       } catch (_) {}
       fetchStatus();
+    } else {
+      showToast(t('settings_save_failed'));
+    }
+  } catch (_) {
+    showToast(t('settings_save_failed'));
+  }
+}
+
+// 重新生成 SOCKS5 认证凭据：走保存接口的 regenerate 分支（立即生效），返回的新
+// 凭据仅该次响应携带明文，回填表单后用户可直接看到。作废设置缓存防旧掩码回填。
+async function regenerateSocks5Credentials() {
+  try {
+    const res = await fetch('/api/settings/save?token=' + token, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ socks5AuthRegenerate: true })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (document.getElementById('input-socks5-auth-user')) {
+        document.getElementById('input-socks5-auth-user').value = data.socks5AuthUser || '';
+        document.getElementById('input-socks5-auth-pass').value = data.socks5AuthPass || '';
+      }
+      settingsCache.data = null;
+      settingsCache.at = 0;
+      showToast(t('settings_save_success'));
     } else {
       showToast(t('settings_save_failed'));
     }

@@ -465,6 +465,15 @@
     <string name="mcp_auth_secret_hint">トークン / シークレット (任意)</string>
     <string name="mcp_basic_password_hint">パスワード（ユーザー：admin）</string>
     <string name="mcp_oauth_secret_hint">クライアントシークレット（client_id: stun-client）</string>
+
+    <!-- ローカル SOCKS5 インバウンド認証（myssh エンジン ループバックポートの RFC 1929） -->
+    <string name="socks5_auth_title">ローカル SOCKS5 認証</string>
+    <string name="socks5_auth_summary">端末内 SOCKS5 プロキシをユーザー名/パスワードで保護します。認証情報は初回起動時に自動生成され、トンネルエンジンと出口 IP プローブが自動的に送信します。両フィールドを空にすると認証が無効になります。</string>
+    <string name="socks5_auth_user">ユーザー名</string>
+    <string name="socks5_auth_pass">パスワード</string>
+    <string name="socks5_auth_regen">認証情報を再生成</string>
+    <string name="socks5_auth_regen_done">新しい認証情報を生成しました</string>
+    <string name="socks5_auth_pair_required">両方入力するか、両方空にして認証を無効にしてください。</string>
     <string name="show_notification_speed">通知バーに速度を表示</string>
     <string name="icon_theme_title">アイコンの外観</string>
     <string name="icon_theme_desc">一部のラウンチャーは再起動後にのみアイコンを更新します。</string>

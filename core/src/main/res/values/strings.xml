@@ -473,6 +473,15 @@
     <string name="mcp_auth_secret_hint">Token / Secret (Optional)</string>
     <string name="mcp_basic_password_hint">Password (user: admin)</string>
     <string name="mcp_oauth_secret_hint">Client Secret (client_id: stun-client)</string>
+
+    <!-- Local SOCKS5 inbound auth (RFC 1929 on the myssh engine loopback port) -->
+    <string name="socks5_auth_title">Local SOCKS5 Authentication</string>
+    <string name="socks5_auth_summary">Protects the on-device SOCKS5 proxy with username/password. Credentials are generated randomly on first launch; the tunnel engine and exit-IP probe carry them automatically. Clear both fields to disable.</string>
+    <string name="socks5_auth_user">Username</string>
+    <string name="socks5_auth_pass">Password</string>
+    <string name="socks5_auth_regen">Regenerate Credentials</string>
+    <string name="socks5_auth_regen_done">New credentials generated</string>
+    <string name="socks5_auth_pair_required">Fill both fields, or clear both to disable authentication.</string>
     <string name="show_notification_speed">Show Real-Time Speed in Notification</string>
     <string name="icon_theme_title">Icon Appearance</string>
     <string name="icon_theme_desc">Some launchers refresh the icon only after a restart.</string>

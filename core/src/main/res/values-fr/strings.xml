@@ -452,6 +452,15 @@
     <string name="mcp_auth_secret_hint">Jeton / Secret (Optionnel)</string>
     <string name="mcp_basic_password_hint">Mot de passe (utilisateur : admin)</string>
     <string name="mcp_oauth_secret_hint">Secret client (client_id : stun-client)</string>
+
+    <!-- Authentification SOCKS5 locale entrante (RFC 1929 sur le port loopback du moteur myssh) -->
+    <string name="socks5_auth_title">Authentification SOCKS5 locale</string>
+    <string name="socks5_auth_summary">Protège le proxy SOCKS5 de l\'appareil par nom d\'utilisateur/mot de passe. Les identifiants sont générés aléatoirement au premier lancement ; le moteur de tunnel et la sonde d\'IP de sortie les transmettent automatiquement. Videz les deux champs pour désactiver.</string>
+    <string name="socks5_auth_user">Nom d\'utilisateur</string>
+    <string name="socks5_auth_pass">Mot de passe</string>
+    <string name="socks5_auth_regen">Régénérer les identifiants</string>
+    <string name="socks5_auth_regen_done">Nouveaux identifiants générés</string>
+    <string name="socks5_auth_pair_required">Remplissez les deux champs, ou videz-les tous les deux pour désactiver l\'authentification.</string>
     <string name="show_notification_speed">Afficher vitesse en temps réel en notification</string>
     <string name="icon_theme_title">Apparence de l\'icône</string>
     <string name="icon_theme_desc">Certaines interfaces ne rafraîchissent l\'icône qu\'après un redémarrage.</string>

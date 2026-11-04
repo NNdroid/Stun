@@ -1132,7 +1132,11 @@ object WebServer {
                     "mcpServerPort" to SettingsManager.getMcpServerPort(appContext),
                     "mcpAuthMode" to SettingsManager.getMcpAuthMode(appContext),
                     "mcpAuthSecret" to SettingsManager.getMcpApiKey(appContext),
-                    "mcpIsRunning" to StunMcpServer.isRunning()
+                    "mcpIsRunning" to StunMcpServer.isRunning(),
+                    // 本地 SOCKS5 入站认证：用户名明文；密码走 ProfileSecrets 掩码哨兵，
+                    // 前端原样回传表示「保持原值」。
+                    "socks5AuthUser" to SettingsManager.getSocks5AuthUser(appContext),
+                    "socks5AuthPass" to (if (SettingsManager.getSocks5AuthPass(appContext).isNotEmpty()) ProfileSecrets.MASK else "")
                 )
                 call.respond(HttpStatusCode.OK, settingsMap)
             }
@@ -1199,6 +1203,40 @@ object WebServer {
                         onAuthConfigChanged?.invoke(newUrl)
                     }
 
+                    // ── 本地 SOCKS5 入站认证 ──
+                    // regenerate 优先；否则掩码哨兵 = 保持原值（照 ProfileSecrets 契约）。
+                    // 都空 = 显式关闭认证；都非空 = 启用；单边 = 配置错误（myssh 会拒绝
+                    // 启动），抛异常让整次保存回 400，与设置页的成对校验同语义。
+                    var socks5Regenerated = false
+                    if (body["socks5AuthRegenerate"] == true) {
+                        SettingsManager.regenerateSocks5AuthCredentials(appContext)
+                        socks5Regenerated = true
+                    } else {
+                        val socks5UserBody = body["socks5AuthUser"] as? String
+                        val socks5PassBody = body["socks5AuthPass"] as? String
+                        if (socks5UserBody != null || socks5PassBody != null) {
+                            val newUser = socks5UserBody?.trim().orEmpty()
+                            val newPass = when {
+                                socks5PassBody == null || ProfileSecrets.isMask(socks5PassBody) ->
+                                    SettingsManager.getSocks5AuthPass(appContext)
+                                else -> socks5PassBody
+                            }
+                            when {
+                                newUser.isBlank() && newPass.isBlank() -> {
+                                    SettingsManager.setSocks5AuthUser(appContext, "")
+                                    SettingsManager.setSocks5AuthPass(appContext, "")
+                                }
+                                newUser.isNotBlank() && newPass.isNotBlank() -> {
+                                    SettingsManager.setSocks5AuthUser(appContext, newUser)
+                                    SettingsManager.setSocks5AuthPass(appContext, newPass)
+                                }
+                                else -> throw IllegalArgumentException(
+                                    "socks5 auth requires both username and password (or clear both to disable)"
+                                )
+                            }
+                        }
+                    }
+
                     val newUrl = getEffectiveUrl(appContext, actualPort)
                     StunLogger.i(TAG, "Web console saved all system settings successfully")
                     call.respond(HttpStatusCode.OK, mapOf(
@@ -1208,7 +1246,11 @@ object WebServer {
                         "customToken" to SettingsManager.getWebCustomToken(appContext),
                         "permanentToken" to SettingsManager.getWebPermanentToken(appContext),
                         "effectiveUrl" to newUrl,
-                        "mcpIsRunning" to StunMcpServer.isRunning()
+                        "mcpIsRunning" to StunMcpServer.isRunning(),
+                        // 凭据：重生成这一次回传明文（前端把掩码输入框替换成新值），其余回掩码
+                        "socks5AuthRegenerated" to socks5Regenerated,
+                        "socks5AuthUser" to SettingsManager.getSocks5AuthUser(appContext),
+                        "socks5AuthPass" to (if (socks5Regenerated) SettingsManager.getSocks5AuthPass(appContext) else ProfileSecrets.MASK)
                     ))
                 } catch (e: Exception) {
                     call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Save failed")))

@@ -467,6 +467,15 @@
     <string name="mcp_auth_secret_hint">密钥 Token / 密码 (可选)</string>
     <string name="mcp_basic_password_hint">密码（用户：admin）</string>
     <string name="mcp_oauth_secret_hint">客户端密钥（client_id: stun-client）</string>
+
+    <!-- 本地 SOCKS5 入站认证（myssh 引擎回环端口的 RFC 1929） -->
+    <string name="socks5_auth_title">本地 SOCKS5 认证</string>
+    <string name="socks5_auth_summary">为设备上的 SOCKS5 代理启用用户名/密码认证。凭据在首次启动时随机生成，隧道引擎与出口探测会自动携带。清空两项即关闭认证。</string>
+    <string name="socks5_auth_user">用户名</string>
+    <string name="socks5_auth_pass">密码</string>
+    <string name="socks5_auth_regen">重新生成凭据</string>
+    <string name="socks5_auth_regen_done">已生成新凭据</string>
+    <string name="socks5_auth_pair_required">两项都要填写，或都清空以关闭认证。</string>
     <string name="show_notification_speed">通知栏显示实时网速</string>
     <string name="icon_theme_title">桌面图标外观</string>
     <string name="icon_theme_desc">部分桌面需要重启后才刷新图标。</string>
