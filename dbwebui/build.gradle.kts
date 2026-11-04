@@ -6,6 +6,7 @@ plugins {
 android {
     namespace = "app.fjj.stun.dbwebui"
     compileSdk = 37
+    compileSdkMinor = 1
 
     defaultConfig {
         minSdk = 28

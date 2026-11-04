@@ -82,6 +82,8 @@ android {
     }
     namespace = "app.fjj.stun"
     compileSdk = 37
+    // 37.1 minor 版本平台；targetSdk 无 minor 概念，整数 37 已是最新
+    compileSdkMinor = 1
 
     defaultConfig {
         applicationId = "app.fjj.stun"

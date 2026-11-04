@@ -82,6 +82,7 @@ android {
     }
     namespace = "app.fjj.stun.xr"
     compileSdk = 37
+    compileSdkMinor = 1
 
     defaultConfig {
         applicationId = "app.fjj.stun"

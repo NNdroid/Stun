@@ -74,16 +74,14 @@ jobs:
           # 而不是悄悄按空串走；顺带让这个块能用普通 bash 在本地复现。
           set -euo pipefail
 
-          # 只认形如 27.0.12077973 的版本号目录。
-          # 不能用 `find ... | sort -V | tail -n 1`：那排的是**完整路径**，
-          # 而 `$ANDROID_HOME/ndk` 里可能混有非 NDK 目录（实测 Android Studio
-          # 装的 `magisk` 就按版本序排在 30.x 之后），会被 tail 选中并让
-          # ANDROID_NDK_HOME 指向一个没有 toolchains/ 的路径。
-          NDK_VERSION=$(find "$ANDROID_HOME/ndk" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' \
-            | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
-          if [ -z "$NDK_VERSION" ]; then
-            echo "::error::No Android NDK found under $ANDROID_HOME/ndk"
-            exit 1
+          # NDK 钉死 30.0.14904198，与 core/build.gradle.kts 的 ndkVersion 同源：
+          # gomobile 的产物（AAR/classes.jar）和 gradle 的 native 构建必须出自同一
+          # 个 NDK，toolchain 错位的问题只会在运行期暴露。不取「已装的最高版本」——
+          # runner 镜像预装哪个 NDK 会随时间漂移，选出来的是什么没法复现。
+          NDK_VERSION=30.0.14904198
+          if [ ! -d "$ANDROID_HOME/ndk/$NDK_VERSION" ]; then
+            echo "NDK $NDK_VERSION not preinstalled, installing via sdkmanager..."
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK_VERSION" > /dev/null
           fi
           export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
           # 选中不等于可用：NDK r19 之前没有 toolchains/，gomobile 会报出
