@@ -394,7 +394,11 @@ class MyVpnService : VpnService() {
         // YAML。tproxy 侧已改名 `tproxy_rules.conf`，这里也用回自己的名字，双向断掉这个耦合。
         val confFile = File(cacheDir, FILE_HEV_TUNNEL_CONF)
         try {
-            FileOutputStream(confFile).use { it.write(VpnConfigBuilder.buildHevSocks5TunnelConfig(SOCKS_PORT).toByteArray()) }
+            // hev 是本地 SOCKS5 的客户端：myssh 开了入站认证，这里必须带上同一组凭据
+            val socks5Creds = if (SettingsManager.isSocks5AuthEnabled(this)) {
+                SettingsManager.getSocks5AuthUser(this) to SettingsManager.getSocks5AuthPass(this)
+            } else null
+            FileOutputStream(confFile).use { it.write(VpnConfigBuilder.buildHevSocks5TunnelConfig(SOCKS_PORT, socks5Creds).toByteArray()) }
             
             serviceScope.launch {
                 try {

@@ -154,8 +154,16 @@ internal object TransparentProxyConfigBuilder {
      *
      * 目前只有日志级别随构建类型变；tproxy 侧没有 per-profile 的 core 调参，所以不收 `Profile`。
      * DNS 段保持注释：tproxy.sh 已经在 mangle 表里做了 DNS 劫持，core 再开一个 dns 段会与之冲突。
+     *
+     * [socks5Credentials] 是本地 SOCKS5 入站认证凭据（user to pass），由调用方从
+     * SettingsManager 读出后传入 —— 保持本类纯函数、可 JVM 单测的既有约束。
+     * 传 null = 认证关闭，不写 username/password 键（hev 核心要求两项成对出现，缺一启动失败）。
      */
-    fun buildCoreYaml(socksPort: Int, tproxyPort: Int): String {
+    fun buildCoreYaml(socksPort: Int, tproxyPort: Int, socks5Credentials: Pair<String, String>? = null): String {
+        // YAML 单引号风格唯一转义规则：值内单引号翻倍，防止凭据特殊字符破坏结构
+        val authLines = socks5Credentials?.let { (user, pass) ->
+            "\n  username: '${user.replace("'", "''")}'\n  password: '${pass.replace("'", "''")}'"
+        } ?: ""
         return """
             main:
               workers: 1
@@ -171,6 +179,6 @@ internal object TransparentProxyConfigBuilder {
               port: $socksPort
               address: '127.0.0.1'
               udp: udp
-        """.trimIndent()
+        """.trimIndent() + authLines
     }
 }

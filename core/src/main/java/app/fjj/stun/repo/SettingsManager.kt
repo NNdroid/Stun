@@ -419,6 +419,75 @@ object SettingsManager {
     fun setDbWebPass(context: Context, pass: String) =
         getPrefs(context).edit { putString(KEY_DB_WEB_PASS, KeystoreUtils.encrypt(pass.trim())) }
 
+    // ── 本地 SOCKS5 入站认证（myssh 引擎 127.0.0.1 回环端口的 RFC 1929） ──
+    // 首次初始化（ensureSocks5AuthCredentials，AppBootstrap 启动即调用）随机生成
+    // user/pass 并落盘，默认启用认证。用户可改写、一键重生成；显式清空两项 =
+    // 关闭认证（唯一关闭途径）。INITIALIZED 标记保证「清空」是粘性的：若靠
+    // getter 惰性生成，清空后下一次读取会把凭据又生出来，关闭语义就失效了。
+    private const val KEY_SOCKS5_AUTH_INITIALIZED = "socks5_auth_initialized"
+    private const val KEY_SOCKS5_AUTH_USER = "socks5_auth_user"
+    private const val KEY_SOCKS5_AUTH_PASS = "socks5_auth_pass"   // Keystore-encrypted at rest
+
+    private fun randomSocks5Credential(len: Int): String =
+        "stun_" + java.util.UUID.randomUUID().toString().replace("-", "").take(len)
+
+    /**
+     * 首次初始化时随机生成凭据；已初始化后为幂等 no-op（绝不覆盖用户清空/改写的结果）。
+     * 在 [app.fjj.stun.util.AppBootstrap.start] 调用，保证任何读取方（配置下发、
+     * 设置页、Web 控制台）看到的凭据在首次启动后就已经存在。
+     */
+    fun ensureSocks5AuthCredentials(context: Context) {
+        val prefs = getPrefs(context)
+        if (prefs.getBoolean(KEY_SOCKS5_AUTH_INITIALIZED, false)) return
+        prefs.edit {
+            putString(KEY_SOCKS5_AUTH_USER, randomSocks5Credential(8))
+            putString(KEY_SOCKS5_AUTH_PASS, KeystoreUtils.encrypt(randomSocks5Credential(16)))
+            putBoolean(KEY_SOCKS5_AUTH_INITIALIZED, true)
+        }
+    }
+
+    /** 一键重生成（Web 控制台调用，立即落盘）；设置页用 [newSocks5CredentialPair] 走表单保存路径。 */
+    fun regenerateSocks5AuthCredentials(context: Context) {
+        getPrefs(context).edit {
+            putString(KEY_SOCKS5_AUTH_USER, randomSocks5Credential(8))
+            putString(KEY_SOCKS5_AUTH_PASS, KeystoreUtils.encrypt(randomSocks5Credential(16)))
+            putBoolean(KEY_SOCKS5_AUTH_INITIALIZED, true)
+        }
+    }
+
+    /** 生成一对新的随机凭据（**不落盘**）：设置页「重新生成」用它填表单，Save 时才持久化。 */
+    fun newSocks5CredentialPair(): Pair<String, String> =
+        randomSocks5Credential(8) to randomSocks5Credential(16)
+
+    fun getSocks5AuthUser(context: Context): String =
+        getPrefs(context).getString(KEY_SOCKS5_AUTH_USER, "") ?: ""
+
+    // Password is encrypted via Keystore (like the DBWeb pass). A bare plaintext
+    // (no ENC: prefix) should never exist — the setter always encrypts — but if it
+    // does, use it as-is instead of failing: auth degrades gracefully, and tests
+    // can seed prefs without booting a real Keystore (Robolectric can't).
+    fun getSocks5AuthPass(context: Context): String {
+        val stored = getPrefs(context).getString(KEY_SOCKS5_AUTH_PASS, "") ?: ""
+        if (stored.isEmpty()) return ""
+        if (!stored.startsWith(KeystoreUtils.ENC_PREFIX)) return stored
+        return KeystoreUtils.decrypt(stored)
+    }
+
+    fun setSocks5AuthUser(context: Context, user: String) = getPrefs(context).edit {
+        if (user.isBlank()) remove(KEY_SOCKS5_AUTH_USER) else putString(KEY_SOCKS5_AUTH_USER, user.trim())
+        putBoolean(KEY_SOCKS5_AUTH_INITIALIZED, true)
+    }
+
+    fun setSocks5AuthPass(context: Context, pass: String) = getPrefs(context).edit {
+        if (pass.isBlank()) remove(KEY_SOCKS5_AUTH_PASS)
+        else putString(KEY_SOCKS5_AUTH_PASS, KeystoreUtils.encrypt(pass.trim()))
+        putBoolean(KEY_SOCKS5_AUTH_INITIALIZED, true)
+    }
+
+    /** 两项皆非空才算启用；清空任一项即视为关闭（配置生成方据此决定是否下发凭据）。 */
+    fun isSocks5AuthEnabled(context: Context): Boolean =
+        getSocks5AuthUser(context).isNotEmpty() && getSocks5AuthPass(context).isNotEmpty()
+
     // GeoData Settings
     fun getGeositeUrl(context: Context): String = getPrefs(context).getString(KEY_GEOSITE_URL, DEFAULT_GEOSITE_URL) ?: DEFAULT_GEOSITE_URL
     fun saveGeositeUrl(context: Context, url: String) = getPrefs(context).edit { putString(KEY_GEOSITE_URL, url) }

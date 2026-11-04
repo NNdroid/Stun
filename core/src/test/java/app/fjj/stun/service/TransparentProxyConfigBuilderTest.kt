@@ -312,4 +312,32 @@ class TransparentProxyConfigBuilderTest {
         assertFalse(shell.contains("workers:"))
         assertFalse(yaml.contains("PROXY_TCP_PORT="))
     }
+
+    // ── core YAML 的 SOCKS5 认证凭据 ───────────────────────────────
+
+    @Test
+    fun coreYamlEmitsSocks5CredentialsUnderSocks5Section() {
+        val yaml = TransparentProxyConfigBuilder.buildCoreYaml(10808, 10812, "alice" to "s3cret")
+        // 必须落在 socks5: 段内（hev 核心在该段解析 username/password，缺一启动失败）
+        val socks5 = yaml.substringAfter("socks5:")
+        assertTrue(socks5.contains("username: 'alice'"))
+        assertTrue(socks5.contains("password: 's3cret'"))
+    }
+
+    @Test
+    fun coreYamlOmitsCredentialsWhenAuthDisabled() {
+        // 认证关闭（null）时不写键：与旧行为逐字节一致，hev 保持免认证。
+        val yaml = TransparentProxyConfigBuilder.buildCoreYaml(10808, 10812, null)
+        assertFalse(yaml.contains("username"))
+        assertFalse(yaml.contains("password"))
+    }
+
+    @Test
+    fun coreYamlEscapesSingleQuotesInCredentials() {
+        // YAML 单引号风格唯一转义规则：值内 ' 翻倍。凭据含 ' 时若不转义，
+        // yaml 解析会错位甚至改写配置语义 —— 认证凭据必须原样到达 hev。
+        val yaml = TransparentProxyConfigBuilder.buildCoreYaml(10808, 10812, "o'brien" to "p@ss'word")
+        assertTrue(yaml.contains("username: 'o''brien'"))
+        assertTrue(yaml.contains("password: 'p@ss''word'"))
+    }
 }

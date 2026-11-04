@@ -113,6 +113,13 @@ object VpnConfigBuilder {
             // 这两个旋钮压。VPN 与 tproxy 两个服务都走这里，改一处两边生效。
             put("udp_max_sessions", SettingsManager.getUdpMaxSessions(context))
             put("udp_idle_timeout_sec", SettingsManager.getUdpIdleTimeoutSec(context))
+            // 本地 SOCKS5 入站认证（RFC 1929）：凭据来自全局设置（首启随机生成），
+            // 清空任一项 = 关闭认证，此时不下发这两个键（myssh 侧保持旧行为免认证）。
+            // 注意这是本地入站凭据，与 profile 的出站隧道 proxy_auth_* 无关。
+            if (SettingsManager.isSocks5AuthEnabled(context)) {
+                put("socks5_auth_user", SettingsManager.getSocks5AuthUser(context))
+                put("socks5_auth_pass", SettingsManager.getSocks5AuthPass(context))
+            }
             put("ssh_addr", profile.sshAddr)
             put("user", profile.user)
             put("auth_type", profile.authType)
@@ -235,7 +242,16 @@ object VpnConfigBuilder {
         }.toString()
     }
 
-    fun buildHevSocks5TunnelConfig(socksPort: Int): String {
+    /**
+     * [socks5Credentials] 是本地 SOCKS5 入站认证凭据（user to pass），由调用方从
+     * SettingsManager 读出后传入；传 null = 认证关闭，不写 username/password 键
+     * （hev 核心要求两项成对出现，缺一启动失败）。与 [buildCoreYaml] 同一约定。
+     */
+    fun buildHevSocks5TunnelConfig(socksPort: Int, socks5Credentials: Pair<String, String>? = null): String {
+        // YAML 单引号风格唯一转义规则：值内单引号翻倍，防止凭据特殊字符破坏结构
+        val authLines = socks5Credentials?.let { (user, pass) ->
+            "\n  username: '${user.replace("'", "''")}'\n  password: '${pass.replace("'", "''")}'"
+        } ?: ""
         return """
             misc:
               log-level: ${(if (app.fjj.stun.core.BuildConfig.DEBUG) "debug" else "warn")}
@@ -247,6 +263,6 @@ object VpnConfigBuilder {
               port: $socksPort
               address: 127.0.0.1
               udp: udp
-        """.trimIndent()
+        """.trimIndent() + authLines
     }
 }

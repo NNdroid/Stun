@@ -8,8 +8,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import org.json.JSONObject
+import java.net.Authenticator
 import java.net.HttpURLConnection
 import java.net.InetSocketAddress
+import java.net.PasswordAuthentication
 import java.net.Proxy
 import java.net.URL
 import java.util.Locale
@@ -171,7 +173,39 @@ class ExitIpProbe(
                 return ::readResponse
             }
             val socks = Proxy(Proxy.Type.SOCKS, InetSocketAddress("127.0.0.1", TProxyPorts.SOCKS))
+            if (SettingsManager.isSocks5AuthEnabled(context)) installSocks5Authenticator(context.applicationContext)
             return { url -> readResponse(url, socks) ?: readResponse(url) }
+        }
+
+        private var socksAuthInstalled = false
+
+        /**
+         * 本地 SOCKS5 的 RFC 1929 认证应答器。JDK 的 SOCKS 实现在服务端要求认证时，
+         * 凭据只能来自 [Authenticator.setDefault] 注册的**全局** Authenticator ——
+         * 没有它，tproxy 模式的出口探测会被 myssh 的 RFC 1929 拒之门外，探测逐次
+         * 回落直连，UI 显示的「出口 IP」就成了真实本地 IP。
+         *
+         * 刻意做成**常驻**而不是探测前装/探测后卸：装/卸是进程级竞态（并发探测互相踩），
+         * 且凭据在应答时**动态读取** SettingsManager —— 用户重生成/改写后下一次探测
+         * 立即用新值。只应答「回环地址 + SOCKS 端口」的请求，不影响 App 其它 HTTP 认证；
+         * 服务端关闭认证（MethodNone）时 JDK 根本不会来问，装着也无副作用。
+         */
+        private fun installSocks5Authenticator(appContext: Context) {
+            synchronized(this) {
+                if (socksAuthInstalled) return
+                Authenticator.setDefault(object : Authenticator() {
+                    override fun getPasswordAuthentication(): PasswordAuthentication? {
+                        val host = requestingHost ?: return null
+                        val loopback = host == "127.0.0.1" || host == "localhost" || host == "::1"
+                        if (!loopback || requestingPort != TProxyPorts.SOCKS) return null
+                        return PasswordAuthentication(
+                            SettingsManager.getSocks5AuthUser(appContext),
+                            SettingsManager.getSocks5AuthPass(appContext).toCharArray()
+                        )
+                    }
+                })
+                socksAuthInstalled = true
+            }
         }
 
         /** `ip` / `country_code` / `city` JSON, as served by ipwho.is and api.ip.sb. */

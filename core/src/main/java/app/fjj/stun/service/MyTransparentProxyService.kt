@@ -215,7 +215,11 @@ class MyTransparentProxyService : Service() {
                 if (sshStatus != 0L) throw RuntimeException("SSH Core failed to start with status: $sshStatus")
                 StunLogger.i(TAG, "SSH Core started successfully.")
 
-                val yamlConfig = TransparentProxyConfigBuilder.buildCoreYaml(SOCKS_PORT, TPROXY_PORT)
+                // hev 是本地 SOCKS5 的客户端：myssh 开了入站认证，这里必须带上同一组凭据
+                val socks5Creds = if (SettingsManager.isSocks5AuthEnabled(context)) {
+                    SettingsManager.getSocks5AuthUser(context) to SettingsManager.getSocks5AuthPass(context)
+                } else null
+                val yamlConfig = TransparentProxyConfigBuilder.buildCoreYaml(SOCKS_PORT, TPROXY_PORT, socks5Creds)
                 File(cacheDir, FILE_HEV_SOCKS5_TPROXY_CONF).writeText(yamlConfig)
 
                 startCoreEngine()

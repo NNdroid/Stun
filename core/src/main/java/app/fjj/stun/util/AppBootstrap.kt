@@ -110,6 +110,16 @@ object AppBootstrap {
                     } catch (t: Throwable) {
                         StunLogger.e(TAG, "Subscription store migration (SharedPreferences -> Room) failed", t)
                     }
+                    // 本地 SOCKS5 认证凭据：首次启动随机生成（幂等，绝不覆盖用户清空/
+                    // 改写的结果）。放这里同样覆盖全部 5 个入口 —— 引擎配置下发、设置页、
+                    // Web 控制台读到的凭据在首启后就已存在，SOCKS5 端口不会以无认证状态
+                    // 裸奔到用户手动开启为止。即便失败，isSocks5AuthEnabled=false 只是
+                    // 回到旧行为（免认证），不会让服务起不来。
+                    try {
+                        SettingsManager.ensureSocks5AuthCredentials(app)
+                    } catch (t: Throwable) {
+                        StunLogger.e(TAG, "SOCKS5 auth credential bootstrap failed", t)
+                    }
                 }
             }
         }
