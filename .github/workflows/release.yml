@@ -172,7 +172,12 @@ jobs:
           NDK_VERSION=30.0.14904198
           if [ ! -d "$ANDROID_HOME/ndk/$NDK_VERSION" ]; then
             echo "NDK $NDK_VERSION not preinstalled, installing via sdkmanager..."
-            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK_VERSION" > /dev/null
+            # `yes` feeds the license prompt. With pipefail on, `yes` raises
+            # SIGPIPE (141) the instant sdkmanager exits and closes the pipe,
+            # which would abort the build even on a successful install. Disable
+            # pipefail for this command only, so a real sdkmanager failure still
+            # fails the step but the benign broken-pipe signal does not.
+            ( set +o pipefail; yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK_VERSION" > /dev/null )
           fi
           export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
           # 选中不等于可用：NDK r19 之前没有 toolchains/，gomobile 会报出
