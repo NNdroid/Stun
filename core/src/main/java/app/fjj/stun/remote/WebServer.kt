@@ -18,6 +18,7 @@ import app.fjj.stun.repo.ProfileArgReader
 import app.fjj.stun.repo.ProfileFields
 import app.fjj.stun.repo.ProfileManager
 import app.fjj.stun.repo.ProfileSecrets
+import app.fjj.stun.repo.ProfileValidation
 import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.StunLogger
 import app.fjj.stun.repo.StunRepository
@@ -411,6 +412,18 @@ object WebServer {
                     // ProfileArgReader 把 null 视为"键不存在" ⇒ 自然退化成"保持原值"。
                     ProfileFields.applyTo(ProfileArgReader.of(body), existing)
                     val updated = existing
+
+                    // Interactive edits must fail loudly with a readable message.
+                    // ProfileManager.sanitize is only a last-resort guard for Gson
+                    // import paths that bypass ProfileFields; it must not silently
+                    // rewrite what a user just typed in the editor.
+                    val fieldErrors = ProfileValidation.errorsOf(updated)
+                    if (fieldErrors.isNotEmpty()) {
+                        return@post call.respond(
+                            HttpStatusCode.BadRequest,
+                            mapOf("error" to "invalid_field", "message" to fieldErrors.joinToString("; "))
+                        )
+                    }
 
                     ProfileManager.updateProfile(appContext, updated)
                     StunLogger.i(TAG, "Web console updated profile: ${updated.name} ($id)")

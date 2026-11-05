@@ -1,6 +1,7 @@
 package app.fjj.stun.repo
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.map
 import app.fjj.stun.util.KeystoreUtils
@@ -67,6 +68,31 @@ internal fun needsEncryption(value: String): Boolean =
     value.isNotEmpty() && !value.startsWith(KeystoreUtils.ENC_PREFIX)
 
 object ProfileManager {
+    private const val TAG = "ProfileManager"
+
+    /**
+     * Final gate before **any** write.
+     *
+     * WebUI/MCP import, WebDAV backup restore, Bluetooth sync, QR share and
+     * subscription nodes all deserialize straight into [Profile] via Gson and
+     * therefore bypass [ProfileFields] entirely. [ProfileValidation.sanitize] here is
+     * the only place that can guarantee an SDK-acceptable profile reaches Room.
+     *
+     * Illegal xhttp values fall back to SDK defaults instead of throwing: rejecting
+     * would abort an entire batch import because of one bad legacy node. Interactive
+     * editors call [ProfileValidation.errorsOf] first and report a precise error.
+     */
+    private fun normalizeForWrite(profile: Profile): Profile {
+        val cleaned = ProfileValidation.sanitize(profile)
+        if (cleaned !== profile) {
+            Log.w(
+                TAG, "Normalized illegal xhttp fields for profile ${profile.id}: " +
+                    ProfileValidation.errorsOf(profile).joinToString("; ")
+            )
+        }
+        return cleaned
+    }
+
     fun getProfilesLiveData(context: Context): LiveData<List<Profile>> {
         return AppDatabase.getDatabase(context).profileDao().getAll().map { list ->
             list.map { decryptProfile(it) }
@@ -82,11 +108,11 @@ object ProfileManager {
     }
 
     fun addProfile(context: Context, profile: Profile) {
-        AppDatabase.getDatabase(context).profileDao().insert(encryptProfile(profile))
+        AppDatabase.getDatabase(context).profileDao().insert(encryptProfile(normalizeForWrite(profile)))
     }
 
     fun updateProfile(context: Context, profile: Profile) {
-        AppDatabase.getDatabase(context).profileDao().update(encryptProfile(profile))
+        AppDatabase.getDatabase(context).profileDao().update(encryptProfile(normalizeForWrite(profile)))
     }
 
     fun deleteProfile(context: Context, profile: Profile) {
@@ -96,7 +122,7 @@ object ProfileManager {
     fun saveProfiles(context: Context, profiles: List<Profile>) {
         val dao = AppDatabase.getDatabase(context).profileDao()
         dao.deleteAll()
-        profiles.forEach { dao.insert(encryptProfile(it)) }
+        profiles.forEach { dao.insert(encryptProfile(normalizeForWrite(it))) }
     }
 
     fun getSelectedProfile(context: Context): Profile {

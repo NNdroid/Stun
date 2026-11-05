@@ -10,6 +10,7 @@ import app.fjj.stun.repo.LogLevel
 import app.fjj.stun.repo.Profile
 import app.fjj.stun.repo.ProfileManager
 import app.fjj.stun.repo.ProfileSecrets
+import app.fjj.stun.repo.ProfileValidation
 import app.fjj.stun.repo.SettingsManager
 import app.fjj.stun.repo.StunLogger
 import app.fjj.stun.repo.StunRepository
@@ -1332,8 +1333,15 @@ url = "$scheme://$targetHost/mcp"$headersBlock
                 // 字段映射已抽到 [McpProfileArgs]（纯函数，不碰 Context/ProfileManager）。
                 // 掩码剔除在 fromArgs 内部完成，这里只负责落库与回报。
                 val profile = McpProfileArgs.fromArgs(args)
-                ProfileManager.addProfile(context, profile)
-                "Profile created successfully: 「${profile.name}」 (ID: ${profile.id})"
+                // Same hard gate as WebUI /api/profiles/update: fail loudly instead of
+                // letting ProfileManager.sanitize silently rewrite the user's input.
+                val fieldErrors = ProfileValidation.errorsOf(profile)
+                if (fieldErrors.isNotEmpty()) {
+                    "Error: ${fieldErrors.joinToString("; ")}"
+                } else {
+                    ProfileManager.addProfile(context, profile)
+                    "Profile created successfully: 「${profile.name}」 (ID: ${profile.id})"
+                }
             }
 
             "update_profile" -> {
@@ -1344,8 +1352,13 @@ url = "$scheme://$targetHost/mcp"$headersBlock
                     "Error: Profile ID not found: $profileId"
                 } else {
                     McpProfileArgs.mergeInto(args, existing)
-                    ProfileManager.updateProfile(context, existing)
-                    "Profile updated successfully: 「${existing.name}」 (${existing.id})"
+                    val fieldErrors = ProfileValidation.errorsOf(existing)
+                    if (fieldErrors.isNotEmpty()) {
+                        "Error: ${fieldErrors.joinToString("; ")}"
+                    } else {
+                        ProfileManager.updateProfile(context, existing)
+                        "Profile updated successfully: 「${existing.name}」 (${existing.id})"
+                    }
                 }
             }
             "delete_profile" -> {

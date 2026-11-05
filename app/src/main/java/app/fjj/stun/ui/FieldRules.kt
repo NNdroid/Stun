@@ -1,6 +1,7 @@
 package app.fjj.stun.ui
 
 import app.fjj.stun.core.R as CoreR
+import app.fjj.stun.repo.ProfileValidation
 import java.util.Base64
 
 /**
@@ -172,58 +173,19 @@ object FieldRules {
     fun isChunkSize(value: String): Boolean =
         value.isEmpty() || (value.toIntOrNull()?.let { it == 0 || it in 16..900 } == true)
 
-    /**
-     * myssh 24195a2 的 xhttp_padding，与 xhttptunnel `SetPadding`/`parsePaddingSpec` 同源的形状校验：
-     * - 空 / auto / default / off / none（大小写、首尾空格忽略）
-     * - 否则是逗号分隔的 `MIN-MAX` 或 `BELOW:MIN-MAX` 分段，最多 8 段
-     * - 每段：MIN>=1、MIN<=MAX<=65535、显式阈值>=1、MIN>=BELOW-1、阈值严格递增
-     *
-     * 刻意只做「能不能被 SDK 解析」的静态校验：SDK 还有进程级策略冲突（不同 profile
-     * 声明不同规则）检查，那只能在 Go 侧启动时判定，UI 无法预知。
-     */
-    fun isXhttpPadding(value: String): Boolean {
-        val spec = value.trim().lowercase()
-        if (spec in setOf("", "auto", "default", "off", "none")) return true
-        val parts = spec.split(',')
-        if (parts.size > 8) return false
-        var previousBelow = -1
-        for (raw in parts) {
-            val part = raw.trim()
-            if (part.isEmpty()) return false
-            var explicitBelow: Int? = null
-            var range = part
-            val colon = part.indexOf(':')
-            if (colon >= 0) {
-                explicitBelow = parsePaddingSize(part.substring(0, colon)) ?: return false
-                range = part.substring(colon + 1)
-            }
-            // SDK 用 strings.Cut(range, "-")：只认**第一个** '-'，且不收 +/-
-            val dash = range.indexOf('-')
-            if (dash < 0) return false
-            val minTotal = parsePaddingSize(range.substring(0, dash)) ?: return false
-            val maxTotal = parsePaddingSize(range.substring(dash + 1)) ?: return false
-            if (minTotal < 1 || minTotal > maxTotal || maxTotal > 65535) return false
-            val below = explicitBelow ?: minTotal
-            if (below < 1 || minTotal < below - 1 || below <= previousBelow) return false
-            previousBelow = below
-        }
-        return true
-    }
+    // ── xhttp 三字段：规则只在 core 的 ProfileValidation 写一遍 ──────────────
+    // 之前这里手抄了一份与 WebUI app.js 的 *JP 函数并列的镜像，两端各自维护；
+    // 现在统一委托 core，WebUI 那份由 parity 脚本用同一份样本表钉住一致性。
+    // 保留 public 签名，FieldRulesXhttpTest 与实时校验管线无需改动。
 
-    /** SDK parsePaddingSize：trim 后只接受十进制数字串，'+' / '-' / 空一律拒绝。 */
-    private fun parsePaddingSize(s: String): Int? {
-        val t = s.trim()
-        if (t.isEmpty() || !t.all { it in '0'..'9' }) return null
-        return t.toIntOrNull()
-    }
+    /** @see ProfileValidation.isXhttpPadding */
+    fun isXhttpPadding(value: String): Boolean = ProfileValidation.isXhttpPadding(value)
 
     /** 0 = SDK 默认 8 MiB；显式范围 1-64（SDK windowBytes 越界直接拒建连）。 */
-    fun isXhttpWindowSizeMB(value: String): Boolean =
-        value.isEmpty() || (value.toIntOrNull()?.let { it == 0 || it in 1..64 } == true)
+    fun isXhttpWindowSizeMB(value: String): Boolean = ProfileValidation.isXhttpWindowSizeMB(value)
 
     /** <=0 = SDK 默认 2000；UI 是数字键盘，负值也直接拒掉。 */
-    fun isXhttpMaxConns(value: String): Boolean =
-        value.isEmpty() || (value.toIntOrNull()?.let { it >= 0 } == true)
+    fun isXhttpMaxConns(value: String): Boolean = ProfileValidation.isXhttpMaxConns(value)
 
     /** DNS 上游列表：逗号/空格/换行分隔，允许 scheme 前缀 udp/tcp/tls/dot/https */
     fun isDnsServerList(value: String): Boolean {

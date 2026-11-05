@@ -4440,15 +4440,19 @@ function isIntJP(v){ return /^[+-]?\d+$/.test(v); }
 function intOrBlankInRangeJP(v,min,max){ return v==='' || (isIntJP(v) && +v>=min && +v<=max); }
 function intOrBlankOrZeroInJP(v,min,max){ return v==='' || (isIntJP(v) && (+v===0 || (+v>=min && +v<=max))); }
 function isChunkSizeJP(v){ return v==='' || (isIntJP(v) && (+v===0 || (+v>=16 && +v<=900))); }
-// myssh 24195a2：与 xhttptunnel parsePaddingSpec / native isXhttpPadding 同一份形状校验。
-// 空/auto/default/off/none 合法；否则逗号分隔的 MIN-MAX 或 BELOW:MIN-MAX（≤8 段、
-// 阈值严格递增、MIN≥1、MIN≤MAX≤65535、MIN≥BELOW-1）。进程级策略冲突只能由 Go 侧判定。
+// XHTTP field rules mirror core/repo/ProfileValidation.kt — the single source of truth.
+// Both runtimes are checked against the same case table by
+// scripts/check-xhttp-validation-parity.mjs (core/src/test/resources/xhttp-validation-cases.json).
+// int32MaxJP: Kotlin's toIntOrNull() is 32-bit. Without this bound JS would accept
+// oversized digit strings (1e30, "99999999999999999999") that Kotlin rejects.
+function int32MaxJP(){ return 2147483647; }
+function isInt32JP(v){ return isIntJP(v) && Number.isSafeInteger(+v) && +v<=int32MaxJP(); }
 function isXhttpPaddingJP(v){
   const spec=v.trim().toLowerCase();
   if(['','auto','default','off','none'].includes(spec)) return true;
   const parts=spec.split(',');
   if(parts.length>8) return false;
-  const size=s=>{ const q=s.trim(); if(!/^\d+$/.test(q)) return null; const n=Number(q); return Number.isSafeInteger(n)?n:null; };
+  const size=s=>{ const q=s.trim(); if(!/^\d+$/.test(q)) return null; const n=Number(q); return (Number.isSafeInteger(n)&&n<=int32MaxJP())?n:null; };
   let prev=-1;
   for(const raw of parts){
     const part=raw.trim(); if(!part) return false;
@@ -4464,8 +4468,8 @@ function isXhttpPaddingJP(v){
   }
   return true;
 }
-function isXhttpWindowSizeJP(v){ return v==='' || (isIntJP(v) && +v>=0 && +v<=64); }
-function isXhttpMaxConnsJP(v){ return v==='' || (isIntJP(v) && +v>=0); }
+function isXhttpWindowSizeJP(v){ return v==='' || (isInt32JP(v) && +v>=0 && +v<=64); }
+function isXhttpMaxConnsJP(v){ return v==='' || (isInt32JP(v) && +v>=0); }
 // DNS 上游列表：与 Kotlin isDnsServerList 一致 —— 除了要有条目，
 // 每条在 scheme（udp/tcp/tls/dot/https）前缀之后还必须有 host（udp:// 会放行到 host 为空）
 function isDnsServerListJP(v){
