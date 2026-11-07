@@ -304,14 +304,38 @@ listOf("Debug", "Release").forEach { variant ->
 val downloadRulesDat = tasks.register("downloadRulesDat") {
     description = "Downloads geoip.dat and geosite.dat, keeping whatever copy is already on disk when the download fails"
     val outputDir = project.layout.projectDirectory.dir("src/main/assets/rules-dat").asFile
-    val filesToDownload = mapOf(
-        "geoip.dat" to "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geoip.dat",
-        "geosite.dat" to "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geosite.dat"
-    )
+    // 只记文件名，完整 URL 在 doLast 里用解析出来的固定 ref 拼成（见 resolveReleaseSha）。
+    val filesToDownload = listOf("geoip.dat", "geosite.dat")
     // 离线/CI 的逃生口：-PrefreshRulesDat=false。在配置期就读出来 —— doLast 里直接引用
     // `providers` 会解析到 Project 的隐式接收者，执行期那是 null，直接炸
     // "Cannot read field \"$$implicitReceiver_Project\""。
     val refreshRulesDat = project.providers.gradleProperty("refreshRulesDat").getOrElse("true").toBoolean()
+
+    /**
+     * 解析 v2ray-rules-dat 的 `release` 分支 HEAD commit（40 位十六进制）。
+     *
+     * 为什么要这一步：jsDelivr 的 `@release` 是**移动引用**，geosite.dat 与其 .sha256sum 是
+     * 两个独立的 CDN 缓存对象；上游更新时 CDN 会在一段时间内把「新载荷 + 旧摘要」（或反过来）
+     * 配在一起，导致 sha256 校验误报失败（即使文件本身没坏）。先把 ref 固化成不可变 commit，
+     * 两个文件就都取自同一提交树，必然一致。取不到返回空串（不视为失败，回退 @release）。
+     */
+    val resolveReleaseSha: () -> String = {
+        try {
+            val connection = URI("https://api.github.com/repos/Loyalsoldier/v2ray-rules-dat/commits?sha=release&per_page=1")
+                .toURL().openConnection()
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 15_000
+            connection.useCaches = false
+            // GitHub API 不带 UA 会直接 403。
+            connection.setRequestProperty("User-Agent", "Stun-Gradle-build")
+            connection.setRequestProperty("Accept", "application/vnd.github+json")
+            val text = connection.inputStream.bufferedReader().use { it.readText() }
+            // 响应形如 [{"sha":"<commit>",...}]，首个 "sha" 字段就是 release 分支 HEAD。
+            Regex("\"sha\"\\s*:\\s*\"([0-9a-f]{40})\"").find(text)?.groupValues?.get(1) ?: ""
+        } catch (e: Exception) {
+            ""
+        }
+    }
 
     /** 取 url 对应 .sha256sum 里公布的摘要，取不到返回空串（不视为失败）。 */
     val sidecarSha256: (String) -> String = { url ->
@@ -385,7 +409,14 @@ val downloadRulesDat = tasks.register("downloadRulesDat") {
         }
 
         if (!outputDir.exists()) outputDir.mkdirs()
-        filesToDownload.forEach { (name, url) ->
+        // 先把移动的 @release 固化成不可变 commit：sidecar 与载荷都从这个 ref 取，两者必然来自
+        // 同一提交树，不会出现「新载荷 + 旧摘要」的错配。
+        val ref = resolveReleaseSha().ifBlank { "release" }
+        if (ref == "release") {
+            println("downloadRulesDat: GitHub release SHA 解析失败，回退 @release（滚动期间仍可能错配）")
+        }
+        filesToDownload.forEach { name ->
+            val url = "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@$ref/$name"
             val outputFile = File(outputDir, name)
             val tempFile = File(outputDir, "$name.tmp")
 
