@@ -9,8 +9,8 @@ import androidx.wear.protolayout.LayoutElementBuilders
 import androidx.wear.protolayout.ModifiersBuilders
 import androidx.wear.protolayout.TimelineBuilders
 import androidx.wear.protolayout.material.Typography
+import androidx.wear.protolayout.ResourceBuilders
 import androidx.wear.tiles.RequestBuilders
-import androidx.wear.tiles.ResourceBuilders
 import androidx.wear.tiles.TileBuilders
 import androidx.wear.tiles.TileService
 import app.fjj.stun.core.R as CoreR
@@ -111,7 +111,7 @@ class StunWearTileService : TileService() {
         return Futures.immediateFuture(tile)
     }
 
-    override fun onResourcesRequest(requestParams: RequestBuilders.ResourcesRequest): ListenableFuture<ResourceBuilders.Resources> {
+    override fun onTileResourcesRequest(requestParams: RequestBuilders.ResourcesRequest): ListenableFuture<ResourceBuilders.Resources> {
         val imageResource = ResourceBuilders.ImageResource.Builder()
             .setAndroidResourceByResId(
                 ResourceBuilders.AndroidImageResourceByResId.Builder()
