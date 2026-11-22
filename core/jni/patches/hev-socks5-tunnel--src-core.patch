@@ -1,5 +1,30 @@
+diff --git a/include/hev-socks5-misc.h b/include/hev-socks5-misc.h
+index ae59a4e..2bac21c 100644
+--- a/include/hev-socks5-misc.h
++++ b/include/hev-socks5-misc.h
+@@ -41,6 +41,20 @@ int hev_socks5_addr_into_sockaddr6 (const HevSocks5Addr *addr,
+ int hev_socks5_name_into_sockaddr6 (const char *host, int port,
+                                     struct sockaddr_in6 *saddr, int *family);
+ 
++/**
++ * 同 hev_socks5_name_into_sockaddr6，但**只接受指定 family** 的解析结果。
++ *
++ * 用途：connect 失败后换另一个 IP 版本重试。普通的
++ * hev_socks5_name_into_sockaddr6 只取 RFC 6724 排序下的第一条，
++ * 「AAAA 可解析但出口是 IPv4-only」时会拿到一个连不上的 IPv6 且无处可退。
++ *
++ * @param want_family AF_INET / AF_INET6（传 AF_UNSPEC 等价于不限制）。
++ * @return 0 成功（*family 已写入实际族）；-1 该 family 下无可用地址。
++ */
++int hev_socks5_name_into_sockaddr6_family (const char *host, int port,
++                                           struct sockaddr_in6 *saddr,
++                                           int *family, int want_family);
++
+ #ifdef __cplusplus
+ }
+ #endif
 diff --git a/src/hev-socks5-client.c b/src/hev-socks5-client.c
-index 0a706be..74c4c47 100644
+index 68a30d1..57a0f69 100644
 --- a/src/hev-socks5-client.c
 +++ b/src/hev-socks5-client.c
 @@ -13,8 +13,11 @@
@@ -14,7 +39,7 @@ index 0a706be..74c4c47 100644
  #include "hev-socks5-misc-priv.h"
  #include "hev-socks5-logger-priv.h"
  
-@@ -22,6 +25,15 @@
+@@ -26,6 +29,15 @@
  
  #define task_io_yielder hev_socks5_task_io_yielder
  
@@ -28,12 +53,14 @@ index 0a706be..74c4c47 100644
 +#define HEV_SOCKS5_HAPPY_EYEBALLS_DELAY_MS 250
 +
  static int
- hev_socks5_client_write_auth_methods (HevSocks5Client *self)
+ hev_socks5_client_write_auth_methods (HevSocks5Client *self, int flags)
  {
-@@ -261,60 +273,307 @@ hev_socks5_client_read_response (HevSocks5Client *self)
+@@ -269,61 +281,307 @@ hev_socks5_client_read_response (HevSocks5Client *self)
      return 0;
  }
  
+-int
+-hev_socks5_client_connect (HevSocks5Client *self, const char *addr, int port)
 +/**
 + * 一次连接尝试的结果，交回主 task 处理。
 + *
@@ -75,48 +102,69 @@ index 0a706be..74c4c47 100644
 + */
 +static void
 +hev_socks5_client_connect_task_entry (void *data)
-+{
+ {
 +    HevSocks5ConnectAttempt *attempt = data;
 +    HevSocks5ConnectResult result = { -1, 0 };
-+    HevSocks5Class *klass;
-+    struct sockaddr_in6 saddr;
-+    struct sockaddr *sap;
-+    int addr_family;
-+    int fd, res;
-+
-+    memset (&saddr, 0, sizeof (saddr));
+     HevSocks5Class *klass;
+     struct sockaddr_in6 saddr;
+     struct sockaddr *sap;
+     int addr_family;
+-    int timeout;
+     int fd, res;
+ 
+-    LOG_D ("%p socks5 client connect [%s]:%d", self, addr, port);
+-
+-    timeout = hev_socks5_get_connect_timeout ();
+-    hev_socks5_set_timeout (HEV_SOCKS5 (self), timeout);
+-
+     memset (&saddr, 0, sizeof (saddr));
+-    addr_family = hev_socks5_get_addr_family (HEV_SOCKS5 (self));
+-    res = hev_socks5_name_into_sockaddr6 (addr, port, &saddr, &addr_family);
+-    if (res < 0) {
+-        LOG_I ("%p socks5 client resolve [%s]:%d", self, addr, port);
+-        return -1;
+-    }
 +    addr_family = hev_socks5_get_addr_family (HEV_SOCKS5 (attempt->self));
 +    res = hev_socks5_name_into_sockaddr6_family (attempt->addr, attempt->port,
 +                                                 &saddr, &addr_family,
 +                                                 attempt->want_family);
 +    if (res < 0)
 +        goto out;
-+
-+    fd = hev_socks5_socket (SOCK_STREAM);
-+    if (fd < 0) {
+ 
+     fd = hev_socks5_socket (SOCK_STREAM);
+     if (fd < 0) {
+-        LOG_E ("%p socks5 client socket", self);
+-        return -1;
 +        LOG_E ("%p socks5 client socket", attempt->self);
 +        goto out;
-+    }
-+
-+    sap = (struct sockaddr *)&saddr;
+     }
+ 
+     sap = (struct sockaddr *)&saddr;
+-    klass = HEV_OBJECT_GET_CLASS (self);
+-    res = klass->binder (HEV_SOCKS5 (self), fd, sap);
 +    klass = HEV_OBJECT_GET_CLASS (attempt->self);
 +    res = klass->binder (HEV_SOCKS5 (attempt->self), fd, sap);
-+    if (res < 0) {
+     if (res < 0) {
+-        LOG_W ("%p socks5 client bind", self);
 +        LOG_W ("%p socks5 client bind af %d", attempt->self,
 +               attempt->want_family);
-+        hev_task_del_fd (hev_task_self (), fd);
-+        close (fd);
+         hev_task_del_fd (hev_task_self (), fd);
+         hev_task_io_close (fd);
+-        return -1;
 +        goto out;
-+    }
-+
+     }
+ 
+-    res = hev_task_io_socket_connect (fd, sap, sizeof (saddr), task_io_yielder,
+-                                      self);
 +    res = hev_task_io_socket_connect (fd, sap, sizeof (saddr),
 +                                      task_io_yielder, attempt->self);
-+    if (res < 0) {
+     if (res < 0) {
+-        LOG_I ("%p socks5 client connect", self);
 +        LOG_I ("%p socks5 client connect af %d", attempt->self,
 +               attempt->want_family);
 +        /* 两个都必须：del_fd 只从事件循环摘除，不释放描述符。 */
-+        hev_task_del_fd (hev_task_self (), fd);
-+        close (fd);
+         hev_task_del_fd (hev_task_self (), fd);
+         hev_task_io_close (fd);
 +        goto out;
 +    }
 +
@@ -127,34 +175,30 @@ index 0a706be..74c4c47 100644
 +    hev_task_channel_write (attempt->chan, &result, sizeof (result));
 +}
 +
- int
- hev_socks5_client_connect (HevSocks5Client *self, const char *addr, int port)
- {
++int
++hev_socks5_client_connect (HevSocks5Client *self, const char *addr, int port)
++{
 +    HevTaskChannelSelect *select = NULL;
 +    HevSocks5ConnectAttempt *attempts[2] = { NULL, NULL };
 +    HevTask *tasks[2] = { NULL, NULL };
 +    HevTaskChannel *chan = NULL;
 +    HevTaskChannel *ready;
 +    HevSocks5ConnectResult result;
-     HevSocks5Class *klass;
-     struct sockaddr_in6 saddr;
-     struct sockaddr *sap;
++    HevSocks5Class *klass;
++    struct sockaddr_in6 saddr;
++    struct sockaddr *sap;
 +    int families[2] = { 0, 0 };
-     int addr_family;
-     int timeout;
--    int fd, res;
++    int addr_family;
++    int timeout;
 +    int n_available = 0;
 +    int attempt, delay;
 +    int fd, res = -1;
- 
-     LOG_D ("%p socks5 client connect [%s]:%d", self, addr, port);
- 
-     timeout = hev_socks5_get_connect_timeout ();
-     hev_socks5_set_timeout (HEV_SOCKS5 (self), timeout);
- 
--    addr_family = hev_socks5_get_addr_family (HEV_SOCKS5 (self));
--    res = hev_socks5_name_into_sockaddr6 (addr, port, &saddr, &addr_family);
--    if (res < 0) {
++
++    LOG_D ("%p socks5 client connect [%s]:%d", self, addr, port);
++
++    timeout = hev_socks5_get_connect_timeout ();
++    hev_socks5_set_timeout (HEV_SOCKS5 (self), timeout);
++
 +    /*
 +     * RFC 6555 并发 happy-eyeballs。
 +     *
@@ -185,14 +229,13 @@ index 0a706be..74c4c47 100644
 +    }
 +
 +    if (n_available == 0) {
-         LOG_I ("%p socks5 client resolve [%s]:%d", self, addr, port);
++        LOG_I ("%p socks5 client resolve [%s]:%d", self, addr, port);
          return -1;
      }
  
--    fd = hev_socks5_socket (SOCK_STREAM);
--    if (fd < 0) {
--        LOG_E ("%p socks5 client socket", self);
--        return -1;
+-    HEV_SOCKS5 (self)->fd = fd;
+-    hev_socks5_set_addr_family (HEV_SOCKS5 (self), addr_family);
+-    LOG_D ("%p socks5 client connect server fd %d", self, fd);
 +    /*
 +     * 只有一个 family 可用（域名只有 A、或目标是 IP 字面量）：
 +     * 直接在本 task 里连，不进并发路径 —— 零额外开销、无 task/channel。
@@ -206,7 +249,8 @@ index 0a706be..74c4c47 100644
 +            LOG_I ("%p socks5 client resolve [%s]:%d", self, addr, port);
 +            return -1;
 +        }
-+
+ 
+-    return 0;
 +        fd = hev_socks5_socket (SOCK_STREAM);
 +        if (fd < 0) {
 +            LOG_E ("%p socks5 client socket", self);
@@ -218,7 +262,7 @@ index 0a706be..74c4c47 100644
 +        if (klass->binder (HEV_SOCKS5 (self), fd, sap) < 0) {
 +            LOG_W ("%p socks5 client bind", self);
 +            hev_task_del_fd (hev_task_self (), fd);
-+            close (fd);
++            hev_task_io_close (fd);
 +            return -1;
 +        }
 +
@@ -226,7 +270,7 @@ index 0a706be..74c4c47 100644
 +                                        task_io_yielder, self) < 0) {
 +            LOG_I ("%p socks5 client connect [%s]:%d", self, addr, port);
 +            hev_task_del_fd (hev_task_self (), fd);
-+            close (fd);
++            hev_task_io_close (fd);
 +            return -1;
 +        }
 +
@@ -234,37 +278,20 @@ index 0a706be..74c4c47 100644
 +        hev_socks5_set_addr_family (HEV_SOCKS5 (self), addr_family);
 +        LOG_D ("%p socks5 client connect server fd %d", self, fd);
 +        return 0;
-     }
- 
--    sap = (struct sockaddr *)&saddr;
--    klass = HEV_OBJECT_GET_CLASS (self);
--    res = klass->binder (HEV_SOCKS5 (self), fd, sap);
--    if (res < 0) {
--        LOG_W ("%p socks5 client bind", self);
--        hev_task_del_fd (hev_task_self (), fd);
--        close (fd);
++    }
++
 +    /* 双 family 并发：共用一个 channel，谁先回结果就用谁。 */
 +    if (hev_task_channel_new (&chan, NULL) < 0) {
 +        LOG_E ("%p socks5 client channel", self);
-         return -1;
-     }
- 
--    res = hev_task_io_socket_connect (fd, sap, sizeof (saddr), task_io_yielder,
--                                      self);
--    if (res < 0) {
--        LOG_I ("%p socks5 client connect", self);
--        hev_task_del_fd (hev_task_self (), fd);
--        close (fd);
--        return -1;
++        return -1;
++    }
++
 +    select = hev_task_channel_select_new ();
 +    if (!select) {
 +        LOG_E ("%p socks5 client channel select", self);
 +        goto cleanup;
-     }
- 
--    HEV_SOCKS5 (self)->fd = fd;
--    hev_socks5_set_addr_family (HEV_SOCKS5 (self), addr_family);
--    LOG_D ("%p socks5 client connect server fd %d", self, fd);
++    }
++
 +    hev_task_channel_select_add (select, chan);
 +
 +    for (attempt = 0; attempt < 2; attempt++) {
@@ -279,8 +306,7 @@ index 0a706be..74c4c47 100644
 +        attempts[attempt]->port = port;
 +        attempts[attempt]->want_family = families[attempt];
 +    }
- 
--    return 0;
++
 +    for (attempt = 0; attempt < 2; attempt++) {
 +        tasks[attempt] = hev_task_new (hev_socks5_get_task_stack_size ());
 +        if (!tasks[attempt]) {
@@ -344,7 +370,7 @@ index 0a706be..74c4c47 100644
 +                                             sizeof (result)) > 0 &&
 +                result.fd >= 0) {
 +                hev_task_del_fd (hev_task_self (), result.fd);
-+                close (result.fd);
++                hev_task_io_close (result.fd);
 +            }
 +        }
 +        if (attempts[attempt])
@@ -365,10 +391,10 @@ index 0a706be..74c4c47 100644
  hev_socks5_client_handshake_standard (HevSocks5Client *self)
  {
 diff --git a/src/hev-socks5-misc.c b/src/hev-socks5-misc.c
-index 2b5e122..21eba1c 100644
+index 9933d75..a335bde 100644
 --- a/src/hev-socks5-misc.c
 +++ b/src/hev-socks5-misc.c
-@@ -269,24 +269,111 @@ hev_socks5_name_resolve_name (const char *name, struct sockaddr_in6 *saddr,
+@@ -273,24 +273,111 @@ hev_socks5_name_resolve_name (const char *name, struct sockaddr_in6 *saddr,
      if (!result)
          return -1;
  
@@ -496,28 +522,3 @@ index 2b5e122..21eba1c 100644
      }
  
      freeaddrinfo (result);
-diff --git a/src/hev-socks5-misc.h b/src/hev-socks5-misc.h
-index 1c69104..78ad61a 100644
---- a/src/hev-socks5-misc.h
-+++ b/src/hev-socks5-misc.h
-@@ -41,6 +41,20 @@ int hev_socks5_addr_into_sockaddr6 (const HevSocks5Addr *addr,
- int hev_socks5_name_into_sockaddr6 (const char *host, int port,
-                                     struct sockaddr_in6 *saddr, int *family);
- 
-+/**
-+ * 同 hev_socks5_name_into_sockaddr6，但**只接受指定 family** 的解析结果。
-+ *
-+ * 用途：connect 失败后换另一个 IP 版本重试。普通的
-+ * hev_socks5_name_into_sockaddr6 只取 RFC 6724 排序下的第一条，
-+ * 「AAAA 可解析但出口是 IPv4-only」时会拿到一个连不上的 IPv6 且无处可退。
-+ *
-+ * @param want_family AF_INET / AF_INET6（传 AF_UNSPEC 等价于不限制）。
-+ * @return 0 成功（*family 已写入实际族）；-1 该 family 下无可用地址。
-+ */
-+int hev_socks5_name_into_sockaddr6_family (const char *host, int port,
-+                                           struct sockaddr_in6 *saddr,
-+                                           int *family, int want_family);
-+
- #ifdef __cplusplus
- }
- #endif

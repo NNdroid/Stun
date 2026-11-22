@@ -1,8 +1,8 @@
 diff --git a/Android.mk b/Android.mk
-index 2f65e6f..816f43f 100644
+index 4750901..e09fecf 100644
 --- a/Android.mk
 +++ b/Android.mk
-@@ -15,14 +15,19 @@
+@@ -15,15 +15,19 @@
  
  TOP_PATH := $(call my-dir)
  
@@ -20,23 +20,24 @@ index 2f65e6f..816f43f 100644
 +include $(TOP_PATH)/third-part/lwip/Android.mk
  endif
 -ifeq ($(filter $(modules-get-list),hev-task-system),)
+-    ENABLE_MEMALLOC_SLICE := 0
 -    include $(TOP_PATH)/third-part/hev-task-system/Android.mk
-+
 +ifeq ($(filter hev-task-system,$(SUB_MODULES)),)
++ENABLE_MEMALLOC_SLICE := 0
 +SUB_MODULES += hev-task-system
 +include $(TOP_PATH)/third-part/hev-task-system/Android.mk
  endif
  
- LOCAL_PATH = $(TOP_PATH)
-@@ -45,7 +50,7 @@ LOCAL_CFLAGS += $(VERSION_CFLAGS)
+ LOCAL_PATH := $(TOP_PATH)
+@@ -53,7 +57,7 @@ LOCAL_CFLAGS += -fno-stack-clash-protection $(VERSION_CFLAGS)
  ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
  LOCAL_CFLAGS += -mfpu=neon
  endif
 -LOCAL_STATIC_LIBRARIES := yaml lwip hev-task-system
 +LOCAL_STATIC_LIBRARIES := libyaml liblwip libhev-task-system
- LOCAL_LDFLAGS += -Wl,-z,max-page-size=16384
- LOCAL_LDFLAGS += -Wl,-z,common-page-size=16384
+ LOCAL_LDFLAGS += $(HEV_SOCKS5_TUNNEL_LDFLAGS)
  include $(BUILD_SHARED_LIBRARY)
+ 
 diff --git a/src/hev-domain-sniff.c b/src/hev-domain-sniff.c
 new file mode 100644
 index 0000000..3555de2
@@ -330,10 +331,10 @@ index 0000000..9b03fb9
 +
 +#endif /* __HEV_DOMAIN_SNIFF_H__ */
 diff --git a/src/hev-jni.c b/src/hev-jni.c
-index 9698555..f073f1e 100644
+index 6639837..e922d04 100644
 --- a/src/hev-jni.c
 +++ b/src/hev-jni.c
-@@ -26,7 +26,7 @@
+@@ -27,7 +27,7 @@
  #define PKGNAME hev/htproxy
  #endif
  #ifndef CLSNAME
@@ -342,14 +343,15 @@ index 9698555..f073f1e 100644
  #endif
  /* clang-format on */
  
-@@ -54,10 +54,10 @@ static void native_stop_service (JNIEnv *env, jobject thiz);
+@@ -57,11 +57,10 @@ static jboolean native_is_running (JNIEnv *env, jobject thiz);
  static jlongArray native_get_stats (JNIEnv *env, jobject thiz);
  
  static JNINativeMethod native_methods[] = {
--    { "TProxyStartService", "(Ljava/lang/String;I)V",
+-    { "TProxyStartService", "(Ljava/lang/String;I)Z",
 +    { "TTunnelStartService", "(Ljava/lang/String;I)V",
        (void *)native_start_service },
--    { "TProxyStopService", "()V", (void *)native_stop_service },
+-    { "TProxyStopService", "()Z", (void *)native_stop_service },
+-    { "TProxyIsRunning", "()Z", (void *)native_is_running },
 -    { "TProxyGetStats", "()[J", (void *)native_get_stats },
 +    { "TTunnelStopService", "()V", (void *)native_stop_service },
 +    { "TTunnelGetStats", "()[J", (void *)native_get_stats },
@@ -357,7 +359,7 @@ index 9698555..f073f1e 100644
  
  static void
 diff --git a/src/hev-socks5-session-tcp.c b/src/hev-socks5-session-tcp.c
-index 7bcfa05..dbc5c65 100644
+index 7a6a528..94e7a6c 100644
 --- a/src/hev-socks5-session-tcp.c
 +++ b/src/hev-socks5-session-tcp.c
 @@ -7,6 +7,7 @@
@@ -376,8 +378,8 @@ index 7bcfa05..dbc5c65 100644
  #include "hev-logger.h"
  #include "hev-config-const.h"
  #include "hev-socks5-tunnel.h"
-@@ -192,6 +194,97 @@ hev_socks5_session_tcp_new (struct tcp_pcb *pcb, HevTaskMutex *mutex)
-     return self;
+@@ -259,6 +261,97 @@ tcp_splice_active (HevSocks5Session *base, int size, int *res_f, int *res_b)
+     return -1;
  }
  
 +static uint16_t
@@ -471,9 +473,9 @@ index 7bcfa05..dbc5c65 100644
 +    }
 +}
 +
- static int
- hev_socks5_session_tcp_bind (HevSocks5 *self, int fd,
-                              const struct sockaddr *dest)
+ static void
+ hev_socks5_session_tcp_splice (HevSocks5Session *base)
+ {
 diff --git a/src/hev-socks5-session-tcp.h b/src/hev-socks5-session-tcp.h
 index 12ad520..b03c158 100644
 --- a/src/hev-socks5-session-tcp.h
@@ -486,10 +488,10 @@ index 12ad520..b03c158 100644
 +
  #endif /* __HEV_SOCKS5_SESSION_TCP_H__ */
 diff --git a/src/hev-socks5-tunnel.c b/src/hev-socks5-tunnel.c
-index 50cf41a..a46bb6a 100644
+index 74f0c10..7a85e42 100644
 --- a/src/hev-socks5-tunnel.c
 +++ b/src/hev-socks5-tunnel.c
-@@ -159,6 +159,15 @@ hev_socks5_session_task_entry (void *data)
+@@ -219,6 +219,15 @@ hev_socks5_session_task_entry (void *data)
      hev_object_unref (HEV_OBJECT (s));
  }
  
@@ -502,10 +504,10 @@ index 50cf41a..a46bb6a 100644
 +    hev_socks5_session_task_entry (data);
 +}
 +
- static err_t
- tcp_accept_handler (void *arg, struct tcp_pcb *pcb, err_t err)
+ static void
+ tcp_pcb_set_gso (struct tcp_pcb *pcb)
  {
-@@ -187,7 +196,7 @@ tcp_accept_handler (void *arg, struct tcp_pcb *pcb, err_t err)
+@@ -272,7 +281,7 @@ tcp_accept_handler (void *arg, struct tcp_pcb *pcb, err_t err)
      hev_socks5_session_set_task (HEV_SOCKS5_SESSION (tcp), task);
      node = hev_socks5_session_get_node (HEV_SOCKS5_SESSION (tcp));
      hev_socks5_tunnel_insert_session (node);

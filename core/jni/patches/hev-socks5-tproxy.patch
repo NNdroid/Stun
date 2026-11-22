@@ -1,5 +1,5 @@
 diff --git a/Android.mk b/Android.mk
-index 7771595..7924c56 100644
+index 9ac8cb9..9ef2832 100644
 --- a/Android.mk
 +++ b/Android.mk
 @@ -15,11 +15,14 @@
@@ -21,7 +21,7 @@ index 7771595..7924c56 100644
  endif
  
  LOCAL_PATH = $(TOP_PATH)
-@@ -38,7 +41,7 @@ LOCAL_CFLAGS += $(VERSION_CFLAGS)
+@@ -38,7 +41,7 @@ LOCAL_CFLAGS += -fno-stack-clash-protection $(VERSION_CFLAGS)
  ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
  LOCAL_CFLAGS += -mfpu=neon
  endif
@@ -545,10 +545,10 @@ index 26a4b4b..49b905a 100644
 +
  #endif /* __HEV_SOCKS5_SESSION_TCP_H__ */
 diff --git a/src/hev-socks5-worker.c b/src/hev-socks5-worker.c
-index fbb91ef..916cfa4 100644
+index 9101c2a..7ff980c 100644
 --- a/src/hev-socks5-worker.c
 +++ b/src/hev-socks5-worker.c
-@@ -91,6 +91,19 @@ hev_socks5_tcp_session_task_entry (void *data)
+@@ -93,6 +93,19 @@ hev_socks5_tcp_session_task_entry (void *data)
      HevSocks5Worker *self = hev_socks5_worker_self ();
      HevSocks5SessionTCP *tcp = data;
  

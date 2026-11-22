@@ -1,5 +1,30 @@
+diff --git a/include/hev-socks5-misc.h b/include/hev-socks5-misc.h
+index ae59a4e..2bac21c 100644
+--- a/include/hev-socks5-misc.h
++++ b/include/hev-socks5-misc.h
+@@ -41,6 +41,20 @@ int hev_socks5_addr_into_sockaddr6 (const HevSocks5Addr *addr,
+ int hev_socks5_name_into_sockaddr6 (const char *host, int port,
+                                     struct sockaddr_in6 *saddr, int *family);
+ 
++/**
++ * 同 hev_socks5_name_into_sockaddr6，但**只接受指定 family** 的解析结果。
++ *
++ * 用途：connect 失败后换另一个 IP 版本重试。普通的
++ * hev_socks5_name_into_sockaddr6 只取 RFC 6724 排序下的第一条，
++ * 「AAAA 可解析但出口是 IPv4-only」时会拿到一个连不上的 IPv6 且无处可退。
++ *
++ * @param want_family AF_INET / AF_INET6（传 AF_UNSPEC 等价于不限制）。
++ * @return 0 成功（*family 已写入实际族）；-1 该 family 下无可用地址。
++ */
++int hev_socks5_name_into_sockaddr6_family (const char *host, int port,
++                                           struct sockaddr_in6 *saddr,
++                                           int *family, int want_family);
++
+ #ifdef __cplusplus
+ }
+ #endif
 diff --git a/src/hev-socks5-client.c b/src/hev-socks5-client.c
-index f4d9ecb..b9a5225 100644
+index 68a30d1..57a0f69 100644
 --- a/src/hev-socks5-client.c
 +++ b/src/hev-socks5-client.c
 @@ -13,8 +13,11 @@
@@ -28,9 +53,9 @@ index f4d9ecb..b9a5225 100644
 +#define HEV_SOCKS5_HAPPY_EYEBALLS_DELAY_MS 250
 +
  static int
- hev_socks5_client_write_auth_methods (HevSocks5Client *self)
+ hev_socks5_client_write_auth_methods (HevSocks5Client *self, int flags)
  {
-@@ -267,59 +279,303 @@ hev_socks5_client_read_response (HevSocks5Client *self)
+@@ -269,61 +281,307 @@ hev_socks5_client_read_response (HevSocks5Client *self)
      return 0;
  }
  
@@ -124,7 +149,7 @@ index f4d9ecb..b9a5225 100644
 +        LOG_W ("%p socks5 client bind af %d", attempt->self,
 +               attempt->want_family);
          hev_task_del_fd (hev_task_self (), fd);
-         close (fd);
+         hev_task_io_close (fd);
 -        return -1;
 +        goto out;
      }
@@ -139,7 +164,7 @@ index f4d9ecb..b9a5225 100644
 +               attempt->want_family);
 +        /* 两个都必须：del_fd 只从事件循环摘除，不释放描述符。 */
          hev_task_del_fd (hev_task_self (), fd);
-         close (fd);
+         hev_task_io_close (fd);
 +        goto out;
 +    }
 +
@@ -237,7 +262,7 @@ index f4d9ecb..b9a5225 100644
 +        if (klass->binder (HEV_SOCKS5 (self), fd, sap) < 0) {
 +            LOG_W ("%p socks5 client bind", self);
 +            hev_task_del_fd (hev_task_self (), fd);
-+            close (fd);
++            hev_task_io_close (fd);
 +            return -1;
 +        }
 +
@@ -245,7 +270,7 @@ index f4d9ecb..b9a5225 100644
 +                                        task_io_yielder, self) < 0) {
 +            LOG_I ("%p socks5 client connect [%s]:%d", self, addr, port);
 +            hev_task_del_fd (hev_task_self (), fd);
-+            close (fd);
++            hev_task_io_close (fd);
 +            return -1;
 +        }
 +
@@ -345,7 +370,7 @@ index f4d9ecb..b9a5225 100644
 +                                             sizeof (result)) > 0 &&
 +                result.fd >= 0) {
 +                hev_task_del_fd (hev_task_self (), result.fd);
-+                close (result.fd);
++                hev_task_io_close (result.fd);
 +            }
 +        }
 +        if (attempts[attempt])
@@ -360,12 +385,16 @@ index f4d9ecb..b9a5225 100644
 +    return res;
  }
  
++
++
  static int
+ hev_socks5_client_handshake_standard (HevSocks5Client *self)
+ {
 diff --git a/src/hev-socks5-misc.c b/src/hev-socks5-misc.c
-index 2b5e122..21eba1c 100644
+index 9933d75..a335bde 100644
 --- a/src/hev-socks5-misc.c
 +++ b/src/hev-socks5-misc.c
-@@ -269,24 +269,111 @@ hev_socks5_name_resolve_name (const char *name, struct sockaddr_in6 *saddr,
+@@ -273,24 +273,111 @@ hev_socks5_name_resolve_name (const char *name, struct sockaddr_in6 *saddr,
      if (!result)
          return -1;
  
@@ -493,28 +522,3 @@ index 2b5e122..21eba1c 100644
      }
  
      freeaddrinfo (result);
-diff --git a/src/hev-socks5-misc.h b/src/hev-socks5-misc.h
-index 1c69104..78ad61a 100644
---- a/src/hev-socks5-misc.h
-+++ b/src/hev-socks5-misc.h
-@@ -41,6 +41,20 @@ int hev_socks5_addr_into_sockaddr6 (const HevSocks5Addr *addr,
- int hev_socks5_name_into_sockaddr6 (const char *host, int port,
-                                     struct sockaddr_in6 *saddr, int *family);
- 
-+/**
-+ * 同 hev_socks5_name_into_sockaddr6，但**只接受指定 family** 的解析结果。
-+ *
-+ * 用途：connect 失败后换另一个 IP 版本重试。普通的
-+ * hev_socks5_name_into_sockaddr6 只取 RFC 6724 排序下的第一条，
-+ * 「AAAA 可解析但出口是 IPv4-only」时会拿到一个连不上的 IPv6 且无处可退。
-+ *
-+ * @param want_family AF_INET / AF_INET6（传 AF_UNSPEC 等价于不限制）。
-+ * @return 0 成功（*family 已写入实际族）；-1 该 family 下无可用地址。
-+ */
-+int hev_socks5_name_into_sockaddr6_family (const char *host, int port,
-+                                           struct sockaddr_in6 *saddr,
-+                                           int *family, int want_family);
-+
- #ifdef __cplusplus
- }
- #endif
