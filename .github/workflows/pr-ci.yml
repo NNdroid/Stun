@@ -65,6 +65,17 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      # setup-gradle 只缓存 Gradle 自己的依赖；Robolectric 的 android-all-instrumented
+      # 是测试运行时用 HttpURLConnection 直接下到 ~/.m2 的（100~200 MB/个，无重试）。
+      # 与 release.yml 同源的缓存：冷 runner 下载失败会让 Robolectric 测试整体飘红。
+      - name: Cache Robolectric android-all jars
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+          restore-keys: |
+            robolectric-${{ runner.os }}-
+
       - name: Make Gradle wrapper executable
         run: chmod +x gradlew
 

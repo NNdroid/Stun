@@ -256,6 +256,19 @@ jobs:
           restore-keys: |
             gradle-${{ runner.os }}-
 
+      # Robolectric 在跑测试时才用 HttpURLConnection 下载 android-all-instrumented
+      # （单个 jar 100~200 MB），完全绕过上面的 Gradle 缓存，也没有重试；冷 runner 上
+      # 偶发 IOException 会让所有 Robolectric 测试类在 classMethod 阶段一起挂掉。
+      # 构建脚本已把下载源指向 Maven 镜像，这里再把落地的 ~/.m2 目录缓存下来：
+      # 命中后连镜像都不用访问。key 只跟 Robolectric 版本走，jar 列表由它决定。
+      - name: Cache Robolectric android-all jars
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+          restore-keys: |
+            robolectric-${{ runner.os }}-
+
       - name: Cache NDK build outputs
         uses: actions/cache@v4
         with:
