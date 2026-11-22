@@ -22,12 +22,14 @@
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
 
+    <!-- TV-only, opaque 512x512 icon: Play rejects the transparent fox vector
+         used by the phone/car/wear/xr modules as a TV launcher icon. -->
     <application
         android:name=".TVApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@drawable/ic_fox_logo"
+        android:icon="@drawable/ic_launcher_tv"
         android:banner="@drawable/tv_banner"
         android:label="@string/app_name"
         android:supportsRtl="true"
