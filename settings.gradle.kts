@@ -7,10 +7,8 @@ pluginManagement {
                 includeGroupByRegex("androidx.*")
             }
         }
-        // Maven Central rate-limits GitHub runner shared IPs with HTTP 429 (seen on
-        // org.robolectric:nativeruntime-dist-compat). Try a mirror first, keep the
-        // original repository as a fallback for artifacts the mirror has not synced.
-        maven("https://maven.aliyun.com/repository/public")
+        // Keep plugin resolution on the official repositories. Adding a mirror ahead of
+        // mavenCentral() here made KSP's plugin marker unresolvable on GitHub runners.
         mavenCentral()
         gradlePluginPortal()
     }
@@ -28,9 +26,11 @@ dependencyResolutionManagement {
                 includeGroupByRegex("androidx.*")
             }
         }
-        // Same mirror-first order as pluginManagement: Gradle's own dependency
-        // resolution is a separate path from Robolectric's runtime downloads.
-        maven("https://maven.aliyun.com/repository/public")
+        // Google's CDN mirror of Maven Central, ahead of the default endpoint:
+        // GitHub runner shared IPs get HTTP 429 from repo.maven.apache.org.
+        // Kept separate from pluginManagement so plugin markers keep using the
+        // official plugin repositories (a mirror there broke KSP resolution).
+        maven("https://maven-central.storage-download.googleapis.com/maven2")
         mavenCentral()
         maven("https://jitpack.io")
     }
