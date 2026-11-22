@@ -206,6 +206,12 @@ dependencies {
     implementation(libs.wear.protolayout.material)
     implementation(libs.guava)
 
+    // Android Studio 内的 Tile 预览面板（StunTilePreviews.kt）。tooling 只在 debug 引入，
+    // release 包不带渲染器。版本与 wearTiles 对齐（1.4.0），API 签名才一致。
+    implementation(libs.androidx.wear.tiles.tooling.preview)
+    implementation(libs.wear.tooling.preview)
+    debugImplementation(libs.androidx.wear.tiles.tooling)
+
     implementation(libs.androidx.lifecycle.livedata.ktx)
 
     debugImplementation(libs.debugoverlay)
